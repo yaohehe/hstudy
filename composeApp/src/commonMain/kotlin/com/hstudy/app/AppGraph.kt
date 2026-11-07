@@ -42,6 +42,18 @@ object AppGraph {
     lateinit var userPreferences: UserPreferences
         private set
 
+    /**
+     * 启动时预读的语言偏好，供 App 根首帧使用。
+     *
+     * bootstrap() 由平台入口（Android HStudyApplication.onCreate / iOS initIosPlatform）在任何组合之前调用，
+     * 这里的预读通常能在首帧组合开始前完成，于是 collectAsState 的 initial 不再是 null，
+     * 避免"存储选择与设备语言相反"的设备（zh 设备存 en、en 设备存 zh）首帧渲染错语言再翻转。
+     * 局限（诚实说明）：预读本身是异步的，若首帧早于读取完成，此值仍为 null 并退化为 SYSTEM 推导；
+     * 它只收窄窗口，不消除窗口，也不会插入空白帧。
+     */
+    var startupLanguage: String? = null
+        private set
+
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var initialized = false
 
@@ -67,6 +79,10 @@ object AppGraph {
     fun bootstrap() {
         init()
         appScope.launch {
+            // 首帧语言快照：放在同一次 launch 的最前面，复用既有协程，不新增作用域。
+            // 该读取与下一行 hasOnboarded.first() 出自同一个 dataStore.data，失败模式完全相同，
+            // 因此这里不加 try/catch 也不会引入新的中断路径；组合侧由 App.kt 的 catch 降级。
+            startupLanguage = userPreferences.appLanguage.first()
             if (!userPreferences.hasOnboarded.first()) {
                 taskRepository.initDefaultTasks()
                 rewardRepository.initDefaultRewards()
