@@ -316,8 +316,11 @@ fun ParentSettingsScreen(
                     // 同一个值，两处必须一致，否则首帧文案与首帧选中项对不上。
                     // 局限同 App.kt：本次会话内改过选择后 startupLanguage 不回写，重进本页的首帧可能
                     // 仍是启动时的高亮，等首次 emission 校正；比 null 的写法窄，但不消除窗口。
-                    // 注：本段注释用「」而不用英文双引号——scripts/i18n_inventory.py 会把注释里
-                    // 被引号包住的中文也数成待迁移字面量，Task 11 的清单计数会被虚高。
+                    // 注：本段注释用「」而不用英文双引号。理由是读代码的人：引号里的中文看起来
+                    // 像一条待迁移的界面字面量，得停下来判断它归不归文案表管；「」在中文排版里
+                    // 明确表示「被指称的词」而不是「要显示的话」，这个判断就不用做了。
+                    // （原先写的理由是 scripts/i18n_inventory.py 会把注释里的中文数进清单——
+                    //  Ruling 18 之后脚本会剥掉 // 之后的内容，那条已经成立不了了，约定本身照旧。）
                     val storedLanguage by app.userPreferences.appLanguage.collectAsState(initial = AppGraph.startupLanguage)
                     val currentLanguage = appLanguageFromStorage(storedLanguage)
                     Card(modifier = Modifier.fillMaxWidth()) {
