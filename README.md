@@ -27,6 +27,7 @@ composeApp/
   src/commonMain/   共享 UI（43 个屏幕）、数据层、业务逻辑、平台契约
   src/androidMain/  Android 入口 + AlarmManager/通知/FileProvider/相机/NSD 实现
   src/iosMain/      iOS 桥接（UNUserNotifications/UIActivityViewController/相机/Bonjour）
+                    └ nativeInterop/cinterop/hstudyIosBridge.def  ObjC inline 桥接（仅索引 Foundation）
 iosApp/             Xcode 工程（SwiftUI 壳 + ComposeApp.framework）
 legacy/android-v2.88/  重构前的纯 Android 工程，仅作对照与回退参考，不参与构建
 .github/workflows/  Android 构建、iOS 构建（macOS）、tag 发布
