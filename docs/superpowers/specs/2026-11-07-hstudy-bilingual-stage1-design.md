@@ -12,7 +12,7 @@
 - 第一阶段真正双语的页面：角色选择（启动）、家长首页、家长仪表盘、孩子首页、孩子任务列表、专注/打卡（含 `common/PomodoroTimer.kt`）、家长设置，以及 `common/CommonComponents.kt` 中的公共控件文案。
 
 **非目标（明确排除）**
-- 不迁移其余页面（保持中文），因此英文态会出现中英混排——这是分阶段的既定代价。
+- 不迁移其余页面（保持中文），因此英文态会出现中英混排——这是分阶段的既定代价。第一阶段覆盖 362 条（占全仓去重 1406 条的 26%）。
 - 不本地化写入数据库的种子内容（见 §5）。
 - 不引入 locale 相关的日期/数字格式差异（见 §6）。
 - 不做通用复数引擎（英文只做 one/other，用函数分支表达）。
@@ -23,10 +23,10 @@
 | 事实 | 证据 | 对设计的影响 |
 |---|---|---|
 | CMP 1.7.3 的 commonMain 没有 `androidx.compose.ui.LocalConfiguration` | 本机 `compileCommonMainKotlinMetadata` 探针报 `Unresolved reference 'LocalConfiguration'`（探针文件已删除） | 官方"运行时覆盖 locale"路径不可用；选择自持文案表方案，不为本功能升级 CMP |
-| 中文文案 100% 硬编码 | `commonMain` 108 个文件、1370 处中文字面量；`composeApp/src/commonMain/res/` 不存在 | 必须新建文案层；`compose.components.resources` 依赖在本阶段成为无用依赖（保留，不本次清理） |
+| 中文文案 100% 硬编码 | `commonMain` 108 个文件、1661 处中文字面量（去重 1406 条，Python 正则统计）；`composeApp/src/commonMain/res/` 不存在 | 必须新建文案层；`compose.components.resources` 依赖在本阶段成为无用依赖（保留，不本次清理） |
 | 中文字符串未被当作逻辑 key | `== "中文"` / `.equals("中文")` 在 commonMain 零命中 | 切换语言不会破坏 `when`/分支逻辑，双语可安全落地 |
 | 存在写库的中文字面量 | 125 处 `title = "…"` / `name = "…"`，如 `data/repository/TaskRepository.kt:46` 的默认任务 | 划入非目标，见 §5 |
-| 第一阶段规模 | 目标文件 257 处字面量，去重 244 条，其中 32 条含 `$` 插值 | 244 条为翻译工作量；32 条需函数化 |
+| 第一阶段规模 | 10 个目标文件共 371 处字面量，按文件去重 362 条，其中 67 条含 `$` 插值 | 362 条为翻译工作量；67 条需函数化。注：先前用 Git Bash grep 统计得 257/244/32，系 `[一-龥]` 字节范围漏匹配，已用 Python 重算更正 |
 | 既有可复用约定 | `App()` 根已用 `CompositionLocalProvider(LocalNavigator …)`；`Platform` 为 Noop 兜底 DI；`UserPreferences` 为 `Flow` 属性 + companion 键表；`AppGraph.appScope` 可跑异步 | 不发明新机制，全部沿用 |
 
 ## 3. 架构与组件
@@ -34,10 +34,11 @@
 新增目录 `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/`：
 
 - **`AppLanguage.kt`**
-  `enum class AppLanguage { SYSTEM, ZH, EN }`
-  纯函数解析：`fun resolve(setting: AppLanguage, systemTag: String): AppLanguage`
-  规则：`ZH`/`EN` 直接返回；`SYSTEM` 时 `systemTag` 以 `zh` 开头 → `ZH`，否则 → `ZH`（未知语言回退中文，保持现状行为）。
-  注：回退选中文而非英文，因为既有用户与内容全部是中文语境。
+  `enum class AppLanguage { SYSTEM, ZH, EN }`（用户设置值）与 `enum class DisplayLanguage { ZH, EN }`（生效语言）分离。
+  纯函数解析：`fun AppLanguage.resolveWith(systemTag: String): DisplayLanguage`
+  规则：`ZH`/`EN` 直接映射；`SYSTEM` 时 `systemTag` 去空格后为空 → `ZH`，以 `zh` 开头 → `ZH`，其余 → `EN`。
+  分离两个枚举的理由：`SYSTEM` 属于"设置"，不该出现在"生效语言"里；若合一，`stringsFor(SYSTEM)` 必须被赋予含义，那是设计漏洞。
+  注：未知语言回退中文，因为既有用户与内容全部是中文语境。
 
 - **`SystemLocale.kt`**
   `expect fun systemLanguageTag(): String`
@@ -52,7 +53,7 @@
   两种语言各构造一份（`AppStringsZh` / `AppStringsEn`）。
   选择 data class 而非 `Map<String, String>` 的理由：漏一条英文 = 编译错误，而不是运行时静默掉回中文。
   带参数文案存**函数**不存 `{0}` 模板：中英文语序不同（"还剩 3 个任务" vs "3 tasks left"），位置插值在英文里会写出洋泾浜；函数各自表达语序且可直接单测。英文复数在函数内用 one/other 分支。
-  按页面分文件的理由：避免最终 1370 条挤成几千行单文件。
+  按页面分文件的理由：避免最终 1406 条挤成几千行单文件。
 
 - **`LocalStrings.kt`**
   `val LocalStrings = staticCompositionLocalOf<AppStrings> { error("LocalStrings 未提供") }`
@@ -89,9 +90,9 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 
 1. **漏译检测**：对第一阶段每个字段，断言 EN 值不等于对应 ZH 值（防止整表复制粘贴伪翻译）。
 2. **成对性**：由 data class 构造保证，无需运行时校验。
-3. **插值/函数文案**：32 条含参文案逐条断言两种语言输出，覆盖英文 one/other（1 task / 3 tasks）。
+3. **插值/函数文案**：67 条含参文案逐条断言两种语言输出，覆盖英文 one/other（1 task / 3 tasks）。
 4. **语言解析**：`resolve()` 对 `ZH`/`EN`/`SYSTEM+zh`/`SYSTEM+en`/`SYSTEM+未知` 的返回值。
-5. **持久化**：`setAppLanguage` 写入后 `appLanguage` Flow 反映新值。
+5. **持久化**：`setAppLanguage` 写入后 `appLanguage` Flow 反映新值。测试需先把 `Platform.dataDir` 指到 `build/` 下的临时目录（DataStore 走 okio 系统文件系统），因此该测试落在能访问真实文件系统的单测源集。
 
 ## 9. 验证上限（诚实声明）
 
@@ -125,6 +126,6 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 
 ## 12. 风险
 
-- 244 条英文质量依赖用户抽查；术语表不一致会造成同一概念多种译法。
+- 362 条英文质量依赖用户抽查；术语表不一致会造成同一概念多种译法。
 - 英文态混排（未迁移页面仍中文）可能被误解为缺陷，需设置页提示兜底。
 - `Strings` 表随后续阶段膨胀，需坚持按页面分文件。
