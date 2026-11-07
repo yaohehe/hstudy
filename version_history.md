@@ -11,8 +11,9 @@
 5. 数据兼容：Android 数据库与偏好文件保持原位置 `<dataDir>/databases/hstudy_db`、`<dataDir>/datastore/hstudy_prefs.preferences_pb`；schema 仍为 v12，v1→v12 迁移与迁移前自动备份原样保留；积分五大不变量（审批计分、bizKey 去重、幂等、对称撤销、追加式台账）逻辑零改动
 
 ### 版本管理
-- GitHub 私有仓库 `yaohehe/hstudy`；基线 tag `v2.88-android`；CI：Android 构建/测试、iOS（macOS runner）构建、tag 触发 Release 自动发布 APK
-- versionName 3.0.0 / versionCode 100；规范见 docs/VERSIONING.md
+- GitHub 仓库 `yaohehe/hstudy`（public，以便 macOS runner 构建 iOS）；基线 tag `v2.88-android`；CI：Android 构建/测试、iOS（macOS runner）构建、tag 触发 Release 自动发布 APK
+- versionName 3.0.0 / versionCode 30000（按 `MAJOR*10000+MINOR*100+PATCH`）；规范见 docs/VERSIONING.md
+- 纯 Android 工程已归档至 `legacy/android-v2.88/`，不参与构建（`settings.gradle.kts` 仅 include `:composeApp`）
 
 ## V2.88 (2026-09-06)
 **积分规则调整：删除证明审核加分 + 两项分值下调**
