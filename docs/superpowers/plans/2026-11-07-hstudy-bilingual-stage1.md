@@ -478,7 +478,7 @@ Expected: BUILD SUCCESSFUL 且 `0`
 - [ ] **Step 5: 确认 diff 只含文案行**
 
 Run: `git diff --stat && git diff -- composeApp/src/commonMain/kotlin/com/hstudy/app/ui/role/RoleSelectScreen.kt | grep -E "^[-+]" | grep -vE "^[-+]{3}" | grep -cE "stringResource|strings\.|import |val strings"`
-Expected: 该计数等于 diff 的增删行总数（即所有改动行都是文案/导入相关）；若不等，说明动了逻辑，回滚重做。
+Expected: 两个计数都为 0（新增行全部涉及文案/导入，删除行全部含中文字面量）；非 0 即越界，回滚重做。
 
 - [ ] **Step 6: 提交**
 
@@ -687,16 +687,27 @@ Run: `python scripts/i18n_inventory.py common/CommonComponents.kt`
 
 - [ ] **Step 6: 三闸 + 越界自检 + 提交**
 
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- <本页文件路径> | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+
+
 ```bash
 JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ./gradlew :composeApp:testDebugUnitTest --console=plain
 JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ./gradlew :composeApp:assembleDebug --console=plain -q
-git diff -- composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/CommonComponents.kt |
-  grep -E "^[-+]" | grep -vE "^[-+]{3}" | grep -cE "strings\.|LocalStrings|import |val strings"
+# 越界自检（可用版）：新增行必须全部是文案/导入相关，删除行必须全部含中文字面量
+git diff -U0 -- composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/CommonComponents.kt |
+  grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l   # 必须为 0
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l                                        # 必须为 0
 git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/CommonComponents.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
 git commit -m "feat(i18n): 公共控件文案双语"
 ```
 
-最后一条计数必须等于该文件 diff 的增删行总数；不等说明动了逻辑，回滚重做。
+两个计数都必须为 0：新增行若不涉及文案/导入即视为越界，删除行若不含中文字面量同样视为越界。
 
 ---
 
@@ -765,6 +776,14 @@ val PomodoroStringsEn = PomodoroStrings(
 
 - [ ] **Step 6: 三闸 + 越界自检（三个文件各自计数）+ 提交**
 
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- <本页文件路径> | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+
+
 ```bash
 git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/PomodoroTimer.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
 git commit -m "feat(i18n): 番茄钟与专注页双语（插值文案函数化首例）"
@@ -801,6 +820,14 @@ Run: `python scripts/i18n_inventory.py child/ChildTaskListScreen.kt`
 - [ ] **Step 5: 追加 `taskListCopyDiffers`（穷举 17 字段）与 7 条插值函数的双语断言**
 
 - [ ] **Step 6: 三闸 + 越界自检 + 提交**
+
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- <本页文件路径> | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+
 
 ```bash
 git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/child/ChildTaskListScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
@@ -849,6 +876,14 @@ Run: `python scripts/i18n_inventory.py child/ChildHomeScreen.kt`
 
 - [ ] **Step 6: 三闸 + 越界自检 + 提交**
 
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- <本页文件路径> | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+
+
 ```bash
 git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/child/ChildHomeScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
 git commit -m "feat(i18n): 孩子首页双语（含任务标题插值字段）"
@@ -885,6 +920,14 @@ Run: `python scripts/i18n_inventory.py parent/ParentHomeScreen.kt parent/ParentD
 - [ ] **Step 5: 追加两页的 `assertDiffers` 穷举断言 + 14 条函数断言**
 
 - [ ] **Step 6: 三闸 + 越界自检（两文件各自计数）+ 提交**
+
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- <本页文件路径> | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+
 
 ```bash
 git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentHomeScreen.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentDashboardScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
@@ -923,6 +966,14 @@ Run: `python scripts/i18n_inventory.py parent/ParentSettingsScreen.kt`
 自称词 `languageZh` / `languageEn` 不进入 `assertDiffers`（它们在两种语言下故意同值，由 Task 5 的等值断言保护）。
 
 - [ ] **Step 5: 三闸 + 越界自检 + 提交**
+
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- <本页文件路径> | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+
 
 ```bash
 git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentSettingsScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
