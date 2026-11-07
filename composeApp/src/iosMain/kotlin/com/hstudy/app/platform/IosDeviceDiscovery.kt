@@ -2,6 +2,7 @@
 
 package com.hstudy.app.platform
 
+import kotlinx.cinterop.convert
 import platform.Foundation.NSDefaultRunLoopMode
 import platform.Foundation.NSNetService
 import platform.Foundation.NSNetServiceBrowser

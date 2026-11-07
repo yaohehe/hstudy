@@ -28,10 +28,13 @@ class IosNotificationScheduler : NotificationScheduler {
 
     override fun schedule(reminder: ScheduledReminder) {
         val content = UNMutableNotificationContent()
-        // 同 IosDeviceFeedback：新 SDK 只暴露只读属性，改用 KVC 赋值
-        content.setValue(reminder.title.ifBlank { defaultTitle(reminder.kind) }, "title")
-        content.setValue(reminder.body, "body")
-        content.setValue(UNNotificationSound.defaultSound, "sound")
+        // 同 IosDeviceFeedback：新 SDK 只暴露只读属性，改用批量 KVC 赋值
+        val values = mutableMapOf<String, Any>(
+            "title" to reminder.title.ifBlank { defaultTitle(reminder.kind) },
+            "body" to reminder.body
+        )
+        UNNotificationSound.defaultSound?.let { sound -> values["sound"] = sound }
+        content.setValuesForKeysWithDictionary(values)
 
         val components = NSDateComponents().apply {
             hour = reminder.hour.coerceIn(0, 23).toLong()

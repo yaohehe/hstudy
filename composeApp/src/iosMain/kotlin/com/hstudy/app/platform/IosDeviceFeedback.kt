@@ -90,11 +90,14 @@ class IosDeviceFeedback : DeviceFeedback {
         val notificationCenter = center ?: return
         runCatching {
             val content = UNMutableNotificationContent()
-            // iOS 26 SDK 的公共头文件只在 UNNotificationContent 里声明 title/body/sound 为 readonly，
-            // cinterop 因此生成 val；可变性由运行时的 setter 提供，所以用 KVC 赋值。
-            content.setValue(title, "title")
-            content.setValue(body, "body")
-            content.setValue(if (withSound) UNNotificationSound.defaultSound else null, "sound")
+            // iOS 26 SDK 只在 UNNotificationContent 里把 title/body/sound 声明为 readonly，
+            // cinterop 因此生成 val，可变 setter 只存在于运行时；而 KVC 的 setValue:forKey:
+            // 在 Kotlin 侧被属性委托运算符遮蔽，所以用批量 KVC 赋值。
+            val values = mutableMapOf<String, Any>("title" to title, "body" to body)
+            if (withSound) {
+                UNNotificationSound.defaultSound?.let { sound -> values["sound"] = sound }
+            }
+            content.setValuesForKeysWithDictionary(values)
             val request = UNNotificationRequest.requestWithIdentifier(identifier, content, null)
             notificationCenter.addNotificationRequest(request) { _ -> }
         }

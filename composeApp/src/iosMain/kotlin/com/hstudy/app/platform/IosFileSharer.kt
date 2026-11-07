@@ -9,7 +9,6 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.stringWithContentsOfURL
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
-import platform.UIKit.UIModalPresentationStyle
 import platform.UIKit.UIDocumentPickerDelegateProtocol
 import platform.UIKit.UIDocumentPickerMode
 import platform.UIKit.UIDocumentPickerViewController
@@ -32,9 +31,10 @@ class IosFileSharer : FileSharer {
         val root = topViewController() ?: return
         val url = NSURL.fileURLWithPath(path)
         val vc = UIActivityViewController(activityItems = listOf(url), applicationActivities = null)
-        // iPad 上分享面板没有 popover 锚点会直接抛异常；这里用 pageSheet 形式呈现，
-        // 无需锚点（新版 SDK 未把 popoverPresentationController 暴露给 cinterop）。
-        vc.modalPresentationStyle = UIModalPresentationStyle.UIModalPresentationPageSheet
+        // iPad 上分享面板没有 popover 锚点会直接抛异常，这里改用 pageSheet 形式呈现。
+        // 新 SDK 既没把 popoverPresentationController 也没把 UIModalPresentationStyle 的常量
+        // 暴露给 cinterop，所以用批量 KVC 按原始值赋值（UIModalPresentationPageSheet = 1）。
+        vc.setValuesForKeysWithDictionary(mapOf("modalPresentationStyle" to 1L))
         root.presentViewController(vc, animated = true, completion = null)
     }
 
