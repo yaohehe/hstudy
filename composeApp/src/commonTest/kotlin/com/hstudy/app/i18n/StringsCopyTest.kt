@@ -33,7 +33,10 @@ private val EN_TABLE_ENDONYMS = setOf("中文")
  *   报错信息能点名是哪条中文没译。
  *
  * 已知上限（评审指出）：data class 的 `toString()` 不包含函数型字段，
- * 所以带插值的文案（Task 7 起出现）无法靠整表扫描覆盖，必须继续为本页字段补显式断言。
+ * 所以带插值的文案（Task 6 的 CommonStrings 起出现，Task 7 起大量出现）无法靠整表扫描覆盖。
+ * 补偿办法是硬性约定：**每个函数型字段都必须有显式双语断言，且期望串逐字打出来**
+ * （见 [commonInterpolatedCopyPinsBothLanguages] / [taskListInterpolatedCopyPinsBothLanguages]），
+ * 不允许"调 lambda 再和 lambda 自己拼的串比"——那种断言对漏译和语序错都是自证通过的。
  */
 class StringsCopyTest {
     @Test
@@ -118,6 +121,54 @@ class StringsCopyTest {
             AppStringsEn.settings.languageTitle.startsWith("🌐"),
             "EN languageTitle 应自带 🌐，实际：${AppStringsEn.settings.languageTitle}",
         )
+    }
+
+    /**
+     * 公共控件（Task 6，`ui/common/CommonComponents.kt`）漏译守卫。
+     *
+     * 清单按值去重后是 5 条，但落成 6 个字段：`"分"` 在该文件出现两次而语义不同——
+     * 一次是积分徽章的单位（PointsBadge:127），一次是分钟步进器的标签（HourMinuteStepper:161）。
+     * 去重把它们合成一条，英文却必须分写（`points` vs `min`），所以拆成 pointsUnit / minuteLabel。
+     * 教训：清单的"去重条数"是**下限**，不能当成字段数直接验收。
+     *
+     * 另：assertDiffers 只比较**同一字段的 ZH vs EN**，绝不跨字段比——
+     * `pointsUnit` 与 `minuteLabel` 的中文都是"分"，若把 ZH(分) vs EN(min) 写成跨字段配对，
+     * 两条断言会互相掩盖。函数型字段（decreaseLabel / increaseLabel）不在此清单内，
+     * 由 [commonInterpolatedCopyPinsBothLanguages] 覆盖。
+     */
+    @Test
+    fun commonCopyDiffers() {
+        val zh = AppStringsZh.common
+        val en = AppStringsEn.common
+        assertDiffers(
+            zh.backContentDescription to en.backContentDescription,
+            zh.pointsUnit to en.pointsUnit,
+            zh.hourLabel to en.hourLabel,
+            zh.minuteLabel to en.minuteLabel,
+        )
+    }
+
+    /**
+     * 函数型字段的双语显式断言（spec §8.3）——本工程第一批。
+     *
+     * 期望串全部**手打钉死**，不是把 lambda 的返回值再拼一遍：
+     * 若写成 `assertEquals("减少" + label, ...)`，那么把中文原文塞进英文表的漏译、
+     * 或者英文语序写歪（"Decrease by hr 5"）都照样绿，等于没测。
+     * 参数用页面真实传入的单位标签（中文态 "时"/"分"、英文态 "hr"/"min"），
+     * 这样断言覆盖的就是设备上真正渲染出来的那两种组合。
+     */
+    @Test
+    fun commonInterpolatedCopyPinsBothLanguages() {
+        // 中文态必须逐字等于迁移前的插值串："减少$label" / "增加$label"
+        assertEquals("减少时", AppStringsZh.common.decreaseLabel("时"))
+        assertEquals("减少分", AppStringsZh.common.decreaseLabel("分"))
+        assertEquals("增加时", AppStringsZh.common.increaseLabel("时"))
+        assertEquals("增加分", AppStringsZh.common.increaseLabel("分"))
+        // 英文态是 a11y 朗读文本，按英文语序写，不套用中文句式
+        assertEquals("Decrease hr", AppStringsEn.common.decreaseLabel("hr"))
+        assertEquals("Decrease min", AppStringsEn.common.decreaseLabel("min"))
+        assertEquals("Increase hr", AppStringsEn.common.increaseLabel("hr"))
+        assertEquals("Increase min", AppStringsEn.common.increaseLabel("min"))
     }
 
     @Test

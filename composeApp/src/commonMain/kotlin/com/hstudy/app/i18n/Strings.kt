@@ -7,10 +7,19 @@ import androidx.compose.runtime.staticCompositionLocalOf
 data class AppStrings(
     val role: RoleStrings,
     val settings: SettingsStrings,
+    val common: CommonStrings,
 )
 
-val AppStringsZh = AppStrings(role = RoleStringsZh, settings = SettingsStringsZh)
-val AppStringsEn = AppStrings(role = RoleStringsEn, settings = SettingsStringsEn)
+val AppStringsZh = AppStrings(
+    role = RoleStringsZh,
+    settings = SettingsStringsZh,
+    common = CommonStringsZh,
+)
+val AppStringsEn = AppStrings(
+    role = RoleStringsEn,
+    settings = SettingsStringsEn,
+    common = CommonStringsEn,
+)
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {
     DisplayLanguage.ZH -> AppStringsZh

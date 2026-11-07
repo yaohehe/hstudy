@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.theme.WindowSizeClass
 import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
@@ -83,12 +84,13 @@ fun HStudyTopBar(
     onNavigateBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val strings = LocalStrings.current.common
     TopAppBar(
         title = { Text(title) },
         navigationIcon = {
             if (onNavigateBack != null) {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.backContentDescription)
                 }
             }
         },
@@ -107,6 +109,7 @@ fun PointsBadge(
     points: Int,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalStrings.current.common
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -124,7 +127,7 @@ fun PointsBadge(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Text("分", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(strings.pointsUnit, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     }
 }
@@ -140,6 +143,7 @@ fun HourMinuteStepper(
     onTimeChange: (hour: Int, minute: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalStrings.current.common
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -148,7 +152,7 @@ fun HourMinuteStepper(
         // 小时步进
         NumberStepper(
             value = com.hstudy.app.ui.dt.strFormat("%02d", hour),
-            label = "时",
+            label = strings.hourLabel,
             onDecrement = { onTimeChange(if (hour == 0) 23 else hour - 1, minute) },
             onIncrement = { onTimeChange(if (hour == 23) 0 else hour + 1, minute) }
         )
@@ -156,7 +160,7 @@ fun HourMinuteStepper(
         // 分钟步进
         NumberStepper(
             value = com.hstudy.app.ui.dt.strFormat("%02d", minute),
-            label = "分",
+            label = strings.minuteLabel,
             onDecrement = { onTimeChange(hour, if (minute == 0) 59 else minute - 1) },
             onIncrement = { onTimeChange(hour, if (minute == 59) 0 else minute + 1) }
         )
@@ -171,9 +175,10 @@ private fun NumberStepper(
     onDecrement: () -> Unit,
     onIncrement: () -> Unit
 ) {
+    val strings = LocalStrings.current.common
     Row(verticalAlignment = Alignment.CenterVertically) {
         FilledTonalIconButton(onClick = onDecrement) {
-            Icon(Icons.Filled.Remove, contentDescription = "减少$label")
+            Icon(Icons.Filled.Remove, contentDescription = strings.decreaseLabel(label))
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,7 +188,7 @@ private fun NumberStepper(
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FilledTonalIconButton(onClick = onIncrement) {
-            Icon(Icons.Filled.Add, contentDescription = "增加$label")
+            Icon(Icons.Filled.Add, contentDescription = strings.increaseLabel(label))
         }
     }
 }
