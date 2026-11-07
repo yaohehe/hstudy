@@ -32,11 +32,16 @@ private val EN_TABLE_ENDONYMS = setOf("中文")
  * - [roleCopyDiffersBetweenLanguages] / [settingsLanguageCopyDiffers]：逐字段 ZH≠EN，
  *   报错信息能点名是哪条中文没译。
  *
- * 已知上限（评审指出）：data class 的 `toString()` 不包含函数型字段，
- * 所以带插值的文案（Task 6 的 CommonStrings 起出现，Task 7 起大量出现）无法靠整表扫描覆盖。
+ * 已知上限（评审指出）：data class 的 `toString()` 打印函数型字段本身（本机实测是 lambda 对象的
+ * `类名$$Lambda/0x…@哈希`），但**不含它们的返回值**，所以整表扫描对插在函数里的中文是瞎的
+ * （Task 6 的 CommonStrings 起出现，Task 7 起大量出现）。
  * 补偿办法是硬性约定：**每个函数型字段都必须有显式双语断言，且期望串逐字打出来**
  * （见 [commonInterpolatedCopyPinsBothLanguages] / [taskListInterpolatedCopyPinsBothLanguages]），
  * 不允许"调 lambda 再和 lambda 自己拼的串比"——那种断言对漏译和语序错都是自证通过的。
+ * 该约定是计划全局约束里的 Ruling 20-b（审查闸门强制项：任务审查必须逐字段列出 lambda 与
+ * 其断言位置，漏一个即 spec ❌），不是可选加固；类型系统层面不做 `Copy1` 之类的值类型改造。
+ *
+ * 另有一类 assertDiffers 也抓不到的错：**同形异义**字段的英文值互换（见 [commonUnitLabelsPinnedByLiteral]）。
  */
 class StringsCopyTest {
     @Test
@@ -127,13 +132,16 @@ class StringsCopyTest {
      * 公共控件（Task 6，`ui/common/CommonComponents.kt`）漏译守卫。
      *
      * 清单按值去重后是 5 条，但落成 6 个字段：`"分"` 在该文件出现两次而语义不同——
-     * 一次是积分徽章的单位（PointsBadge:127），一次是分钟步进器的标签（HourMinuteStepper:161）。
+     * 一次是积分徽章的单位（PointsBadge:127），一次是分钟步进器的标签（HourMinuteStepper:159）。
      * 去重把它们合成一条，英文却必须分写（`points` vs `min`），所以拆成 pointsUnit / minuteLabel。
      * 教训：清单的"去重条数"是**下限**，不能当成字段数直接验收。
      *
      * 另：assertDiffers 只比较**同一字段的 ZH vs EN**，绝不跨字段比——
      * `pointsUnit` 与 `minuteLabel` 的中文都是"分"，若把 ZH(分) vs EN(min) 写成跨字段配对，
-     * 两条断言会互相掩盖。函数型字段（decreaseLabel / increaseLabel）不在此清单内，
+     * 两条断言会互相掩盖。**但同形异义本身还有第二种掩盖**：互换两个字段的英文值时，
+     * 每个字段各自仍然 ZH≠EN，本清单完全无感。那一条由
+     * [commonUnitLabelsPinnedByLiteral] 用字面量钉死。
+     * 函数型字段（decreaseLabel / increaseLabel）不在此清单内，
      * 由 [commonInterpolatedCopyPinsBothLanguages] 覆盖。
      */
     @Test
@@ -146,6 +154,30 @@ class StringsCopyTest {
             zh.hourLabel to en.hourLabel,
             zh.minuteLabel to en.minuteLabel,
         )
+    }
+
+    /**
+     * 同形异义单位的字面量钉死（Task 6 评审 Important 1）。
+     *
+     * [commonCopyDiffers] 只断言"同一字段的 ZH ≠ EN"，因此**对互换两个英文值完全无感**：
+     * 把 `pointsUnit` 写成 "min"、`minuteLabel` 写成 "points"，四条 ZH≠EN 配对依旧全部成立，
+     * 整表 CJK 扫描也照样干净（两边都是英文），但设备上会渲染出 `⭐ 12 min`，
+     * 且分钟步进器下面挂着 `points` 标签。这类"两个字段中文同形、英文分工"的字段
+     * 只能靠**逐字打出来的字面量**钉住，不能靠比较关系钉住——所以本测试不比较任何两个字段，
+     * 只把每个字段各自钉在预期的那一个串上。
+     *
+     * 覆盖范围：pointsUnit / minuteLabel（中文同为 `分`）+ hourLabel（`hr` / `min` 同属步进器
+     * 标签，互换是同一类错误，顺手一起钉）。已用变异测试证明本测试是唯一红的：
+     * 交换 CommonStringsEn 的 pointsUnit 与 minuteLabel 后，其余测试全部通过。
+     */
+    @Test
+    fun commonUnitLabelsPinnedByLiteral() {
+        assertEquals("分", AppStringsZh.common.pointsUnit)
+        assertEquals("points", AppStringsEn.common.pointsUnit)
+        assertEquals("分", AppStringsZh.common.minuteLabel)
+        assertEquals("min", AppStringsEn.common.minuteLabel)
+        assertEquals("时", AppStringsZh.common.hourLabel)
+        assertEquals("hr", AppStringsEn.common.hourLabel)
     }
 
     /**

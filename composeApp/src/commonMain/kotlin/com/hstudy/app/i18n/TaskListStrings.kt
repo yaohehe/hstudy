@@ -23,10 +23,12 @@ package com.hstudy.app.i18n
  * [achievementUnlockedMessage] 收 `List<String>` 而不是拼好的串，是因为分隔符本身属于文案：
  * 中文用 "、"、英文用 ", "，留在页面里就会在英文态输出 "Blast Off、周冠军"。
  *
- * 函数型字段不在 data class 的 `toString()` 里，因此整表 CJK 扫描（[StringsCopyTest]）看不见它们；
+ * 函数型字段不在 data class `toString()` 的**返回值**里（toString 会打印 lambda 对象本身，
+ * 但打不出它返回的文案），因此整表 CJK 扫描（[StringsCopyTest]）看不见它们；
  * 补偿是 `StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages` 与
  * `taskListEnglishPluralsCoverOneAndOther` 的逐字期望串。英文的 one/other 用函数分支表达（§8.3），
- * 由下面这个私有 [pointsWord] 统一，避免五处各写一遍 `if`。中文无单复数，不共用该函数。
+ * 由 i18n/Plurals.kt 的 [pointsWord] 统一（Task 7/9/10/11 的计数文案共用同一处，不再各写 `if`）。
+ * 中文无单复数，不调用该函数。
  */
 data class TaskListStrings(
     val checkInTitle: String,
@@ -46,9 +48,6 @@ data class TaskListStrings(
     val pointsEarnedLabel: (points: Int) -> String,
     val bonusPointsLabel: (points: Int) -> String,
 )
-
-/** 英文积分单位的名词形式：1 用单数 point，其余用 points（spec §3：英文只做 one/other）。 */
-private fun pointsWord(points: Int): String = if (points == 1) "point" else "points"
 
 val TaskListStringsZh = TaskListStrings(
     checkInTitle = "🎯 今日打卡",
