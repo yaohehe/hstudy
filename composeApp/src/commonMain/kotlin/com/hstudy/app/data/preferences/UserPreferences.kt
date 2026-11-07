@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.hstudy.app.data.repository.todayString
+import com.hstudy.app.i18n.AppLanguage
 import com.hstudy.app.platform.Platform
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,7 @@ class UserPreferences {
 
     companion object {
         val ROLE_KEY = stringPreferencesKey("current_role") // "parent" or "child"
+        val LANGUAGE_KEY = stringPreferencesKey("app_language") // "system" | "zh" | "en"
         val HAS_ONBOARDED = booleanPreferencesKey("has_onboarded")
         val PARENT_PASSWORD = stringPreferencesKey("parent_password") // 家长密码
         val PAIR_CODE = stringPreferencesKey("pair_code")            // 设备配对码
@@ -62,6 +64,7 @@ class UserPreferences {
     }
 
     val currentRole: Flow<String?> = dataStore.data.map { it[ROLE_KEY] }
+    val appLanguage: Flow<String?> = dataStore.data.map { it[LANGUAGE_KEY] }
     val hasOnboarded: Flow<Boolean> = dataStore.data.map { it[HAS_ONBOARDED] ?: false }
     val parentPassword: Flow<String?> = dataStore.data.map { it[PARENT_PASSWORD] }
     val hasParentPassword: Flow<Boolean> = dataStore.data.map { !it[PARENT_PASSWORD].isNullOrEmpty() }
@@ -96,6 +99,10 @@ class UserPreferences {
 
     suspend fun setRole(role: String) {
         dataStore.edit { it[ROLE_KEY] = role }
+    }
+
+    suspend fun setAppLanguage(language: AppLanguage) {
+        dataStore.edit { it[LANGUAGE_KEY] = language.toStorageValue() }
     }
 
     suspend fun setOnboarded(value: Boolean) {
