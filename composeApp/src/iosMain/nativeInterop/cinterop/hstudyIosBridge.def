@@ -1,27 +1,32 @@
 package = com.hstudy.app.iosbridge
 language = Objective-C
-headers = UserNotifications/UserNotifications.h UIKit/UIKit.h
+headers = Foundation/Foundation.h
 ---
-#import <UserNotifications/UserNotifications.h>
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
 
-// iOS 26 SDK 把 title/body/sound 在 UNMutableNotificationContent 里重新声明为 readwrite，
-// 但 cinterop 沿用父类 UNNotificationContent 的 readonly 声明，Kotlin 侧只看到 val；
-// NSObject 的 KVC（setValue:forKey: / setValuesForKeysWithDictionary）也没有暴露给 Kotlin。
-// 赋值必须在 ObjC 侧完成，Kotlin 只传值，这样通知内容不会静默丢失。
+// 只索引 Foundation：Xcode 26.5 模拟器 SDK 的 UIKit 伞头文件里
+// UIKitDefines.h 引用了 <UIUtilities/UIDefines.h>，该头文件在公共 SDK 中不存在，
+// cinterop 索引器会直接失败；UserNotifications/UIKit 的类型因此都不出现在本模块签名里，
+// 参数统一用 NSObject*，Kotlin 侧的 UNMutableNotificationContent / UIViewController
+// 都是它的子类，可直接传入。
+//
+// iOS 26 SDK 把 UNMutableNotificationContent 的 title/body/sound 重新声明为 readwrite，
+// 但 Kotlin 侧沿用了父类 UNNotificationContent 的只读声明；NSObject 的 KVC 也没暴露给
+// Kotlin。赋值改在这里用 ObjC 侧 KVC 完成，通知文案与提示音不会被静默丢弃。
 static inline void HStudyFillNotificationContent(
-    UNMutableNotificationContent *content,
+    NSObject *content,
     NSString *_Nullable title,
     NSString *_Nullable body,
-    UNNotificationSound *_Nullable sound
+    NSObject *_Nullable sound
 ) {
-    if (title != nil) { content.title = title; }
-    if (body != nil) { content.body = body; }
-    if (sound != nil) { content.sound = sound; }
+    if (title != nil) { [content setValue:title forKey:@"title"]; }
+    if (body != nil) { [content setValue:body forKey:@"body"]; }
+    if (sound != nil) { [content setValue:sound forKey:@"sound"]; }
 }
 
-// UIActivityViewController 在 iPad 上没有 popover 锚点会直接抛异常，需要 pageSheet 形式呈现。
-// UIModalPresentationStyle 的枚举常量在 Kotlin 侧命名不稳定，这里用 ObjC 原始常量固定行为。
-static inline void HStudyUsePageSheetPresentation(UIViewController *viewController) {
-    viewController.modalPresentationStyle = UIModalPresentationPageSheet;
+// UIActivityViewController 在 iPad 上没有 popover 锚点会直接抛异常，需要以 pageSheet 呈现。
+// UIModalPresentationStyle 的常量无法从 Kotlin 侧稳定引用（且 UIKit 头文件不可索引），
+// 这里按 UIKit 头文件中的原始枚举值赋值：UIModalPresentationPageSheet = 1。
+static inline void HStudyUsePageSheetPresentation(NSObject *viewController) {
+    [viewController setValue:@(1) forKey:@"modalPresentationStyle"];
 }
