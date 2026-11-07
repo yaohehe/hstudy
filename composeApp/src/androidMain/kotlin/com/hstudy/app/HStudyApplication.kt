@@ -4,10 +4,12 @@ import android.app.Application
 import com.hstudy.app.platform.ActivityTracker
 import com.hstudy.app.platform.AndroidCameraLauncher
 import com.hstudy.app.platform.AndroidDeviceDiscovery
+import com.hstudy.app.platform.AndroidDeviceFeedback
 import com.hstudy.app.platform.AndroidFileSharer
 import com.hstudy.app.platform.AndroidNotificationScheduler
 import com.hstudy.app.platform.AndroidReminderBootstrap
 import com.hstudy.app.platform.Platform
+import com.hstudy.app.platform.installDeviceFeedback
 import kotlinx.coroutines.launch
 
 /**
@@ -31,6 +33,8 @@ class HStudyApplication : Application() {
             camera = AndroidCameraLauncher(this),
             deviceDiscovery = AndroidDeviceDiscovery(this)
         )
+        // 番茄钟震动/提示音/进行中通知（原 commonMain 直接调 android.* 的实现搬到这里）
+        installDeviceFeedback(AndroidDeviceFeedback(this))
         AppGraph.bootstrap()
 
         // 原 HStudyApp 启动时会重新注册所有日程闹钟（重启后 AlarmManager 会清空）；

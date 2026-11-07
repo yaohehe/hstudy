@@ -2,7 +2,9 @@
 <paths>
     <!-- 分享文本文件（备份/家庭同步）：cacheDir/shared/ -->
     <cache-path name="shared" path="shared/" />
-    <!-- 拍照输出：cacheDir/photos/ -->
+    <!-- 拍照输出：getExternalFilesDir(Pictures)/（错题/证明照片凭证，不会被缓存清理） -->
+    <external-files-path name="pictures" path="Pictures/" />
+    <!-- 兼容旧实现：cacheDir/photos/ -->
     <cache-path name="photos" path="photos/" />
     <!-- 应用私有文件目录 -->
     <files-path name="files" path="." />

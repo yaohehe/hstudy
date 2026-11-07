@@ -6,13 +6,15 @@ import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import java.io.File
 
 /**
  * 透明辅助 Activity：申请相机权限 → MediaStore.ACTION_IMAGE_CAPTURE，
- * 照片输出到 cacheDir/photos/（FileProvider URI），回调返回绝对路径；取消/失败回调 null。
+ * 照片输出到 getExternalFilesDir(Pictures)（与迁移前存储目录一致，不会被缓存清理），
+ * 以 FileProvider URI 交给相机应用，回调返回绝对路径；取消/失败回调 null。
  */
 class CameraCaptureActivity : Activity() {
 
@@ -47,7 +49,11 @@ class CameraCaptureActivity : Activity() {
 
     private fun launchCamera() {
         try {
-            val dir = File(cacheDir, "photos").apply { mkdirs() }
+            // 照片是错题/完成证明的凭证，必须落在不会被系统清理的目录：
+            // 与迁移前 app 端 copyUriToAppStorage/saveUriToAppStorage 一致，
+            // 用 getExternalFilesDir(Pictures)（老数据里存的就是这个目录下的绝对路径），
+            // 外部存储不可用时回落 filesDir。
+            val dir = (getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: filesDir).apply { mkdirs() }
             val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
             photoFile = file
             val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)

@@ -1,9 +1,10 @@
 package com.hstudy.app.data.local
 
 import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
 import com.hstudy.app.data.repository.backupStamp
 import com.hstudy.app.platform.Platform
+import com.hstudy.app.platform.systemFileSystem
 import okio.FileSystem
 import okio.Path.Companion.toPath
 
@@ -32,7 +33,7 @@ object MigrationSafetyHelper {
     private const val BACKUP_DIR = "db_backups"
     private const val DB_NAME = "hstudy_db"
 
-    private val fs: FileSystem get() = FileSystem.SYSTEM
+    private val fs: FileSystem get() = systemFileSystem
 
     private fun logInfo(msg: String) = println("[$TAG] I: $msg")
     private fun logWarn(msg: String) = println("[$TAG] W: $msg")
@@ -41,10 +42,10 @@ object MigrationSafetyHelper {
 
     fun callback(): RoomDatabase.Callback = object : RoomDatabase.Callback() {
 
-        override fun onOpen(db: SupportSQLiteDatabase) {
-            super.onOpen(db)
+        override fun onOpen(connection: SQLiteConnection) {
+            super.onOpen(connection)
             try {
-                verifySchema(db)
+                verifySchema(connection)
             } catch (t: Throwable) {
                 logError("post-migration verification failed", t)
             }
@@ -84,7 +85,7 @@ object MigrationSafetyHelper {
         }
     }
 
-    private fun verifySchema(db: SupportSQLiteDatabase) {
+    private fun verifySchema(connection: SQLiteConnection) {
         val tables = listOf(
             "tasks", "point_records", "task_completions", "rewards", "reward_exchanges",
             "mistakes", "mistake_reviews", "focus_sessions", "daily_plans",
@@ -94,16 +95,12 @@ object MigrationSafetyHelper {
         val counts = mutableMapOf<String, Int>()
         for (t in tables) {
             try {
-                db.query("SELECT COUNT(*) FROM `$t`").use { c ->
-                    if (c.moveToNext()) counts[t] = c.getInt(0)
-                }
+                connection.firstInt("SELECT COUNT(*) FROM `$t`").also { counts[t] = it }
             } catch (t2: Throwable) {
                 logWarn("verify: missing or unreadable table $t (${t2.message})")
             }
         }
-        val dbVersion = runCatching {
-            db.query("PRAGMA user_version").use { c -> if (c.moveToNext()) c.getInt(0) else -1 }
-        }.getOrDefault(-1)
+        val dbVersion = runCatching { connection.firstInt("PRAGMA user_version") }.getOrDefault(-1)
         logInfo("post-migration verify: dbVersion=$dbVersion, rowCounts=$counts")
 
         // v12 专属校验：point_approvals 必须含新增列 taskId/bizKey/awardedRecordId/date
@@ -111,7 +108,8 @@ object MigrationSafetyHelper {
         val missing = mutableListOf<String>()
         for (col in expectedNewCols) {
             val ok = runCatching {
-                db.query("SELECT `$col` FROM `point_approvals` LIMIT 1").use { true }
+                val statement = connection.prepare("SELECT `$col` FROM `point_approvals` LIMIT 1")
+                try { statement.step() } finally { statement.close() }
             }.getOrDefault(false)
             if (!ok) missing += col
         }
@@ -120,5 +118,19 @@ object MigrationSafetyHelper {
         } else {
             logInfo("post-migration verify: point_approvals schema OK (v12 columns present)")
         }
+    }
+}
+
+/**
+ * Room KMP 中 `androidx.sqlite.db.SupportSQLiteDatabase.query()` + Cursor 只存在于 Android 源集，
+ * 跨平台侧改用 [SQLiteConnection.prepare] + step() 读取单行单列整数值，
+ * 语义等价于原 `db.query(sql).use { if (it.moveToNext()) it.getInt(0) else -1 }`。
+ */
+private fun SQLiteConnection.firstInt(sql: String): Int {
+    val statement = prepare(sql)
+    try {
+        return if (statement.step()) statement.getInt(0) else -1
+    } finally {
+        statement.close()
     }
 }

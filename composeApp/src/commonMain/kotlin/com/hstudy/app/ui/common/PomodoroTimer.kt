@@ -1,14 +1,5 @@
 package com.hstudy.app.ui.common
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
-import android.media.RingtoneManager
-import android.os.SystemClock
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
-import androidx.core.app.NotificationCompat
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -25,11 +16,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hstudy.app.platform.Platform
+import com.hstudy.app.platform.feedback
+import com.hstudy.app.ui.dt.monotonicMillis
 import kotlinx.coroutines.delay
 
 enum class PomodoroState {
@@ -51,12 +44,11 @@ fun PomodoroTimer(
     onActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     var state by remember { mutableStateOf(PomodoroState.IDLE) }
     var remainingSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
     var totalSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
     var completedPomodoros by remember { mutableIntStateOf(0) }
-    // 目标结束时间戳（基于 elapsedRealtime，息屏/后台期间仍持续计时）
+    // 目标结束时间戳（基于 [monotonicMillis] 单调时钟，息屏/后台期间仍持续计时）
     var endTimeMillis by remember { mutableLongStateOf(0L) }
 
     // 通知父组件计时器是否活跃（用于禁用时长设置等）
@@ -88,7 +80,7 @@ fun PomodoroTimer(
             // 呼吸完成，自动进入专注
             totalSeconds = focusMinutes * 60
             remainingSeconds = totalSeconds
-            endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+            endTimeMillis = monotonicMillis() + totalSeconds * 1000L
             state = PomodoroState.RUNNING
         }
     }
@@ -98,36 +90,42 @@ fun PomodoroTimer(
         if (state == PomodoroState.RUNNING || state == PomodoroState.BREAK) {
             var notifCounter = 0
             while (true) {
-                val remaining = ((endTimeMillis - SystemClock.elapsedRealtime()) / 1000L).toInt()
+                val remaining = ((endTimeMillis - monotonicMillis()) / 1000L).toInt()
                 remainingSeconds = if (remaining > 0) remaining else 0
                 if (remainingSeconds <= 0) break
-                // 每15秒更新一次通知栏（让孩子息屏后也能看进度）
+                // 每15秒更新一次常驻进度通知（让孩子息屏后也能看进度）
                 notifCounter++
                 if (notifCounter % 60 == 1) { // 250ms * 60 = 15s
-                    updateFocusNotification(context, state == PomodoroState.BREAK, remainingSeconds, totalSeconds)
+                    val min = remainingSeconds / 60
+                    val sec = remainingSeconds % 60
+                    Platform.feedback.showRunningNotification(
+                        title = if (state == PomodoroState.BREAK) "☕ 休息中" else "🍅 专注中",
+                        text = "剩余 ${min}分${sec}秒 · 息屏后仍会继续计时",
+                        progressPercent = if (totalSeconds > 0) (totalSeconds - remainingSeconds) * 100 / totalSeconds else 0
+                    )
                 }
                 delay(250) // 高频刷新，息屏恢复后能立即追上正确时间
             }
             // 时间到
-            cancelFocusNotification(context)
+            Platform.feedback.cancelRunningNotification()
             if (state == PomodoroState.RUNNING) {
                 completedPomodoros++
                 onComplete(focusMinutes)
                 // 完成提示音+震动（让孩子知道专注结束了）
-                playCompletionAlert(context)
+                playCompletionAlert()
                 // 切换到休息
                 state = PomodoroState.BREAK
                 totalSeconds = breakMinutes * 60
                 remainingSeconds = totalSeconds
-                endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+                endTimeMillis = monotonicMillis() + totalSeconds * 1000L
             } else if (state == PomodoroState.BREAK) {
                 // 休息结束→过渡引导状态（而非直接回IDLE，给孩子一个明确的下一步）
-                playCompletionAlert(context)
+                playCompletionAlert()
                 state = PomodoroState.READY_NEXT
             }
         } else {
             // 非计时状态时取消通知
-            cancelFocusNotification(context)
+            Platform.feedback.cancelRunningNotification()
         }
     }
 
@@ -307,7 +305,7 @@ fun PomodoroTimer(
                             // 跳过呼吸，直接开始专注
                             totalSeconds = focusMinutes * 60
                             remainingSeconds = totalSeconds
-                            endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+                            endTimeMillis = monotonicMillis() + totalSeconds * 1000L
                             state = PomodoroState.RUNNING
                         } else {
                             // 先进入专注前呼吸引导，帮助平静心神
@@ -324,7 +322,7 @@ fun PomodoroTimer(
                         // 跳过呼吸引导，直接开始专注
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
-                        endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+                        endTimeMillis = monotonicMillis() + totalSeconds * 1000L
                         state = PomodoroState.RUNNING
                     }) {
                         Text("跳过，直接开始")
@@ -349,7 +347,7 @@ fun PomodoroTimer(
                 PomodoroState.PAUSED -> {
                     FilledTonalButton(onClick = {
                         // 从暂停恢复：以当前剩余时间重设结束时间戳
-                        endTimeMillis = SystemClock.elapsedRealtime() + remainingSeconds * 1000L
+                        endTimeMillis = monotonicMillis() + remainingSeconds * 1000L
                         state = PomodoroState.RUNNING
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
@@ -395,60 +393,13 @@ fun PomodoroTimer(
     }
 }
 
-/** 播放完成提示音+震动（无需额外权限，使用系统默认通知音） */
-private fun playCompletionAlert(context: Context) {
-    try {
-        // 系统通知音
-        val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        RingtoneManager.getRingtone(context, notification)?.play()
-        // 震动反馈
-        val vibrator = if (android.os.Build.VERSION.SDK_INT >= 31) {
-            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        }
-        vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
-    } catch (_: Exception) { /* 忽略提示音/震动失败 */ }
-}
-
-// ===== 专注时通知栏进度显示（息屏后也能看进度） =====
-private const val FOCUS_CHANNEL_ID = "pomodoro_timer"
-private const val FOCUS_NOTIF_ID = 2001
-
-/** 更新专注通知栏（显示剩余时间与进度） */
-private fun updateFocusNotification(context: Context, isBreak: Boolean, remainingSec: Int, totalSec: Int) {
-    try {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // 创建通知渠道（Android 8+）
-        if (nm.getNotificationChannel(FOCUS_CHANNEL_ID) == null) {
-            nm.createNotificationChannel(
-                NotificationChannel(FOCUS_CHANNEL_ID, "番茄钟计时", NotificationManager.IMPORTANCE_LOW)
-                    .apply { description = "专注/休息计时进度显示"; setShowBadge(false) }
-            )
-        }
-        val min = remainingSec / 60
-        val sec = remainingSec % 60
-        val title = if (isBreak) "☕ 休息中" else "🍅 专注中"
-        val text = "剩余 ${min}分${sec}秒 · 息屏后仍会继续计时"
-        val progress = if (totalSec > 0) ((totalSec - remainingSec) * 100 / totalSec) else 0
-        val notif = NotificationCompat.Builder(context, FOCUS_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setProgress(100, progress, false)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setSilent(true)
-            .build()
-        nm.notify(FOCUS_NOTIF_ID, notif)
-    } catch (_: Exception) { /* 忽略通知失败 */ }
-}
-
-/** 取消专注通知 */
-private fun cancelFocusNotification(context: Context) {
-    try {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.cancel(FOCUS_NOTIF_ID)
-    } catch (_: Exception) { /* 忽略 */ }
+/**
+ * 完成提示音 + 震动（让孩子知道专注/休息结束了）。
+ * 原实现直接调用 RingtoneManager + Vibrator（需 Context），跨平台层改由
+ * [Platform.feedback] 提供：Android=AndroidDeviceFeedback（系统默认通知音 + 300ms 震动，行为不变），
+ * iOS=IosDeviceFeedback（AudioServicesPlayAlertSound + 默认强度震动），未安装实现时静默无操作。
+ */
+private fun playCompletionAlert() {
+    Platform.feedback.playAlarm()
+    Platform.feedback.vibrate(300)
 }

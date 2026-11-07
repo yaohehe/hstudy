@@ -20,6 +20,8 @@ fun initIosPlatform() {
         camera = IosCameraLauncher(),
         deviceDiscovery = IosDeviceDiscovery()
     )
+    // 番茄钟震动/提示音/可见进度提醒（iOS 侧实现）
+    installDeviceFeedback(IosDeviceFeedback())
     AppGraph.bootstrap()
 }
 

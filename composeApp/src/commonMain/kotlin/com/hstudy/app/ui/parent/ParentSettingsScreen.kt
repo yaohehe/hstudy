@@ -1,8 +1,5 @@
 package com.hstudy.app.ui.parent
 
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,12 +8,12 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.backup.BackupHelper
+import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.flow.first
@@ -30,28 +27,30 @@ fun ParentSettingsScreen(
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
 
     var hasPassword by remember { mutableStateOf(false) }
     var deviceName by remember { mutableStateOf("") }
     var isTransferring by remember { mutableStateOf(false) }
     var childProgress by remember { mutableStateOf<com.hstudy.app.data.sync.ChildProgressSummary?>(null) }
+    var showRestoreConfirm by remember { mutableStateOf(false) }
+    var isBackingUp by remember { mutableStateOf(false) }
 
-    // 文件选择器：用于导入孩子进度报告
-    val importProgressLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                isTransferring = true
-                val result = com.hstudy.app.data.sync.FamilySyncHelper.importProgressReport(context, uri)
-                if (result.isSuccess) {
-                    childProgress = result.getOrNull()
-                    snackbarHostState.showSnackbar("✅ 已获取孩子最新进度")
-                } else {
-                    snackbarHostState.showSnackbar("导入失败：${result.exceptionOrNull()?.message}")
+    // 导入孩子进度报告：跨平台改用 Platform.fileSharer 文本选择器
+    // （替代 ActivityResultContracts.OpenDocument + context/uri 版本）
+    val importProgress: () -> Unit = {
+        Platform.fileSharer.pickTextFile { text ->
+            if (text != null) {
+                scope.launch {
+                    isTransferring = true
+                    val result = com.hstudy.app.data.sync.FamilySyncHelper.importProgressReport(text)
+                    if (result.isSuccess) {
+                        childProgress = result.getOrNull()
+                        snackbarHostState.showSnackbar("✅ 已获取孩子最新进度")
+                    } else {
+                        snackbarHostState.showSnackbar("导入失败：${result.exceptionOrNull()?.message}")
+                    }
+                    isTransferring = false
                 }
-                isTransferring = false
             }
         }
     }
@@ -119,10 +118,10 @@ fun ParentSettingsScreen(
                                     scope.launch {
                                         app.userPreferences.setWeeklyReportEnabled(enabled)
                                         if (enabled) {
-                                            WeeklyReportReceiver.schedule(context)
+                                            WeeklyReportReceiver.schedule()
                                             snackbarHostState.showSnackbar("✅ 已开启每周学习周报（每周日晚推送）")
                                         } else {
-                                            WeeklyReportReceiver.cancel(context)
+                                            WeeklyReportReceiver.cancel()
                                             snackbarHostState.showSnackbar("已关闭每周学习周报")
                                         }
                                     }
@@ -132,8 +131,6 @@ fun ParentSettingsScreen(
                     }
 
                     // ===== 数据备份与恢复 =====
-                    var showRestoreConfirm by remember { mutableStateOf(false) }
-                    var isBackingUp by remember { mutableStateOf(false) }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("💾 数据备份与恢复", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -143,7 +140,7 @@ fun ParentSettingsScreen(
                                 Button(onClick = {
                                     isBackingUp = true
                                     scope.launch {
-                                        val result = com.hstudy.app.data.backup.BackupHelper.backup(context)
+                                        val result = BackupHelper.backup()
                                         isBackingUp = false
                                         result.fold(
                                             onSuccess = { snackbarHostState.showSnackbar("✅ 备份成功！文件已保存到应用目录") },
@@ -154,7 +151,7 @@ fun ParentSettingsScreen(
                                     Text(if (isBackingUp) "备份中..." else "备份数据")
                                 }
                                 OutlinedButton(onClick = { showRestoreConfirm = true },
-                                    enabled = com.hstudy.app.data.backup.BackupHelper.hasBackup(context)) {
+                                    enabled = BackupHelper.hasBackup()) {
                                     Text("恢复数据")
                                 }
                             }
@@ -169,12 +166,11 @@ fun ParentSettingsScreen(
                                 Button(onClick = {
                                     showRestoreConfirm = false
                                     scope.launch {
-                                        val result = com.hstudy.app.data.backup.BackupHelper.restore(context)
+                                        val result = BackupHelper.restore()
                                         result.fold(
                                             onSuccess = {
-                                                snackbarHostState.showSnackbar("✅ 恢复成功，即将重启应用...")
-                                                kotlinx.coroutines.delay(1200)
-                                                com.hstudy.app.data.backup.BackupHelper.restartApp(context)
+                                                // 跨平台层无 Context，无法自重启进程：提示用户手动重启 App
+                                                snackbarHostState.showSnackbar("✅ 恢复成功，请重新启动 App 以生效")
                                             },
                                             onFailure = { snackbarHostState.showSnackbar("❌ 恢复失败：${it.message}") }
                                         )
@@ -218,10 +214,10 @@ fun ParentSettingsScreen(
                                     onClick = {
                                         scope.launch {
                                             isTransferring = true
-                                            val result = com.hstudy.app.data.sync.FamilySyncHelper.exportControlConfig(context)
+                                            val result = com.hstudy.app.data.sync.FamilySyncHelper.exportControlConfig()
                                             if (result.isSuccess) {
                                                 com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
-                                                    context, result.getOrNull()!!, "发送家长设置到孩子设备"
+                                                    result.getOrNull()!!, "发送家长设置到孩子设备"
                                                 )
                                                 snackbarHostState.showSnackbar("✅ 设置已导出，请发送给孩子")
                                             } else {
@@ -235,7 +231,7 @@ fun ParentSettingsScreen(
 
                                 // 查看孩子进度
                                 OutlinedButton(
-                                    onClick = { importProgressLauncher.launch(arrayOf("*/*")) },
+                                    onClick = importProgress,
                                     enabled = !isTransferring
                                 ) { Text("📥 查看孩子进度") }
                             }

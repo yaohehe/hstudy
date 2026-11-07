@@ -1,6 +1,5 @@
 package com.hstudy.app.ui.report
 
-import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,12 +8,12 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 
@@ -40,7 +39,6 @@ fun GrowthReportScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     val lifetimePoints by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
@@ -109,11 +107,12 @@ fun GrowthReportScreen(
                     // 分享按钮
                     Button(
                         onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, reportText)
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "分享成长报告"))
+                            // 跨平台分享：Intent.ACTION_SEND -> Platform.fileSharer 文本分享面板
+                            Platform.fileSharer.shareTextFile(
+                                fileName = "hstudy_growth_report.txt",
+                                content = reportText,
+                                mimeType = "text/plain"
+                            )
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {

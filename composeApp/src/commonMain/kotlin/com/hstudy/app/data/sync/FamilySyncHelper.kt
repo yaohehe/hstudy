@@ -7,7 +7,8 @@ import com.hstudy.app.data.local.entity.TaskEntity
 import com.hstudy.app.data.local.entity.TaskFrequency
 import com.hstudy.app.data.repository.PointRepository
 import com.hstudy.app.platform.Platform
-import kotlinx.coroutines.Dispatchers
+import com.hstudy.app.platform.ioDispatcher
+import com.hstudy.app.platform.systemFileSystem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -37,7 +38,7 @@ object FamilySyncHelper {
     private const val CONTROL_FILE = "hstudy_parent_control.json"
     private const val PROGRESS_FILE = "hstudy_child_progress.json"
 
-    private val fs: FileSystem get() = FileSystem.SYSTEM
+    private val fs: FileSystem get() = systemFileSystem
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
@@ -93,7 +94,7 @@ object FamilySyncHelper {
     // ===== 家长→孩子：控制包（任务+奖励+设置） =====
 
     /** 导出家长的控制配置（当前任务列表+奖励列表）为JSON文件，返回文件路径 */
-    suspend fun exportControlConfig(): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun exportControlConfig(): Result<String> = withContext(ioDispatcher) {
         try {
             val app = AppGraph
             val tasks = app.taskRepository.getAllActiveTasks().first()
@@ -131,7 +132,7 @@ object FamilySyncHelper {
     }
 
     /** 孩子设备导入家长的控制配置（替换当前任务和奖励）。[text] 为文件完整内容 */
-    suspend fun importControlConfig(text: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun importControlConfig(text: String): Result<String> = withContext(ioDispatcher) {
         try {
             val dto = json.decodeFromString<ParentControlDto>(text)
 
@@ -177,7 +178,7 @@ object FamilySyncHelper {
     // ===== 孩子→家长：进度报告 =====
 
     /** 导出孩子的学习进度摘要为JSON文件，返回文件路径 */
-    suspend fun exportProgressReport(): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun exportProgressReport(): Result<String> = withContext(ioDispatcher) {
         try {
             val app = AppGraph
             val totalPoints = app.pointRepository.getTotalPoints().first()
@@ -217,7 +218,7 @@ object FamilySyncHelper {
     }
 
     /** 家长设备导入孩子的进度报告（返回摘要供显示）。[text] 为文件完整内容 */
-    suspend fun importProgressReport(text: String): Result<ChildProgressSummary> = withContext(Dispatchers.IO) {
+    suspend fun importProgressReport(text: String): Result<ChildProgressSummary> = withContext(ioDispatcher) {
         try {
             val dto = json.decodeFromString<ChildProgressDto>(text)
 

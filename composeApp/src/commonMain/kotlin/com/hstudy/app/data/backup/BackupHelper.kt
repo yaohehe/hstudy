@@ -2,7 +2,8 @@ package com.hstudy.app.data.backup
 
 import com.hstudy.app.AppGraph
 import com.hstudy.app.platform.Platform
-import kotlinx.coroutines.Dispatchers
+import com.hstudy.app.platform.ioDispatcher
+import com.hstudy.app.platform.systemFileSystem
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -31,7 +32,7 @@ object BackupHelper {
     private const val DB_NAME = "hstudy_db"
     private const val BACKUP_FILE_NAME = "hstudy_backup.db"
 
-    private val fs: FileSystem get() = FileSystem.SYSTEM
+    private val fs: FileSystem get() = systemFileSystem
     private val json = Json { ignoreUnknownKeys = true }
 
     /** 备份文件位置（应用私有 filesDir，跨平台一致） */
@@ -46,7 +47,7 @@ object BackupHelper {
     fun hasBackup(): Boolean = fs.exists(backupPath())
 
     /** 备份数据库（VACUUM INTO 安全快照），返回备份文件路径 */
-    suspend fun backup(): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun backup(): Result<String> = withContext(ioDispatcher) {
         try {
             val db = AppGraph.database
             val backupFile = backupPath()
@@ -62,7 +63,7 @@ object BackupHelper {
      * 从备份恢复数据库：关闭数据库→删除现有DB及WAL/SHM→复制备份。
      * 恢复成功后调用方必须重启应用以重新初始化所有数据仓库。
      */
-    suspend fun restore(): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun restore(): Result<Unit> = withContext(ioDispatcher) {
         try {
             val backupFile = backupPath()
             if (!fs.exists(backupFile)) return@withContext Result.failure(Exception("没有找到备份文件"))

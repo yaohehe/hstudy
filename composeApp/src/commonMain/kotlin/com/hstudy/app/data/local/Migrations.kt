@@ -1,7 +1,7 @@
 package com.hstudy.app.data.local
 
 import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
 import kotlinx.datetime.Clock
 
 /**
@@ -22,8 +22,8 @@ object Migrations {
 
     /** v1 -> v2：创建 7 张新表 */
     val MIGRATION_1_2 = object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `mistakes` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`subject` TEXT NOT NULL, " +
@@ -36,7 +36,7 @@ object Migrations {
                     "`createdAt` INTEGER NOT NULL, " +
                     "`masteredAt` INTEGER)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `mistake_reviews` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`mistakeId` INTEGER NOT NULL, " +
@@ -44,7 +44,7 @@ object Migrations {
                     "`earnedPoints` INTEGER NOT NULL, " +
                     "`note` TEXT NOT NULL)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `focus_sessions` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`durationMinutes` INTEGER NOT NULL, " +
@@ -53,7 +53,7 @@ object Migrations {
                     "`earnedPoints` INTEGER NOT NULL, " +
                     "`date` TEXT NOT NULL)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `daily_plans` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`date` TEXT NOT NULL, " +
@@ -65,7 +65,7 @@ object Migrations {
                     "`isCompleted` INTEGER NOT NULL, " +
                     "`createdAt` INTEGER NOT NULL)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `completion_proofs` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`taskId` INTEGER NOT NULL, " +
@@ -78,7 +78,7 @@ object Migrations {
                     "`date` TEXT NOT NULL)"
             )
             // v2 阶段的 habit_challenges 尚无 lastCheckInDate 列（v3 才添加）
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `habit_challenges` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`title` TEXT NOT NULL, " +
@@ -92,7 +92,7 @@ object Migrations {
                     "`dailyPoints` INTEGER NOT NULL, " +
                     "`createdAt` INTEGER NOT NULL)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `achievements` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`type` TEXT NOT NULL, " +
@@ -106,16 +106,16 @@ object Migrations {
 
     /** v2 -> v3：rewards 增加 category；habit_challenges 增加 lastCheckInDate */
     val MIGRATION_2_3 = object : Migration(2, 3) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE `rewards` ADD COLUMN `category` TEXT NOT NULL DEFAULT '其他'")
-            db.execSQL("ALTER TABLE `habit_challenges` ADD COLUMN `lastCheckInDate` TEXT NOT NULL DEFAULT ''")
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `rewards` ADD COLUMN `category` TEXT NOT NULL DEFAULT '其他'")
+            connection.execSQL("ALTER TABLE `habit_challenges` ADD COLUMN `lastCheckInDate` TEXT NOT NULL DEFAULT ''")
         }
     }
 
     /** v3 -> v4：新增 daily_assignments 表 */
     val MIGRATION_3_4 = object : Migration(3, 4) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `daily_assignments` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`title` TEXT NOT NULL, " +
@@ -136,9 +136,9 @@ object Migrations {
      * 采用「建新表-拷数据-删旧表-重命名」标准模式，完整保留数据。
      */
     val MIGRATION_4_5 = object : Migration(4, 5) {
-        override fun migrate(db: SupportSQLiteDatabase) {
+        override fun migrate(connection: SQLiteConnection) {
             // ---- rewards ----
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `rewards_new` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`name` TEXT NOT NULL, " +
@@ -150,16 +150,16 @@ object Migrations {
                     "`sortOrder` INTEGER NOT NULL, " +
                     "`createdAt` INTEGER NOT NULL)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "INSERT INTO `rewards_new` " +
                     "(`id`,`name`,`description`,`pointsCost`,`iconEmoji`,`category`,`isActive`,`sortOrder`,`createdAt`) " +
                     "SELECT `id`,`name`,`description`,`pointsCost`,`iconEmoji`,`category`,`isActive`,`sortOrder`,`createdAt` FROM `rewards`"
             )
-            db.execSQL("DROP TABLE `rewards`")
-            db.execSQL("ALTER TABLE `rewards_new` RENAME TO `rewards`")
+            connection.execSQL("DROP TABLE `rewards`")
+            connection.execSQL("ALTER TABLE `rewards_new` RENAME TO `rewards`")
 
             // ---- habit_challenges ----
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `habit_challenges_new` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`title` TEXT NOT NULL, " +
@@ -174,13 +174,13 @@ object Migrations {
                     "`lastCheckInDate` TEXT NOT NULL DEFAULT '', " +
                     "`createdAt` INTEGER NOT NULL)"
             )
-            db.execSQL(
+            connection.execSQL(
                 "INSERT INTO `habit_challenges_new` " +
                     "(`id`,`title`,`description`,`startDate`,`totalDays`,`completedDays`,`isActive`,`isCompleted`,`emoji`,`dailyPoints`,`lastCheckInDate`,`createdAt`) " +
                     "SELECT `id`,`title`,`description`,`startDate`,`totalDays`,`completedDays`,`isActive`,`isCompleted`,`emoji`,`dailyPoints`,`lastCheckInDate`,`createdAt` FROM `habit_challenges`"
             )
-            db.execSQL("DROP TABLE `habit_challenges`")
-            db.execSQL("ALTER TABLE `habit_challenges_new` RENAME TO `habit_challenges`")
+            connection.execSQL("DROP TABLE `habit_challenges`")
+            connection.execSQL("ALTER TABLE `habit_challenges_new` RENAME TO `habit_challenges`")
         }
     }
 
@@ -191,12 +191,12 @@ object Migrations {
      * - 新增 daily_schedules 表（每日日程提醒）
      */
     val MIGRATION_5_6 = object : Migration(5, 6) {
-        override fun migrate(db: SupportSQLiteDatabase) {
+        override fun migrate(connection: SQLiteConnection) {
             // 任务难度分级
-            db.execSQL("ALTER TABLE `tasks` ADD COLUMN `difficulty` INTEGER NOT NULL DEFAULT 1")
+            connection.execSQL("ALTER TABLE `tasks` ADD COLUMN `difficulty` INTEGER NOT NULL DEFAULT 1")
 
             // 心愿存钱罐
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `wish_goals` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`name` TEXT NOT NULL, " +
@@ -210,7 +210,7 @@ object Migrations {
             )
 
             // 每日日程
-            db.execSQL(
+            connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `daily_schedules` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`time` TEXT NOT NULL, " +
@@ -229,9 +229,9 @@ object Migrations {
      * - mistakes 增加 lastReviewAt（上次复习时间）、reviewCount（复习次数）
      */
     val MIGRATION_6_7 = object : Migration(6, 7) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE `mistakes` ADD COLUMN `lastReviewAt` INTEGER NOT NULL DEFAULT 0")
-            db.execSQL("ALTER TABLE `mistakes` ADD COLUMN `reviewCount` INTEGER NOT NULL DEFAULT 0")
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `mistakes` ADD COLUMN `lastReviewAt` INTEGER NOT NULL DEFAULT 0")
+            connection.execSQL("ALTER TABLE `mistakes` ADD COLUMN `reviewCount` INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -240,9 +240,9 @@ object Migrations {
      * - mistakes 增加 variationNote（举一反三笔记）、hasVariation（是否已举一反三）
      */
     val MIGRATION_7_8 = object : Migration(7, 8) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE `mistakes` ADD COLUMN `variationNote` TEXT NOT NULL DEFAULT ''")
-            db.execSQL("ALTER TABLE `mistakes` ADD COLUMN `hasVariation` INTEGER NOT NULL DEFAULT 0")
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `mistakes` ADD COLUMN `variationNote` TEXT NOT NULL DEFAULT ''")
+            connection.execSQL("ALTER TABLE `mistakes` ADD COLUMN `hasVariation` INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -251,8 +251,8 @@ object Migrations {
      * - mistakes 增加 errorType（错误类型：粗心马虎/概念不清/方法不会/审题错误/计算错误/其他）
      */
     val MIGRATION_8_9 = object : Migration(8, 9) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE `mistakes` ADD COLUMN `errorType` TEXT NOT NULL DEFAULT ''")
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `mistakes` ADD COLUMN `errorType` TEXT NOT NULL DEFAULT ''")
         }
     }
 
@@ -261,8 +261,8 @@ object Migrations {
      * - 新增 point_approvals 表
      */
     val MIGRATION_9_10 = object : Migration(9, 10) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("""CREATE TABLE IF NOT EXISTS `point_approvals` (
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("""CREATE TABLE IF NOT EXISTS `point_approvals` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 `actionType` TEXT NOT NULL,
                 `description` TEXT NOT NULL,
@@ -279,8 +279,8 @@ object Migrations {
      * - tasks 增加 isMandatory（0/1，默认0）
      */
     val MIGRATION_10_11 = object : Migration(10, 11) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE `tasks` ADD COLUMN `isMandatory` INTEGER NOT NULL DEFAULT 0")
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `tasks` ADD COLUMN `isMandatory` INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -292,17 +292,17 @@ object Migrations {
      * - point_records 增加 approvalId：积分记录可溯源到审批申请。
      */
     val MIGRATION_11_12 = object : Migration(11, 12) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `taskId` INTEGER")
-            db.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `bizKey` TEXT NOT NULL DEFAULT ''")
-            db.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `awardedRecordId` INTEGER")
-            db.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `date` TEXT NOT NULL DEFAULT ''")
-            db.execSQL("ALTER TABLE `point_records` ADD COLUMN `approvalId` INTEGER")
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `taskId` INTEGER")
+            connection.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `bizKey` TEXT NOT NULL DEFAULT ''")
+            connection.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `awardedRecordId` INTEGER")
+            connection.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `date` TEXT NOT NULL DEFAULT ''")
+            connection.execSQL("ALTER TABLE `point_records` ADD COLUMN `approvalId` INTEGER")
 
             // 数据修复：旧逻辑"取消打卡不撤销申请 + 重新打卡又建申请"会留下多条 PENDING。
             // 家长一旦全部通过就会重复计分，此处按 (描述, 申请积分) 分组只保留最早一条，
             // 其余置为 CANCELLED（本就未计分，不影响余额，且从源头消除重复计入）。
-            db.execSQL(
+            connection.execSQL(
                 """UPDATE point_approvals SET status = 'CANCELLED', reviewedAt = ${Clock.System.now().toEpochMilliseconds()}
                    WHERE status = 'PENDING' AND id NOT IN (
                        SELECT MIN(id) FROM point_approvals WHERE status = 'PENDING'
