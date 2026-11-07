@@ -130,6 +130,7 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 | 每日必须任务 | **Daily must-do** | 实测文案"有每日必须任务未完成，已自动扣减 X 分" |
 | 困难任务 | **Hard task** | 实测文案"还有 N 个困难任务"；代码 `hardTasksNotDone` |
 | 深呼吸 | **Breath** | 实测文案"第 N/M 次深呼吸"；代码 `breathCycle` |
+| 基础 / 提升（任务分类） | **Basic / Advanced** | Task 6+8 实测需要；`ParentDashboardScreen`、`WeeklyTrackerScreen`、`ParentTaskManageScreen` 会复用 |
 | 我是家长 / 我是孩子 | **I'm the parent / I'm the learner** | 用户选定 learner，避免 kid 的低龄感，且与 parent 对称 |
 | 学习积分奖励（品牌行） | **Study Points & Rewards** | 实测 `RoleSelectScreen.kt:75` |
 | 好习惯，看得见 | **Build visible habits** | 实测 `RoleSelectScreen.kt:83`，允许按英文语序重组，不逐字硬译 |

@@ -14,7 +14,7 @@
 ## Global Constraints
 
 - `commonMain` 禁止出现 `android.*` / `java.*` 导入（校验：`grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMain | wc -l` 必须为 0）。
-- 迁移只允许等价替换：`"中文"` → `strings.xxx`。diff 中出现任何逻辑行变化即越界，回滚该文件重做。
+- 迁移默认只允许等价替换 `"中文"` → `strings.xxx`。例外必须同时满足四条（Ruling 20）：(a) 移动的每个 token 都属文案（分隔符、括号、单位、语序）；(b) 中文态输出逐字节不变，且由字面量钉死的测试证明而非口头论证；(c) 不改控制流、数据源、组件与布局参数；(d) 在字段 KDoc 与任务报告里同时披露。四条缺一即回滚。
 - 不动 `ui/dt/DateTimeCompat.kt` 的格式行为（英文态仍 `yyyy-MM-dd`、周一起始）。
 - 不本地化写入数据库的种子内容（`data/repository/TaskRepository.kt` 等 125 处 `title =`/`name =`）。
 - 每个任务结束时本地三闸全绿才提交推送：
@@ -22,6 +22,7 @@
 - 推送前确认无在飞 CI（工作流 `cancel-in-progress: true` 会取消 macOS 任务）。
 - 提交信息用仓库既有风格：中文、`feat(i18n):` / `test(i18n):` / `docs:` 前缀。
 - 第一阶段规模：**362 条**（10 个目标文件，按文件去重），其中 **67 条含插值**需函数化；占全仓去重 1406 条的 26%。
+- 函数型（lambda）文案不在 `toString()` 的返回值里，整表 CJK 守卫看不见它们：每个 lambda 字段必须有"字面量钉死"的双语断言，且任务审查必须逐字段列出 lambda 与其断言位置（9/9 那种核对），漏一个即视为 spec ❌。这是审查闸门强制项，不是可选加固（Ruling 20-b）。
 - 英文译文必须遵循 spec §11 已确认术语表（Task 0）；表中没有的新词先补进 §11 再写文案。
 - 页面侧取文案统一写 `val strings = LocalStrings.current.<group>`（Ruling 13）；根节点 `App.kt` 保留 `strings`（它负责 provide）。
 
