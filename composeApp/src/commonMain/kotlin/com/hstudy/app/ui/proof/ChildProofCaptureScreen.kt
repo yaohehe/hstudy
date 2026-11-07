@@ -1,14 +1,5 @@
 package com.hstudy.app.ui.proof
 
-import android.content.ContentValues
-import android.content.Context
-import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,17 +9,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.CompletionProofEntity
 import com.hstudy.app.data.local.entity.ProofStatus
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
 import com.hstudy.app.ui.dt.SimpleDateFormat
+import coil3.compose.AsyncImage
+import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.dt.*
 
 @Composable
@@ -39,29 +28,11 @@ fun ChildProofCaptureScreen(
 ) {
     val app = AppGraph
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
     var photoPath by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && photoUri != null) {
-            photoPath = copyUriToAppStorage(context, photoUri!!)
-        }
-    }
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            photoPath = copyUriToAppStorage(context, it)
-        }
-    }
 
     Scaffold(
         topBar = { HStudyTopBar(title = "📷 提交完成证明", onNavigateBack = onNavigateBack) },
@@ -82,37 +53,23 @@ fun ChildProofCaptureScreen(
                 }
             }
 
-            // 拍照/选图按钮
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilledTonalButton(
-                    onClick = {
-                        val uri = createPhotoUri(context)
-                        if (uri != null) {
-                            photoUri = uri
-                            cameraLauncher.launch(uri)
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("拍照")
-                }
-                OutlinedButton(
-                    onClick = { galleryLauncher.launch("image/*") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("从相册选")
-                }
+            // 拍照按钮
+            FilledTonalButton(
+                onClick = {
+                    Platform.camera.takePhoto { path -> if (path != null) photoPath = path }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.CameraAlt, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("拍照")
             }
 
             // 照片预览
-            if (photoPath.isNotEmpty() && File(photoPath).exists()) {
+            if (photoPath.isNotEmpty() && fileExists(photoPath)) {
                 Card(modifier = Modifier.fillMaxWidth().height(280.dp)) {
-                    Image(
-                        painter = rememberAsyncImagePainter(File(photoPath)),
+                    AsyncImage(
+                        model = photoPath,
                         contentDescription = "证明照片",
                         modifier = Modifier.fillMaxSize()
                     )
@@ -184,30 +141,4 @@ fun ChildProofCaptureScreen(
     }
 }
 
-private fun createPhotoUri(context: Context): Uri? {
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "HStudy_$timestamp.jpg")
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/HStudy")
-            }
-            context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-        } else {
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "HStudy")
-            if (!dir.exists()) dir.mkdirs()
-            Uri.fromFile(File(dir, "HStudy_$timestamp.jpg"))
-        }
-    } catch (e: Exception) { null }
-}
 
-private fun copyUriToAppStorage(context: Context, uri: Uri): String {
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir
-    val file = File(dir, "proof_$timestamp.jpg")
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        FileOutputStream(file).use { output -> input.copyTo(output) }
-    }
-    return file.absolutePath
-}

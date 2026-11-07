@@ -2,11 +2,11 @@ package com.hstudy.app.data.repository
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.isoDayOfWeek
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
@@ -14,6 +14,13 @@ import kotlinx.datetime.toLocalDateTime
  * 跨平台时间工具：替代原 java.text.SimpleDateFormat("yyyy-MM-dd") / java.util.Calendar 用法。
  * 日期字符串格式与原实现完全一致（ISO yyyy-MM-dd，设备本地时区）。
  */
+
+/**
+ * ISO 星期序号：周一=1 .. 周日=7。
+ * 替代原 java.time.DayOfWeek.value / Calendar.DAY_OF_WEEK 的周一首日语义
+ * （kotlinx-datetime 的 DayOfWeek 枚举本身按 ISO 顺序声明，ordinal+1 即 ISO 值）。
+ */
+internal val DayOfWeek.isoDayOfWeek: Int get() = ordinal + 1
 
 /** 今天日期字符串（yyyy-MM-dd，本地时区），等价于原 SimpleDateFormat("yyyy-MM-dd").format(Date()) */
 internal fun todayString(): String =

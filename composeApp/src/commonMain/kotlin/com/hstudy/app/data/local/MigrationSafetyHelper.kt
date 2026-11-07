@@ -76,7 +76,7 @@ object MigrationSafetyHelper {
 
             // 只保留最近 5 份备份，防止磁盘膨胀
             fs.list(backupDir)
-                .sortedByDescending { fs.metadataOrNull(it)?.lastModifiedTimeMillis ?: 0L }
+                .sortedByDescending { fs.metadataOrNull(it)?.lastModifiedAtMillis ?: 0L }
                 .drop(5)
                 .forEach { runCatching { fs.delete(it) } }
         } catch (t: Throwable) {

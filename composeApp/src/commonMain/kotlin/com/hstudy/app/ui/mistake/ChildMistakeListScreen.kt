@@ -456,10 +456,10 @@ private fun StatusCardsPanel(
                                 scope.launch {
                                     app.userPreferences.setReviewReminder(enabled, reviewReminderHour)
                                     if (enabled) {
-                                        ReviewReminderReceiver.schedule(app.applicationContext, reviewReminderHour)
+                                        ReviewReminderReceiver.schedule(reviewReminderHour)
                                         snackbarHostState.showSnackbar("✅ 已开启每日${reviewReminderHour}点复习提醒")
                                     } else {
-                                        ReviewReminderReceiver.cancel(app.applicationContext)
+                                        ReviewReminderReceiver.cancel()
                                         snackbarHostState.showSnackbar("已关闭复习提醒")
                                     }
                                 }
@@ -475,7 +475,7 @@ private fun StatusCardsPanel(
                                     onClick = {
                                         scope.launch {
                                             app.userPreferences.setReviewReminder(true, h)
-                                            ReviewReminderReceiver.schedule(app.applicationContext, h)
+                                            ReviewReminderReceiver.schedule(h)
                                         }
                                     },
                                     label = { Text("${h}点") }

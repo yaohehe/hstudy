@@ -28,6 +28,14 @@ kotlin {
     }
 
     sourceSets {
+        // 与原 app/build.gradle.kts 的 -opt-in 保持一致（Compose 实验性 API）
+        all {
+            languageSettings {
+                optIn("androidx.compose.material3.ExperimentalMaterial3Api")
+                optIn("androidx.compose.foundation.layout.ExperimentalLayoutApi")
+                optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+            }
+        }
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)

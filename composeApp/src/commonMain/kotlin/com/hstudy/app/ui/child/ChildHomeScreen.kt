@@ -34,23 +34,22 @@ fun ChildHomeScreen(
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
     var isSyncing by remember { mutableStateOf(false) }
 
-    // 接收家长设置的文件选择器
-    val importControlLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                isSyncing = true
-                val result = com.hstudy.app.data.sync.FamilySyncHelper.importControlConfig(context, uri)
-                if (result.isSuccess) {
-                    snackbarHostState.showSnackbar("✅ ${result.getOrNull()}")
-                } else {
-                    snackbarHostState.showSnackbar("导入失败：${result.exceptionOrNull()?.message}")
+    // 接收家长设置：跨平台改用 Platform.fileSharer 文本选择器（替代 OpenDocument ActivityResult）
+    val importControlLauncher: () -> Unit = {
+        Platform.fileSharer.pickTextFile { text ->
+            if (text != null) {
+                scope.launch {
+                    isSyncing = true
+                    val result = com.hstudy.app.data.sync.FamilySyncHelper.importControlConfig(text)
+                    if (result.isSuccess) {
+                        snackbarHostState.showSnackbar("✅ ${result.getOrNull()}")
+                    } else {
+                        snackbarHostState.showSnackbar("导入失败：${result.exceptionOrNull()?.message}")
+                    }
+                    isSyncing = false
                 }
-                isSyncing = false
             }
         }
     }
@@ -424,7 +423,7 @@ fun ChildHomeScreen(
                         Text("👨‍👩‍👧 家长同步", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
-                                onClick = { importControlLauncher.launch(arrayOf("*/*")) },
+                                onClick = { importControlLauncher() },
                                 enabled = !isSyncing,
                                 modifier = Modifier.weight(1f)
                             ) { Text("📥 接收家长设置", style = MaterialTheme.typography.labelSmall) }
@@ -432,10 +431,10 @@ fun ChildHomeScreen(
                                 onClick = {
                                     scope.launch {
                                         isSyncing = true
-                                        val result = com.hstudy.app.data.sync.FamilySyncHelper.exportProgressReport(context)
+                                        val result = com.hstudy.app.data.sync.FamilySyncHelper.exportProgressReport()
                                         if (result.isSuccess) {
                                             com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
-                                                context, result.getOrNull()!!, "发送学习进度给家长"
+                                                result.getOrNull()!!, "发送学习进度给家长"
                                             )
                                             snackbarHostState.showSnackbar("✅ 进度已导出，请发送给家长")
                                         } else {

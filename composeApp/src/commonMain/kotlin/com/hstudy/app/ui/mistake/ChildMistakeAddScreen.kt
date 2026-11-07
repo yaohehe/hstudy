@@ -1,14 +1,6 @@
 package com.hstudy.app.ui.mistake
 
-import android.content.ContentValues
-import android.content.Context
-import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,18 +11,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
 import com.hstudy.app.data.local.entity.mistakeErrorTypes
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
 import com.hstudy.app.ui.dt.SimpleDateFormat
+import coil3.compose.AsyncImage
+import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.dt.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +30,6 @@ fun ChildMistakeAddScreen(
 ) {
     val app = AppGraph
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     var title by rememberSaveable { mutableStateOf("") }
@@ -50,21 +39,12 @@ fun ChildMistakeAddScreen(
     var correctMethod by rememberSaveable { mutableStateOf("") }
     var subjectName by rememberSaveable { mutableStateOf(MistakeSubject.MATH.name) }
     var subject by remember { mutableStateOf(MistakeSubject.MATH) }
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
     var photoPath by rememberSaveable { mutableStateOf("") }
     var isSaving by remember { mutableStateOf(false) }
 
     // 从保存的名称恢复科目选择（进程恢复场景）
     LaunchedEffect(subjectName) {
         subject = try { MistakeSubject.valueOf(subjectName) } catch (_: Exception) { MistakeSubject.MATH }
-    }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && photoUri != null) {
-            photoPath = saveUriToAppStorage(context, photoUri!!)
-        }
     }
 
     Scaffold(
@@ -135,12 +115,8 @@ fun ChildMistakeAddScreen(
 
             // 拍照按钮
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = {
-                    val uri = createImageUri(context)
-                    if (uri != null) {
-                        photoUri = uri
-                        cameraLauncher.launch(uri)
-                    }
+Button(onClick = {
+                    Platform.camera.takePhoto { path -> if (path != null) photoPath = path }
                 }) {
                     Icon(Icons.Filled.CameraAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -155,8 +131,8 @@ fun ChildMistakeAddScreen(
             // 预览照片
             if (photoPath.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                    Image(
-                        painter = rememberAsyncImagePainter(File(photoPath)),
+                    AsyncImage(
+                        model = photoPath,
                         contentDescription = "错题照片",
                         modifier = Modifier.fillMaxSize()
                     )
@@ -204,41 +180,4 @@ fun ChildMistakeAddScreen(
     }
 }
 
-/**
- * 创建用于拍照的 Uri
- */
-private fun createImageUri(context: Context): Uri? {
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "HStudy_$timestamp.jpg")
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/HStudy")
-            }
-            resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-        } else {
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "HStudy")
-            if (!dir.exists()) dir.mkdirs()
-            val file = File(dir, "HStudy_$timestamp.jpg")
-            Uri.fromFile(file)
-        }
-    } catch (e: Exception) {
-        null
-    }
-}
 
-/**
- * 将 Uri 内容复制到应用内部存储并返回路径
- */
-private fun saveUriToAppStorage(context: Context, uri: Uri): String {
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val file = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "mistake_$timestamp.jpg")
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        FileOutputStream(file).use { output ->
-            input.copyTo(output)
-        }
-    }
-    return file.absolutePath
-}

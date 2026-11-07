@@ -5,7 +5,6 @@ import com.hstudy.app.data.local.entity.DailyScheduleEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.isoDayOfWeek
 import kotlinx.datetime.toLocalDateTime
 
 class ScheduleRepository(private val scheduleDao: DailyScheduleDao) {

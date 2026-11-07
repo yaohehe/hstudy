@@ -113,12 +113,13 @@ object BackupHelper {
                 onResult(Result.failure(Exception("未选择文件")))
                 return@pickTextFile
             }
-            val result = runCatching {
+            val result: Result<Unit> = runCatching {
                 val envelope = json.decodeFromString<DbBackupEnvelope>(text)
                 if (envelope.type != "hstudy_db_backup") throw Exception("不是有效的备份文件")
                 val bytes = envelope.data.decodeBase64() ?: throw Exception("备份内容损坏")
                 val backupFile = backupPath()
                 fs.write(backupFile) { write(bytes.toByteArray()) }
+                Unit
             }
             onResult(result)
         }

@@ -11,7 +11,6 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,7 +30,6 @@ fun ParentScheduleManageScreen(
 ) {
     val app = AppGraph
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val schedules by app.scheduleRepository.getAllSchedules().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -88,7 +86,7 @@ fun ParentScheduleManageScreen(
                                         )
                                         samples.forEach { s ->
                                             val id = app.scheduleRepository.addSchedule(s)
-                                            ScheduleAlarmHelper.scheduleAlarm(context, s.copy(id = id))
+                                            ScheduleAlarmHelper.schedule(s.copy(id = id))
                                         }
                                         snackbarHostState.showSnackbar("✅ 已载入示例日程")
                                     }
@@ -108,14 +106,14 @@ fun ParentScheduleManageScreen(
                                 scope.launch {
                                     app.scheduleRepository.setEnabled(schedule.id, enabled)
                                     val updated = schedule.copy(isEnabled = enabled)
-                                    if (enabled) ScheduleAlarmHelper.scheduleAlarm(context, updated)
-                                    else ScheduleAlarmHelper.cancelAlarm(context, updated)
+                                    if (enabled) ScheduleAlarmHelper.schedule(updated)
+                                    else ScheduleAlarmHelper.cancel(updated)
                                 }
                             },
                             onEdit = { editingSchedule = schedule },
                             onDelete = {
                                 scope.launch {
-                                    ScheduleAlarmHelper.cancelAlarm(context, schedule)
+                                    ScheduleAlarmHelper.cancel(schedule)
                                     app.scheduleRepository.deleteSchedule(schedule.id)
                                     snackbarHostState.showSnackbar("已删除「${schedule.title}」")
                                 }
@@ -138,7 +136,7 @@ fun ParentScheduleManageScreen(
                 scope.launch {
                     val id = app.scheduleRepository.addSchedule(newSchedule)
                     if (newSchedule.isEnabled) {
-                        ScheduleAlarmHelper.scheduleAlarm(context, newSchedule.copy(id = id))
+                        ScheduleAlarmHelper.schedule(newSchedule.copy(id = id))
                     }
                     snackbarHostState.showSnackbar("✅ 已添加日程")
                 }
@@ -156,8 +154,8 @@ fun ParentScheduleManageScreen(
                 editingSchedule = null
                 scope.launch {
                     app.scheduleRepository.updateSchedule(updated)
-                    ScheduleAlarmHelper.cancelAlarm(context, schedule)
-                    if (updated.isEnabled) ScheduleAlarmHelper.scheduleAlarm(context, updated)
+                    ScheduleAlarmHelper.cancel(schedule)
+                    if (updated.isEnabled) ScheduleAlarmHelper.schedule(updated)
                     snackbarHostState.showSnackbar("✅ 已更新日程")
                 }
             }
