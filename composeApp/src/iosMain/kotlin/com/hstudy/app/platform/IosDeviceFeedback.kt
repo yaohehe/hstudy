@@ -81,8 +81,8 @@ class IosDeviceFeedback : DeviceFeedback {
                 UIApplication.sharedApplication.applicationIconBadgeNumber = 0L
             }
         }
-        center?.removeDeliveredNotifications(listOf(RUNNING_ID))
-        center?.removePendingNotificationRequests(listOf(RUNNING_ID))
+        center?.removeDeliveredNotificationsWithIdentifiers(listOf(RUNNING_ID))
+        center?.removePendingNotificationRequestsWithIdentifiers(listOf(RUNNING_ID))
     }
 
     /** trigger 为 null 的本地通知会立即投递；同 identifier 覆盖上一条，用于刷新进度 */

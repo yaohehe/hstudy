@@ -55,8 +55,8 @@ class IosNotificationScheduler : NotificationScheduler {
 
     override fun cancel(id: Int) {
         val ids = ReminderKind.entries.map { identifier(it, id) }
-        center.removePendingNotificationRequests(ids)
-        center.removeDeliveredNotifications(ids)
+        center.removePendingNotificationRequestsWithIdentifiers(ids)
+        center.removeDeliveredNotificationsWithIdentifiers(ids)
     }
 
     override fun cancelKind(kind: ReminderKind) {
@@ -65,13 +65,13 @@ class IosNotificationScheduler : NotificationScheduler {
             val ids = requests.orEmpty().mapNotNull {
                 (it as? UNNotificationRequest)?.identifier?.takeIf { id -> id.startsWith(prefix) }
             }
-            if (ids.isNotEmpty()) center.removePendingNotificationRequests(ids)
+            if (ids.isNotEmpty()) center.removePendingNotificationRequestsWithIdentifiers(ids)
         }
         center.getDeliveredNotificationsWithCompletionHandler { notifications ->
             val ids = notifications.orEmpty().mapNotNull {
                 (it as? UNNotification)?.request?.identifier?.takeIf { id -> id.startsWith(prefix) }
             }
-            if (ids.isNotEmpty()) center.removeDeliveredNotifications(ids)
+            if (ids.isNotEmpty()) center.removeDeliveredNotificationsWithIdentifiers(ids)
         }
     }
 
@@ -80,7 +80,7 @@ class IosNotificationScheduler : NotificationScheduler {
             val ids = requests.orEmpty().mapNotNull {
                 (it as? UNNotificationRequest)?.identifier?.takeIf { id -> id.startsWith(ID_PREFIX) }
             }
-            if (ids.isNotEmpty()) center.removePendingNotificationRequests(ids)
+            if (ids.isNotEmpty()) center.removePendingNotificationRequestsWithIdentifiers(ids)
         }
         reminders.forEach { schedule(it) }
     }
