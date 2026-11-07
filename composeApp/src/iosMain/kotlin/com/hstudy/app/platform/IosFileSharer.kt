@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.hstudy.app.platform
 
 import platform.Foundation.NSString
@@ -7,6 +9,7 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.stringWithContentsOfURL
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIModalPresentationStyle
 import platform.UIKit.UIDocumentPickerDelegateProtocol
 import platform.UIKit.UIDocumentPickerMode
 import platform.UIKit.UIDocumentPickerViewController
@@ -29,11 +32,9 @@ class IosFileSharer : FileSharer {
         val root = topViewController() ?: return
         val url = NSURL.fileURLWithPath(path)
         val vc = UIActivityViewController(activityItems = listOf(url), applicationActivities = null)
-        // iPad 上必须提供 popover 锚点，否则崩溃
-        vc.popoverPresentationController?.let { pop ->
-            pop.sourceView = root.view
-            pop.sourceRect = root.view.bounds
-        }
+        // iPad 上分享面板没有 popover 锚点会直接抛异常；这里用 pageSheet 形式呈现，
+        // 无需锚点（新版 SDK 未把 popoverPresentationController 暴露给 cinterop）。
+        vc.modalPresentationStyle = UIModalPresentationStyle.UIModalPresentationPageSheet
         root.presentViewController(vc, animated = true, completion = null)
     }
 

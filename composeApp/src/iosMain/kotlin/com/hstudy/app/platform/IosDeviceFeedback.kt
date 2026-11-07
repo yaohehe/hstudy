@@ -89,11 +89,12 @@ class IosDeviceFeedback : DeviceFeedback {
     private fun postNotification(identifier: String, title: String, body: String, withSound: Boolean) {
         val notificationCenter = center ?: return
         runCatching {
-            val content = UNMutableNotificationContent().apply {
-                this.title = title
-                this.body = body
-                sound = if (withSound) UNNotificationSound.defaultSound else null
-            }
+            val content = UNMutableNotificationContent()
+            // iOS 26 SDK 的公共头文件只在 UNNotificationContent 里声明 title/body/sound 为 readonly，
+            // cinterop 因此生成 val；可变性由运行时的 setter 提供，所以用 KVC 赋值。
+            content.setValue(title, "title")
+            content.setValue(body, "body")
+            content.setValue(if (withSound) UNNotificationSound.defaultSound else null, "sound")
             val request = UNNotificationRequest.requestWithIdentifier(identifier, content, null)
             notificationCenter.addNotificationRequest(request) { _ -> }
         }

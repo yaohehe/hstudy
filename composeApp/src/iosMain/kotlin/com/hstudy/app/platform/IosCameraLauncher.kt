@@ -1,6 +1,8 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.hstudy.app.platform
 
-import platform.Foundation.NSDate
+import com.hstudy.app.ui.dt.nowMillis
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.writeToFile
@@ -54,7 +56,7 @@ class IosCameraLauncher : CameraLauncher {
             if (image != null) {
                 val dir = NSHomeDirectory() + "/Documents/photos"
                 NSFileManager.defaultManager.createDirectoryAtPath(dir, true, null, null)
-                val timestamp = (NSDate().timeIntervalSince1970 * 1000).toLong()
+                val timestamp = nowMillis()
                 val file = "$dir/photo_$timestamp.jpg"
                 val data = UIImageJPEGRepresentation(image, 0.9)
                 if (data != null && data.writeToFile(file, atomically = true)) {
