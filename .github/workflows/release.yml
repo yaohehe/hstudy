@@ -7,6 +7,11 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  # 发布构建不互相取消：同一 tag 的重跑与并发发布都需完整执行
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   android-release:
     runs-on: ubuntu-latest
