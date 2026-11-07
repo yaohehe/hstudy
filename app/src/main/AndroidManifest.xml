@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 拍照：错题拍照、完成证明拍照（TakePicture） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 存储：仅 Android 9 及以下写入公共 DCIM 目录需要；Android 10+ 用 MediaStore/应用专属目录，无需权限 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <!-- 设备配对：NSD 局域网服务发现需要网络套接字 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 设备配对：读取已绑定蓝牙设备（Android 12+） -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- 设备配对：读取已绑定蓝牙设备（Android 11 及以下，安装时自动授予） -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <!-- 日程提醒：Android 13+ 发送本地通知需要此权限 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 日程提醒：设置精确闹钟（到点准时提醒孩子） -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- 日程提醒：设备开机重启后重新注册闹钟 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <application
+        android:name=".HStudyApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.HStudy">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.HStudy">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 文件分享提供者：安全地分享备份文件给其他设备 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- 日程提醒闹钟接收器：到点弹出本地通知 -->
+        <receiver
+            android:name=".ui.schedule.ScheduleAlarmReceiver"
+            android:exported="false" />
+
+        <!-- 错题复习每日提醒接收器：定时提醒孩子复习错题 -->
+        <receiver
+            android:name=".ui.mistake.ReviewReminderReceiver"
+            android:exported="false" />
+
+        <!-- 家长每周学习周报接收器：每周汇总孩子学习情况推送给家长 -->
+        <receiver
+            android:name=".ui.parent.WeeklyReportReceiver"
+            android:exported="false" />
+
+        <!-- 开机重启后重新注册所有日程闹钟 -->
+        <receiver
+            android:name=".ui.schedule.BootCompletedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

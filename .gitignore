@@ -1,0 +1,47 @@
+# Gradle
+.gradle/
+**/build/
+!src/**/build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Local configuration
+local.properties
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+app/release/
+
+# Logs
+*.log
+hs_err_pid*
+replay_pid*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Qoder / harness generated artifacts
+.qoder/
+.workbuddy/
+*.canvas.tsx
+*.canvas.status.json
+
+# Reference photos / local scratch
+IMG_*.jpg
+*.patch
+
+# Kotlin/Native
+.kotlin/
+*.klib
+
+# Version history (optional, keep if desired)
+# version_history.md

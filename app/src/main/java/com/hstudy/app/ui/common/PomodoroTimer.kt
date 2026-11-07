@@ -1,0 +1,454 @@
+package com.hstudy.app.ui.common
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.media.RingtoneManager
+import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.core.app.NotificationCompat
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+
+enum class PomodoroState {
+    IDLE, BREATHING, RUNNING, PAUSED, BREAK, READY_NEXT
+}
+
+/**
+ * 番茄钟组件 - 显示倒计时圆环和控制按钮
+ * @param focusMinutes 专注时长（分钟）
+ * @param breakMinutes 休息时长（分钟）
+ * @param onComplete 完成一个番茄钟时的回调
+ */
+@Composable
+fun PomodoroTimer(
+    focusMinutes: Int = 25,
+    breakMinutes: Int = 5,
+    skipBreathing: Boolean = false,
+    onComplete: (Int) -> Unit = {},
+    onActiveChange: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var state by remember { mutableStateOf(PomodoroState.IDLE) }
+    var remainingSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
+    var totalSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
+    var completedPomodoros by remember { mutableIntStateOf(0) }
+    // 目标结束时间戳（基于 elapsedRealtime，息屏/后台期间仍持续计时）
+    var endTimeMillis by remember { mutableLongStateOf(0L) }
+
+    // 通知父组件计时器是否活跃（用于禁用时长设置等）
+    val isActive = state != PomodoroState.IDLE
+    LaunchedEffect(isActive) { onActiveChange(isActive) }
+
+    // ===== 专注前呼吸引导（帮助孩子平静心神、快速进入专注状态）=====
+    val totalBreathCycles = 3
+    var breathCycle by remember { mutableIntStateOf(0) }
+    var breathIn by remember { mutableStateOf(true) } // true=吸气 false=呼气
+    val breathScale by animateFloatAsState(
+        targetValue = if (breathIn) 1f else 0.55f,
+        animationSpec = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+        label = "breathScale"
+    )
+
+    // 呼吸引导流程：吸气4秒→呼气4秒为一个循环，完成后自动开始专注
+    LaunchedEffect(state) {
+        if (state == PomodoroState.BREATHING) {
+            breathCycle = 0
+            breathIn = true
+            while (breathCycle < totalBreathCycles) {
+                breathIn = true
+                delay(4000)
+                breathIn = false
+                delay(4000)
+                breathCycle++
+            }
+            // 呼吸完成，自动进入专注
+            totalSeconds = focusMinutes * 60
+            remainingSeconds = totalSeconds
+            endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+            state = PomodoroState.RUNNING
+        }
+    }
+
+    // 计时器核心逻辑：基于时间戳计算剩余时间，避免息屏后 delay 被挂起导致停表
+    LaunchedEffect(state) {
+        if (state == PomodoroState.RUNNING || state == PomodoroState.BREAK) {
+            var notifCounter = 0
+            while (true) {
+                val remaining = ((endTimeMillis - SystemClock.elapsedRealtime()) / 1000L).toInt()
+                remainingSeconds = if (remaining > 0) remaining else 0
+                if (remainingSeconds <= 0) break
+                // 每15秒更新一次通知栏（让孩子息屏后也能看进度）
+                notifCounter++
+                if (notifCounter % 60 == 1) { // 250ms * 60 = 15s
+                    updateFocusNotification(context, state == PomodoroState.BREAK, remainingSeconds, totalSeconds)
+                }
+                delay(250) // 高频刷新，息屏恢复后能立即追上正确时间
+            }
+            // 时间到
+            cancelFocusNotification(context)
+            if (state == PomodoroState.RUNNING) {
+                completedPomodoros++
+                onComplete(focusMinutes)
+                // 完成提示音+震动（让孩子知道专注结束了）
+                playCompletionAlert(context)
+                // 切换到休息
+                state = PomodoroState.BREAK
+                totalSeconds = breakMinutes * 60
+                remainingSeconds = totalSeconds
+                endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+            } else if (state == PomodoroState.BREAK) {
+                // 休息结束→过渡引导状态（而非直接回IDLE，给孩子一个明确的下一步）
+                playCompletionAlert(context)
+                state = PomodoroState.READY_NEXT
+            }
+        } else {
+            // 非计时状态时取消通知
+            cancelFocusNotification(context)
+        }
+    }
+
+    val progress = if (totalSeconds > 0) remainingSeconds.toFloat() / totalSeconds else 0f
+    val isBreak = state == PomodoroState.BREAK
+
+    // 专注中途鼓励（过半时显示，给孩子打气）
+    val halfwayEncouragement = remember(completedPomodoros) {
+        listOf(
+            "💪 已经过半了，继续保持！",
+            "🌟 专注的你最棒了！",
+            "🔥 坚持住，马上就完成了！",
+            "🧠 大脑正在高效运转！",
+            "✨ 每一分钟都在积累成长！"
+        ).random()
+    }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 圆环进度显示
+        Box(
+            modifier = Modifier.size(240.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (state == PomodoroState.BREATHING) {
+                // 呼吸动画圆圈：随吸气放大、呼气缩小，引导深呼吸
+                Box(
+                    modifier = Modifier
+                        .size((200 * breathScale).dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape)
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        if (breathIn) "慢慢吸气" else "缓缓呼气",
+                        fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("第 ${(breathCycle + 1).coerceAtMost(totalBreathCycles)}/$totalBreathCycles 次深呼吸",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+            // 背景圆环
+            val trackColor = MaterialTheme.colorScheme.surfaceVariant
+            val progressColor = if (isBreak)
+                MaterialTheme.colorScheme.tertiary
+            else
+                MaterialTheme.colorScheme.primary
+
+            Canvas(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                val strokeWidth = 12.dp.toPx()
+                val radius = (size.minDimension - strokeWidth) / 2
+                val topLeft = Offset(
+                    (size.width - radius * 2) / 2,
+                    (size.height - radius * 2) / 2
+                )
+                // Track
+                drawArc(
+                    color = trackColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = Size(radius * 2, radius * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+                // Progress
+                drawArc(
+                    color = progressColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * progress,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = Size(radius * 2, radius * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+            }
+
+            // 中间文字
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val minutes = remainingSeconds / 60
+                val seconds = remainingSeconds % 60
+                Text(
+                    text = String.format("%02d:%02d", minutes, seconds),
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = progressColor
+                )
+                Text(
+                    text = if (isBreak) "☕ 休息中" else if (state == PomodoroState.IDLE) "🍅 准备开始"
+                        else if (state == PomodoroState.READY_NEXT) "🎉 休息结束" else "🍅 专注中",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 已完成番茄数
+        Text(
+            text = "🍅 × ${completedPomodoros}",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        // 专注中途鼓励（过半时显示，给孩子打气）
+        if (state == PomodoroState.RUNNING && progress < 0.5f) {
+            Text(
+                halfwayEncouragement,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        // 休息结束过渡提示
+        if (state == PomodoroState.READY_NEXT) {
+            Text(
+                "🎉 休息结束！已完成 $completedPomodoros 个番茄钟，继续加油！",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 呼吸引导说明
+        if (state == PomodoroState.BREATHING) {
+            Text(
+                "跟随圆圈深呼吸，让心平静下来，准备进入专注状态",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // 专注后科学休息建议（与专注前呼吸引导呼应，形成科学专注闭环）
+        if (state == PomodoroState.BREAK) {
+            val breakTips = listOf(
+                "🚶 站起来走动一下，活动活动身体",
+                "👀 看看窗外远处，让眼睛放松一下",
+                "💧 喝杯水，补充水分",
+                "🧘 做几个深呼吸，放松身心",
+                "🤸 伸个懒腰，伸展一下筋骨",
+                "🎵 听一首喜欢的歌，放松心情"
+            )
+            val tip = breakTips[completedPomodoros % breakTips.size]
+            Card(
+                modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("☕ 科学休息", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text(tip, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text("好好休息，下一轮专注更高效～", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // 控制按钮
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            when (state) {
+                PomodoroState.IDLE -> {
+                    FilledTonalButton(onClick = {
+                        if (skipBreathing) {
+                            // 跳过呼吸，直接开始专注
+                            totalSeconds = focusMinutes * 60
+                            remainingSeconds = totalSeconds
+                            endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+                            state = PomodoroState.RUNNING
+                        } else {
+                            // 先进入专注前呼吸引导，帮助平静心神
+                            state = PomodoroState.BREATHING
+                        }
+                    }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("开始专注")
+                    }
+                }
+                PomodoroState.BREATHING -> {
+                    TextButton(onClick = {
+                        // 跳过呼吸引导，直接开始专注
+                        totalSeconds = focusMinutes * 60
+                        remainingSeconds = totalSeconds
+                        endTimeMillis = SystemClock.elapsedRealtime() + totalSeconds * 1000L
+                        state = PomodoroState.RUNNING
+                    }) {
+                        Text("跳过，直接开始")
+                    }
+                }
+                PomodoroState.RUNNING -> {
+                    OutlinedButton(onClick = { state = PomodoroState.PAUSED }) {
+                        Icon(Icons.Filled.Pause, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("暂停")
+                    }
+                    TextButton(onClick = {
+                        state = PomodoroState.IDLE
+                        totalSeconds = focusMinutes * 60
+                        remainingSeconds = totalSeconds
+                    }) {
+                        Icon(Icons.Filled.Stop, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("结束")
+                    }
+                }
+                PomodoroState.PAUSED -> {
+                    FilledTonalButton(onClick = {
+                        // 从暂停恢复：以当前剩余时间重设结束时间戳
+                        endTimeMillis = SystemClock.elapsedRealtime() + remainingSeconds * 1000L
+                        state = PomodoroState.RUNNING
+                    }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("继续")
+                    }
+                    TextButton(onClick = {
+                        state = PomodoroState.IDLE
+                        totalSeconds = focusMinutes * 60
+                        remainingSeconds = totalSeconds
+                    }) {
+                        Icon(Icons.Filled.Stop, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("结束")
+                    }
+                }
+                PomodoroState.BREAK -> {
+                    TextButton(onClick = {
+                        state = PomodoroState.READY_NEXT
+                    }) {
+                        Text("跳过休息")
+                    }
+                }
+                PomodoroState.READY_NEXT -> {
+                    // 休息结束过渡引导：明确告诉孩子下一步
+                    FilledTonalButton(onClick = {
+                        state = PomodoroState.BREATHING
+                    }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("开始下一轮专注")
+                    }
+                    TextButton(onClick = {
+                        state = PomodoroState.IDLE
+                        totalSeconds = focusMinutes * 60
+                        remainingSeconds = totalSeconds
+                    }) {
+                        Text("先休息一下")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 播放完成提示音+震动（无需额外权限，使用系统默认通知音） */
+private fun playCompletionAlert(context: Context) {
+    try {
+        // 系统通知音
+        val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        RingtoneManager.getRingtone(context, notification)?.play()
+        // 震动反馈
+        val vibrator = if (android.os.Build.VERSION.SDK_INT >= 31) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
+    } catch (_: Exception) { /* 忽略提示音/震动失败 */ }
+}
+
+// ===== 专注时通知栏进度显示（息屏后也能看进度） =====
+private const val FOCUS_CHANNEL_ID = "pomodoro_timer"
+private const val FOCUS_NOTIF_ID = 2001
+
+/** 更新专注通知栏（显示剩余时间与进度） */
+private fun updateFocusNotification(context: Context, isBreak: Boolean, remainingSec: Int, totalSec: Int) {
+    try {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // 创建通知渠道（Android 8+）
+        if (nm.getNotificationChannel(FOCUS_CHANNEL_ID) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(FOCUS_CHANNEL_ID, "番茄钟计时", NotificationManager.IMPORTANCE_LOW)
+                    .apply { description = "专注/休息计时进度显示"; setShowBadge(false) }
+            )
+        }
+        val min = remainingSec / 60
+        val sec = remainingSec % 60
+        val title = if (isBreak) "☕ 休息中" else "🍅 专注中"
+        val text = "剩余 ${min}分${sec}秒 · 息屏后仍会继续计时"
+        val progress = if (totalSec > 0) ((totalSec - remainingSec) * 100 / totalSec) else 0
+        val notif = NotificationCompat.Builder(context, FOCUS_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setProgress(100, progress, false)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .build()
+        nm.notify(FOCUS_NOTIF_ID, notif)
+    } catch (_: Exception) { /* 忽略通知失败 */ }
+}
+
+/** 取消专注通知 */
+private fun cancelFocusNotification(context: Context) {
+    try {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.cancel(FOCUS_NOTIF_ID)
+    } catch (_: Exception) { /* 忽略 */ }
+}
