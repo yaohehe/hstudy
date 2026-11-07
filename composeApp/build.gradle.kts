@@ -70,6 +70,10 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            // runTest：LanguagePreferenceTest 需要真实文件系统 + 协程调度器跑 DataStore 往返
+            // （spec §8.5 / Task 5 Ruling 7）。计划 Step 5 预留的加依赖分支，实测首次运行
+            // 确实因 kotlinx.coroutines.test 不在 classpath 上编译失败。
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

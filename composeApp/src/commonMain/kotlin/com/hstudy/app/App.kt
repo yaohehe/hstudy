@@ -42,13 +42,21 @@ fun App() {
     // 设备上会先渲染错语言、等 DataStore 首次 emission 到达才翻转（几十到几百毫秒，正好落在
     // RoleSelect 入场动画里）。快照把窗口收窄到"预读尚未完成"这一小段：此时仍退化为 SYSTEM 推导，
     // 但两种写法都不会插入空白帧，只是首帧文案是否已正确之别。
-    val storedLanguage by AppGraph.userPreferences.appLanguage
-        // 降级不崩根，但代价要在调用点可见：catch 之后上游以一次 null 完成，订阅就此终止，
-        // 本次会话语言被钉死在系统语言上，不再跟随设置页的切换（Task 5 的开关看起来失灵）。
-        // 全工程其他 collectAsState 消费者都是裸调用（错误直接上抛），这里例外是因为根组合崩溃
-        // 等于整 app 白屏；不额外加重试机制。
-        .catch { emit(null) }
-        .collectAsState(initial = AppGraph.startupLanguage)
+    // Flow 实例本身也要 remember（Task 5 修复，Ruling 11）：不 remember 时每次重组都会新建一条
+    // 管道，collectAsState 认出"上游换了"就重建订阅容器，state 被重置回 initial（= 启动快照）。
+    // 启动期看不出来——快照与存储值相同；但本页开始支持运行中切换语言，于是切完之后任意一次重组
+    // （动画、滚动、输入框）都会把界面闪回启动时的那个语言，看起来像"开关失灵"。
+    val appLanguageFlow = remember {
+        AppGraph.userPreferences.appLanguage
+            // 降级不崩根，但代价要在调用点可见：catch 之后上游以一次 null 完成，订阅就此终止，
+            // 本次会话语言被钉死在系统语言上，不再跟随设置页的切换（Task 5 的开关看起来失灵）。
+            // 全工程其他 collectAsState 消费者都是裸调用（错误直接上抛），这里例外是因为根组合崩溃
+            // 等于整 app 白屏；不额外加重试机制。
+            // 注：flow 被 remember 之后这句"订阅就此终止"才真正成立——旧写法里每次重组都会重建
+            // 订阅、顺带自愈一次；现在要恢复只能等平台侧重建组合（Android 配置变更 / iOS 重启）。
+            .catch { emit(null) }
+    }
+    val storedLanguage by appLanguageFlow.collectAsState(initial = AppGraph.startupLanguage)
     // storedLanguage 不变时不重新解析：systemLanguageTag() 要走平台桥接，stringsFor 也要建引用，
     // 放在 remember 外会让每次重组都重算。设备语言在运行中被更换时组合本就会被销毁重建
     // （Android 配置变更重建 Activity，iOS 改语言需重启 App），缓存随之失效，不必再加 key。

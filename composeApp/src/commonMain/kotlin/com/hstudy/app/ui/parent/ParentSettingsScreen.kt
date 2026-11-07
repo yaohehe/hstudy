@@ -13,6 +13,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.backup.BackupHelper
+import com.hstudy.app.i18n.AppLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.appLanguageFromStorage
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.restartApp
 import com.hstudy.app.ui.common.HStudyTopBar
@@ -25,6 +28,7 @@ fun ParentSettingsScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.settings
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -296,6 +300,46 @@ fun ParentSettingsScreen(
                                     snackbarHostState.showSnackbar("已保存设备名称：$name")
                                 }
                             }) { Text("保存设备名称") }
+                        }
+                    }
+
+                    // ===== 语言 =====
+                    // 本页既有习惯：偏好读写走 AppGraph.userPreferences（全工程唯一 DataStore 实例，
+                    // 不在这里 new UserPreferences()），写入用 rememberCoroutineScope 的 scope，
+                    // 读取用裸 collectAsState（对照上面的 weeklyReportEnabled）——不加 catch 与本页
+                    // 其它订阅失败模式一致；App.kt 根组合才需要 catch（那里崩了等于整 app 白屏）。
+                    val storedLanguage by app.userPreferences.appLanguage.collectAsState(initial = null)
+                    val currentLanguage = appLanguageFromStorage(storedLanguage)
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("🌐 ${strings.languageTitle}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(strings.languageNote,
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = currentLanguage == AppLanguage.SYSTEM,
+                                    onClick = {
+                                        scope.launch { app.userPreferences.setAppLanguage(AppLanguage.SYSTEM) }
+                                    },
+                                    label = { Text(strings.languageSystem) }
+                                )
+                                FilterChip(
+                                    selected = currentLanguage == AppLanguage.ZH,
+                                    onClick = {
+                                        scope.launch { app.userPreferences.setAppLanguage(AppLanguage.ZH) }
+                                    },
+                                    label = { Text(strings.languageZh) }
+                                )
+                                FilterChip(
+                                    selected = currentLanguage == AppLanguage.EN,
+                                    onClick = {
+                                        scope.launch { app.userPreferences.setAppLanguage(AppLanguage.EN) }
+                                    },
+                                    label = { Text(strings.languageEn) }
+                                )
+                            }
+                            Text(strings.partialTranslationNote,
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

@@ -6,10 +6,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 /** 跨页面文案聚合根：每页一个子表，后续任务按页扩展。 */
 data class AppStrings(
     val role: RoleStrings,
+    val settings: SettingsStrings,
 )
 
-val AppStringsZh = AppStrings(role = RoleStringsZh)
-val AppStringsEn = AppStrings(role = RoleStringsEn)
+val AppStringsZh = AppStrings(role = RoleStringsZh, settings = SettingsStringsZh)
+val AppStringsEn = AppStrings(role = RoleStringsEn, settings = SettingsStringsEn)
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {
     DisplayLanguage.ZH -> AppStringsZh
