@@ -3,64 +3,6 @@ package com.hstudy.app.ui.common
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-// =========================================================================================
-// 临时测试夹具（fixture）：LevelSystem 的源码目前仍只在 app/src/main（ui/ 尚未迁移，本任务
-// 不得改动 composeApp ui/ 目录）。此处仅复制被测试的纯逻辑部分（不含 LevelBadge Composable），
-// 逻辑与原版逐行一致。待 ui/ 迁移完成后删除本 fixture 段与 LevelInfo，测试直接跑生产代码。
-// 原文件：app/src/main/java/com/hstudy/app/ui/common/LevelSystem.kt
-// =========================================================================================
-
-data class LevelInfo(
-    val level: Int,
-    val title: String,
-    val emoji: String,
-    val requiredPoints: Int,
-    val nextLevelPoints: Int,
-    val progress: Float // 0.0 ~ 1.0
-)
-
-object LevelSystem {
-    private val levels = listOf(
-        Triple(1, "学习新手", "🌱") to 0,
-        Triple(2, "勤奋小学徒", "🌿") to 100,
-        Triple(3, "知识探索者", "🌳") to 300,
-        Triple(4, "学习达人", "🌲") to 600,
-        Triple(5, "学霸少年", "🎋") to 1000,
-        Triple(6, "知识王者", "🌸") to 1500,
-        Triple(7, "学习之星", "🍎") to 2500,
-        Triple(8, "超级学霸", "🌴") to 4000,
-        Triple(9, "传奇学者", "🏔️") to 6000,
-        Triple(10, "学神", "🌟") to 10000
-    )
-
-    fun getLevelInfo(totalEarnedPoints: Int): LevelInfo {
-        var currentIdx = 0
-        for (i in levels.indices) {
-            if (totalEarnedPoints >= levels[i].second) {
-                currentIdx = i
-            } else break
-        }
-
-        val current = levels[currentIdx]
-        val next = if (currentIdx < levels.lastIndex) levels[currentIdx + 1] else null
-
-        val progress = if (next != null) {
-            val range = next.second - current.second
-            val earned = totalEarnedPoints - current.second
-            earned.toFloat() / range
-        } else 1f
-
-        return LevelInfo(
-            level = current.first.first,
-            title = current.first.second,
-            emoji = current.first.third,
-            requiredPoints = current.second,
-            nextLevelPoints = next?.second ?: current.second,
-            progress = progress.coerceIn(0f, 1f)
-        )
-    }
-}
-
 // ===== 以下测试逐条移植自 app/src/test/java/com/hstudy/app/ui/common/LevelSystemTest.kt =====
 
 class LevelSystemTest {
