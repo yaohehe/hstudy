@@ -58,14 +58,25 @@ jobs:
           xcrun simctl boot "$UDID" 2>/dev/null || echo "SMOKE: boot returned non-zero (device may already be booted)"
           APP=$(find build/ios/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           xcrun simctl install "$UDID" "$APP"
-          xcrun simctl launch "$UDID" com.hstudy.app.ios | tee launch.log
-          sleep 20
-          echo "=== process state after 20s ==="
-          xcrun simctl spawn "$UDID" launchctl list | grep -i hstudy || echo "SMOKE: no hstudy launchctl entry"
+          # macOS runner 没有 GNU timeout：后台附加控制台输出，40s 后只断开附加，不杀进程
+          xcrun simctl launch --console "$UDID" com.hstudy.app.ios > console.log 2>&1 &
+          CONSOLE_PID=$!
+          sleep 40
+          kill "$CONSOLE_PID" 2>/dev/null || true
+          wait "$CONSOLE_PID" 2>/dev/null || true
+          echo "=== app console output (tail 60) ==="
+          tail -60 console.log || true
+          echo "=== simulator logs mentioning the app ==="
+          xcrun simctl spawn "$UDID" log show --style compact --last 3m 2>/dev/null \
+            | grep -iE "hstudy|iosApp|compose|exception|crash|signal" | tail -40 || true
+          echo "=== process state after launch window ==="
+          xcrun simctl spawn "$UDID" launchctl list | grep -iE "hstudy|iosApp" || echo "SMOKE: no launchctl entry"
           xcrun simctl io "$UDID" screenshot smoke.png
           ls -la smoke.png
           echo "=== crash reports (empty means none) ==="
-          find "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data" -name '*.ips' -o -name 'Crash*' 2>/dev/null | head -10 || true
+          find "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data" \
+               "$HOME/Library/Logs/DiagnosticReports" -maxdepth 3 \
+               \( -name '*.ips' -o -name 'Crash*' -o -name 'iosApp-*' \) 2>/dev/null | head -10 || true
           xcrun simctl terminate "$UDID" com.hstudy.app.ios || echo "SMOKE: terminate skipped (process already gone)"
           xcrun simctl shutdown "$UDID" || true
       - uses: actions/upload-artifact@v4
