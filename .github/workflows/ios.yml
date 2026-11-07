@@ -26,12 +26,28 @@ jobs:
         run: chmod +x gradlew
       - name: Xcode version
         run: xcodebuild -version && xcrun simctl list runtimes | grep -i ios || true
-      - name: Clear possibly incomplete Kotlin/Native distribution
-        # KSP 的 native 任务从 ~/.konan 的发行包里加载 org.jetbrains.kotlin.cli.utilities.MainKt；
-        # 该目录下若留有上次中断的半解压产物，KGP 不会重新下载，会以 ClassNotFound 失败。
-        run: rm -rf "$HOME/.konan"
+      - name: Probe Kotlin/Native toolchain switches
+        # 临时诊断：kspKotlinIosSimulatorArm64 以 in-process 方式加载
+        # org.jetbrains.kotlin.cli.utilities.MainKt 时抛 ClassNotFoundException，
+        # 该类的来源由下面这些开关决定（embeddable jar / native toolchain / 发行包来源 / 编译器守护进程）。
+        # 逐个试出能让 ios 目标真正编译的组合，胜出者写进 KOTLIN_NATIVE_PROBE_FLAGS。
+        run: |
+          for F in "-Pkotlin.native.useEmbeddableCompilerJar=false" \
+                   "-Pkotlin.native.toolchain.enabled=false" \
+                   "-Pkotlin.native.distribution.downloadFromMaven=false" \
+                   "-Pkotlin.native.disableCompilerDaemon=true"; do
+            echo "::group::probe $F"
+            if ./gradlew :composeApp:compileKotlinIosSimulatorArm64 --no-daemon $F; then
+              echo "### PASS $F"
+              echo "KOTLIN_NATIVE_PROBE_FLAGS=$F" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "::endgroup::"
+          done
+          echo "所有候选开关组合都无法编译 iOS"
+          exit 1
       - name: Build Kotlin framework for iOS Simulator
-        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --no-daemon $KOTLIN_NATIVE_PROBE_FLAGS
       - name: Dump Kotlin/Native distribution on failure
         if: failure()
         run: |
