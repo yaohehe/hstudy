@@ -43,5 +43,11 @@ IMG_*.jpg
 .kotlin/
 *.klib
 
+# iOS build outputs
+build/ios/
+xcuserdata/
+*.xcuserstate
+Podfile.lock
+
 # Version history (optional, keep if desired)
 # version_history.md
