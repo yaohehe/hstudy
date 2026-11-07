@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -20,8 +20,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Ensure gradlew is executable
         run: chmod +x gradlew
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+      - name: Xcode version
+        run: xcodebuild -version && xcrun simctl list runtimes | grep -i ios || true
       - name: Build Kotlin framework for iOS Simulator
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --no-daemon
       - name: Build iOS app (simulator, unsigned)
