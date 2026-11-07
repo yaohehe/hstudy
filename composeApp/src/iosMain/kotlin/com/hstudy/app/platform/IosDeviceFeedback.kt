@@ -1,5 +1,8 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.hstudy.app.platform
 
+import com.hstudy.app.iosbridge.HStudyFillNotificationContent
 import platform.AudioToolbox.AudioServicesPlayAlertSound
 import platform.AudioToolbox.AudioServicesPlaySystemSound
 import platform.darwin.dispatch_async
@@ -90,14 +93,15 @@ class IosDeviceFeedback : DeviceFeedback {
         val notificationCenter = center ?: return
         runCatching {
             val content = UNMutableNotificationContent()
-            // iOS 26 SDK 只在 UNNotificationContent 里把 title/body/sound 声明为 readonly，
-            // cinterop 因此生成 val，可变 setter 只存在于运行时；而 KVC 的 setValue:forKey:
-            // 在 Kotlin 侧被属性委托运算符遮蔽，所以用批量 KVC 赋值。
-            val values = mutableMapOf<String, Any>("title" to title, "body" to body)
-            if (withSound) {
-                UNNotificationSound.defaultSound?.let { sound -> values["sound"] = sound }
-            }
-            content.setValuesForKeysWithDictionary(values)
+            // iOS 26 SDK 把 title/body/sound 在可变内容类里重新声明为 readwrite，但 cinterop 沿用
+            // 父类的 readonly 声明，Kotlin 侧只看到 val；NSObject 的 KVC 也没暴露给 Kotlin。
+            // 因此赋值放在 ObjC inline 桥接里完成，保证通知文案与提示音不会被静默丢弃。
+            HStudyFillNotificationContent(
+                content,
+                title,
+                body,
+                if (withSound) UNNotificationSound.defaultSound else null
+            )
             val request = UNNotificationRequest.requestWithIdentifier(identifier, content, null)
             notificationCenter.addNotificationRequest(request) { _ -> }
         }

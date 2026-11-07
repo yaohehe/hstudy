@@ -1,0 +1,27 @@
+package = com.hstudy.app.iosbridge
+language = Objective-C
+headers = UserNotifications/UserNotifications.h UIKit/UIKit.h
+---
+#import <UserNotifications/UserNotifications.h>
+#import <UIKit/UIKit.h>
+
+// iOS 26 SDK 把 title/body/sound 在 UNMutableNotificationContent 里重新声明为 readwrite，
+// 但 cinterop 沿用父类 UNNotificationContent 的 readonly 声明，Kotlin 侧只看到 val；
+// NSObject 的 KVC（setValue:forKey: / setValuesForKeysWithDictionary）也没有暴露给 Kotlin。
+// 赋值必须在 ObjC 侧完成，Kotlin 只传值，这样通知内容不会静默丢失。
+static inline void HStudyFillNotificationContent(
+    UNMutableNotificationContent *content,
+    NSString *_Nullable title,
+    NSString *_Nullable body,
+    UNNotificationSound *_Nullable sound
+) {
+    if (title != nil) { content.title = title; }
+    if (body != nil) { content.body = body; }
+    if (sound != nil) { content.sound = sound; }
+}
+
+// UIActivityViewController 在 iPad 上没有 popover 锚点会直接抛异常，需要 pageSheet 形式呈现。
+// UIModalPresentationStyle 的枚举常量在 Kotlin 侧命名不稳定，这里用 ObjC 原始常量固定行为。
+static inline void HStudyUsePageSheetPresentation(UIViewController *viewController) {
+    viewController.modalPresentationStyle = UIModalPresentationPageSheet;
+}

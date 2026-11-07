@@ -25,6 +25,12 @@ kotlin {
             baseName = "ComposeApp"
             isStatic = true
         }
+        // iOS 26 SDK 上部分 API（UNMutableNotificationContent 的 readwrite 属性、
+        // UIModalPresentationStyle 常量）无法从 Kotlin 侧调用，改由 ObjC inline 桥接完成。
+        iosTarget.compilations.getByName("main").cinterops.create("hstudyIosBridge") {
+            defFile(project.file("src/iosMain/nativeInterop/cinterop/hstudyIosBridge.def"))
+            packageName("com.hstudy.app.iosbridge")
+        }
     }
 
     sourceSets {

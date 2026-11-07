@@ -61,7 +61,10 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
 - 计时进行中通知：iOS 没有可持续刷新的常驻通知（Live Activity 需额外 entitlement），
   改为图标角标显示进度百分比 + 固定 identifier 的即时本地通知（后台可见）。
 - 文件分享（iPad）：新版 SDK 未把 `popoverPresentationController` 暴露给 cinterop，
-  分享面板以 pageSheet 形式呈现（批量 KVC 赋值 `modalPresentationStyle`），不需要锚点。
+  分享面板以 pageSheet 形式呈现（`modalPresentationStyle` 由 ObjC 桥接设置），不需要锚点。
+- 通知文案赋值：`UNMutableNotificationContent` 的 title/body/sound 在 Kotlin 侧继承为只读属性，
+  NSObject 的 KVC 也未暴露；两处均由 `hstudyIosBridge`
+  （`composeApp/src/iosMain/nativeInterop/cinterop/hstudyIosBridge.def`）在 ObjC 侧完成赋值。
 - 局域网设备发现：cinterop 未暴露 `-[NSData getBytes:length:]`，且
   `NSNetServiceBrowserDelegate` 的 didFind/didRemove 两个回调在 Kotlin 侧签名冲突（只能实现其一），
   因此主机名取 Bonjour 的 `.local` 名称（系统 mDNSResponder 可解析），下线设备由下次扫描前清空兜底。

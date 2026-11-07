@@ -31,30 +31,6 @@ jobs:
         # 走 legacy 的 ~/.konan 工具链，避免 kspKotlinIos* 以 in-process 方式加载
         # org.jetbrains.kotlin.cli.utilities.MainKt 时的 ClassNotFoundException。
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
-      - name: Dump SDK headers and cinterop symbols on failure
-        if: failure()
-        run: |
-          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          echo "SDK=$SDK"
-          echo "=== UNNotificationContent.h ==="
-          grep -n "interface\|@property\|title\|body\|sound" \
-            "$SDK/System/Library/Frameworks/UserNotifications.framework/Headers/UNNotificationContent.h" | head -60 || true
-          echo "=== UIModalPresentationStyle enumerators ==="
-          grep -rhno "UIModalPresentation[A-Za-z]*" \
-            "$SDK/System/Library/Frameworks/UIKit.framework/Headers/"*.h | sort -u | head -40 || true
-          echo "=== Foundation KVC declarations ==="
-          grep -rn "setValue:(nullable id)value forKey\|setValuesForKeysWithDictionary" \
-            "$SDK/System/Library/Frameworks/Foundation.framework/Headers/"*.h | head -20 || true
-          echo "=== ~/.konan ==="
-          ls -la "$HOME/.konan" || true
-          DIST=$(find "$HOME/.konan" -maxdepth 1 -type d -name "kotlin-native-prebuilt*" | head -1)
-          echo "DIST=$DIST"
-          ls "$DIST/klib/platform" 2>/dev/null || true
-          for L in $(find "$DIST/klib/platform/ios_simulator_arm64" -maxdepth 1 \( -iname "*uikit*" -o -iname "*foundation*" -o -iname "*notification*" \) | head -6); do
-            echo "-- klib $L"
-            grep -rhoa -E "setValuesForKeysWithDictionary[A-Za-z:]*|setValue:[A-Za-z:_]*|UIModalPresentation[A-Za-z]*" "$L" 2>/dev/null | sort -u | head -30 || true
-            "$DIST/bin/klib" contents "$L" 2>/dev/null | grep -E "setValues|UIModalPresentation|popoverPresentationController" | head -20 || true
-          done
       - name: Build iOS app (simulator, unsigned)
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj \

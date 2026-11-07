@@ -2,6 +2,7 @@
 
 package com.hstudy.app.platform
 
+import com.hstudy.app.iosbridge.HStudyUsePageSheetPresentation
 import platform.Foundation.NSString
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
@@ -32,9 +33,8 @@ class IosFileSharer : FileSharer {
         val url = NSURL.fileURLWithPath(path)
         val vc = UIActivityViewController(activityItems = listOf(url), applicationActivities = null)
         // iPad 上分享面板没有 popover 锚点会直接抛异常，这里改用 pageSheet 形式呈现。
-        // 新 SDK 既没把 popoverPresentationController 也没把 UIModalPresentationStyle 的常量
-        // 暴露给 cinterop，所以用批量 KVC 按原始值赋值（UIModalPresentationPageSheet = 1）。
-        vc.setValuesForKeysWithDictionary(mapOf("modalPresentationStyle" to 1L))
+        // 新 SDK 没把 popoverPresentationController 暴露给 cinterop，呈现样式改由 ObjC 桥接设置。
+        HStudyUsePageSheetPresentation(vc)
         root.presentViewController(vc, animated = true, completion = null)
     }
 

@@ -1,5 +1,8 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.hstudy.app.platform
 
+import com.hstudy.app.iosbridge.HStudyFillNotificationContent
 import platform.Foundation.NSDateComponents
 import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
@@ -28,13 +31,13 @@ class IosNotificationScheduler : NotificationScheduler {
 
     override fun schedule(reminder: ScheduledReminder) {
         val content = UNMutableNotificationContent()
-        // 同 IosDeviceFeedback：新 SDK 只暴露只读属性，改用批量 KVC 赋值
-        val values = mutableMapOf<String, Any>(
-            "title" to reminder.title.ifBlank { defaultTitle(reminder.kind) },
-            "body" to reminder.body
+        // title/body/sound 在 Kotlin 侧只暴露为只读属性，赋值由 ObjC inline 桥接完成（同 IosDeviceFeedback）。
+        HStudyFillNotificationContent(
+            content,
+            reminder.title.ifBlank { defaultTitle(reminder.kind) },
+            reminder.body,
+            UNNotificationSound.defaultSound
         )
-        UNNotificationSound.defaultSound?.let { sound -> values["sound"] = sound }
-        content.setValuesForKeysWithDictionary(values)
 
         val components = NSDateComponents().apply {
             hour = reminder.hour.coerceIn(0, 23).toLong()
