@@ -1,5 +1,19 @@
 # HStudy 版本更新记录
 
+## V3.0.0 (2026-11-07)
+**Kotlin Multiplatform 重构：一套代码同时支持 Android 与 iOS**
+
+### 架构变更
+1. 工程由单模块 `app/`（纯 Android）重构为 `composeApp/`（KMP）：`commonMain` 承载全部业务与 UI（16 实体/10 DAO/12 仓库/43 屏幕），`androidMain`/`iosMain` 仅保留平台实现；`iosApp/` 为 Xcode SwiftUI 壳工程
+2. 工具链升级：Kotlin 1.9.22→2.1.20，AGP 8.2.2→8.5.2，Gradle 8.5→8.9，Compose BOM→Compose Multiplatform 1.7.3
+3. Room 2.6.1→2.7.0（KMP + BundledSQLiteDriver + @ConstructedBy）；DataStore 1.0→1.1.1（多平台）；Coil 2.5→3.0；导航由 androidx.navigation 迁移为轻量共享 `AppNavigator`；org.json→kotlinx.serialization；java.time→kotlinx-datetime
+4. 平台桥接统一契约 `platform/Platform.kt`：通知/闹钟（Android AlarmManager ↔ iOS UNUserNotificationCenter）、文件分享（FileProvider ↔ UIActivityViewController）、相机（CameraX intent ↔ UIImagePickerController）、设备发现（NSD ↔ Bonjour）
+5. 数据兼容：Android 数据库与偏好文件保持原位置 `<dataDir>/databases/hstudy_db`、`<dataDir>/datastore/hstudy_prefs.preferences_pb`；schema 仍为 v12，v1→v12 迁移与迁移前自动备份原样保留；积分五大不变量（审批计分、bizKey 去重、幂等、对称撤销、追加式台账）逻辑零改动
+
+### 版本管理
+- GitHub 私有仓库 `yaohehe/hstudy`；基线 tag `v2.88-android`；CI：Android 构建/测试、iOS（macOS runner）构建、tag 触发 Release 自动发布 APK
+- versionName 3.0.0 / versionCode 100；规范见 docs/VERSIONING.md
+
 ## V2.88 (2026-09-06)
 **积分规则调整：删除证明审核加分 + 两项分值下调**
 

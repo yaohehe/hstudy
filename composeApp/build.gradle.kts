@@ -99,10 +99,3 @@ dependencies {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
-
-composeCompiler {
-    optIn.addAll(
-        "androidx.compose.material3.ExperimentalMaterial3Api",
-        "androidx.compose.foundation.layout.ExperimentalLayoutApi"
-    )
-}

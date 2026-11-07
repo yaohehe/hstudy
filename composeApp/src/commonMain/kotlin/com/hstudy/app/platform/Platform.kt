@@ -9,6 +9,9 @@ object Platform {
         private set
     lateinit var cacheDir: String
         private set
+    /** Android 为应用 dataDir（数据库/偏好历史位置所在），iOS 与 filesDir 一致 */
+    lateinit var dataDir: String
+        private set
     var notifications: NotificationScheduler = NoopNotificationScheduler
     var fileSharer: FileSharer = NoopFileSharer
     var camera: CameraLauncher = NoopCameraLauncher
@@ -17,6 +20,7 @@ object Platform {
     fun init(
         filesDir: String,
         cacheDir: String,
+        dataDir: String = filesDir,
         notifications: NotificationScheduler = NoopNotificationScheduler,
         fileSharer: FileSharer = NoopFileSharer,
         camera: CameraLauncher = NoopCameraLauncher,
@@ -24,6 +28,7 @@ object Platform {
     ) {
         this.filesDir = filesDir
         this.cacheDir = cacheDir
+        this.dataDir = dataDir
         this.notifications = notifications
         this.fileSharer = fileSharer
         this.camera = camera

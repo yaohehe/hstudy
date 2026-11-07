@@ -12,12 +12,12 @@ import kotlin.random.Random
 
 /**
  * DataStore 必须每文件单实例：原 Android 版通过 Context.preferencesDataStore(name = "hstudy_prefs")
- * 委托保证进程内单例，文件位于 <filesDir>/datastore/hstudy_prefs.preferences_pb。
+ * 委托保证进程内单例，文件位于 <dataDir>/datastore/hstudy_prefs.preferences_pb（dataStoreFile 基于 dataDir）。
  * 这里保持完全相同的文件名与相对路径，确保老 Android 用户的偏好数据无缝存活。
  */
 private val dataStoreInstance: DataStore<Preferences> by lazy {
     PreferenceDataStoreFactory.createWithPath(
-        produceFile = { Platform.filesDir.toPath() / "datastore" / "hstudy_prefs.preferences_pb" }
+        produceFile = { Platform.dataDir.toPath() / "datastore" / "hstudy_prefs.preferences_pb" }
     )
 }
 

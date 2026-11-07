@@ -25,6 +25,7 @@ class HStudyApplication : Application() {
         Platform.init(
             filesDir = filesDir.absolutePath,
             cacheDir = cacheDir.absolutePath,
+            dataDir = dataDir.absolutePath,
             notifications = AndroidNotificationScheduler(this),
             fileSharer = AndroidFileSharer(this),
             camera = AndroidCameraLauncher(this),

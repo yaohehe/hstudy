@@ -23,8 +23,8 @@ import okio.Path.Companion.toPath
  * 3. 回退：用户如需回退到旧版本，可用备份文件手动替换数据库文件后安装旧版。
  *
  * KMP 说明：原 Android 实现使用 Context/java.io.File，这里改为 okio.FileSystem +
- * [Platform.filesDir]。数据库文件位置与 DatabaseFactory 保持一致（<filesDir>/hstudy_db）；
- * 同时兼容旧 Android 版的 databases/hstudy_db 位置（升级安装时旧库仍在原处）。
+ * [Platform.dataDir]。数据库文件位置与 DatabaseFactory 保持一致（<dataDir>/databases/hstudy_db），
+ * 与旧 Android 版升级安装时旧库原位兼容。
  */
 object MigrationSafetyHelper {
 
@@ -58,10 +58,11 @@ object MigrationSafetyHelper {
      */
     fun backupIfExists() {
         try {
-            // 新 KMP 位置（DatabaseFactory）优先；兼容旧 Android 版 databases/ 位置
+            // 正式位置（DatabaseFactory）：<dataDir>/databases/hstudy_db；兼容早期 KMP 快照位置 filesDir/hstudy_db
+            val dbDirPath = Platform.dataDir.toPath() / "databases" / DB_NAME
             val filesPath = Platform.filesDir.toPath()
             val legacyPath = runCatching { filesPath.parent?.let { it / "databases" / DB_NAME } }.getOrNull()
-            val candidates = listOfNotNull(filesPath / DB_NAME, legacyPath)
+            val candidates = listOfNotNull(dbDirPath, filesPath / DB_NAME, legacyPath)
             val dbFile = candidates.firstOrNull { fs.exists(it) } ?: return
             val backupDir = Platform.filesDir.toPath() / BACKUP_DIR
             fs.createDirectories(backupDir)

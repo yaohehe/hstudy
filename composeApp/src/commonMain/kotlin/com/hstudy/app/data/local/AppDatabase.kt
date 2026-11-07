@@ -45,7 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
 
 // Room 编译器（KSP）会为每个目标平台生成 actual 实现（内部实例化 AppDatabase_Impl），
 // 因此无需手写 androidMain/iosMain 的 actual object（手写反而会与生成代码冲突）。
-@Suppress("KotlinNoActualForExpect")
+@Suppress("NO_ACTUAL_FOR_EXPECT", "KotlinNoActualForExpect")
 expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }

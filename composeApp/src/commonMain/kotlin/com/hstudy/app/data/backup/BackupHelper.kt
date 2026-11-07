@@ -22,7 +22,7 @@ import okio.Path.Companion.toPath
  * - 原 Android 版把备份放在 getExternalFilesDir 并通过 FileProvider/Intent 分享二进制文件；
  *   跨平台 [com.hstudy.app.platform.FileSharer] 只支持文本分享，因此分享/导入时将二进制
  *   快照包装为 Base64 JSON 信封（type=hstudy_db_backup）。本地备份文件仍是原始 SQLite 快照。
- * - 数据库位置与 DatabaseFactory 一致：<filesDir>/hstudy_db。
+ * - 数据库位置与 DatabaseFactory 一致：<dataDir>/databases/hstudy_db。
  * - [restore] 成功后调用方必须重启应用（Android 可用进程重启；iOS 提示用户重启），
  *   以重新初始化 AppGraph 中所有数据仓库。
  */
@@ -40,7 +40,7 @@ object BackupHelper {
 
     private fun backupPath(): Path = Platform.filesDir.toPath() / BACKUP_FILE_NAME
 
-    private fun dbPath(): Path = Platform.filesDir.toPath() / DB_NAME
+    private fun dbPath(): Path = Platform.dataDir.toPath() / "databases" / DB_NAME
 
     /** 是否存在可用备份 */
     fun hasBackup(): Boolean = fs.exists(backupPath())
