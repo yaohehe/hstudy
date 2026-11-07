@@ -58,19 +58,10 @@ jobs:
           xcrun simctl boot "$UDID" 2>/dev/null || echo "SMOKE: boot returned non-zero (device may already be booted)"
           APP=$(find build/ios/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           xcrun simctl install "$UDID" "$APP"
-          # macOS runner 没有 GNU timeout：后台附加控制台输出，40s 后只断开附加，不杀进程
-          xcrun simctl launch --console "$UDID" com.hstudy.app.ios > console.log 2>&1 &
-          CONSOLE_PID=$!
-          sleep 40
-          kill "$CONSOLE_PID" 2>/dev/null || true
-          wait "$CONSOLE_PID" 2>/dev/null || true
-          echo "=== app console output (tail 60) ==="
-          tail -60 console.log || true
-          echo "=== simulator logs mentioning the app ==="
-          xcrun simctl spawn "$UDID" log show --style compact --last 3m 2>/dev/null \
-            | grep -iE "hstudy|iosApp|compose|exception|crash|signal" | tail -40 || true
-          echo "=== process state after launch window ==="
-          xcrun simctl spawn "$UDID" launchctl list | grep -iE "hstudy|iosApp" || echo "SMOKE: no launchctl entry"
+          xcrun simctl launch "$UDID" com.hstudy.app.ios | tee launch.log
+          sleep 25
+          echo "=== process state after 25s ==="
+          xcrun simctl spawn "$UDID" launchctl list | grep -iE "hstudy|iosApp" || echo "SMOKE: no app entry in launchctl (GUI apps are not always listed here)"
           xcrun simctl io "$UDID" screenshot smoke.png
           ls -la smoke.png
           echo "=== crash reports (empty means none) ==="
