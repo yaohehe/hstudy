@@ -51,3 +51,7 @@ Podfile.lock
 
 # Version history (optional, keep if desired)
 # version_history.md
+
+# superpowers scratch
+.worktrees/
+.superpowers/
