@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  android-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build release APK (unsigned)
+        run: ./gradlew :composeApp:assembleRelease --no-daemon
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp composeApp/build/outputs/apk/release/*.apk dist/HStudy-${{ github.ref_name }}-unsigned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: dist/*.apk
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
+          generate_release_notes: true
+          body: |
+            HStudy ${{ github.ref_name }} — Android + iOS 跨平台版本。
+            APK 为未签名构建；正式分发请用本地签名流程（见 README）。
+            iOS 构建产物由 iOS Build 工作流产出，TestFlight 分发需 Apple 开发者签名。

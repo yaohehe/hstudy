@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "HStudy"
-include(":app")
+include(":composeApp")
