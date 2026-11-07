@@ -22,6 +22,7 @@ import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskEntity
 import com.hstudy.app.data.local.entity.difficultyStars
 import com.hstudy.app.data.local.entity.effectivePoints
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,6 +33,7 @@ fun ChildTaskListScreen(
     onUploadProof: (Long, String) -> Unit = { _, _ -> },
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.taskList
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -60,15 +62,15 @@ fun ChildTaskListScreen(
     val undoAndReport: suspend (Long, String) -> Unit = { taskId, title ->
         val clawedBack = app.pointRepository.undoTaskCheckIn(taskId)
         snackbarHostState.showSnackbar(
-            if (clawedBack > 0) "↩️ 已撤销 $title，扣回 $clawedBack 分"
-            else "↩️ 已撤销 $title（尚未审批，无积分变动）"
+            if (clawedBack > 0) strings.undoClawedBackMessage(title, clawedBack)
+            else strings.undoPendingApprovalMessage(title)
         )
     }
 
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "🎯 今日打卡",
+                title = strings.checkInTitle,
                 onNavigateBack = onNavigateBack,
                 actions = { PointsBadge(points = totalPoints) }
             )
@@ -93,10 +95,10 @@ fun ChildTaskListScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilterChip(selected = selectedCategory == null, onClick = { selectedCategory = null }, label = { Text("全部") })
-                    FilterChip(selected = selectedCategory == TaskCategory.BASIC, onClick = { selectedCategory = if (selectedCategory == TaskCategory.BASIC) null else TaskCategory.BASIC }, label = { Text("基础") })
-                    FilterChip(selected = selectedCategory == TaskCategory.ENHANCEMENT, onClick = { selectedCategory = if (selectedCategory == TaskCategory.ENHANCEMENT) null else TaskCategory.ENHANCEMENT }, label = { Text("提升") })
-                    FilterChip(selected = selectedCategory == TaskCategory.HABIT, onClick = { selectedCategory = if (selectedCategory == TaskCategory.HABIT) null else TaskCategory.HABIT }, label = { Text("习惯") })
+                    FilterChip(selected = selectedCategory == null, onClick = { selectedCategory = null }, label = { Text(strings.filterAll) })
+                    FilterChip(selected = selectedCategory == TaskCategory.BASIC, onClick = { selectedCategory = if (selectedCategory == TaskCategory.BASIC) null else TaskCategory.BASIC }, label = { Text(strings.filterBasic) })
+                    FilterChip(selected = selectedCategory == TaskCategory.ENHANCEMENT, onClick = { selectedCategory = if (selectedCategory == TaskCategory.ENHANCEMENT) null else TaskCategory.ENHANCEMENT }, label = { Text(strings.filterEnhancement) })
+                    FilterChip(selected = selectedCategory == TaskCategory.HABIT, onClick = { selectedCategory = if (selectedCategory == TaskCategory.HABIT) null else TaskCategory.HABIT }, label = { Text(strings.filterHabits) })
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
                         "${filteredCompleted}/${filteredTasks.size}",
@@ -125,9 +127,9 @@ fun ChildTaskListScreen(
                                                 val isPerfect = tasks.isNotEmpty() && (completedIds.size + 1) >= tasks.size
                                                 val newlyUnlocked = com.hstudy.app.ui.common.AchievementManager.evaluate(app, isPerfect)
                                                 if (newlyUnlocked.isNotEmpty()) {
-                                                    snackbarHostState.showSnackbar("🏅 解锁成就：${newlyUnlocked.joinToString("、") { it.title }}！")
+                                                    snackbarHostState.showSnackbar(strings.achievementUnlockedMessage(newlyUnlocked.map { it.title }))
                                                 } else {
-                                                    snackbarHostState.showSnackbar("✅ 打卡成功！+${earned}分待家长审核")
+                                                    snackbarHostState.showSnackbar(strings.checkInSuccessMessage(earned))
                                                 }
                                                 showConfetti = true
                                                 delay(1500)
@@ -136,8 +138,8 @@ fun ChildTaskListScreen(
                                             // 撤销窗口
                                             scope.launch {
                                                 val result = snackbarHostState.showSnackbar(
-                                                    message = "✅ ${task.title} +${earned}分（待审核）",
-                                                    actionLabel = "撤销",
+                                                    message = strings.checkInUndoPrompt(task.title, earned),
+                                                    actionLabel = strings.undoButton,
                                                     duration = SnackbarDuration.Short
                                                 )
                                                 if (result == SnackbarResult.ActionPerformed) {
@@ -172,6 +174,7 @@ private fun ChildTaskCard(
     onUndo: () -> Unit = {},
     onUploadProof: () -> Unit = {}
 ) {
+    val strings = LocalStrings.current.taskList
     // 打卡完成时的弹性缩放动画
     var cardScaleTarget by remember { mutableFloatStateOf(1f) }
     LaunchedEffect(isCompleted) {
@@ -240,7 +243,7 @@ private fun ChildTaskCard(
                     if (isCompleted) {
                         Icon(
                             Icons.Filled.CheckCircle,
-                            contentDescription = "已完成(点击撤销)",
+                            contentDescription = strings.completedContentDescription,
                             tint = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier.size(34.dp)
                         )
@@ -270,15 +273,15 @@ private fun ChildTaskCard(
                     // 每日必须标识（未完成会扣分）
                     if (task.isMandatory) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("⚠必须", style = MaterialTheme.typography.labelSmall,
+                        Text(strings.mandatoryBadge, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("+${task.effectivePoints()}分", style = MaterialTheme.typography.labelLarge,
+                        Text(strings.pointsEarnedLabel(task.effectivePoints()), style = MaterialTheme.typography.labelLarge,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = categoryColor)
                         if (task.bonusPoints > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("奖励+${task.bonusPoints}分", style = MaterialTheme.typography.labelSmall,
+                            Text(strings.bonusPointsLabel(task.bonusPoints), style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.tertiary)
                         }
                     }
@@ -291,7 +294,7 @@ private fun ChildTaskCard(
                             onClick = onUploadProof,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                         ) {
-                            Text("📷 证明", style = MaterialTheme.typography.labelSmall,
+                            Text(strings.proofButton, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.tertiary)
                         }
                     }

@@ -8,17 +8,20 @@ data class AppStrings(
     val role: RoleStrings,
     val settings: SettingsStrings,
     val common: CommonStrings,
+    val taskList: TaskListStrings,
 )
 
 val AppStringsZh = AppStrings(
     role = RoleStringsZh,
     settings = SettingsStringsZh,
     common = CommonStringsZh,
+    taskList = TaskListStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
     settings = SettingsStringsEn,
     common = CommonStringsEn,
+    taskList = TaskListStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

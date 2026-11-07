@@ -171,6 +171,116 @@ class StringsCopyTest {
         assertEquals("Increase min", AppStringsEn.common.increaseLabel("min"))
     }
 
+    /**
+     * 孩子任务列表页（Task 8，`ui/child/ChildTaskListScreen.kt`）漏译守卫：16 个字面量 → 16 个字段，
+     * 一一对应（本页没有 CommonComponents 那种"同形异义"合并，也没有一条字面量需要拆成两个字段）。
+     *
+     * 7 个函数型字段不在本清单里（`assertDiffers` 收 `Pair<String, String>`，函数不可比），
+     * 由下面两个测试覆盖；整表 CJK 扫描同样看不见它们。
+     */
+    @Test
+    fun taskListCopyDiffers() {
+        val zh = AppStringsZh.taskList
+        val en = AppStringsEn.taskList
+        assertDiffers(
+            zh.checkInTitle to en.checkInTitle,
+            zh.filterAll to en.filterAll,
+            zh.filterBasic to en.filterBasic,
+            zh.filterEnhancement to en.filterEnhancement,
+            zh.filterHabits to en.filterHabits,
+            zh.undoButton to en.undoButton,
+            zh.completedContentDescription to en.completedContentDescription,
+            zh.mandatoryBadge to en.mandatoryBadge,
+            zh.proofButton to en.proofButton,
+        )
+    }
+
+    /**
+     * 7 条插值文案的双语显式断言（spec §8.3）。期望串逐字手打，参数取页面真实传入的形状
+     * （任务标题、积分整数、成就名列表），这样钉住的是设备上真正渲染出来的句子。
+     *
+     * 中文侧的期望串同时是"迁移前后字节相同"的证据：空格位置照抄源文件
+     * （`扣回 $clawedBack 分` 有空格、`+$earned分` 没有），任何人改动中文措辞都会在这里红。
+     */
+    @Test
+    fun taskListInterpolatedCopyPinsBothLanguages() {
+        assertEquals(
+            "↩️ 已撤销 每日阅读，扣回 5 分",
+            AppStringsZh.taskList.undoClawedBackMessage("每日阅读", 5),
+        )
+        assertEquals(
+            "↩️ Check-in undone for Daily reading · 5 points removed",
+            AppStringsEn.taskList.undoClawedBackMessage("Daily reading", 5),
+        )
+        assertEquals(
+            "↩️ 已撤销 每日阅读（尚未审批，无积分变动）",
+            AppStringsZh.taskList.undoPendingApprovalMessage("每日阅读"),
+        )
+        assertEquals(
+            "↩️ Check-in undone for Daily reading (not approved yet, so no points changed)",
+            AppStringsEn.taskList.undoPendingApprovalMessage("Daily reading"),
+        )
+        assertEquals(
+            "🏅 解锁成就：启航、周冠军！",
+            AppStringsZh.taskList.achievementUnlockedMessage(listOf("启航", "周冠军")),
+        )
+        assertEquals(
+            "🏅 Achievements unlocked: Blast Off, Weekly Champion!",
+            AppStringsEn.taskList.achievementUnlockedMessage(listOf("Blast Off", "Weekly Champion")),
+        )
+        assertEquals("✅ 打卡成功！+5分待家长审核", AppStringsZh.taskList.checkInSuccessMessage(5))
+        assertEquals(
+            "✅ Checked in! +5 points pending approval",
+            AppStringsEn.taskList.checkInSuccessMessage(5),
+        )
+        assertEquals("✅ 每日阅读 +5分（待审核）", AppStringsZh.taskList.checkInUndoPrompt("每日阅读", 5))
+        assertEquals(
+            "✅ Daily reading +5 points (pending approval)",
+            AppStringsEn.taskList.checkInUndoPrompt("Daily reading", 5),
+        )
+        assertEquals("+5分", AppStringsZh.taskList.pointsEarnedLabel(5))
+        assertEquals("+5 points", AppStringsEn.taskList.pointsEarnedLabel(5))
+        assertEquals("奖励+3分", AppStringsZh.taskList.bonusPointsLabel(3))
+        assertEquals("Reward +3 points", AppStringsEn.taskList.bonusPointsLabel(3))
+    }
+
+    /**
+     * 英文 one/other 分支（spec §3 末句 + §8.3 的"覆盖英文 one/other"）。
+     *
+     * 本页 5 条把积分数值插进句子的文案都必须走单复数：`+1 points` 是英文语法错误，
+     * 而 1 分在本工程是真实取值（`TaskEntity.points` 可为 1，`bonusPoints` 同理，
+     * `undoTaskCheckIn` 返回值也可为 1），不是假想边界。
+     * 同时钉住**中文没有单复数**：中文侧 1 与 5 同形，防止有人把英文的 if 复制回中文表。
+     */
+    @Test
+    fun taskListEnglishPluralsCoverOneAndOther() {
+        assertEquals("+1 point", AppStringsEn.taskList.pointsEarnedLabel(1))
+        assertEquals("+2 points", AppStringsEn.taskList.pointsEarnedLabel(2))
+        assertEquals("Reward +1 point", AppStringsEn.taskList.bonusPointsLabel(1))
+        assertEquals("Reward +8 points", AppStringsEn.taskList.bonusPointsLabel(8))
+        assertEquals(
+            "✅ Checked in! +1 point pending approval",
+            AppStringsEn.taskList.checkInSuccessMessage(1),
+        )
+        assertEquals(
+            "✅ Daily reading +1 point (pending approval)",
+            AppStringsEn.taskList.checkInUndoPrompt("Daily reading", 1),
+        )
+        assertEquals(
+            "↩️ Check-in undone for Daily reading · 1 point removed",
+            AppStringsEn.taskList.undoClawedBackMessage("Daily reading", 1),
+        )
+        // 成就同理：一条用单数，两条用复数（上面那条已钉复数）
+        assertEquals(
+            "🏅 Achievement unlocked: Blast Off!",
+            AppStringsEn.taskList.achievementUnlockedMessage(listOf("Blast Off")),
+        )
+        // 中文没有单复数变化：1 与 5 同形，别把英文的 if 复制回中文表
+        assertEquals("+1分", AppStringsZh.taskList.pointsEarnedLabel(1))
+        assertEquals("奖励+1分", AppStringsZh.taskList.bonusPointsLabel(1))
+        assertEquals("✅ 打卡成功！+1分待家长审核", AppStringsZh.taskList.checkInSuccessMessage(1))
+    }
+
     @Test
     fun stringsForPicksInstance() {
         // assertSame 而非 assertEquals：数据类的结构相等会让"新建一个内容相同实例"也通过，
