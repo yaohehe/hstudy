@@ -50,9 +50,19 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          DEVICE=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devicetypes'];print([v['name'] for k,v in d.items() if v['isAvailable'] and k.startswith('iPhone')][-1])")
-          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import json,sys;d=json.load(sys.stdin)['runtimes'];print([v['identifier'] for k,v in d.items() if v['isAvailable'] and v['name'].startswith('iOS')][-1])")
+          # simctl -j 的 devicetypes 是列表、runtimes 是以标识符为键的字典，这里两种都兼容
+          DEVICE=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devicetypes']
+          items=list(d.values()) if isinstance(d,dict) else d
+          print([v['name'] for v in items if v.get('isAvailable') and v.get('name','').startswith('iPhone')][-1])")
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['runtimes']
+          items=list(d.values()) if isinstance(d,dict) else d
+          print([v['identifier'] for v in items if v.get('isAvailable') and v.get('name','').startswith('iOS')][-1])")
           echo "device=$DEVICE runtime=$RUNTIME"
+          test -n "$DEVICE" && test -n "$RUNTIME"
           UDID=$(xcrun simctl create hstudy-smoke "$DEVICE" "$RUNTIME")
           xcrun simctl boot "$UDID"
           APP=$(find build/ios/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
