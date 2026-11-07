@@ -76,7 +76,7 @@ android {
         applicationId = "com.hstudy.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 100
+        versionCode = 30000
         versionName = "3.0.0"
     }
     buildTypes {

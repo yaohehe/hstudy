@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.backup.BackupHelper
 import com.hstudy.app.platform.Platform
+import com.hstudy.app.platform.restartApp
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.flow.first
@@ -169,8 +170,13 @@ fun ParentSettingsScreen(
                                         val result = BackupHelper.restore()
                                         result.fold(
                                             onSuccess = {
-                                                // 跨平台层无 Context，无法自重启进程：提示用户手动重启 App
-                                                snackbarHostState.showSnackbar("✅ 恢复成功，请重新启动 App 以生效")
+                                                // 与原 v2.88 一致：先提示，再延时让 Snackbar 显示，然后重启进程
+                                                snackbarHostState.showSnackbar("✅ 恢复成功，即将重启应用...")
+                                                kotlinx.coroutines.delay(1200)
+                                                if (!restartApp()) {
+                                                    // iOS 系统不允许应用自重启，回退为提示用户手动重启
+                                                    snackbarHostState.showSnackbar("请重新启动 App 以生效")
+                                                }
                                             },
                                             onFailure = { snackbarHostState.showSnackbar("❌ 恢复失败：${it.message}") }
                                         )

@@ -1,6 +1,8 @@
 package com.hstudy.app.data.backup
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.hstudy.app.AppGraph
+import com.hstudy.app.data.local.execSQL
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ioDispatcher
 import com.hstudy.app.platform.systemFileSystem
@@ -49,10 +51,21 @@ object BackupHelper {
     /** 备份数据库（VACUUM INTO 安全快照），返回备份文件路径 */
     suspend fun backup(): Result<String> = withContext(ioDispatcher) {
         try {
-            val db = AppGraph.database
             val backupFile = backupPath()
+            val dbFile = dbPath()
+            // 原实现用 db.openHelper.writableDatabase（Android-only；Room KMP 的 useConnection 是 internal），
+            // 这里用同一个 BundledSQLiteDriver 另开一条连接执行 VACUUM INTO，
+            // 快照内容与逐字节等价的原方案一致（SQLite 会自动合入 WAL 中已提交的数据）。
+            if (!fs.exists(dbFile)) {
+                return@withContext Result.failure(Exception("数据库文件尚未创建，暂时无法备份"))
+            }
             if (fs.exists(backupFile)) fs.delete(backupFile)
-            db.openHelper.writableDatabase.execSQL("VACUUM INTO '$backupFile'")
+            val connection = BundledSQLiteDriver().open(dbFile.toString())
+            try {
+                connection.execSQL("VACUUM INTO '${backupFile}'")
+            } finally {
+                connection.close()
+            }
             Result.success(backupFile.toString())
         } catch (e: Exception) {
             Result.failure(e)

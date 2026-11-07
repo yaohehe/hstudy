@@ -39,7 +39,7 @@ fun monotonicMillis(): Long = bootMark.elapsedNow().inWholeMilliseconds
 
 /** 文件存在性（替代 java.io.File(path).exists()） */
 fun fileExists(path: String): Boolean = try {
-    okio.FileSystem.SYSTEM.exists(with(okio.Path.Companion) { path.toPath() })
+    com.hstudy.app.platform.systemFileSystem.exists(with(okio.Path.Companion) { path.toPath() })
 } catch (_: Exception) {
     false
 }

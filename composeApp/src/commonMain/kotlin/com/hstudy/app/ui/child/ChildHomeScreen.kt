@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.navigation.Screen
 import kotlinx.coroutines.launch

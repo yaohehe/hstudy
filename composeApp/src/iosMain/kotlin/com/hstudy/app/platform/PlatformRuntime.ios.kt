@@ -12,3 +12,6 @@ actual val systemFileSystem: FileSystem get() = FileSystem.SYSTEM
  * 因此与原 Android 版行为等价。
  */
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
+
+/** iOS 无应用自重启 API（原 Android 版用 launch intent + Runtime.exit）；返回 false 由调用方提示手动重启 */
+actual fun restartApp(): Boolean = false

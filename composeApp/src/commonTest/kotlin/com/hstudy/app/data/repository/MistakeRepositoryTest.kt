@@ -106,14 +106,14 @@ class MistakeRepositoryTest {
     )
 
     @Test
-    fun addMistake_returns_valid_id() = runBlocking {
+    fun addMistake_returns_valid_id(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake(title = "错题1"))
         assertTrue(id > 0)
     }
 
     @Test
-    fun getMistakeById_returns_inserted_mistake() = runBlocking {
+    fun getMistakeById_returns_inserted_mistake(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake(title = "错题A"))
         val found = repo.getMistakeById(id)
@@ -122,13 +122,13 @@ class MistakeRepositoryTest {
     }
 
     @Test
-    fun getMistakeById_returns_null_for_missing_id() = runBlocking {
+    fun getMistakeById_returns_null_for_missing_id(): Unit = runBlocking {
         val (_, repo) = newRepo()
         assertNull(repo.getMistakeById(999))
     }
 
     @Test
-    fun deleteMistake_removes_the_mistake() = runBlocking {
+    fun deleteMistake_removes_the_mistake(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake())
         repo.deleteMistake(id)
@@ -136,7 +136,7 @@ class MistakeRepositoryTest {
     }
 
     @Test
-    fun setMastered_marks_mistake_as_mastered() = runBlocking {
+    fun setMastered_marks_mistake_as_mastered(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake())
         repo.setMastered(id, true)
@@ -146,7 +146,7 @@ class MistakeRepositoryTest {
     }
 
     @Test
-    fun setMastered_false_clears_masteredAt() = runBlocking {
+    fun setMastered_false_clears_masteredAt(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake(isMastered = true))
         repo.setMastered(id, false)
@@ -156,7 +156,7 @@ class MistakeRepositoryTest {
     }
 
     @Test
-    fun reviewMistake_increments_reviewCount_and_sets_lastReviewAt() = runBlocking {
+    fun reviewMistake_increments_reviewCount_and_sets_lastReviewAt(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake(reviewCount = 2))
         repo.reviewMistake(id, points = 5, note = "复习笔记")
@@ -168,14 +168,14 @@ class MistakeRepositoryTest {
     }
 
     @Test
-    fun reviewMistake_does_nothing_for_missing_id() = runBlocking {
+    fun reviewMistake_does_nothing_for_missing_id(): Unit = runBlocking {
         val (_, repo) = newRepo()
         // Should not throw
         repo.reviewMistake(999)
     }
 
     @Test
-    fun saveVariation_updates_note_and_hasVariation_flag() = runBlocking {
+    fun saveVariation_updates_note_and_hasVariation_flag(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake())
         val mistake = repo.getMistakeById(id)!!
@@ -187,7 +187,7 @@ class MistakeRepositoryTest {
     }
 
     @Test
-    fun updateMistake_persists_changes() = runBlocking {
+    fun updateMistake_persists_changes(): Unit = runBlocking {
         val (_, repo) = newRepo()
         val id = repo.addMistake(makeMistake(title = "原标题"))
         val mistake = repo.getMistakeById(id)!!
