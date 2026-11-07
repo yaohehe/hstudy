@@ -500,7 +500,7 @@ git commit -m "feat(i18n): 角色选择页双语"
 
 **Interfaces:**
 - Consumes: `UserPreferences.setAppLanguage`、`appLanguage` Flow、`LocalStrings`
-- Produces: `data class SettingsStrings(val languageTitle: String, val languageSystem: String, val languageZh: String, val languageEn: String, val languageNote: String, val partialTranslationNote: String)`；`AppStrings.settings`
+- Produces: `LocalDisplayLanguage`（根节点提供生效语言，页面不得重复解析）；`data class SettingsStrings(val languageTitle: String, val languageSystem: String, val languageZh: String, val languageEn: String, val languageNote: String, val partialTranslationNote: String)`；`AppStrings.settings`
 
 - [ ] **Step 1: 写失败测试**
 
@@ -546,7 +546,7 @@ data class SettingsStrings(
 )
 
 val SettingsStringsZh = SettingsStrings(
-    languageTitle = "语言",
+    languageTitle = "🌐 语言",
     languageSystem = "跟随系统",
     languageZh = "中文",
     languageEn = "English",
@@ -555,7 +555,7 @@ val SettingsStringsZh = SettingsStrings(
 )
 
 val SettingsStringsEn = SettingsStrings(
-    languageTitle = "Language",
+    languageTitle = "🌐 Language",
     languageSystem = "System default",
     languageZh = "中文",
     languageEn = "English",
@@ -571,7 +571,7 @@ val SettingsStringsEn = SettingsStrings(
 ```kotlin
     val strings = LocalStrings.current.settings
     val prefs = remember { UserPreferences() }
-    val storedLanguage by prefs.appLanguage.catch { emit(null) }.collectAsState(initial = null)
+    val storedLanguage by AppGraph.userPreferences.appLanguage.collectAsState(initial = AppGraph.startupLanguage)
     val current = appLanguageFromStorage(storedLanguage)
 
     // 标题 + 三个可选项；点击写入偏好并即时生效
@@ -594,7 +594,10 @@ val SettingsStringsEn = SettingsStrings(
             label = { Text(strings.languageEn) },
         )
     }
-    Text(strings.partialTranslationNote, style = MaterialTheme.typography.bodySmall)
+    // 只在英文态显示"部分页面未适配"说明（spec §7）；生效语言由根节点提供，页面不得自行解析
+    if (LocalDisplayLanguage.current == DisplayLanguage.EN) {
+        Text(strings.partialTranslationNote, style = MaterialTheme.typography.bodySmall)
+    }
 ```
 若该页已有 ViewModel/scope，用既有 scope 而非 `AppGraph.appScope`。`FilterChip` 若未在该页 import，补 `import androidx.compose.material3.FilterChip`。
 
