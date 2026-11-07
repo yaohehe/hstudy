@@ -23,6 +23,7 @@
 - 提交信息用仓库既有风格：中文、`feat(i18n):` / `test(i18n):` / `docs:` 前缀。
 - 第一阶段规模：**362 条**（10 个目标文件，按文件去重），其中 **67 条含插值**需函数化；占全仓去重 1406 条的 26%。
 - 英文译文必须遵循 spec §11 已确认术语表（Task 0）；表中没有的新词先补进 §11 再写文案。
+- 页面侧取文案统一写 `val strings = LocalStrings.current.<group>`（Ruling 13）；根节点 `App.kt` 保留 `strings`（它负责 provide）。
 
 ## File Structure
 
