@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.AmbientBackground
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.common.bouncyClickable
@@ -25,6 +26,7 @@ fun RoleSelectScreen(
     onChildSelected: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.role
     val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
     // 徽章浮动动画
@@ -72,7 +74,7 @@ fun RoleSelectScreen(
 
                 // 标题（强字重对比）
                 Text(
-                    text = "学习积分奖励",
+                    text = strings.brandTitle,
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
@@ -80,7 +82,7 @@ fun RoleSelectScreen(
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Text(
-                    text = "好习惯，看得见 · 选择你的身份",
+                    text = strings.tagline,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp),
@@ -95,16 +97,16 @@ fun RoleSelectScreen(
                     ) {
                         RoleCard(
                             emoji = "👨‍👩‍👧",
-                            title = "我是家长",
-                            subtitle = "发布任务 · 管理积分 · 设置奖励",
+                            title = strings.parentEntry,
+                            subtitle = strings.parentDesc,
                             gradient = listOf(Color(0xFF90CAF9), Color(0xFF42A5F5)),
                             onClick = onParentSelected,
                             modifier = Modifier.weight(1f)
                         )
                         RoleCard(
                             emoji = "🧒",
-                            title = "我是孩子",
-                            subtitle = "完成任务 · 获取积分 · 兑换奖励",
+                            title = strings.childEntry,
+                            subtitle = strings.childDesc,
                             gradient = listOf(Color(0xFFFFCC80), Color(0xFFFF9800)),
                             onClick = onChildSelected,
                             modifier = Modifier.weight(1f)
@@ -114,15 +116,15 @@ fun RoleSelectScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                         RoleCard(
                             emoji = "👨‍👩‍👧",
-                            title = "我是家长",
-                            subtitle = "发布任务 · 管理积分 · 设置奖励",
+                            title = strings.parentEntry,
+                            subtitle = strings.parentDesc,
                             gradient = listOf(Color(0xFF90CAF9), Color(0xFF42A5F5)),
                             onClick = onParentSelected
                         )
                         RoleCard(
                             emoji = "🧒",
-                            title = "我是孩子",
-                            subtitle = "完成任务 · 获取积分 · 兑换奖励",
+                            title = strings.childEntry,
+                            subtitle = strings.childDesc,
                             gradient = listOf(Color(0xFFFFCC80), Color(0xFFFF9800)),
                             onClick = onChildSelected
                         )
