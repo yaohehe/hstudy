@@ -121,7 +121,9 @@ class SimpleDateFormat(private val pattern: String, private val locale: Locale =
  */
 class Calendar private constructor(private var stamp: Long) {
 
-    val timeInMillis: Long get() = stamp
+    var timeInMillis: Long
+        get() = stamp
+        set(value) { stamp = value }
     val time: Date get() = Date(stamp)
 
     fun set(field: Int, value: Int): Calendar {
