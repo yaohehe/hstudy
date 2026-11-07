@@ -35,4 +35,5 @@ jobs:
           body: |
             HStudy ${{ github.ref_name }} — Android + iOS 跨平台版本。
             APK 为未签名构建；正式分发请用本地签名流程（见 README）。
-            iOS 构建产物由 iOS Build 工作流产出，TestFlight 分发需 Apple 开发者签名。
+            iOS 构建产物由 iOS Build 工作流产出，TestFlight 分发需 Apple 开发者签名。      - name: Ensure gradlew is executable
+        run: chmod +x gradlew

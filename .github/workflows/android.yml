@@ -25,4 +25,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: HStudy-debug-apk
-          path: composeApp/build/outputs/apk/debug/*.apk
+          path: composeApp/build/outputs/apk/debug/*.apk      - name: Ensure gradlew is executable
+        run: chmod +x gradlew

@@ -34,4 +34,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: HStudy-ios-simulator-app
-          path: build/ios/Build/Products/Debug-iphonesimulator/*.app
+          path: build/ios/Build/Products/Debug-iphonesimulator/*.app      - name: Ensure gradlew is executable
+        run: chmod +x gradlew
