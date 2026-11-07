@@ -44,3 +44,31 @@ jobs:
         with:
           name: HStudy-ios-simulator-app
           path: build/ios/Build/Products/Debug-iphonesimulator/*.app
+      - name: Smoke test on simulator (install + launch + screenshot)
+        # 冒烟验证：证明 .app 在模拟器里真的能装能起，而不是只完成链接。
+        # 模拟器启动有偶发失败，故不阻塞发布闸门，只留证据与截图工件。
+        continue-on-error: true
+        run: |
+          set -e
+          DEVICE=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devicetypes'];print([v['name'] for k,v in d.items() if v['isAvailable'] and k.startswith('iPhone')][-1])")
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import json,sys;d=json.load(sys.stdin)['runtimes'];print([v['identifier'] for k,v in d.items() if v['isAvailable'] and v['name'].startswith('iOS')][-1])")
+          echo "device=$DEVICE runtime=$RUNTIME"
+          UDID=$(xcrun simctl create hstudy-smoke "$DEVICE" "$RUNTIME")
+          xcrun simctl boot "$UDID"
+          APP=$(find build/ios/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.hstudy.app.ios | tee launch.log
+          sleep 20
+          echo "=== process state after 20s ==="
+          xcrun simctl spawn "$UDID" launchctl list | grep -i hstudy || echo "SMOKE: no hstudy launchctl entry"
+          xcrun simctl io "$UDID" screenshot smoke.png
+          ls -la smoke.png
+          echo "=== crash reports (empty means none) ==="
+          find "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data" -name '*.ips' -o -name 'Crash*' 2>/dev/null | head -10 || true
+          xcrun simctl terminate "$UDID" com.hstudy.app.ios || echo "SMOKE: terminate skipped (process already gone)"
+          xcrun simctl delete "$UDID"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: HStudy-ios-simulator-smoke
+          path: smoke.png
