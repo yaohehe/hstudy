@@ -26,8 +26,23 @@ jobs:
         run: chmod +x gradlew
       - name: Xcode version
         run: xcodebuild -version && xcrun simctl list runtimes | grep -i ios || true
+      - name: Clear possibly incomplete Kotlin/Native distribution
+        # KSP 的 native 任务从 ~/.konan 的发行包里加载 org.jetbrains.kotlin.cli.utilities.MainKt；
+        # 该目录下若留有上次中断的半解压产物，KGP 不会重新下载，会以 ClassNotFound 失败。
+        run: rm -rf "$HOME/.konan"
       - name: Build Kotlin framework for iOS Simulator
-        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --no-daemon
+        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+      - name: Dump Kotlin/Native distribution on failure
+        if: failure()
+        run: |
+          echo "=== ~/.konan ==="
+          ls -la "$HOME/.konan" || true
+          echo "=== dist top level ==="
+          ls -la "$HOME/.konan"/*/ || true
+          echo "=== jars ==="
+          find "$HOME/.konan" -name "*.jar" | head -80 || true
+          echo "=== tools dir ==="
+          find "$HOME/.konan" -maxdepth 3 -type d -name tools -exec ls -la {} \; || true
       - name: Build iOS app (simulator, unsigned)
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj \
