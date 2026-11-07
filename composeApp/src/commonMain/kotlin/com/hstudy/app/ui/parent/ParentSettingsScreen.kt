@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.backup.BackupHelper
 import com.hstudy.app.i18n.AppLanguage
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.appLanguageFromStorage
 import com.hstudy.app.platform.Platform
@@ -308,11 +310,21 @@ fun ParentSettingsScreen(
                     // 不在这里 new UserPreferences()），写入用 rememberCoroutineScope 的 scope，
                     // 读取用裸 collectAsState（对照上面的 weeklyReportEnabled）——不加 catch 与本页
                     // 其它订阅失败模式一致；App.kt 根组合才需要 catch（那里崩了等于整 app 白屏）。
-                    val storedLanguage by app.userPreferences.appLanguage.collectAsState(initial = null)
+                    // initial 用 AppGraph.bootstrap() 预读的快照而不是 null：null 会被
+                    // appLanguageFromStorage 解析成 SYSTEM，于是「存了 en 的设备」在 DataStore 首次
+                    // emission 之前看到高亮的是「跟随系统」，随后跳一次。App.kt 根组合的 initial 用的是
+                    // 同一个值，两处必须一致，否则首帧文案与首帧选中项对不上。
+                    // 局限同 App.kt：本次会话内改过选择后 startupLanguage 不回写，重进本页的首帧可能
+                    // 仍是启动时的高亮，等首次 emission 校正；比 null 的写法窄，但不消除窗口。
+                    // 注：本段注释用「」而不用英文双引号——scripts/i18n_inventory.py 会把注释里
+                    // 被引号包住的中文也数成待迁移字面量，Task 11 的清单计数会被虚高。
+                    val storedLanguage by app.userPreferences.appLanguage.collectAsState(initial = AppGraph.startupLanguage)
                     val currentLanguage = appLanguageFromStorage(storedLanguage)
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("🌐 ${strings.languageTitle}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            // emoji 属于表里的文案（「🌐 语言」/「🌐 Language」），不在页面里拼接：
+                            // 该页既有四个标题字面量本来就含 emoji，Task 11 按整串迁移，拼在代码里会分叉。
+                            Text(strings.languageTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text(strings.languageNote,
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -338,8 +350,17 @@ fun ParentSettingsScreen(
                                     label = { Text(strings.languageEn) }
                                 )
                             }
-                            Text(strings.partialTranslationNote,
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            // partialTranslationNote 只在英文态出现（spec §7「英文态在该页附一行说明」）。
+                            // 这句话的作用对象是英文读者：他在这里看到界面仍是中文，需要知道「还没适配」
+                            // 而不是「功能坏了」。中文态显示同一句是不通的，Task 11 完成后更是假话，
+                            // 所以不要把它「简化」回无条件渲染。
+                            // 生效语言从根读（LocalDisplayLanguage），不在本页重算
+                            // appLanguageFromStorage(...).resolveWith(systemLanguageTag())：
+                            // 那等于第二份解析实现，会和 App.kt 漂移。
+                            if (LocalDisplayLanguage.current == DisplayLanguage.EN) {
+                                Text(strings.partialTranslationNote,
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

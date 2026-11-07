@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /**
  * [englishTableContainsNoChineseLeftovers] 的显式豁免表：语言的**自称词**（endonym）。
@@ -69,6 +70,17 @@ class StringsCopyTest {
         )
     }
 
+    /**
+     * partialTranslationNote 只在**英文态**渲染（spec §7："英文态在该页附一行说明"）：
+     * 这句话是给英文读者看的——他打开设置看到界面还是中文，需要知道"是还没适配"而不是"有 bug"。
+     * 中文态读同一句是不通的，Task 11 之后更是直接变成假话，所以页面用
+     * `LocalDisplayLanguage.current == DisplayLanguage.EN` 把它守卫起来。
+     *
+     * 本文件**无法**单测这条渲染分支：它发生在组合期，而仓库没有 Compose UI 测试依赖
+     * （Task 12 之前的约定是不新增该依赖）。能被自动证明的只有下面这组 ZH≠EN 漏译守卫，
+     * 以及整表扫描；守卫本身靠 ParentSettingsScreen 处的注释与代码路径承担。
+     * ZH 侧的值仍然保留：data class 要求两份表字段对齐，Task 11 会复用同一字段。
+     */
     @Test
     fun settingsLanguageCopyDiffers() {
         assertDiffers(
@@ -85,6 +97,27 @@ class StringsCopyTest {
         assertEquals("中文", AppStringsEn.settings.languageZh)
         assertEquals("English", AppStringsZh.settings.languageEn)
         assertEquals("English", AppStringsEn.settings.languageEn)
+    }
+
+    /**
+     * 分区标题的装饰性 emoji 属于文案表，不属于页面代码。
+     *
+     * 该页既有四个分区标题都写成 "🔒 家长密码" 这种"emoji 在字面量内部"的形式，
+     * Task 11 迁移这些标题时是按整串搬到表里做的；如果新代码把 emoji 拼在页面里
+     * （`"🌐 ${strings.languageTitle}"`），就凭空多出一条页面内 UI 字面量，
+     * 既违反"UI 文案只在文案表"的约定，也会让 Task 11 的整串替换模式对不上。
+     * 本断言钉住约定：两种 locale 的 languageTitle 都以 🌐 开头，页面只渲染 strings.languageTitle。
+     */
+    @Test
+    fun sectionTitleCarriesItsEmojiInsideTheTable() {
+        assertTrue(
+            AppStringsZh.settings.languageTitle.startsWith("🌐"),
+            "ZH languageTitle 应自带 🌐，实际：${AppStringsZh.settings.languageTitle}",
+        )
+        assertTrue(
+            AppStringsEn.settings.languageTitle.startsWith("🌐"),
+            "EN languageTitle 应自带 🌐，实际：${AppStringsEn.settings.languageTitle}",
+        )
     }
 
     @Test
