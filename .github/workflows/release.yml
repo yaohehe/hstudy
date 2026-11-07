@@ -17,6 +17,8 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      - name: Ensure gradlew is executable
+        run: chmod +x gradlew
       - name: Build release APK (unsigned)
         run: ./gradlew :composeApp:assembleRelease --no-daemon
       - name: Rename APK
@@ -35,5 +37,4 @@ jobs:
           body: |
             HStudy ${{ github.ref_name }} — Android + iOS 跨平台版本。
             APK 为未签名构建；正式分发请用本地签名流程（见 README）。
-            iOS 构建产物由 iOS Build 工作流产出，TestFlight 分发需 Apple 开发者签名。      - name: Ensure gradlew is executable
-        run: chmod +x gradlew
+            iOS 构建产物由 iOS Build 工作流产出，TestFlight 分发需 Apple 开发者签名。

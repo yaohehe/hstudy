@@ -18,6 +18,8 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      - name: Ensure gradlew is executable
+        run: chmod +x gradlew
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
       - name: Build Kotlin framework for iOS Simulator
@@ -34,5 +36,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: HStudy-ios-simulator-app
-          path: build/ios/Build/Products/Debug-iphonesimulator/*.app      - name: Ensure gradlew is executable
-        run: chmod +x gradlew
+          path: build/ios/Build/Products/Debug-iphonesimulator/*.app
