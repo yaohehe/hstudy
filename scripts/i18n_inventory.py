@@ -26,7 +26,9 @@ def main(argv):
         seen = {}
         occurrences = 0
         for lineno, line in enumerate(lines, 1):
-            for match in PATTERN.finditer(line):
+            # 注释里的中文不是可迁移文案；先剥掉行注释，避免把说明文字当成字面量统计进来
+            code = line.split("//", 1)[0]
+            for match in PATTERN.finditer(code):
                 text = match.group(1)
                 occurrences += 1
                 seen.setdefault(text, lineno)
