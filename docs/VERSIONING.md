@@ -9,14 +9,16 @@
   - MAJOR：架构级变更（如 v3.0.0 KMP 重构）。
   - MINOR：新功能。
   - PATCH：缺陷修复。
-- `versionCode`：Android 单调递增整数。约定 `MAJOR*10000 + MINOR*100 + PATCH`（v3.0.0 = 30000 起；当前骨架暂用 100 作为重构过渡，发布前统一）。
-- iOS `CFBundleShortVersionString` 与 versionName 保持一致。
+- `versionCode`：Android 单调递增整数，约定 `MAJOR*10000 + MINOR*100 + PATCH`（v3.0.0 = 30000）。
+- iOS 版本号与 Android 对齐：`CFBundleShortVersionString` = versionName，`CFBundleVersion` = versionCode
+  （`iosApp/Info.plist` 与 `project.pbxproj` 的 `CURRENT_PROJECT_VERSION` 都要改，工程里硬编码引用的是 plist）。
 
 ## 发布流程
-1. 更新 `composeApp/build.gradle.kts`（versionName/versionCode）、`iosApp` Info.plist 版本、`version_history.md`。
+1. 更新 `composeApp/build.gradle.kts`（versionName/versionCode）、`iosApp` 两处版本号、`version_history.md`。
 2. 提交：`release: vX.Y.Z — <摘要>`。
-3. 打 tag：`git tag -a vX.Y.Z -m "..."` 并推送；Release 工作流自动构建 APK、创建 GitHub Release。
-4. iOS TestFlight/App Store 分发需在 macOS 上用 Apple 开发者证书签名（CI 产出未签名模拟器构建供验证）。
+3. 打 tag：`git tag -a vX.Y.Z -m "..."` 并推送；Release 工作流的 `android-release`（未签名 APK）与
+   `ios-release`（未签名模拟器 .app 压缩包）并行构建，`publish` 任务汇总两类工件创建 GitHub Release。
+4. iOS TestFlight/App Store 分发需在 macOS 上用 Apple 开发者证书重新归档签名（CI 只产出未签名模拟器构建供验证）。
 
 ## 历史锚点
 - `v2.88-android`：重构前纯 Android 基线（versionCode 90，DB v12）。
