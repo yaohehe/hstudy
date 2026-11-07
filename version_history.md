@@ -7,11 +7,11 @@
 1. 工程由单模块 `app/`（纯 Android）重构为 `composeApp/`（KMP）：`commonMain` 承载全部业务与 UI（16 实体/10 DAO/12 仓库/43 屏幕），`androidMain`/`iosMain` 仅保留平台实现；`iosApp/` 为 Xcode SwiftUI 壳工程
 2. 工具链升级：Kotlin 1.9.22→2.1.20，AGP 8.2.2→8.5.2，Gradle 8.5→8.9，Compose BOM→Compose Multiplatform 1.7.3
 3. Room 2.6.1→2.7.0（KMP + BundledSQLiteDriver + @ConstructedBy）；DataStore 1.0→1.1.1（多平台）；Coil 2.5→3.0；导航由 androidx.navigation 迁移为轻量共享 `AppNavigator`；org.json→kotlinx.serialization；java.time→kotlinx-datetime
-4. 平台桥接统一契约 `platform/Platform.kt`：通知/闹钟（Android AlarmManager ↔ iOS UNUserNotificationCenter）、文件分享（FileProvider ↔ UIActivityViewController）、相机（CameraX intent ↔ UIImagePickerController）、设备发现（NSD ↔ Bonjour）
+4. 平台桥接统一契约 `platform/Platform.kt`：通知/闹钟（Android AlarmManager ↔ iOS UNUserNotificationCenter）、文件分享（FileProvider ↔ UIActivityViewController）、相机（CameraX intent ↔ UIImagePickerController）、设备发现（NSD ↔ Bonjour）；iOS 侧新增 `hstudyIosBridge` ObjC inline cinterop，用于新 SDK 未把可变通知属性与呈现样式暴露给 Kotlin 的赋值场景
 5. 数据兼容：Android 数据库与偏好文件保持原位置 `<dataDir>/databases/hstudy_db`、`<dataDir>/datastore/hstudy_prefs.preferences_pb`；schema 仍为 v12，v1→v12 迁移与迁移前自动备份原样保留；积分五大不变量（审批计分、bizKey 去重、幂等、对称撤销、追加式台账）逻辑零改动
 
 ### 版本管理
-- GitHub 仓库 `yaohehe/hstudy`（public，以便 macOS runner 构建 iOS）；基线 tag `v2.88-android`；CI：Android 构建/测试、iOS（macOS runner）构建、tag 触发 Release 自动发布 APK
+- GitHub 仓库 `yaohehe/hstudy`（public，以便 macOS runner 构建 iOS）；基线 tag `v2.88-android`；CI：Android 构建/测试（ubuntu）、iOS 构建（macOS runner，`linkDebugFrameworkIosSimulatorArm64` + `xcodebuild` 模拟器包）、tag 触发的 Release 同时发布未签名 APK 与 iOS 模拟器 `.app` 压缩包
 - versionName 3.0.0 / versionCode 30000（按 `MAJOR*10000+MINOR*100+PATCH`）；规范见 docs/VERSIONING.md
 - 纯 Android 工程已归档至 `legacy/android-v2.88/`，不参与构建（`settings.gradle.kts` 仅 include `:composeApp`）
 
