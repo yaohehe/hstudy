@@ -644,62 +644,293 @@ git commit -m "feat(i18n): 家长设置页语言切换（跟随系统/中文/Eng
 
 ---
 
-### Task 6 至 Task 11: 其余页面分组迁移
+### Task 6: 公共控件文案迁移
 
-每个任务都是 Task 4 的同一形态，差别只在页面与条数。**每个任务都必须：先取本页清单 → 建 `<Page>Strings` 并填 zh/en 两份 → 在 `AppStrings` 增字段 → 页面等价替换 → 追加 `assertDiffers` 断言 → 三闸 → 提交。**
+**Files:**
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/CommonStrings.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt`（`AppStrings` 增 `common` 字段，两份聚合实例补值）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/CommonComponents.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`（追加本页断言）
 
-| 任务 | 文件 | 去重条数 | 新增类型 |
-|---|---|---|---|
-| Task 6 | `ui/common/CommonComponents.kt` | 5 | `CommonStrings` |
-| Task 7 | `ui/common/PomodoroTimer.kt`、`ui/focus/ChildFocusStatsScreen.kt`、`ui/focus/ChildFocusTrainingScreen.kt` | 31 + 17 + 20 = 68 | `PomodoroStrings`、`FocusStrings` |
-| Task 8 | `ui/child/ChildTaskListScreen.kt` | 17 | `TaskListStrings` |
-| Task 9 | `ui/child/ChildHomeScreen.kt` | 107 | `ChildHomeStrings` |
-| Task 10 | `ui/parent/ParentHomeScreen.kt`、`ui/parent/ParentDashboardScreen.kt` | 59 + 36 = 95 | `ParentHomeStrings`、`ParentDashboardStrings` |
-| Task 11 | `ui/parent/ParentSettingsScreen.kt` 剩余项 | 64 −（Task 5 已做的语言区） | 并入 `SettingsStrings` |
+**Interfaces:**
+- Consumes: `LocalStrings`、`AppStrings`（Task 3）
+- Produces: `data class CommonStrings(...)`；`AppStrings.common`
 
-对每个任务的统一 Step 1（以 Task 9 为例，替换标题串即可复用）：
+**实测规模：** `ui/common/CommonComponents.kt` 去重 5 条，其中 2 条含插值。
 
-```bash
-python -c "import io;print(io.open('docs/superpowers/plans/2026-11-07-bilingual-stage1-inventory.md',encoding='utf-8').read().split('## child/ChildHomeScreen.kt')[1].split('\n## ')[0])"
-```
+- [ ] **Step 1: 取本页清单**
 
-统一 Step「追加漏译断言」模板（每个字段一行，必须穷举本页所有字段）：
+Run: `python scripts/i18n_inventory.py common/CommonComponents.kt`
+
+- [ ] **Step 2: 建 `CommonStrings`，zh/en 两份都填**
+
+字段命名用 `<元素><用途>` 小驼峰（如 `confirmButton`、`backButton`）；含插值的 2 条写成函数型字段 `val confirmHint: (Int) -> String`。英文必须遵循 spec §11 术语表。
+
+- [ ] **Step 3: 在 `AppStrings` 增 `val common: CommonStrings`，并给 `AppStringsZh` / `AppStringsEn` 补值**
+
+- [ ] **Step 4: 页面等价替换**
+
+在 Composable 内取 `val strings = LocalStrings.current.common`，只把中文字面量替换为 `strings.<field>`（插值用 `strings.<fn>(arg)`）。禁止改动任何逻辑行。
+
+- [ ] **Step 5: 追加漏译断言（穷举本页全部字段，不得省略）**
 
 ```kotlin
     @Test
-    fun childHomeCopyDiffers() {
-        val zh = AppStringsZh.childHome
-        val en = AppStringsEn.childHome
+    fun commonCopyDiffers() {
+        val zh = AppStringsZh.common
+        val en = AppStringsEn.common
         assertDiffers(
-            zh.greeting to en.greeting,
-            zh.todayTasks to en.todayTasks,
-            // …本页其余字段逐行列出，不得省略
+            zh.confirmButton to en.confirmButton,
+            // 本页其余字段逐行列出，不得省略
         )
     }
 ```
 
-含插值的字段（10 个目标文件共 67 条，分布见清单）必须写成函数并补双语断言。下面是 `ui/common/PomodoroTimer.kt` 第 1 条插值文案的真实形态（原文：`剩余 ${min}分${sec}秒 · 息屏后仍会继续计时`），函数化后断言写法：
+- [ ] **Step 6: 三闸 + 越界自检 + 提交**
+
+```bash
+JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ./gradlew :composeApp:testDebugUnitTest --console=plain
+JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ./gradlew :composeApp:assembleDebug --console=plain -q
+git diff -- composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/CommonComponents.kt |
+  grep -E "^[-+]" | grep -vE "^[-+]{3}" | grep -cE "strings\.|LocalStrings|import |val strings"
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/CommonComponents.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 公共控件文案双语"
+```
+
+最后一条计数必须等于该文件 diff 的增删行总数；不等说明动了逻辑，回滚重做。
+
+---
+
+### Task 7: 番茄钟与专注页迁移
+
+**Files:**
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/PomodoroStrings.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/FocusStrings.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt`（增 `pomodoro`、`focus`）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/PomodoroTimer.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus/ChildFocusTrainingScreen.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`
+
+**Interfaces:**
+- Consumes: `LocalStrings`、`AppStrings`（Task 3）
+- Produces: `AppStrings.pomodoro`、`AppStrings.focus`
+
+**实测规模：** 三文件去重 68 条（31 + 17 + 20），其中 14 条含插值。本页建立插值函数化的写法。
+
+- [ ] **Step 1: 取三页清单**
+
+Run: `python scripts/i18n_inventory.py common/PomodoroTimer.kt focus/ChildFocusStatsScreen.kt focus/ChildFocusTrainingScreen.kt`
+
+- [ ] **Step 2: 建 `PomodoroStrings` 与 `FocusStrings`**
+
+`PomodoroTimer.kt` 第一条插值原文是 `剩余 <min>分<sec>秒 · 息屏后仍会继续计时`（Kotlin 里写作 `剩余 ${min}分${sec}秒 · …`），函数化后：
+
+```kotlin
+val PomodoroStringsZh = PomodoroStrings(
+    remainTime = { min, sec -> "剩余 ${min}分${sec}秒 · 息屏后仍会继续计时" },
+    phaseFocus = "专注中",
+    // 其余字段
+)
+
+val PomodoroStringsEn = PomodoroStrings(
+    remainTime = { min, sec -> "$min min $sec s left · Keeps counting with the screen off" },
+    phaseFocus = "Focusing",
+)
+```
+
+- [ ] **Step 3: 在 `AppStrings` 增 `pomodoro` / `focus` 并补两份聚合值**
+
+- [ ] **Step 4: 三个页面各自等价替换**
+
+只换字面量。注意 `PomodoroTimer` 含非 Composable 的状态逻辑：不得把 `CompositionLocal` 存进单例字段，文案要么作为参数传入，要么只在 Composable 内取用。
+
+- [ ] **Step 5: 追加断言，含插值函数双语断言**
 
 ```kotlin
     @Test
     fun pomodoroRemainTimeCopy() {
         assertEquals("剩余 12分30秒 · 息屏后仍会继续计时", AppStringsZh.pomodoro.remainTime(12, 30))
-        assertEquals("12m 30s left · Keeps counting with the screen off", AppStringsEn.pomodoro.remainTime(12, 30))
+        assertEquals("12 min 30 s left · Keeps counting with the screen off", AppStringsEn.pomodoro.remainTime(12, 30))
+    }
+
+    @Test
+    fun pomodoroAndFocusCopyDiffers() {
+        assertDiffers(
+            AppStringsZh.pomodoro.phaseFocus to AppStringsEn.pomodoro.phaseFocus,
+            AppStringsZh.focus.title to AppStringsEn.focus.title,
+            // 其余字段逐行列出，不得省略
+        )
     }
 ```
 
-另有一条需要特别处理：`ui/child/ChildHomeScreen.kt` 存在把**任务标题**插进文案的字符串（原文含 `${hardest.title}`）。这类字段函数参数必须是 `String` 内容参数，key 命名要显式体现（如 `tackleFirstHint(hardestTitle: String, stars: Int, name: String)`），并在迁移时确认只改文案来源、不改取数逻辑。
-
-统一 Step「越界自检」（每个任务收尾必做，期望值 = 该页 diff 行数）：
+- [ ] **Step 6: 三闸 + 越界自检（三个文件各自计数）+ 提交**
 
 ```bash
-git diff -- composeApp/src/commonMain/kotlin/com/hstudy/app/ui/<路径> |
-  grep -E "^[-+]" | grep -vE "^[-+]{3}" |
-  grep -cE "strings\.|LocalStrings|import |val .*Strings"
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/common/PomodoroTimer.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 番茄钟与专注页双语（插值文案函数化首例）"
 ```
 
 ---
 
+### Task 8: 孩子任务列表页迁移
+
+**Files:**
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/TaskListStrings.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt`（增 `taskList`）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/child/ChildTaskListScreen.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`
+
+**Interfaces:**
+- Consumes: `LocalStrings`、`AppStrings`（Task 3）
+- Produces: `AppStrings.taskList`
+
+**实测规模：** 去重 17 条，其中 7 条含插值。
+
+- [ ] **Step 1: 取本页清单**
+
+Run: `python scripts/i18n_inventory.py child/ChildTaskListScreen.kt`
+
+- [ ] **Step 2: 建 `TaskListStrings`**
+
+7 条插值写成函数型字段。英文遵循术语表：积分 = Points、打卡 = Check in、任务 = Task。
+
+- [ ] **Step 3: `AppStrings` 增 `taskList` 并补两份聚合值**
+
+- [ ] **Step 4: 页面等价替换（只换字面量）**
+
+- [ ] **Step 5: 追加 `taskListCopyDiffers`（穷举 17 字段）与 7 条插值函数的双语断言**
+
+- [ ] **Step 6: 三闸 + 越界自检 + 提交**
+
+```bash
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/child/ChildTaskListScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 孩子任务列表页双语"
+```
+
+---
+
+### Task 9: 孩子首页迁移
+
+**Files:**
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/ChildHomeStrings.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt`（增 `childHome`）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/child/ChildHomeScreen.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`
+
+**Interfaces:**
+- Consumes: `LocalStrings`、`AppStrings`（Task 3）
+- Produces: `AppStrings.childHome`
+
+**实测规模：** 去重 107 条（第一阶段最大页），其中 20 条含插值。
+
+**本页特殊风险（实测原文）：**
+
+1. 有把**任务标题**插进文案的字符串：`趁精力充沛，先攻克「<hardest.title>」(<hardestStars><hardestName>)，剩下的会更轻松！`。函数签名必须显式体现内容参数，迁移时只改文案来源、不改 `hardest` 的取数逻辑：
+
+```kotlin
+val tackleFirstHint: (taskTitle: String, stars: Int, name: String) -> String
+```
+
+2. 有透传异常文本的字符串：`导入失败：<result.exceptionOrNull()?.message>`。保留异常消息透传，不吞掉、不改成固定文案。
+
+3. 有扣分提示：`⚠️ 有每日必须任务未完成，已自动扣减 <penalty> 分`。英文按术语表用 Daily must-do。
+
+- [ ] **Step 1: 取本页清单**
+
+Run: `python scripts/i18n_inventory.py child/ChildHomeScreen.kt`
+
+- [ ] **Step 2: 建 `ChildHomeStrings`（107 条 → 字段，其中 20 条函数型）**
+
+- [ ] **Step 3: `AppStrings` 增 `childHome` 并补两份聚合值**
+
+- [ ] **Step 4: 页面等价替换**
+
+- [ ] **Step 5: 追加 `childHomeCopyDiffers`（穷举 107 字段）与 20 条函数断言**
+
+- [ ] **Step 6: 三闸 + 越界自检 + 提交**
+
+```bash
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/child/ChildHomeScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 孩子首页双语（含任务标题插值字段）"
+```
+
+---
+
+### Task 10: 家长首页与仪表盘迁移
+
+**Files:**
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/ParentHomeStrings.kt`
+- Create: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/ParentDashboardStrings.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt`（增 `parentHome`、`parentDashboard`）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentHomeScreen.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentDashboardScreen.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`
+
+**Interfaces:**
+- Consumes: `LocalStrings`、`AppStrings`（Task 3）
+- Produces: `AppStrings.parentHome`、`AppStrings.parentDashboard`
+
+**实测规模：** 去重 95 条（59 + 36），其中 14 条含插值。
+
+- [ ] **Step 1: 取两页清单**
+
+Run: `python scripts/i18n_inventory.py parent/ParentHomeScreen.kt parent/ParentDashboardScreen.kt`
+
+- [ ] **Step 2: 建 `ParentHomeStrings` 与 `ParentDashboardStrings`**
+
+- [ ] **Step 3: `AppStrings` 增两字段并补两份聚合值**
+
+- [ ] **Step 4: 两页等价替换**
+
+- [ ] **Step 5: 追加两页的 `assertDiffers` 穷举断言 + 14 条函数断言**
+
+- [ ] **Step 6: 三闸 + 越界自检（两文件各自计数）+ 提交**
+
+```bash
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentHomeScreen.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentDashboardScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 家长首页与仪表盘双语"
+```
+
+---
+
+### Task 11: 家长设置页剩余文案迁移
+
+**Files:**
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/SettingsStrings.kt`（**扩展既有 data class，不重建**）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentSettingsScreen.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`
+
+**Interfaces:**
+- Consumes: `SettingsStrings`（Task 5 已创建，含语言区字段）
+- Produces: 扩展后的 `SettingsStrings`
+
+**实测规模：** 该页去重 64 条（Task 5 已消化语言区若干条，本页处理剩余项），含插值 10 条。
+
+**顺序约束：** 必须在 Task 5 之后执行——同一文件同一类型，并行会互相覆盖。
+
+- [ ] **Step 1: 取本页清单**
+
+Run: `python scripts/i18n_inventory.py parent/ParentSettingsScreen.kt`
+
+- [ ] **Step 2: 在 `SettingsStrings` 追加字段**
+
+保留 Task 5 的语言字段原样，包括两种语言下同值的 `languageZh` / `languageEn`。
+
+- [ ] **Step 3: 页面等价替换剩余字面量**
+
+- [ ] **Step 4: 追加 `settingsCopyDiffers`，穷举本页新增字段**
+
+自称词 `languageZh` / `languageEn` 不进入 `assertDiffers`（它们在两种语言下故意同值，由 Task 5 的等值断言保护）。
+
+- [ ] **Step 5: 三闸 + 越界自检 + 提交**
+
+```bash
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentSettingsScreen.kt composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 家长设置页剩余文案双语"
+```
+
+---
 ### Task 12: 文档与验证说明
 
 **Files:**
