@@ -31,3 +31,6 @@
 - GitHub 推送：SSH 密钥（本机 `~/.ssh/hstudy_github`，账号级部署用途）。
 - CI：仅用仓库内置 GITHUB_TOKEN；如需签名密钥用 GitHub Secrets。
 - PAT/令牌一律不进代码、不进提交、不进日志。
+## 旧版安卓工程归档
+`legacy/android-v2.88/` 保留 v2.88 单平台 Android 源码作为迁移对照与回退参考，
+不再参与构建（`settings.gradle.kts` 只包含 `:composeApp`）。
