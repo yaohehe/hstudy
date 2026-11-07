@@ -22,7 +22,7 @@
 - 推送前确认无在飞 CI（工作流 `cancel-in-progress: true` 会取消 macOS 任务）。
 - 提交信息用仓库既有风格：中文、`feat(i18n):` / `test(i18n):` / `docs:` 前缀。
 - 第一阶段规模：**362 条**（10 个目标文件，按文件去重），其中 **67 条含插值**需函数化；占全仓去重 1406 条的 26%。
-- 术语表未确认前不得批量生成英文（Task 0 是阻塞门）。
+- 英文译文必须遵循 spec §11 已确认术语表（Task 0）；表中没有的新词先补进 §11 再写文案。
 
 ## File Structure
 
@@ -45,27 +45,15 @@
 
 ---
 
-### Task 0: 术语表确认（阻塞门，非代码）
+### Task 0: 术语表（已完成，无需执行）
 
-**Files:**
-- Modify: `docs/superpowers/specs/2026-11-07-hstudy-bilingual-stage1-design.md`（§11 表格填英文列）
+术语表已于 2026-11-07 与用户确认，定稿在 `docs/superpowers/specs/2026-11-07-hstudy-bilingual-stage1-design.md` §11。
 
-**Interfaces:**
-- Produces: 全计划统一的英文术语，后续每个 `*Strings.kt` 的英文必须引用该表
-
-- [ ] **Step 1: 把 spec §11 的表格补成待确认清单并交给用户**
-
-Run: `python -c "import io;print(io.open('docs/superpowers/specs/2026-11-07-hstudy-bilingual-stage1-design.md',encoding='utf-8').read().split('## 11.')[1].split('## 12.')[0])"`
-把输出（10 行待定术语）连同下面两个高频词一并请用户确认：打卡 `Check-in`、家长审核 `Parent Approval`。
-
-- [ ] **Step 2: 用用户给出的英文替换表格中的「待定英文」列**
-
-- [ ] **Step 3: 提交**
-
-```bash
-git add docs/superpowers/specs/2026-11-07-hstudy-bilingual-stage1-design.md
-git commit -m "docs(spec): 双语术语表确认"
-```
+**对后续所有任务生效的硬约束：**
+- 英文文案必须使用该表中的译法；同一中文概念在 362 条里出现多次时，译法必须一致。
+- `Wish Pool` 需按 §11 的配套文案规则处理（英文态首次进入要带一句解释性副标题，且不得与 Reward Store 混用）。
+- 品牌行与标语允许按英文语序重组，不做逐字硬译（表内已给出 `Study Points & Rewards`、`Build visible habits`）。
+- 表中没有的新术语，先补进 §11 再写文案（一个 PR 内完成，避免边写边造词）。
 
 ---
 

@@ -107,22 +107,36 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 - 按页面分组提交（约 6 个 commit），每组本地三闸：`compileCommonMainKotlinMetadata` → `:composeApp:assembleDebug` → `:composeApp:testDebugUnitTest`；推送后由 CI 复验，Android 必须保持全绿。
 - iOS 侧只需编译/链接通过（现有 iOS Build 工作流覆盖）。
 
-## 11. 术语表（先定，后生成英文）
+## 11. 术语表（已确认，2026-11-07）
 
-实现前需与用户确认下列核心术语的官方英文，第一阶段所有译文遵循该表：
+第一阶段所有译文必须引用本表。选择依据优先是"与代码既有命名一致"，避免界面英文与类名各说一套。
 
-| 中文 | 待定英文 |
-|---|---|
-| 积分 | Points / Stars |
-| 番茄钟 | Pomodoro / Focus Timer |
-| 错题 | Mistakes / Wrong Answers |
-| 习惯 | Habits |
-| 许愿池 | Wish Pool / Rewards Wishlist |
-| 宠物（饱食度/心情） | Pet (Fullness / Mood) |
-| 周报 | Weekly Report |
-| 打卡 | Check-in |
-| 家长审核 | Parent Approval |
-| 设备配对 | Device Pairing |
+| 中文 | 英文 | 依据 |
+|---|---|---|
+| 积分 | **Points** | 代码 `points` / `adjustPoints` / `ParentPointsScreen` |
+| 番茄钟 | **Pomodoro** | 类名 `PomodoroTimer`；英语世界通用该词 |
+| 错题 | **Mistakes** | 包名 `ui/mistake` |
+| 习惯 | **Habits** | 包名 `ui/habit` |
+| 周报 | **Weekly Report** | `WeeklyReportReceiver` / `ReminderKind.WEEKLY_REPORT` |
+| 家长审核 | **Approval** | 审批路径为幂等 approve |
+| 设备配对 | **Pairing** | `PAIR_CODE` / `paired_device` |
+| 宠物饱食度 / 心情 | **Fullness / Mood** | `PET_FULLNESS` / `PET_MOOD` |
+| 打卡（动作） | **Check in / Checked in** | 与"连续"概念分开表达 |
+| 连续打卡 | **Streak** | `streak_milestones_claimed` |
+| 许愿池 | **Wish Pool** | 用户选定，保留品牌感（见下方文案规则） |
+| 抽奖 | **Lucky Draw** | `LAST_LUCKY_DRAW` |
+| 奖励 / 任务 | **Reward / Task** | 直译，无冲突 |
+| 专注 | **Focus** | 包名 `ui/focus` |
+| 每日必须任务 | **Daily must-do** | 实测文案"有每日必须任务未完成，已自动扣减 X 分" |
+| 困难任务 | **Hard task** | 实测文案"还有 N 个困难任务"；代码 `hardTasksNotDone` |
+| 深呼吸 | **Breath** | 实测文案"第 N/M 次深呼吸"；代码 `breathCycle` |
+| 我是家长 / 我是孩子 | **I'm the parent / I'm the learner** | 用户选定 learner，避免 kid 的低龄感，且与 parent 对称 |
+| 学习积分奖励（品牌行） | **Study Points & Rewards** | 实测 `RoleSelectScreen.kt:75` |
+| 好习惯，看得见 | **Build visible habits** | 实测 `RoleSelectScreen.kt:83`，允许按英文语序重组，不逐字硬译 |
+
+**Wish Pool 的配套文案规则**（该词在英文里不常见，需靠句子把语义撑起来）
+- 首次进入许愿池页面时，副标题必须用一句解释性英文，例如 `Spend your points on wishes you set yourself.`
+- 不得在英文态把 Wish Pool 与 Reward Store 混用于同一入口；两者若在同页并列，须各自带一句说明。
 
 ## 12. 风险
 
