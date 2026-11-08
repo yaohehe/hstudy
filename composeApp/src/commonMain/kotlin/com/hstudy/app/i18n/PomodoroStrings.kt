@@ -30,16 +30,24 @@ package com.hstudy.app.i18n
  * 委托读的是最新实例，所以最迟 15 秒后下一次通知刷新就用新语言重写，循环不重启、不丢时长。
  * 中文态输出逐字节不变（不改语言时 `currentStrings === strings`），由
  * `StringsCopyTest.runningNotificationCopyIsPinnedInBothLanguages` 把 [phaseFocus] / [phaseBreak] /
- * [remainTime] 三条双语钉死。**没被这一行覆盖到的两处仍然会滞留旧语言**，理由与范围都写在报告里：
- * · [cheerHalfway] 等 5 条欢呼在 `remember(completedPomodoros) { … .random() }` 里，
- *   key 不含语言，所以要等下一个番茄钟完成才换（把 remember 改成"记索引、渲染时取词"才是控制流改动，
- *   超出本次授权，按"STOP 并报告"处理）；
- * · 宿主页交给 `onComplete` 的 snackbar 闭包捕获的是**页面**当时的 `strings`，与本行无关。
+ * [remainTime] 三条双语钉死。**这一行覆盖到的与没覆盖到的，逐条说**（第 1 轮审查纠正了这里的一处假声明）：
+ * · [cheerHalfway] 等 5 条欢呼原先写成 `remember(completedPomodoros) { listOf(strings.…).random() }`，
+ *   那一版记住的是**文案**，所以 key 里没有语言就不换。上一轮在这里断言"必须改 remember 存储的东西才修得了，
+ *   而那是控制流改动、超出本次授权"——**那句话是假的**。把 remember 改成只记**索引**、渲染时再取词
+ *   （`PomodoroTimer.kt` 现在的 `cheerCandidates` / `cheerIndex` / `halfwayEncouragement` 三行）
+ *   不重启任何协程、不碰计时状态，`random()` 的调用次数与取值范围一个没变，
+ *   中文态输出逐字节不变（值还是那五条 `cheerXxx`，只是取词时机挪到渲染）。
+ *   brief 授权的是"通知**与**欢呼"，所以本次按授权修掉了。
+ * · **仍然会滞留旧语言的只剩一处**：宿主页交给 `onComplete` 的 snackbar（[focusDoneSnackbar]）。
+ *   `currentStrings` 只在 PomodoroTimer 内部生效；`onComplete` 是页面传进来的回调，
+ *   计时协程捕获的是 effect 创建那一刻的 lambda 实例，它读的是**页面**的 `strings`。
+ *   修它要给 `onComplete` 也套一层 `rememberUpdatedState`，那是**参数形态**的改动而不是文案形态的，
+ *   本次未做，进 Task 12 的已知限制清单。
  *
  * 组件的三条函数型字段（[remainTime]、[deepBreathCount]、[breakOverSummary]）+ Task 7b 宿主页的十条
  * （[goldenHourNowNote]、[goldenHourGeneralNote]、[goldenPeriodHour]、[todayFocusSummary]、
  * [overHoursNote]、[completedPomodorosLine]、[focusRecordDescription]、[focusDoneSnackbar]、
- * [durationChip]、[pointsPerFocusRule]）：设计文档 §3 规定带参数
+ * [durationChip]、[pointsPerFocusRule]）+ 第 1 轮审查补的 [targetLabel]：设计文档 §3 规定带参数
  * 文案存函数而不是 `{0}` 模板，因为中英语序不同。函数型字段的返回值不在 data class `toString()` 里，
  * 整表 CJK 守卫看不见它们（Ruling 20-b），所以由 `StringsCopyTest.pomodoroInterpolatedCopyPinsBothLanguages`
  * 与 `StringsCopyTest.pomodoroPageInterpolatedCopyPinsBothLanguages`
@@ -108,6 +116,16 @@ package com.hstudy.app.i18n
  *    选择加 `@Composable` 而不是加 `strings` 形参，是为了让**调用点一行不变**（少一处越界行）；
  *    它在组合期被直接调用，`when` 的分支结构、区间常量、`hour` 实参、返回类型都未动，
  *    变的只有"字面量 → `strings.<字段>`"和函数多了一个 `@Composable` 标记。
+ * 5. **第 1 轮审查的存储修复改的是"实参从哪来"，形态与前四条不同**（Ruling 25 要求，不属于等价替换，
+ *    但四条自查同样逐条走）：宿主页 :45 / :47 / :90 / :103 / :175 / :177 / :181 七行。
+ *    (a) 挪动的 token 只有"存储侧改回规范中文"这一件事，界面文案 token 一个都没回到页面
+ *        （页面里没有新增任何中文字面量，规范值在 [CanonicalFocusText]）；
+ *    (b) 中文态输出逐字节不变：中文侧 [targetLabel] 是恒等函数、[CanonicalFocusText.recordDescription]
+ *        与 [focusRecordDescription] 的中文模板同字，两处等式由测试逐条钉住；
+ *    (c) 控制流、组件、布局参数、`when` 分支一律未动，变的只有三个实参的来源与两处显示前加一层映射；
+ *    (d) 此处 + [CanonicalFocusText] 的注释 + 报告"Fix report (round 1)" §1。
+ *    副作用要写清楚：页面的 `git diff` 双侧闸门这几行**两边都不满足原形态**（新增行没有 `strings.`、
+ *    删除行没有中文），因为这次是把文案**从**存储调用里**拿出来**——报告 §1 逐行点名，不藏计数。
  *
  * 行首 emoji 属于文案表而不是页面代码（Ruling 17）：中文原文就写着 `🍅 专注中`，
  * 所以 ZH 侧照抄、EN 侧同位置保留，页面不再拼 `"🍅 ${strings.x}"`。Task 7b 的宿主页同一条规矩：
@@ -126,12 +144,21 @@ package com.hstudy.app.i18n
  * [breakOverSummary] / [completedPomodorosLine] 的英文带 one/other（`completedPomodoros` 首完成就是 1，
  * "1 Pomodoros" 是真会出现在设备上的语法错误）；`、` 之类分隔符与 `·` 一样归文案表管。
  *
- * **宿主页有两条文案会被写进数据库**（不是 seed，是用户动作记录，spec §5 的禁令针对的是 seed）：
- * [focusRecordDescription] 交给 `pointApprovalRepository.submitApproval(…, description, …)`、
- * `focusRepository.recordFocusSession(minutes, focusTarget, 0)` 的 `focusTarget` 又来自
- * [targetFreeStudy] 等四个预设项。语言切换后**新**记录的描述用当下界面语言、历史记录不变
- * （`focusTarget` 的 `remember { mutableStateOf(...) }` key 里没有 strings，切换语言不会重选默认项，
- * 这是刻意保留的：加了 key 会把用户已选的目标冲掉）。这条后果写进报告 §"concerns"。
+ * **宿主页有两条文本会进数据库，它们不取自本表**（Ruling 25 的落点，Task 7b 第 1 轮审查的 Critical 修复）：
+ * `focus_sessions.taskTitle` 收的是 [CanonicalFocusText.TARGET_FREE_STUDY] 等四个规范中文值
+ * （迁移前页面里写的就是这四个字面量），`point_approvals.description` 收的是
+ * [CanonicalFocusText.recordDescription] 的原文模板（= 本表 [focusRecordDescription] 的中文模板）。
+ * 本地化只发生在渲染时：下拉框与选中值走 [targetLabel]，完成提示走 [focusDoneSnackbar] 前先过 [targetLabel]。
+ * 为什么要这么麻烦：`ChildEfficiencyReportScreen.kt:335` 按 `taskTitle` 分组，
+ * 存界面语言会让同一逻辑目标**永久裂成两根柱**；`PointRepository.kt:165` 又把审批描述拼进
+ * `撤销打卡扣回：…` 写进 `point_records.note`，存英文正文就产出混语句子。
+ * 原先这里写的是"这两条文案会被写进数据库、语言切换后新记录用当下语言"——**那是把缺陷描述成取舍**，
+ * 它属于 spec §5 划出去的边界，不是本阶段可以随手跨越的代价。
+ * 本分支测试期已经写进去的英文行**不回改**（无迁移、无模式匹配回填）：[targetLabel] 认不出就原样通过，
+ * Task 12 的人工清单要求验证前清除应用数据。
+ * 另注：`focusTarget` 的 `remember { mutableStateOf(...) }` key 里仍然没有 `strings`
+ * （加了会把用户已选目标在切换语言时冲掉）——现在这个"不重选"是**正确的**：初值是规范值，
+ * 与语言无关，切换语言只改显示。
  */
 data class PomodoroStrings(
     val phaseBreak: String,
@@ -190,6 +217,7 @@ data class PomodoroStrings(
     val completedPomodorosLine: (count: Int) -> String,
     val focusRecordDescription: (target: String, minutes: Int) -> String,
     val focusDoneSnackbar: (target: String, points: Int) -> String,
+    val targetLabel: (canonical: String) -> String,
     val focusLengthLabel: String,
     val breakLengthLabel: String,
     val durationChip: (minutes: Int, minuteLabel: String) -> String,
@@ -204,6 +232,47 @@ data class PomodoroStrings(
     val schulteEntryButton: String,
     val memoryEntryButton: String,
 )
+
+/**
+ * 专注页写进数据库的**规范文本**（Ruling 25 / spec §5 的落点；Task 7b 第 1 轮审查的 Critical 修复）。
+ *
+ * 为什么这里不是文案表：本对象里的每个值都进 `focus_sessions.taskTitle` 或
+ * `point_approvals.description`（后者还会被 `PointRepository.kt:204` 复制进 `point_records.note`、
+ * 被 `:165` 拼进 `撤销打卡扣回：…`），也参与 `ChildEfficiencyReportScreen.kt:335` 的
+ * `groupBy { it.taskTitle }` 分组。一旦这些位置随界面语言变化，同一逻辑目标会在报表里**永久裂成两根柱**，
+ * 撤销记录还会写出 `撤销打卡扣回：Focus on Free study for 25 min` 这种混语句子。
+ * 更糟的是它当时连"存的是哪种语言"都不确定：`focusTarget` 是实时读的，而 `onComplete` 闭包捕获的是
+ * effect 创建那一刻的 `strings` 实例 —— 同一个番茄钟的两个字段可能来自不同时刻的语言。
+ * 存规范值把这个不确定性关掉：写入的字节与迁移前逐字节相同，历史行与新行仍然同组。
+ *
+ * 三条刻意的取舍：
+ * 1. **不做 schema 变更、不做迁移、不回改历史行**：本分支测试期已经写进去的英文行原样留着，
+ *    [PomodoroStrings.targetLabel] 对认不出的输入**原样通过**，所以那些行仍能显示（显示的是它自己的原文），
+ *    只是仍会与规范中文分在不同组 —— 这条进 Task 12 的人工清单（验证前请清除应用数据）。
+ * 2. **不用稳定 key**（如 `free_study`）：key 与本分支之前的中文行是两个不同的组名，
+ *    换 key 等于把同一个缺陷从"中英分裂"换成"新旧分裂"。
+ * 3. **不在文案表里**：表值随语言实例走，`scripts/i18n_storage_boundary.py` 见到 `strings.` 进
+ *    sink 就该红；把规范值放这里，闸门能继续当硬约束用，而不是靠"读的是中文表所以安全"这种口头论证。
+ *
+ * 中文态输出逐字节不变：四个中文规范值与 [PomodoroStrings.targetFreeStudy] 等四个显示字段同字，
+ * [recordDescription] 与 [PomodoroStrings.focusRecordDescription] 的中文模板同字，
+ * 由 `StringsCopyTest.focusTargetsAreStoredAsCanonicalTextAndLocalizedOnlyAtRender` 逐条钉住
+ * （包括"两个出处必须一模一样"那条等式断言，漂移即红）。
+ */
+object CanonicalFocusText {
+    const val TARGET_FREE_STUDY = "自由学习"
+    const val TARGET_REVIEW_MISTAKES = "复习错题"
+    const val TARGET_PREVIEW_LESSON = "预习新课"
+    const val TARGET_FINISH_HOMEWORK = "完成作业"
+
+    /** 宿主页 :42 的四个预设专注目标（迁移前就是这四个中文字面量，顺序也未变） */
+    val presetTargets: List<String> = listOf(
+        TARGET_FREE_STUDY, TARGET_REVIEW_MISTAKES, TARGET_PREVIEW_LESSON, TARGET_FINISH_HOMEWORK,
+    )
+
+    /** 宿主页 :174 迁移前的原文模板，交给 `pointApprovalRepository.submitApproval` 的描述列 */
+    fun recordDescription(target: String, minutes: Int): String = "专注「$target」${minutes}分钟"
+}
 
 val PomodoroStringsZh = PomodoroStrings(
     phaseBreak = "☕ 休息中",
@@ -241,6 +310,8 @@ val PomodoroStringsZh = PomodoroStrings(
     // ===== ui/focus/ChildPomodoroScreen.kt（Task 7b）：以下每个中文值逐字来自该页迁移前的对应行 =====
     pageTitle = "🍅 番茄钟",                                              // :62
     targetHeading = "🎯 本次专注目标",                                    // :80
+    // 下面四条是**显示侧**的值；写进数据库的是 [CanonicalFocusText] 里的同名规范中文（Ruling 25）。
+    // 中文态两者逐字节相同，所以 [targetLabel] 在中文侧是恒等函数（页面显示的还是这四条中文）。
     targetFreeStudy = "自由学习",                                         // :42 与 :44（focusTarget 初值）
     targetReviewMistakes = "复习错题",                                    // :42
     targetPreviewLesson = "预习新课",                                     // :42
@@ -259,6 +330,8 @@ val PomodoroStringsZh = PomodoroStrings(
     completedPomodorosLine = { count -> "完成 $count 个番茄钟 🍅×$count" },                            // :152
     focusRecordDescription = { target, minutes -> "专注「$target」${minutes}分钟" },                   // :174
     focusDoneSnackbar = { target, points -> "🍅 「$target」专注完成！+${points}分已提交家长审核" },   // :178
+    // 中文态的规范值就是显示值，恒等返回；英文表才做映射（Ruling 25，见 CanonicalFocusText 的注释 3）
+    targetLabel = { canonical -> canonical },
     focusLengthLabel = "专注:",                                           // :190
     breakLengthLabel = "休息:",                                           // :205
     durationChip = { minutes, unit -> "$minutes$unit" },                  // :197 与 :212，单位来自 common.minuteLabel
@@ -316,7 +389,7 @@ val PomodoroStringsEn = PomodoroStrings(
     targetHeading = "🎯 Goal for this session",
     targetFreeStudy = "Free study",
     targetReviewMistakes = "Review mistakes",
-    targetPreviewLesson = "Preview tomorrow's lesson",
+    targetPreviewLesson = "Preview the new lesson",
     targetFinishHomework = "Finish homework",
     goldenHourNowNote = { label ->
         "🌟 Right now is your golden focus window ($label) — that's your best time, make it count!"
@@ -336,7 +409,18 @@ val PomodoroStringsEn = PomodoroStrings(
     },
     focusRecordDescription = { target, minutes -> "Focus on $target for $minutes min" },
     focusDoneSnackbar = { target, points ->
-        "🍅 Focus on '$target' done! +$points ${pointsWord(points)} sent for approval"
+        "🍅 Focus on '$target' complete! +$points ${pointsWord(points)} sent for approval"
+    },
+    // 存储的是规范中文（见 CanonicalFocusText），这里只在渲染时换英文标签；
+    // 认不出来的输入原样返回 —— 数据库里的任务标题、以及本分支测试期已写入的英文行。
+    targetLabel = { canonical ->
+        when (canonical) {
+            CanonicalFocusText.TARGET_FREE_STUDY -> "Free study"
+            CanonicalFocusText.TARGET_REVIEW_MISTAKES -> "Review mistakes"
+            CanonicalFocusText.TARGET_PREVIEW_LESSON -> "Preview the new lesson"
+            CanonicalFocusText.TARGET_FINISH_HOMEWORK -> "Finish homework"
+            else -> canonical
+        }
     },
     focusLengthLabel = "Focus:",
     breakLengthLabel = "Break:",
@@ -351,7 +435,7 @@ val PomodoroStringsEn = PomodoroStrings(
     },
     pointsLadderNote =
         "15 min +3 ${pointsWord(3)} · 25 min +5 ${pointsWord(5)} · 30 min +6 ${pointsWord(6)} · 45 min +9 ${pointsWord(9)}",
-    lockScreenNote = "The timer keeps running with your screen off — lock it and focus on.",
+    lockScreenNote = "It keeps counting even with the screen off — lock it and focus in peace!",
     schulteEntryButton = "🎯 Focus training · Schulte grid (warm-up before focusing)",
     memoryEntryButton = "🧠 Memory span training · number memory (trains working memory)",
 )

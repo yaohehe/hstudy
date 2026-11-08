@@ -12,6 +12,9 @@ package com.hstudy.app.i18n
  * 是同一个 [minutesStatValue] 的两个使用点）。
  * Task 7b 的 31 条 → **30 个新字段**（少的一条是 `🚀 开始训练`：记忆子页第 82 行与舒尔特页第 148 行
  * 同值同义，**复用 [startTrainingButton]** 而不是再造一个）。
+ * 第 1 轮审查后又减到 **27 个**：`确认` / `删除` / `取消` 三条是跨页通用按钮词，
+ * 上收到 [CommonStrings.confirmButton] / [deleteContentDescription] / [cancelButton]（中文值逐字节不变），
+ * 留在页面表里就是 Task 10/11 再造一份的起点——理由写在 [CommonStrings] 的头注释里。
  *
  * 17 条函数型字段（Task 7 的 11 条 + Task 7b 记忆子页的 6 条）：设计文档 §3 规定带参数文案存函数而不是 `{0}` 模板（中英语序不同）。
  * 它们进不了 `StringsCopyTest.englishTableContainsNoChineseLeftovers`（data class `toString()`
@@ -29,19 +32,24 @@ package com.hstudy.app.i18n
  * 有没有空格——别把这两种写法"统一"成同一种，那会改变输出（空格就是要钉住的东西）。
  *
  * **`分` / `秒` 在本表按 occurrence 说，不按整表说**（裁定 1；Task 7 时这里写的是"本表没有任何字段
- * 调用 [pointsWord]"，**那句话从 Task 7b 起对本表不再成立**）：
+ * 调用 [pointsWord]"，那句话在 Task 7b 之后一度不成立，**到第 1 轮审查修复后又成立了** —— 正因为它
+ * 一会儿成立一会儿不成立，这里只逐条点名，不写绝对句）：
  * · 时长一侧：[minutesStatValue] / [recordMinutesValue] / [hoursStatValue] / [secondsStatValue] /
  *   [elapsedValue] / [personalBestValue] 六条全是时长、不接 [pointsWord]，
  *   英文用不随单复数变化的缩写 min / hr / s（与 [CommonStrings] 的 `minuteLabel = "min"`、
  *   `hourLabel = "hr"` 同源，且这些是 StatCard 里 `titleMedium` 的紧凑数值位）；
- * · 积分名词一侧：[dailyPracticeHint]（`还能赚积分～`）里"积分"是名词、不接数值，所以不需要复数函数；
- * · **积分单位一侧（Task 7b 新增，本表第一处）**：[memorySuccessLine] 的 `+${points}分`
- *   （记忆子页第 106 行）同一句里既有"记住 N 位数字"（位数）又有"+N 分"（积分），
- *   所以做成 `(level, points)` 两个实参、英文词形只能出自 [pointsWord]，
- *   页面两处都传同一个 `level`（迁移前就是同一个变量）。这一条由
- *   `StringsCopyTest.pointsAndMinutesSharingOneLineUseSeparateSlots` 与
- *   `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 一起钉住
- *   （后者的字段清单已随本次扩到这一条）。
+ * · 积分名词一侧：[dailyPracticeHint]（`还能赚积分～`）里"积分"是名词、不接数值，所以不需要复数函数，
+ *   它是本表**唯一**提到积分的英文句子；
+ * · **`+N分` 这一处不是积分账（第 1 轮审查的 Minor 修复）**：[memorySuccessLine]（记忆子页第 106 行）
+ *   中文写 `记住了 $level 位数字！+${points}分`，同句既有"位数"又有"分"，所以两个槽做成两个**具名实参**
+ *   `level` / `points`（页面两处都传同一个 `level`，与迁移前一致）。但那一页**不加积分**：
+ *   `ChildMemoryTrainingScreen.kt:52` 明写 `val points = 0  // 训练不直接加分（防止无限刷分）`，
+ *   中文的 `+3分` 是"这轮得 3 分"的口语分数，英文照写 `+3 points` 就成了**断言一笔 never 发生的入账**，
+ *   所以英文改成 `You remembered 3 of 3 digits!`——两个实参都还在（中文侧照旧用 [points] 槽写 `+3分`，
+ *   逐字节未动），只是英文不再把它读成积分。因此**本表目前没有任何字段调用 [pointsWord]**，
+ *   这条仍按 occurrence 记，不要改写成"本表永不出现积分"那种绝对句（上面那句话已经被推翻过一次）。
+ *   分槽与"英文不得把分数写成入账"由 `StringsCopyTest.pointsAndMinutesSharingOneLineUseSeparateSlots`
+ *   与 `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 一起钉住。
  * 记忆子页的 `位数字` 英文写成不带分支的 "digits"，因为页面可达取值最小是 3
  * （`level` 初值 3，`回到 ${level - 1} 位` 那把按钮要求 `level > 3`）；若以后放开下限，
  * 按 [Plurals.kt] 的约定去那里加一个同样窄的 digitsWord，而不是写 `plural(n, word)` 泛化模板。
@@ -79,8 +87,9 @@ package com.hstudy.app.i18n
  *    （`回到 `、` 位`；同上）
  * 10. [memorySuccessLine]：`"🎉 太棒了！记住了 $level 位数字！+${level}分"` →
  *     `strings.memorySuccessLine(level, level)`。迁移前同一句里两个槽位都由同一个 `level` 填，
- *     迁移后表内把它们做成两个**具名实参** `level`（位数）与 `points`（积分），页面仍传同一个变量：
- *     目的是让"位数"与"积分"在结构上分槽（裁定 1），英文的 `+N points` 才能唯一出自 [pointsWord]。
+ *     迁移后表内把它们做成两个**具名实参** `level`（位数）与 `points`（那一页的口语分数），页面仍传同一个变量：
+ *     目的是让"位数"与"分数"在结构上分槽（裁定 1）。英文侧第 1 轮审查后不再写 `+N points`
+ *     ——那一页不加积分，理由与逐字节自查见上面"` 分` / `秒` 按 occurrence 说"那一节。
  *     （`🎉 太棒了！记住了 `、` 位数字！+`、`分`）
  * 宿主页 `ui/focus/ChildPomodoroScreen.kt` 的 4 处（todayFocusSummary/overHoursNote 拆分、
  * durationChip 的单位来自另一张表、pointsPerFocusRule 的两个数字、goldenHourLabel 加 `@Composable`）
@@ -168,8 +177,9 @@ data class FocusStrings(
     val nextTargetLabel: (next: Int) -> String,
     val trainingDoneSnackbar: (seconds: String) -> String,
 
-    // ===== ui/focus/ChildMemoryTrainingScreen.kt（Task 7b 记忆广度子页，17 条 → 16 个字段）=====
-    // 少的那一条是 `🚀 开始训练`：与舒尔特页第 148 行同值同义，复用已有的 [startTrainingButton]。
+    // ===== ui/focus/ChildMemoryTrainingScreen.kt（Task 7b 记忆广度子页，17 条 → 本表 15 个字段）=====
+    // 少的第一条是 `🚀 开始训练`：与舒尔特页第 148 行同值同义，复用已有的 [startTrainingButton]。
+    // 少的第二条是 `确认`：通用按钮词，第 1 轮审查后上收为 [CommonStrings.confirmButton]（值逐字节不变）。
     val memoryTitle: String,
     val memoryHeading: String,
     val memoryHowTo: String,
@@ -178,7 +188,6 @@ data class FocusStrings(
     val memoryShowPrompt: String,
     val memoryWatchHint: String,
     val memoryInputPrompt: (level: Int) -> String,
-    val memoryConfirmButton: String,
     val memorySuccessLine: (level: Int, points: Int) -> String,
     val memoryChallengeButton: (level: Int) -> String,
     val memoryPracticeAgainButton: String,
@@ -187,21 +196,20 @@ data class FocusStrings(
     val memoryRetryButton: String,
     val memoryStepBackButton: (level: Int) -> String,
 
-    // ===== ui/focus/ChildDailyPlanScreen.kt（Task 7b 每日计划子页，14 条 → 14 个字段，全非函数型）=====
+    // ===== ui/focus/ChildDailyPlanScreen.kt（Task 7b 每日计划子页，14 条 → 本表 12 个字段，全非函数型）=====
+    // `删除`（:155）与 `取消`（:199）是通用控件词，第 1 轮审查后上收到 CommonStrings（中文值逐字节不变）。
     val dailyPlanTitle: String,
     val addPlanDescription: String,
     val dailyPlanEmptyHint: String,
     val planAddedSnackbar: String,
     val planCompletedDescription: String,
     val planUncompletedDescription: String,
-    val deletePlanDescription: String,
     val addPlanDialogTitle: String,
     val planSubjectLabel: String,
     val planTimeRangeLabel: String,
     val planStartLabel: String,
     val planEndLabel: String,
     val addPlanButton: String,
-    val cancelButton: String,
 )
 
 val FocusStringsZh = FocusStrings(
@@ -246,7 +254,7 @@ val FocusStringsZh = FocusStrings(
     memoryShowPrompt = "集中注意力，记住这些数字：",                          // :85
     memoryWatchHint = "认真看…",                                          // :88
     memoryInputPrompt = { level -> "数字是什么？凭记忆输入（$level 位）：" },  // :92
-    memoryConfirmButton = "确认",                                          // :102
+    // `确认`（:102）第 1 轮审查后上收为 CommonStrings.confirmButton，中文值未变
     memorySuccessLine = { level, points -> "🎉 太棒了！记住了 $level 位数字！+${points}分" }, // :106
     memoryChallengeButton = { level -> "挑战 $level 位 →" },                // :110（页面传 level + 1）
     memoryPracticeAgainButton = "再练一次",                                 // :111
@@ -262,14 +270,13 @@ val FocusStringsZh = FocusStrings(
     planAddedSnackbar = "✅ 计划已添加",                                    // :107
     planCompletedDescription = "已完成",                                   // :135
     planUncompletedDescription = "未完成",                                  // :138
-    deletePlanDescription = "删除",                                        // :155
+    // `删除`（:155）与 `取消`（:199）第 1 轮审查后上收为 CommonStrings 的同值字段，中文未变
     addPlanDialogTitle = "📋 添加学习计划",                                  // :175
     planSubjectLabel = "学习内容",                                          // :180
     planTimeRangeLabel = "时间段",                                          // :183
     planStartLabel = "开始",                                               // :185
     planEndLabel = "结束",                                                 // :189
     addPlanButton = "添加",                                                // :197
-    cancelButton = "取消",                                                 // :199
 )
 
 val FocusStringsEn = FocusStrings(
@@ -320,9 +327,8 @@ val FocusStringsEn = FocusStrings(
     memoryShowPrompt = "Concentrate and remember these digits:",
     memoryWatchHint = "Watch closely…",
     memoryInputPrompt = { level -> "What were the digits? Type them from memory ($level digits):" },
-    memoryConfirmButton = "Check",
     memorySuccessLine = { level, points ->
-        "🎉 Amazing! You remembered $level digits — +$points ${pointsWord(points)}"
+        "🎉 Amazing! You remembered $points of $level digits!"
     },
     memoryChallengeButton = { level -> "Try $level digits →" },
     memoryPracticeAgainButton = "Practice again",
@@ -338,12 +344,10 @@ val FocusStringsEn = FocusStrings(
     planAddedSnackbar = "✅ Plan added",
     planCompletedDescription = "Done",
     planUncompletedDescription = "Not done",
-    deletePlanDescription = "Delete",
     addPlanDialogTitle = "📋 Add a study plan",
     planSubjectLabel = "What to study",
     planTimeRangeLabel = "Time range",
     planStartLabel = "Start",
     planEndLabel = "End",
     addPlanButton = "Add",
-    cancelButton = "Cancel",
 )

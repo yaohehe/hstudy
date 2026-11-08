@@ -25,6 +25,89 @@ import kotlin.test.assertTrue
 private val EN_TABLE_ENDONYMS = setOf("中文")
 
 /**
+ * 英文**静态**文案里合法提到积分（`point` / `points`）的字段全集（`分组.字段名`）。
+ *
+ * 为什么需要这份清单：[pomodoroAndFocusMinuteUnitsAreMinutesNotPoints] 那两条清单
+ * （"时长字段的英文不得有 points"与"该提积分的字段清单"）都是**开放枚举**——
+ * 以后新增一条时长字段，把 `min` 误译成 `points`，只要它没被加进任何一份清单，
+ * 两条断言都看不见它，守卫形同装饰（Task 7b 第 1 轮审查第 5 条）。
+ * 本清单配合 [englishPointsMentionsAreAClosedSetBothDirections] 把方向反过来：
+ * **从整表渲染串里算出**到底哪些静态值写着 point，再断言它与这份声明**集合相等**（两个方向都要成立）。
+ *
+ * 覆盖范围与其上限（务必先读再改）：
+ * - 只有 `data class` 的静态 String 字段能进这份清单，函数型字段的返回值不在 `toString()` 里
+ *   （Ruling 20-b 的老盲区），那一部分仍靠逐字段字面量断言，见 [pointsAndMinutesSharingOneLineUseSeparateSlots]。
+ * - 因此**新增静态字段**（含时长字段）一定被本断言点名：要么它不提 points（无事），
+ *   要么它提了 points 却没登记 → 红；登记了却不提 → 也红。
+ */
+private val EN_STATIC_POINTS_MENTIONS = setOf(
+    "common.pointsUnit",            // 单位标签本身：`分` = points（Task 6 的同形异义对）
+    "role.brandTitle",              // "Study Points & Rewards"（§11 品牌行）
+    "role.parentDesc",              // "… Manage points …"（名词）
+    "role.childDesc",               // "… Earn points …"（名词）
+    "pomodoro.pointsRulesTitle",    // "💡 Points rules"（名词，不接数值）
+    "pomodoro.pointsLadderNote",    // "15 min +3 points …"（同句两种 `分`，第 4 处词形都出自 pointsWord）
+    "focus.dailyPracticeHint",      // "… you earn points too!"（名词）
+)
+
+/**
+ * 把聚合根的 `toString()` 拆成 `分组.字段名 -> 静态 String 值` 对（Task 7b 第 1 轮审查第 5 条的机器）。
+ *
+ * 为什么用深度扫描而不是正则 `[^)]*`：英文文案里本来就写着括号
+ * （`"🎯 Focus training · Schulte grid (warm-up before focusing)"`），
+ * 非贪婪正则会在那儿断掉；同理"顶层逗号"也不能简单按逗号切——英文句子里就有逗号
+ * （`"Tap the numbers in order, 1→25, as fast as you can…"`），
+ * 所以只承认**后面紧跟 `字段名=`** 的那个逗号是分隔符。
+ * 函数型字段的值是 lambda 句柄（`…$$Lambda/0x…@…`），不含返回值，按既有约定剔除。
+ */
+private fun staticCopyValues(root: Any): List<Pair<String, String>> {
+    val out = mutableListOf<Pair<String, String>>()
+    fun walk(prefix: String, body: String) {
+        for (part in topLevelSegments(body)) {
+            val eq = part.indexOf('=')
+            if (eq <= 0) continue
+            val name = part.substring(0, eq).trim()
+            val value = part.substring(eq + 1).trim()
+            val nested = Regex("""^[A-Za-z][A-Za-z0-9_]*Strings\(.*\)$""").matches(value)
+            if (nested) {
+                walk(name, value.substring(value.indexOf('(') + 1, value.length - 1))
+            } else if (!value.contains("Lambda")) {
+                out += (if (prefix.isEmpty()) name else "$prefix.$name") to value
+            }
+        }
+    }
+    val rendered = root.toString()
+    walk("", rendered.substring(rendered.indexOf('(') + 1, rendered.lastIndexOf(')')))
+    return out
+}
+
+/** 按"深度 0 且后面紧跟 `字段名=`"的逗号切分（见 [staticCopyValues] 的理由）。 */
+private val NEXT_FIELD_AT_COMMA = Regex("""\s*[A-Za-z][A-Za-z0-9_]*=""")
+
+private fun topLevelSegments(text: String): List<String> {
+    val out = mutableListOf<String>()
+    val current = StringBuilder()
+    var depth = 0
+    var i = 0
+    while (i < text.length) {
+        val c = text[i]
+        when {
+            c == '(' -> { depth++; current.append(c) }
+            c == ')' -> { depth--; current.append(c) }
+            // 用 matchAt（在那个位置起匹配）而不是 matches（整串匹配）：
+            // 后者要求把 substring(i+1) 全部吃完，任何带 `=` 之外的尾巴都会让它恒为 false。
+            c == ',' && depth == 0 && NEXT_FIELD_AT_COMMA.matchAt(text, i + 1) != null -> {
+                out.add(current.toString()); current.setLength(0)
+            }
+            else -> current.append(c)
+        }
+        i++
+    }
+    if (current.isNotEmpty()) out.add(current.toString())
+    return out
+}
+
+/**
  * 英文文案表漏译守卫（Task 4-11 复制本文件的模板）。
  *
  * 两条断言互补，缺一不可：
@@ -154,7 +237,34 @@ class StringsCopyTest {
             zh.pointsUnit to en.pointsUnit,
             zh.hourLabel to en.hourLabel,
             zh.minuteLabel to en.minuteLabel,
+            // 第 1 轮审查第 8 条：三条通用按钮词从 FocusStrings 上收到这里（中文值逐字节未变）
+            zh.cancelButton to en.cancelButton,
+            zh.confirmButton to en.confirmButton,
+            zh.deleteContentDescription to en.deleteContentDescription,
         )
+    }
+
+    /**
+     * 通用按钮词的字面量钉死（Task 7b 第 1 轮审查第 8 条的上收配套）。
+     *
+     * 为什么不只是 [commonCopyDiffers] 的 ZH≠EN：`取消` 与 `确认` 是同一对对话框按钮，
+     * 把两个英文值互换（cancelButton="Confirm" / confirmButton="Cancel"）后每条 ZH≠EN 仍成立，
+     * 整表 CJK 扫描也照样干净——与 [commonUnitLabelsPinnedByLiteral] 面对的是**同一类**盲区，
+     * 所以这里同样只钉字面量、不比较关系。
+     *
+     * 为什么这三条在 CommonStrings 而不是各自页面的表里：`取消` 在全仓约 12 个页面、
+     * `删除` 约 10 个页面出现，Task 10 / 11 一定要再写一遍；各页一份就有两份英文可以漂移，
+     * 那正是本表 [CommonStrings.pointsUnit] / [CommonStrings.minuteLabel] 那段"同形异义只能有一个出处"
+     * 要防的事。上收只改出处，中文值一个字节都没动。
+     */
+    @Test
+    fun commonDialogButtonsPinnedByLiteral() {
+        assertEquals("取消", AppStringsZh.common.cancelButton)
+        assertEquals("Cancel", AppStringsEn.common.cancelButton)
+        assertEquals("确认", AppStringsZh.common.confirmButton)
+        assertEquals("Confirm", AppStringsEn.common.confirmButton)
+        assertEquals("删除", AppStringsZh.common.deleteContentDescription)
+        assertEquals("Delete", AppStringsEn.common.deleteContentDescription)
     }
 
     /**
@@ -578,19 +688,65 @@ class StringsCopyTest {
             durationEnOutputs.none { it.contains(pointsWord(2)) },
             "时长字段的英文必须用 min/hr/s，不得混进 points：$durationEnOutputs",
         )
-        // 提到 points 的字段是穷举出来的，不是"整表只允许一条"：Task 7 一条 + Task 7b 四条
+        // 提到 points 的字段是穷举出来的，不是"整表只允许一条"：Task 7 一条 + Task 7b 三条。
+        // 穷举本身是**开放**清单（新加一条时长字段若把 min 误译成 points，这里看不见），
+        // 那一条由 [englishPointsMentionsAreAClosedSetBothDirections] 从整表渲染串闭合掉。
         listOf(
             AppStringsEn.focus.dailyPracticeHint,
             AppStringsEn.pomodoro.focusDoneSnackbar("Free study", 5),
             AppStringsEn.pomodoro.pointsPerFocusRule(5, 1),
             AppStringsEn.pomodoro.pointsLadderNote,
-            AppStringsEn.focus.memorySuccessLine(3, 3),
         ).forEach {
             assertTrue(it.contains("point"), "本该提到积分的字段丢了 points：$it")
         }
+        // 记忆训练页那条**不该**提积分（不加账），它以前在这份清单里，第 1 轮审查后挪到上面那条 assertFalse
+        assertFalse(
+            AppStringsEn.focus.memorySuccessLine(3, 3).contains("point", ignoreCase = true),
+            "memorySuccessLine 的英文又承诺加分了：${AppStringsEn.focus.memorySuccessLine(3, 3)}",
+        )
         // 组件本体里唯一含"水分"的一处与单位无关，别把它当漏译的单位字段改
         assertEquals("💧 喝杯水，补充水分", AppStringsZh.pomodoro.tipDrinkWater)
         assertEquals("💧 Have a glass of water", AppStringsEn.pomodoro.tipDrinkWater)
+    }
+
+    /**
+     * 上面那两条开放清单的**闭合版**（Task 7b 第 1 轮审查第 5 条）。
+     *
+     * [pomodoroAndFocusMinuteUnitsAreMinutesNotPoints] 的两份清单都是"手工枚举"，
+     * 对新字段无效：以后加一条时长字段、英文把 `min` 写成 `points`，只要没人把它加进清单，
+     * 那两条断言一个都不会红。这里改成从**整表渲染串算出**"哪些静态英文值提到 point"，
+     * 再与 [EN_STATIC_POINTS_MENTIONS] 做集合相等（两个方向都要成立）：
+     * - 算出来、没登记 → 红（就是上面那种新字段；报错会把多出的字段名打出来）；
+     * - 登记了、算不出来 → 红（字段被改名/删掉，或词形被换掉了，白名单不能留僵尸）。
+     *
+     * 上限写在 [EN_STATIC_POINTS_MENTIONS] 与 [staticCopyValues] 的注释里：函数型字段的返回值
+     * 进不了 `toString()`，那一部分仍由逐字段字面量断言负责（Ruling 20-b），本测试不声称覆盖它们。
+     * 匹配用 `(?i)\bpoint`（同时抓 Points / points / point），所以 `focus.memorySuccessLine`
+     * 那条"英文不许承诺加分"的英文改动在这里也是同一个方向的（它不再出现在算出的集合里）。
+     */
+    @Test
+    fun englishPointsMentionsAreAClosedSetBothDirections() {
+        val staticValues = staticCopyValues(AppStringsEn).toMap()
+        val mentionPattern = Regex("""(?i)\bpoint""")
+        val actuallyMentioning = staticValues.filterValues { mentionPattern.containsMatchIn(it) }.keys
+
+        // 方向二先单独报错，消息才能指出是"白名单里有、表里查无此串"
+        EN_STATIC_POINTS_MENTIONS.forEach { label ->
+            val value = staticValues[label]
+                ?: error("白名单声称 $label 提积分，但英文表里已找不到这个静态字段。解析出的键: ${staticValues.keys.take(40)}")
+            assertTrue(
+                mentionPattern.containsMatchIn(value),
+                "白名单声称 $label 提积分，实际值里没有：$value",
+            )
+        }
+        // 方向一：集合相等（多一条 = 未披露的新字段，少一条 = 白名单需要一起改）
+        assertEquals(
+            EN_STATIC_POINTS_MENTIONS,
+            actuallyMentioning,
+            "英文静态文案里提到积分的字段集合变了。多出的是未披露的新字段（时长字段把 min 译成 points " +
+                "正是这一类）；缺少的那条要么改回词形，要么把 EN_STATIC_POINTS_MENTIONS 一起改掉。" +
+                "本断言的边界与理由见那份清单的注释。",
+        )
     }
 
     /**
@@ -758,7 +914,7 @@ class StringsCopyTest {
         assertEquals("Focus on Free study for 25 min", en.focusRecordDescription("Free study", 25))
         assertEquals("🍅 「自由学习」专注完成！+5分已提交家长审核", zh.focusDoneSnackbar("自由学习", 5))
         assertEquals(
-            "🍅 Focus on 'Free study' done! +5 points sent for approval",
+            "🍅 Focus on 'Free study' complete! +5 points sent for approval",
             en.focusDoneSnackbar("Free study", 5),
         )
         assertEquals("15分", zh.durationChip(15, AppStringsZh.common.minuteLabel))
@@ -771,9 +927,10 @@ class StringsCopyTest {
 
     /**
      * 数字记忆广度子页（Task 7b，`ui/focus/ChildMemoryTrainingScreen.kt`）漏译守卫：
-     * 去重 17 条 → 本表 16 个新字段（10 个 String 在本清单 + 6 个函数型见
+     * 去重 17 条 → 本表 **15 个**新字段（9 个 String 在本清单 + 6 个函数型见
      * [memoryTrainingInterpolatedCopyPinsBothLanguages]）+ **复用 [FocusStrings.startTrainingButton]**
-     * 一条：第 82 行的 `🚀 开始训练` 与舒尔特页第 148 行同值同义，共用字段而不是再造一个。
+     * 一条：第 82 行的 `🚀 开始训练` 与舒尔特页第 148 行同值同义，共用字段而不是再造一个
+     * + 上收 [CommonStrings.confirmButton] 一条（`确认` 是通用按钮词，第 1 轮审查第 8 条）。
      */
     @Test
     fun memoryTrainingCopyDiffers() {
@@ -785,7 +942,6 @@ class StringsCopyTest {
             zh.memoryHowTo to en.memoryHowTo,
             zh.memoryShowPrompt to en.memoryShowPrompt,
             zh.memoryWatchHint to en.memoryWatchHint,
-            zh.memoryConfirmButton to en.memoryConfirmButton,
             zh.memoryPracticeAgainButton to en.memoryPracticeAgainButton,
             zh.memoryMissPrompt to en.memoryMissPrompt,
             zh.memoryEncourageHint to en.memoryEncourageHint,
@@ -811,7 +967,10 @@ class StringsCopyTest {
         assertEquals("数字是什么？凭记忆输入（4 位）：", zh.memoryInputPrompt(4))
         assertEquals("What were the digits? Type them from memory (4 digits):", en.memoryInputPrompt(4))
         assertEquals("🎉 太棒了！记住了 3 位数字！+3分", zh.memorySuccessLine(3, 3))
-        assertEquals("🎉 Amazing! You remembered 3 digits — +3 points", en.memorySuccessLine(3, 3))
+        // 英文不写 "+3 points"：那一页根本不加积分（ChildMemoryTrainingScreen.kt:52 `val points = 0`），
+        // 中文的 `+3分` 是"这一轮得 3 分"的口语分数，英文照抄就成了一笔永远不会兑现的加分承诺
+        // （第 1 轮审查的 Minor：中文歧义保留、英文侧只改这一处）。
+        assertEquals("🎉 Amazing! You remembered 3 of 3 digits!", en.memorySuccessLine(3, 3))
         assertEquals("挑战 4 位 →", zh.memoryChallengeButton(4))
         assertEquals("Try 4 digits →", en.memoryChallengeButton(4))
         assertEquals("回到 3 位", zh.memoryStepBackButton(3))
@@ -819,8 +978,11 @@ class StringsCopyTest {
     }
 
     /**
-     * 每日计划子页（Task 7b，`ui/focus/ChildDailyPlanScreen.kt`）漏译守卫：14 条字面量 → 14 个字段，
-     * 全是非函数型（清单里插值 0 条）。落在 [FocusStrings] 而不是新造第三张表（Ruling 23）。
+     * 每日计划子页（Task 7b，`ui/focus/ChildDailyPlanScreen.kt`）漏译守卫：14 条字面量 →
+     * 本表 **12 个**字段，全是非函数型（清单里插值 0 条）。落在 [FocusStrings] 而不是新造第三张表（Ruling 23）。
+     *
+     * 少的那两条是 `删除`（:155）与 `取消`（:199）：通用控件词，第 1 轮审查第 8 条把它们上收到
+     * [CommonStrings]（见 [commonDialogButtonsPinnedByLiteral]），中文值逐字节未变。
      *
      * `已完成` / `未完成` 是 `contentDescription`（读屏），与 Task 8 的
      * [TaskListStrings.completedContentDescription]（`已完成(点击撤销)`）**不同值**，所以不能复用那条；
@@ -838,15 +1000,38 @@ class StringsCopyTest {
             zh.planAddedSnackbar to en.planAddedSnackbar,
             zh.planCompletedDescription to en.planCompletedDescription,
             zh.planUncompletedDescription to en.planUncompletedDescription,
-            zh.deletePlanDescription to en.deletePlanDescription,
             zh.addPlanDialogTitle to en.addPlanDialogTitle,
             zh.planSubjectLabel to en.planSubjectLabel,
             zh.planTimeRangeLabel to en.planTimeRangeLabel,
             zh.planStartLabel to en.planStartLabel,
             zh.planEndLabel to en.planEndLabel,
             zh.addPlanButton to en.addPlanButton,
-            zh.cancelButton to en.cancelButton,
         )
+    }
+
+    /**
+     * `开始` / `结束` 这两个词在本工程出现在**三种不同控件**上，英文却必须分别是
+     * Start / End / Stop / Start focusing 四种——它们是同形（同值）不同义，
+     * [assertDiffers] 只看同一字段的 ZH≠EN，**互换两个英文值照样全绿**，
+     * 整表 CJK 扫描也看不见（两边都是英文）。与 [commonUnitLabelsPinnedByLiteral] 同一类盲区，
+     * 所以这里用字面量把六个串一次钉死：Task 7b 的两条轴标签 vs 组件的停止按钮 vs 组件的开始专注按钮。
+     *
+     * 这条断言是 Task 7b 第 1 轮审查的 Minor 补充：`FocusStrings.planEndLabel`（`结束` → "End"）
+     * 与 `PomodoroStrings.stopButton`（`结束` → "Stop"）中文同值、跨两张表，
+     * 以后任何人"顺手统一一下英文"都会让时间块轴标签变成 "Stop"。
+     */
+    @Test
+    fun startAndEndCopyIsPinnedPerControl() {
+        assertEquals("开始", AppStringsZh.focus.planStartLabel)
+        assertEquals("Start", AppStringsEn.focus.planStartLabel)
+        assertEquals("结束", AppStringsZh.focus.planEndLabel)
+        assertEquals("End", AppStringsEn.focus.planEndLabel)
+        // 同一个 `结束` 在计时器按钮上是"停下来"，不是"轴的另一端"
+        assertEquals("结束", AppStringsZh.pomodoro.stopButton)
+        assertEquals("Stop", AppStringsEn.pomodoro.stopButton)
+        // 同一个 `开始` 在计时器主按钮上是动词短语，不是步进器轴标签
+        assertEquals("开始专注", AppStringsZh.pomodoro.startFocusButton)
+        assertEquals("Start focusing", AppStringsEn.pomodoro.startFocusButton)
     }
 
     /**
@@ -861,6 +1046,11 @@ class StringsCopyTest {
      * 时长词形只能是 `分钟` / `min`，位置互换在类型上就写不出来。下面每个用例都**两条一起断言**
      * （brief Step 5：同行双单位必须两条都断言），并另加一条 `points = 1` 的边界，
      * 因为"1 分 = 1 point"正是这一行的实际取值。
+     *
+     * [FocusStrings.memorySuccessLine] 也在同一批里，但它的第二个槽**不是积分**：那一页
+     * `val points = 0`，中文 `+3分` 是这轮的分数量词，所以英文写 `3 of 3 digits` 而不是 `+3 points`，
+     * 并另加一条 assertFalse 钉住"英文不得在这里承诺加分"（第 1 轮审查的 Minor 修复）。
+     * 两个槽的分槽结构照旧保留：中文侧仍然一处读位数、一处读分数。
      */
     @Test
     fun pointsAndMinutesSharingOneLineUseSeparateSlots() {
@@ -879,15 +1069,21 @@ class StringsCopyTest {
             "15 min +3 points · 25 min +5 points · 30 min +6 points · 45 min +9 points",
             en.pointsLadderNote,
         )
-        // 记忆子页第 106 行：`位数字` 是位数、`+N分` 是积分，两个实参在页面里同源（都是 level）
+        // 记忆子页第 106 行：`位数字` 是位数、`+N分` 是那一页的口语分数，两个实参在页面里同源（都是 level）。
+        // 中文侧照旧逐字节不变；英文侧**不**把分数写成积分入账（同一句里 "points" 是假的承诺），
+        // 所以这一条的"分槽"仍在（两个实参各填各的），但英文的第二个槽只能读成"几个记对了"。
         assertEquals("🎉 太棒了！记住了 6 位数字！+6分", AppStringsZh.focus.memorySuccessLine(6, 6))
-        assertEquals("🎉 Amazing! You remembered 6 digits — +6 points", AppStringsEn.focus.memorySuccessLine(6, 6))
+        assertEquals("🎉 Amazing! You remembered 6 of 6 digits!", AppStringsEn.focus.memorySuccessLine(6, 6))
+        assertFalse(
+            AppStringsEn.focus.memorySuccessLine(6, 6).contains("point", ignoreCase = true),
+            "记忆训练页不加积分（ChildMemoryTrainingScreen.kt:52 的 val points = 0），英文不许承诺加分",
+        )
         assertEquals(
             "🍅 「自由学习」专注完成！+1分已提交家长审核",
             zh.focusDoneSnackbar("自由学习", 1),
         )
         assertEquals(
-            "🍅 Focus on 'Free study' done! +1 point sent for approval",
+            "🍅 Focus on 'Free study' complete! +1 point sent for approval",
             en.focusDoneSnackbar("Free study", 1),
         )
     }
@@ -918,6 +1114,77 @@ class StringsCopyTest {
         )
         // 休息 chips 与专注 chips 共用同一个字段（同值同义），所以 3/5/10 与 15/25/30/45 走同一条渲染
         assertEquals("5 min", AppStringsEn.pomodoro.durationChip(5, AppStringsEn.common.minuteLabel))
+    }
+
+    /**
+     * **存储边界**（Task 7b 第 1 轮审查的 Critical；Ruling 25 / spec §5）。
+     *
+     * 上一轮把 `"自由学习"` 换成 `strings.targetFreeStudy` 之后，那个值被写进了
+     * `focus_sessions.taskTitle`，又把 `strings.focusRecordDescription(...)` 写进了
+     * `point_approvals.description`（再由 `PointRepository.kt:204` 复制进 `point_records.note`、
+     * 被 `:165` 拼进 `撤销打卡扣回：…`）。后果是数据按语言分裂：
+     * `ChildEfficiencyReportScreen.kt:335` 按 `taskTitle` 分组，同一逻辑目标**永久裂成两根柱**。
+     * 修法不是"再补一份中文表"，而是**存的字节回到迁移前**、只在渲染时本地化：
+     * 规范值在 [CanonicalFocusText]，显示走 [PomodoroStrings.targetLabel]。
+     *
+     * 下面六组断言各自钉住一件事：
+     * 1. 规范值逐字 = 迁移前页面里写的那四条中文与那条模板；
+     * 2. 规范值 = 中文表的显示值（中文态输出逐字节不变，这是"没有回改历史"的前提）；
+     * 3. 存储模板 = 表内中文读侧模板（两处一旦漂移，中文态就会显示两种写法）；
+     * 4. 渲染时才本地化：四个已知目标各有英文标签，且英文标签与四个显示字段一致（防表内两份英文漂移）；
+     * 5. 认不出的输入**原样通过**：数据库里的任务标题（`tasks.map { it.title }`）与本分支测试期
+     *    已经写进去的英文行都仍能显示——这正是"不做迁移、不做模式匹配回填"能成立的条件；
+     * 6. 页面侧那七行的调用参数本身**测不到**（没有 Compose UI 测试依赖，spec §9），
+     *    能被自动证明的是 `scripts/i18n_storage_boundary.py` 以退出码守住"文案表的值不进 sink"，
+     *    输出贴在任务报告 Fix report §1（修复前 2 处命中、修复后 0）。
+     */
+    @Test
+    fun focusTargetsAreStoredAsCanonicalTextAndLocalizedOnlyAtRender() {
+        val zh = AppStringsZh.pomodoro
+        val en = AppStringsEn.pomodoro
+        // 1. 存储规范值（写进 taskTitle 与 description 的就是这些字节）
+        assertEquals("自由学习", CanonicalFocusText.TARGET_FREE_STUDY)
+        assertEquals("复习错题", CanonicalFocusText.TARGET_REVIEW_MISTAKES)
+        assertEquals("预习新课", CanonicalFocusText.TARGET_PREVIEW_LESSON)
+        assertEquals("完成作业", CanonicalFocusText.TARGET_FINISH_HOMEWORK)
+        assertEquals(
+            listOf("自由学习", "复习错题", "预习新课", "完成作业"),
+            CanonicalFocusText.presetTargets,
+        )
+        assertEquals(
+            "专注「自由学习」25分钟",
+            CanonicalFocusText.recordDescription(CanonicalFocusText.TARGET_FREE_STUDY, 25),
+        )
+        // 2. 中文态：规范值就是显示值，一个字节都没动
+        assertEquals(CanonicalFocusText.TARGET_FREE_STUDY, zh.targetFreeStudy)
+        assertEquals(CanonicalFocusText.TARGET_REVIEW_MISTAKES, zh.targetReviewMistakes)
+        assertEquals(CanonicalFocusText.TARGET_PREVIEW_LESSON, zh.targetPreviewLesson)
+        assertEquals(CanonicalFocusText.TARGET_FINISH_HOMEWORK, zh.targetFinishHomework)
+        // 3. 存储侧模板与读侧中文模板必须同源同字
+        assertEquals(
+            zh.focusRecordDescription(CanonicalFocusText.TARGET_FREE_STUDY, 25),
+            CanonicalFocusText.recordDescription(CanonicalFocusText.TARGET_FREE_STUDY, 25),
+        )
+        // 4. 渲染时本地化：四个已知目标
+        assertEquals("自由学习", zh.targetLabel(CanonicalFocusText.TARGET_FREE_STUDY))
+        assertEquals("复习错题", zh.targetLabel(CanonicalFocusText.TARGET_REVIEW_MISTAKES))
+        assertEquals("Free study", en.targetLabel(CanonicalFocusText.TARGET_FREE_STUDY))
+        assertEquals("Review mistakes", en.targetLabel(CanonicalFocusText.TARGET_REVIEW_MISTAKES))
+        assertEquals("Preview the new lesson", en.targetLabel(CanonicalFocusText.TARGET_PREVIEW_LESSON))
+        assertEquals("Finish homework", en.targetLabel(CanonicalFocusText.TARGET_FINISH_HOMEWORK))
+        assertEquals(en.targetFreeStudy, en.targetLabel(CanonicalFocusText.TARGET_FREE_STUDY))
+        assertEquals(en.targetReviewMistakes, en.targetLabel(CanonicalFocusText.TARGET_REVIEW_MISTAKES))
+        assertEquals(en.targetPreviewLesson, en.targetLabel(CanonicalFocusText.TARGET_PREVIEW_LESSON))
+        assertEquals(en.targetFinishHomework, en.targetLabel(CanonicalFocusText.TARGET_FINISH_HOMEWORK))
+        // 5. 未知输入原样通过（数据库任务标题 / 测试期写入的英文行 / 空值）
+        assertEquals("数学作业", zh.targetLabel("数学作业"))
+        assertEquals("数学作业", en.targetLabel("数学作业"))
+        assertEquals("Free study", en.targetLabel("Free study"))
+        assertEquals("", en.targetLabel(""))
+        // 6. 中文侧必须是恒等函数：否则中文态显示会与存储值分裂
+        listOf("自由学习", "复习错题", "预习新课", "完成作业", "数学作业", "").forEach {
+            assertEquals(it, zh.targetLabel(it), "中文侧 targetLabel 不再是恒等：$it")
+        }
     }
 
     /**

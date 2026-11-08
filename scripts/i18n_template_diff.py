@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 """Ruling 20(b) 的等价性证据：迁移前的页面中文模板 与 迁移后的文案表，逐字节比对。
 
-用法（不带参数就是 Task 7 那一组，直接跑即复现任务报告 §4 的两行结论）：
+用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py
-    python scripts/i18n_template_diff.py --pages-rev d336fb8 --tables-rev HEAD
-    python scripts/i18n_template_diff.py --pages-rev <迁移前的 rev> \\
-        --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
+    python scripts/i18n_template_diff.py --tables-rev ceaf0f5      # 把文案表也钉回历史位置
+    python scripts/i18n_template_diff.py --pages-rev <rev> \\
+        --page <rev>:com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
+
+`--page` 可以写成 `REV:路径`（也可以裸路径，此时用 `--pages-rev`），因为**同一张表可能服务两批
+迁移时间不同的页面**：Task 7 的三页在 d336fb8 还是中文，Task 7b 的三页要到 761b24e 才是中文。
+默认组就按这个方式把 6 个页面各取自己的迁移前 rev，表取工作区 —— 于是"表里每一条整串都能在
+某个页面的迁移前原文里找到，反之亦然"这个命题第一次变得可以被一条命令验证。
+
+组合的规矩（Task 9+ 采用前必读）：表侧整串必须能在**这次带进来的页面**里找到原文。
+只把一张表的一半页面带进命令，另一半页面拥有的字段就会被报成 `invented` —— 那是命令组合问题，
+不是等价性问题。默认组之所以覆盖 6 个页面，是因为 [PomodoroStrings] 与 [FocusStrings] 这两张表
+由 Task 7 + Task 7b 共同填写（Ruling 23 不新建第三张表）。
 
 三层比对（都是"集合相等"，不是条数相等）：
 
@@ -26,18 +36,20 @@
 * 注释里的中文按 Ruling 18 不算可迁移文案，脚本会剥掉 `//` 行注释与 `/* */` 块注释。
 * 表侧字段名按"字面量前最近的一个 `字段 =`"归属，只为把报错指到具体字段，不参与等价性判定。
 
-退出码：[A]、[B] 与 [strict] 残差三者都成立才返回 0，否则返回 1（可当闸门用）。
+退出码：[A]、[B] 与 [strict] 残差三者都成立、且残差全部被"格式串拆分位点"或
+**已披露残差表** [DISCLOSED_RESIDUALS] 解释掉，才返回 0。
 
-[strict] 那一路是本次补上的（原先只看 [A]/[B]）：这两层把数字格式串也塌成记号，所以
-"单位原本写在格式串内部、后来拆进文案表"的那一处在这两层看起来**和等价毫无区别**——
-第二条同样形态的拆分悄悄混进来也照样退 0。现在退 0 需要同时满足：
-* 拆分位点条数不超过 `--max-splits`（默认 1，就是 Task 7 披露的那一处 `strFormat("%.1f 秒", …)`）；
-* 所有 [strict] 残差都能被这些拆分位点解释（页面侧必须是数字格式串开头的字面量，
-  表侧必须是它塌掉格式串后的同形模板），有一条对不上就退 1 并把它打出来。
+为什么要有 DISCLOSED_RESIDUALS（Task 7b 第 1 轮审查第 7 条）：原先的退出条件只承认
+"数字格式串拆分"这一种残差，于是任何**别的**已披露拆分（单位来自另一张表、两个数字进实参位、
+把通用词上收到第三张表）都会让**每一种命令组合**恒退 1。恒红的闸门不会被读，
+只会训练后面的 agent 去加 `--max-splits 99`。现在残差分三类，各自有明确出口：
+1. 格式串拆分（页面字面量以 `%…` 开头）——自动识别，条数受 `--max-splits` 约束；
+2. 已披露的非格式串拆分——必须在 DISCLOSED_RESIDUALS 里成对登记（页面原文 -> 表侧同形模板），
+   登记不上或表侧找不到对应模板就退 1（白名单**会过期**，这是刻意的）；
+3. 没登记的残差——退 1 并原样打出来，处置方式是"要么改代码，要么按 Ruling 20(d) 披露后再登记"。
 
-副作用要知道：默认那一组是 Task 7 专属的（页面取 d336fb8），Task 7b 之后文案表里多了宿主页的字段，
-所以直接跑 `python scripts/i18n_template_diff.py` 会因为"表里有、页面没有"退 1——
-复现 Task 7 报告 §4 那两行结论要写 `--tables-rev ceaf0f5`（Task 7 的提交）。
+`--disclose 页面原文=>表侧模板` 可以临时追加条目（用于新任务的自查），但**默认登记才是长期形态**：
+它让下一个人在同一处看到"上一轮披露了什么"。
 """
 import argparse
 import io
@@ -53,17 +65,61 @@ CJK = re.compile(r"[一-鿿]")
 FORMAT_SPEC = re.compile(r"%[-+ 0#]*[0-9]*(?:\.[0-9]+)?[a-zA-Z]")
 FIELD_ASSIGN = re.compile(r"^\s*(\w+)\s*=", re.MULTILINE)
 
-# Task 7 的默认比对组：页面取迁移前的 d336fb8，表取当前工作区。
+# 默认比对组：番茄钟 + 专注这一整组已迁页面（Task 7 三页 + Task 7b 三页），
+# 每个页面取**自己迁移前**的那个 rev，表取工作区。两张表由这两批任务共同填写（Ruling 23），
+# 所以页面必须一起带上，否则另一半的字段会被报成 invented。
+TASK7_REV = "d336fb8"      # Task 7 迁移前的父提交
+TASK7B_REV = "761b24e"     # Task 7b 迁移前的父提交（Ruling 23 的计划提交）
 DEFAULT_PAGES = [
-    "com/hstudy/app/ui/common/PomodoroTimer.kt",
-    "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt",
-    "com/hstudy/app/ui/focus/ChildFocusTrainingScreen.kt",
+    (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
+    (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
+    (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusTrainingScreen.kt"),
+    (TASK7B_REV, "com/hstudy/app/ui/focus/ChildPomodoroScreen.kt"),
+    (TASK7B_REV, "com/hstudy/app/ui/focus/ChildMemoryTrainingScreen.kt"),
+    (TASK7B_REV, "com/hstudy/app/ui/focus/ChildDailyPlanScreen.kt"),
 ]
 DEFAULT_TABLES = [
     ("com/hstudy/app/i18n/PomodoroStrings.kt", "PomodoroStringsZh"),
     ("com/hstudy/app/i18n/FocusStrings.kt", "FocusStringsZh"),
 ]
 WORKTREE = "WORKTREE"
+REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一个人看不到它，也就不会被复验）"
+
+# 已披露残差的登记处。每条 {"page": 页面原文或 None, "table": 表侧模板或 None, "reason": 披露出处}，
+# page / table 至少给一个；两边的键都是**塌掉插值之后**的模板文本。
+# 只有 Ruling 20(d) 已经在字段 KDoc 与任务报告里点名披露过的位点才能进这里。
+# 为什么两边可以只写一边：抽取器只收"塌掉插值后仍含汉字"的字面量，
+# 所以表侧 `"$minutes$unit"`（塌成 `⟨$⟩⟨$⟩`，一个汉字都没有）根本不会出现在表侧集合里——
+# 那种位点只能登记页面侧那一条（单位来自另一张表），而"页面 `${if …}` 内部被子表达式吃掉的"
+# 那一条只能登记表侧。两边都登记的那条若只剩一边，就是登记过期，退 1。
+DISCLOSED_RESIDUALS = [
+    {
+        "page": "%s分" % VALUE, "table": None,
+        "reason": "Task 7b Ruling 20 例外②：durationChip 的单位实参来自 CommonStrings.minuteLabel，"
+                  "表侧那条 `$minutes$unit` 塌成 %s%s、不含汉字因此不入集合（见 PomodoroStrings 类注释）"
+                  % (VALUE, VALUE),
+    },
+    {
+        "page": "每专注 5 分钟 = +1 分（所有时长均有效）",
+        "table": "每专注 %s 分钟 = +%s 分（所有时长均有效）" % (VALUE, VALUE),
+        "reason": "Task 7b Ruling 20 例外③：两个数字进实参位，把同行两种 `分` 在结构上分槽"
+                  "（见 PomodoroStrings 类注释）",
+    },
+    {
+        "page": None, "table": "（超%s小时）" % VALUE,
+        "reason": "Task 7b Ruling 20 例外①：宿主页 :145 的 `…${if (>=60) \"（超…小时）\" else \"\"}` "
+                  "整段在页面的插值子表达式里，抽取器把它塌成一个数值位，"
+                  "所以这条只在表侧可见（todayFocusSummary / overHoursNote 两个字段）",
+    },
+    # Task 7b 第 1 轮审查第 8 条：三条通用按钮词从 FocusStrings 上收到 CommonStrings，
+    # 中文值逐字节不变，但本命令的表组只有 Pomodoro/Focus 两张表，所以只登记页面侧。
+    {"page": "取消", "table": None,
+     "reason": "审查第 8 条：上收为 CommonStrings.cancelButton（值未变，出处换了）"},
+    {"page": "确认", "table": None,
+     "reason": "审查第 8 条：上收为 CommonStrings.confirmButton（值未变，出处换了）"},
+    {"page": "删除", "table": None,
+     "reason": "审查第 8 条：上收为 CommonStrings.deleteContentDescription（值未变，出处换了）"},
+]
 
 
 def read(rev, rel):
@@ -159,10 +215,10 @@ def scan_interp(src, i):
     return "".join(out), i
 
 
-def page_templates(rev, rels):
+def page_templates(page_specs):
     """页面侧：所有塌掉插值后仍含汉字的字面量 -> {模板: [(文件, 行, 原文是否数字格式串)]}。"""
     found = {}
-    for rel in rels:
+    for rev, rel in page_specs:
         src = read(rev, rel)
         for offset, text in literals(src):
             if not CJK.search(text):
@@ -171,6 +227,52 @@ def page_templates(rev, rels):
             # 以数字格式串开头的字面量 = 单位被写在格式串"里面"，正是 Ruling 20 拆分位点的形状
             found.setdefault(text, []).append((rel, lineno, bool(FORMAT_SPEC.match(text))))
     return found
+
+
+def parse_page_spec(spec, default_rev):
+    """`--page` 支持 `REV:路径` 与裸路径；裸路径需要 `--pages-rev`（页面必须取迁移前的原文）。"""
+    head, sep, tail = spec.partition(":")
+    if sep and "/" not in head and "\\" not in head:
+        return (head, tail)
+    if not default_rev:
+        sys.exit("!! --page %r 没有带 rev，而 --pages-rev 也没给。"
+                 "页面侧必须是**迁移前**的原文（`--pages-rev <rev>` 或写成 `<rev>:%s`），"
+                 "拿工作区的已迁页面来比会把整张表报成 invented。" % (spec, spec))
+    return (default_rev, spec)
+
+
+def apply_disclosures(page, table, entries):
+    """把已披露的残差从两侧集合里摘掉，并校验登记本身没有过期。
+
+    返回 (是否成立, 说明行列表)。校验规则：
+    * 两边都不在本次的集合里 -> 只提示，不判失败（命令可能只带了共享表的一部分页面）；
+    * 只登记了一边的（page 或 table 为 None）：登记的那一边不在 -> 提示；在 -> 摘掉；
+    * 两边都登记了却只找得到一边 -> **失败**：那是"披露与代码不再成对"，
+      也就是有人改了拆分形态却没有跟着改登记（白名单不该变成永久消音）。
+    """
+    notes = []
+    ok = True
+    for entry in entries:
+        page_text = entry.get("page")
+        table_text = entry.get("table")
+        reason = entry.get("reason", "")
+        on_page = page_text in page if page_text else False
+        on_table = table_text in table if table_text else False
+        if not on_page and not on_table:
+            notes.append("    （未用到）%r / %r 都不在本次集合里——命令没带对应的页面或表，"
+                         "不算失败，但这条披露没被复验：%s" % (page_text, table_text, reason))
+            continue
+        if page_text and table_text and on_page != on_table:
+            ok = False
+            notes.append("    （失效）披露成对登记了 %r 与 %r，这次只找得到%s一边：%s"
+                         % (page_text, table_text, "页面" if on_page else "表", reason))
+            continue
+        if page_text and on_page:
+            page.pop(page_text)
+        if table_text and on_table:
+            table.pop(table_text)
+        notes.append("    （已披露）page=%r table=%r：%s" % (page_text, table_text, reason))
+    return ok, notes
 
 
 def table_templates(rev, specs):
@@ -200,29 +302,53 @@ def collapse_formats(text):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--pages-rev", default="d336fb8", help="页面取的 git rev（默认：Task 7 迁移前的父提交）")
+    ap.add_argument("--pages-rev", default=None,
+                    help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE, help="文案表取的位置（默认 WORKTREE，也可给 rev）")
-    ap.add_argument("--page", action="append", dest="pages", help="可重复；相对 %s 的页面路径" % SRC_ROOT)
+    ap.add_argument("--page", action="append", dest="pages",
+                    help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)
     ap.add_argument("--table", action="append", dest="tables", help="可重复；表文件#Zh 变量名")
     ap.add_argument("--max-splits", type=int, default=1,
                     help="允许的 Ruling 20 格式串拆分位点条数（默认 1 = Task 7 披露的那一处）；"
                          "出现第二条未披露的同形拆分时退出码变 1")
+    ap.add_argument("--disclose", action="append", dest="disclose", default=[],
+                    help="临时追加已披露残差：`页面原文` （表侧不再有整串）或 `页面原文=>表侧模板`；"
+                         "长期形态是写进 DISCLOSED_RESIDUALS，好让下一个人看到上一轮披露了什么")
     args = ap.parse_args()
 
-    pages = args.pages or DEFAULT_PAGES
+    if args.pages:
+        pages = [parse_page_spec(p, args.pages_rev) for p in args.pages]
+    else:
+        pages = list(DEFAULT_PAGES)
     tables = [t.split("#") for t in (args.tables or ["%s#%s" % (rel, m) for rel, m in DEFAULT_TABLES])]
 
-    page = page_templates(args.pages_rev, pages)
+    page = page_templates(pages)
     table = table_templates(args.tables_rev, tables)
 
-    print("页面 rev=%s（%d 个文件）/ 文案表 rev=%s（%d 张表）" % (args.pages_rev, len(pages), args.tables_rev, len(tables)))
+    entries = list(DISCLOSED_RESIDUALS)
+    for spec in args.disclose:
+        head, sep, tail = spec.partition("=>")
+        if sep:
+            entries.append({"page": head, "table": tail, "reason": REASON_FROM_CLI})
+        else:
+            entries.append({"page": head, "table": None, "reason": REASON_FROM_CLI})
+
+    print("页面组（各页取自己的迁移前 rev）: %s" % ", ".join("%s:%s" % (r, os.path.basename(p)) for r, p in pages))
+    print("文案表 rev=%s（%d 张表）" % (args.tables_rev, len(tables)))
     occ = {}
-    for rel in pages:
-        src = read(args.pages_rev, rel)
+    for rev, rel in pages:
+        src = read(rev, rel)
         hits = [t for _, t in literals(src) if CJK.search(t)]
         occ[os.path.basename(rel)] = (len(hits), len(set(hits)))
     print("每页（塌掉插值后的中文文案出现次数, 去重）: %s" % occ)
     print("distinct templates pages / tables        : %d / %d" % (len(page), len(table)))
+
+    # 已披露的残差先摘掉（摘之前先校验登记本身没过期），三层比对都在摘掉之后进行。
+    disclosed_ok, disclosure_notes = apply_disclosures(page, table, entries)
+    print("\n[disclose] 已披露残差是否仍然成立: %s" % ("YES" if disclosed_ok else "NO（登记过期，见下面）"))
+    for note in disclosure_notes:
+        print(note)
+    print("distinct templates after disclosures      : %d / %d" % (len(page), len(table)))
 
     # strict 层：数字格式串不塌，因此 Ruling 20 的拆分位点会在这里暴露出来。
     strict_only_page = sorted(set(page) - set(table))
@@ -276,7 +402,12 @@ def main():
     print("    distinct Chinese copy texts compared      : %d / %d" % (len(copy_page), len(copy_table)))
     for text in diff:
         print("    差异: %r" % text)
-    return 0 if (not missing and not invented and not diff and strict_clean and splits_allowed) else 1
+    exit_ok = (not missing and not invented and not diff and strict_clean and splits_allowed and disclosed_ok)
+    print("\n退出码: %s（五个条件 %s 都成立才 0；残差可以是格式串拆分、也可以是 DISCLOSED_RESIDUALS "
+          "里登记的已披露拆分，两者都不成立的那条就是要改的代码或要补的披露）"
+          % (0 if exit_ok else 1,
+             "[A] / [B] / [strict] 残差可解释 / 拆分条数在上限内 / 披露登记未过期"))
+    return 0 if exit_ok else 1
 
 
 def miss_raw(page, norm_text):

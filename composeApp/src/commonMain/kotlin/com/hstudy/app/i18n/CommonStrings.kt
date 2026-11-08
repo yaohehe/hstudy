@@ -31,6 +31,19 @@ package com.hstudy.app.i18n
  * 术语表 §11 的"积分 = Points"在本工程有两类出场（徽章的单位标签、`+N points` 的计数句），
  * 共用一个出处才不会漂移。
  * [hourLabel] / [minuteLabel] 用缩写 "hr" / "min"，因为它们是 52.dp 宽、`labelSmall` 字号的单位标签。
+ *
+ * **通用对话框/控件的三个按钮词从 Task 7b 起住在这里**（第 1 轮审查第 8 条的处置）：
+ * [cancelButton]（`取消`）、[confirmButton]（`确认`）、[deleteContentDescription]（`删除`）。
+ * 它们原本作为 `FocusStrings.cancelButton` / `memoryConfirmButton` / `deletePlanDescription` 落在页面表里，
+ * 而 `取消` 在全仓约 12 个页面出现、`删除` 约 10 个、`确认` 也是对话框标配——Task 10 / 11 一定会再需要一遍。
+ * 那时若照"每页一张表"的惯例各写一份，同一个中文值就会有三个英文值可以互相漂移，
+ * 这正是本文件 [pointsUnit] / [minuteLabel] 那段"同形异义必须分开、且只能有一个出处"要防的事，
+ * 所以选择**现在就上收**（中文值逐字节不变，只是换了出处），而不是留一条"以后请复用"的注释。
+ * 三条都按上面第 14-17 行那段"同形异义的英文互换 assertDiffers 抓不到"的理由补了**字面量钉死**断言
+ * （`StringsCopyTest.commonDialogButtonsPinnedByLiteral`）：`取消` / `确认` 是一对同形风险的按钮，
+ * `assertDiffers` 对"英文互换"是瞎的，只有字面量能钉住方向。
+ * 一处刻意的英文改动：记忆子页那个按钮的英文原写 `"Check"`（检查你背出来的数字），
+ * 上收后统一成 `"Confirm"`——通用出处必须给通用译法，页面语义靠 ZH `确认` 与控件位置已经足够。
  */
 data class CommonStrings(
     val backContentDescription: String,
@@ -39,6 +52,9 @@ data class CommonStrings(
     val minuteLabel: String,
     val decreaseLabel: (String) -> String,
     val increaseLabel: (String) -> String,
+    val cancelButton: String,
+    val confirmButton: String,
+    val deleteContentDescription: String,
 )
 
 val CommonStringsZh = CommonStrings(
@@ -48,6 +64,9 @@ val CommonStringsZh = CommonStrings(
     minuteLabel = "分",
     decreaseLabel = { label -> "减少$label" },
     increaseLabel = { label -> "增加$label" },
+    cancelButton = "取消",                                                 // 原 FocusStrings.cancelButton
+    confirmButton = "确认",                                                 // 原 FocusStrings.memoryConfirmButton
+    deleteContentDescription = "删除",                                      // 原 FocusStrings.deletePlanDescription
 )
 
 val CommonStringsEn = CommonStrings(
@@ -57,4 +76,7 @@ val CommonStringsEn = CommonStrings(
     minuteLabel = "min",
     decreaseLabel = { label -> "Decrease $label" },
     increaseLabel = { label -> "Increase $label" },
+    cancelButton = "Cancel",
+    confirmButton = "Confirm",
+    deleteContentDescription = "Delete",
 )

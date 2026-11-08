@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.CanonicalFocusText
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
@@ -42,9 +43,9 @@ fun ChildPomodoroScreen(
 
     // 专注目标：让专注更有目的性（靶向专注）
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
-    val presetTargets = listOf(strings.targetFreeStudy, strings.targetReviewMistakes, strings.targetPreviewLesson, strings.targetFinishHomework)
+    val presetTargets = CanonicalFocusText.presetTargets
     val allTargets = presetTargets + tasks.map { it.title }
-    var focusTarget by remember { mutableStateOf(strings.targetFreeStudy) }
+    var focusTarget by remember { mutableStateOf(CanonicalFocusText.TARGET_FREE_STUDY) }
     var targetExpanded by remember { mutableStateOf(false) }
 
     // 黄金专注时段：根据历史专注数据找出效率最高的时段，引导把难题安排在最佳时间
@@ -87,7 +88,7 @@ fun ChildPomodoroScreen(
                         onExpandedChange = { targetExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = focusTarget,
+                            value = strings.targetLabel(focusTarget),
                             onValueChange = {},
                             readOnly = true,
                             singleLine = true,
@@ -100,7 +101,7 @@ fun ChildPomodoroScreen(
                         ) {
                             allTargets.forEach { target ->
                                 DropdownMenuItem(
-                                    text = { Text(target) },
+                                    text = { Text(strings.targetLabel(target)) },
                                     onClick = { focusTarget = target; targetExpanded = false }
                                 )
                             }
@@ -174,11 +175,11 @@ fun ChildPomodoroScreen(
                             val points = minutes / 5
                             app.focusRepository.recordFocusSession(minutes, focusTarget, 0)
                             if (points > 0) {
-                                app.pointApprovalRepository.submitApproval("FOCUS_COMPLETE", strings.focusRecordDescription(focusTarget, minutes), points)
+                                app.pointApprovalRepository.submitApproval("FOCUS_COMPLETE", CanonicalFocusText.recordDescription(focusTarget, minutes), points)
                             }
                             app.userPreferences.boostPetMood(3)
                             app.userPreferences.incrementPomodoroTodayCount()
-                            snackbarHostState.showSnackbar(strings.focusDoneSnackbar(focusTarget, points))
+                            snackbarHostState.showSnackbar(strings.focusDoneSnackbar(strings.targetLabel(focusTarget), points))
                         }
                     }
                 )

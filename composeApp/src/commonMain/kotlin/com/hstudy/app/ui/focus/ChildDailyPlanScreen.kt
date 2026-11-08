@@ -120,6 +120,7 @@ private fun PlanCard(
     onDelete: () -> Unit
 ) {
     val strings = LocalStrings.current.focus
+    val common = LocalStrings.current.common
     val bgColor = if (plan.isCompleted)
         MaterialTheme.colorScheme.secondaryContainer
     else
@@ -155,7 +156,7 @@ private fun PlanCard(
                 )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = strings.deletePlanDescription, tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription, tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -168,6 +169,7 @@ private fun AddPlanDialog(
     onAdd: (String, Int, Int, Int, Int) -> Unit
 ) {
     val strings = LocalStrings.current.focus
+    val common = LocalStrings.current.common
     var title by remember { mutableStateOf("") }
     var startHour by remember { mutableIntStateOf(8) }
     var startMinute by remember { mutableIntStateOf(0) }
@@ -200,7 +202,7 @@ private fun AddPlanDialog(
                 enabled = title.isNotBlank()
             ) { Text(strings.addPlanButton) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancelButton) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(common.cancelButton) } }
     )
 }
 

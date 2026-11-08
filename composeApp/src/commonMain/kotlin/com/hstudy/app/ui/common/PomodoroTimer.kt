@@ -136,15 +136,18 @@ fun PomodoroTimer(
     val isBreak = state == PomodoroState.BREAK
 
     // 专注中途鼓励（过半时显示，给孩子打气）
-    val halfwayEncouragement = remember(completedPomodoros) {
-        listOf(
-            strings.cheerHalfway,
-            strings.cheerProudest,
-            strings.cheerAlmostDone,
-            strings.cheerBrainWorking,
-            strings.cheerEveryMinute
-        ).random()
-    }
+    // remember 存的是候选项的**索引**而不是文案本身：语言在计时进行中切换时组合会重新执行，
+    // 于是用新的 strings 实例重新取词，而 key 仍是 completedPomodoros —— 同一轮番茄钟不会重新抽签，
+    // random() 的调用次数与取值范围也没变（Ruling 20(c)：不改控制流，只改"记住什么"）。
+    val cheerCandidates = listOf(
+        strings.cheerHalfway,
+        strings.cheerProudest,
+        strings.cheerAlmostDone,
+        strings.cheerBrainWorking,
+        strings.cheerEveryMinute
+    )
+    val cheerIndex = remember(completedPomodoros) { cheerCandidates.indices.random() }
+    val halfwayEncouragement = cheerCandidates.getOrElse(cheerIndex) { cheerCandidates.first() }
 
     Column(
         modifier = modifier,

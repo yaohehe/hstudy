@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
     val app = AppGraph
     val strings = LocalStrings.current.focus
+    val common = LocalStrings.current.common
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -101,7 +102,7 @@ fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
                             fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
                         )
                     )
-                    Button(onClick = { checkAnswer() }, enabled = userInput.length == level) { Text(strings.memoryConfirmButton) }
+                    Button(onClick = { checkAnswer() }, enabled = userInput.length == level) { Text(common.confirmButton) }
                 }
                 "result" -> {
                     if (lastCorrect) {
