@@ -17,6 +17,9 @@
 - 迁移默认只允许等价替换 `"中文"` → `strings.xxx`。例外必须同时满足四条（Ruling 20）：(a) 移动的每个 token 都属文案（分隔符、括号、单位、语序）；(b) 中文态输出逐字节不变，且由字面量钉死的测试证明而非口头论证；(c) 不改控制流、数据源、组件与布局参数；(d) 在字段 KDoc 与任务报告里同时披露。四条缺一即回滚。
 - 不动 `ui/dt/DateTimeCompat.kt` 的格式行为（英文态仍 `yyyy-MM-dd`、周一起始）。
 - 不本地化写入数据库的种子内容（`data/repository/TaskRepository.kt` 等 125 处 `title =`/`name =`）。
+- 存储边界（Ruling 25，硬约束）：任何文案表字符串都不得进入写库调用或参与业务判等参数。每个迁移任务收尾必须跑 `python scripts/i18n_storage_boundary.py` 且退出码为 0；违规的处置方式是"存规范值、只在渲染时本地化"，不是把英文存进去。`bizKey` 与幂等比较涉及的 description 一律不本地化。
+- 越界自检只约束**迁移类提交**（字面量 → strings 引用）。修复/重构类提交把值从 `strings.` 移回规范常量时，必然出现不含中文的删除行：改用扩展模式 `strings\.|common\.|Canonical|LocalStrings|import |val strings` 并在报告里声明提交类别（Ruling 26）。
+- 页面文件不得新增中文注释行；解释性说明写进 i18n 表文件的 KDoc（Ruling 26 附带）。
 - 每个任务结束时本地三闸全绿才提交推送：
   `compileCommonMainKotlinMetadata` → `:composeApp:assembleDebug` → `:composeApp:testDebugUnitTest`。
 - 推送前确认无在飞 CI（工作流 `cancel-in-progress: true` 会取消 macOS 任务）。
