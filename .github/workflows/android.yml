@@ -16,7 +16,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 是下面那道逐字节等价闸门的**前提**：脚本要 `git show <rev>:<path>` 取
+      # 迁移前的页面原文，那些 rev 全部写在 scripts/i18n_template_diff.py 的 DEFAULT_PAGES /
+      # BRANCH_PAGES / BRANCH_GATE_REV 常量里。actions/checkout@v4 默认 fetch-depth: 1（浅克隆），
+      # 历史对象不在，脚本就恒退 1 —— 终审 D-A 之前它正是因此只能挂 continue-on-error。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -32,12 +38,13 @@ jobs:
         run: python3 scripts/i18n_storage_boundary.py
       - name: i18n storage boundary self-test (Ruling 30, blocking)
         run: python3 scripts/tests/i18n_storage_boundary_selftest.py
-      # 逐字节等价脚本要 `git show <rev>` 取迁移前的页面原文，而 actions/checkout@v4 默认
-      # fetch-depth: 1（浅克隆）——历史对象不在，脚本会退 1。这里刻意 continue-on-error，
-      # 浅克隆的红外面不该把绿构建变红（Ruling 43 明令非阻塞）；本地与带全历史的分支上它应当退 0，
+      # 逐字节等价脚本要 `git show <rev>` 取迁移前的页面原文，靠的就是上面那条 fetch-depth: 0。
+      # 终审 D-A 把它从 continue-on-error 提升为**阻塞**：脚本自身的教义就是"恒红的闸门不会被读"，
+      # 那么"非阻塞"等于这道闸门永远没人读；历史齐了它应当恒绿，红了就是真的有人把界面文案
+      # 改动得对不上迁移前的原文。它钉的每一个 rev 都在本分支历史里（终审逐条
+      # `git cat-file -e <rev>^{commit}` + `git merge-base --is-ancestor <rev> HEAD` 核对过），
       # 复现命令见 docs/i18n-stage1-verification.md §6。
-      - name: i18n template byte-equivalence (Ruling 20, non-blocking)
-        continue-on-error: true
+      - name: i18n template byte-equivalence (Ruling 20, blocking)
         run: python3 scripts/i18n_template_diff.py
       - name: Build debug APK
         run: ./gradlew :composeApp:assembleDebug --no-daemon
