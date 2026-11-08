@@ -986,6 +986,68 @@ git commit -m "feat(i18n): 家长设置页剩余文案双语"
 ```
 
 ---
+### Task 7b: 番茄钟宿主页面与专注训练子页迁移（Ruling 23 新增）
+
+**为什么存在：** spec §1 承诺"专注/打卡"双语，Task 7 迁了 `common/PomodoroTimer.kt` 组件本体，但它的宿主页面 `ui/focus/ChildPomodoroScreen.kt` 不在任何任务清单里，英文态会出现"英文计时圆环嵌在整页中文里"。审计（`scripts/i18n_coverage_audit.py`）确认这是阶段一边界的真实缺陷，而非有意推迟。
+
+同一入口链路上的两个子页一并纳入，避免英文态出现"引导文案是英文、点进去是中文"：`ui/focus/ChildMemoryTrainingScreen.kt`（仅能经 `ChildPomodoroScreen` 进入，见 `AppNavGraph.kt:168-172`）与 `ui/focus/ChildDailyPlanScreen.kt`。
+
+**Files:**
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/PomodoroStrings.kt`（追加页面字段，不新建第三个表）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/FocusStrings.kt`（训练子页标题类字段复用 `trainingTitle` / `schulteTitle`，不得复制同义字段）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt`（如需新增分组）
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus/ChildPomodoroScreen.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus/ChildMemoryTrainingScreen.kt`
+- Modify: `composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus/ChildDailyPlanScreen.kt`
+- Test: `composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt`
+
+**Interfaces:**
+- Consumes: `LocalStrings`、`PomodoroStrings`、`FocusStrings`、`CommonStrings.minuteLabel`、`Plurals.pointsWord`
+- Produces: 打卡全链路（首页入口 → 番茄钟页 → 训练子页 → 每日计划页）双语
+
+**实测规模：** `ChildPomodoroScreen.kt` 去重 32 条 / 插值 8 条；`ChildMemoryTrainingScreen.kt` 去重 17 条；`ChildDailyPlanScreen.kt` 去重 14 条。合计 63 条。
+
+**本页必须做对的三件事：**
+
+1. **`分` 的两种含义会出现在同一行。** `ChildPomodoroScreen.kt:246` 原文 `每专注 5 分钟 = +1 分`：`5 分钟` 是分钟单位，`+1 分` 是积分单位。积分单位必须走 `i18n/Plurals.kt` 的 `pointsWord(n)`，分钟单位必须是独立字段；`PomodoroStrings.kt` 里"唯一出现单字分"的旧说法已被 Task 7 修复为逐条陈述，不要重新写成绝对句。
+2. **步进器标签复用 `CommonStrings.minuteLabel`，不要新建第三个 `分` 字段**（Task 6+8 已为它加了字面量钉死的同形异义守卫）。
+3. **计时进行中的文案陈旧问题在本次一并解决。** Task 7 报告披露：语言切换后 `PomodoroTimer.kt:104-105` 的通知与欢呼仍用切换前语言，当时不能修是因为加 `strings` 进 `remember`/`LaunchedEffect` 的 key 会重启计时循环（违反 Ruling 20(c)）。本次用不改变 key 的方式修：
+
+```kotlin
+    val currentStrings by rememberUpdatedState(strings)
+```
+   在循环体内读 `currentStrings`，key 保持不变。这不属于等价替换，属于本次授权的功能修正，必须同时满足：中文态输出逐字节不变、有字面量钉死断言、不改控制流以外的任何东西、并在 KDoc 与报告披露。
+
+- [ ] **Step 1: 取三页清单**
+
+Run: `PYTHONIOENCODING=utf-8 python scripts/i18n_inventory.py focus/ChildPomodoroScreen.kt focus/ChildMemoryTrainingScreen.kt focus/ChildDailyPlanScreen.kt`
+
+- [ ] **Step 2: 追加字段（页面文案进 `PomodoroStrings`，训练子页复用 `FocusStrings` 现有标题字段）**
+
+- [ ] **Step 3: 三页等价替换**
+
+- [ ] **Step 4: `rememberUpdatedState` 修陈旧语言问题**
+
+- [ ] **Step 5: 追加断言**
+
+每个 lambda 字段都要有中英双语的字面量钉死断言；`每专注 5 分钟 = +1 分` 这类同行双单位必须两条都断言；`assertDiffers` 穷举本页全部非 lambda 字段。
+
+- [ ] **Step 6: 三闸 + 越界自检 + 提交**
+
+Run（越界自检，两个计数都必须为 0）:
+```bash
+git diff -U0 -- composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus/ChildPomodoroScreen.kt | grep -E "^[-+]" | grep -vE "^[-+]{3}" > /tmp/gate.txt
+awk '/^\+/ && $0 !~ /strings\.|LocalStrings|import |val strings/' /tmp/gate.txt | wc -l
+awk '/^-/ && $0 !~ /[一-鿿]/' /tmp/gate.txt | wc -l
+```
+另外两个文件同样各跑一次。Step 4 的 `rememberUpdatedState` 一行是已披露的例外，不计入"删除行必须含中文"的违规，但必须在报告里单列。
+
+```bash
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n composeApp/src/commonMain/kotlin/com/hstudy/app/ui/focus composeApp/src/commonTest/kotlin/com/hstudy/app/i18n
+git commit -m "feat(i18n): 番茄钟宿主页与专注训练子页双语，并修语言切换后的进行中文案陈旧"
+```
+
+---
 ### Task 12: 文档与验证说明
 
 **Files:**
