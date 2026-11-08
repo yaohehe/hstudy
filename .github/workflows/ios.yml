@@ -58,20 +58,56 @@ jobs:
           xcrun simctl boot "$UDID" 2>/dev/null || echo "SMOKE: boot returned non-zero (device may already be booted)"
           APP=$(find build/ios/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           xcrun simctl install "$UDID" "$APP"
+          # 诊断版（iOS ~20s 静默退出排查，systematic-debugging Phase 1）：只采证据，不改 App、不改阻塞性。
+          # 正常 launch 拿宿主 PID（模拟器 App 是 macOS 宿主进程，ps 才权威；launchctl list 已被证明会留陈旧条目）。
           xcrun simctl launch "$UDID" com.hstudy.app.ios | tee launch.log
-          sleep 25
-          echo "=== process state after 25s ==="
-          xcrun simctl spawn "$UDID" launchctl list | grep -iE "hstudy|iosApp" || echo "SMOKE: no app entry in launchctl (GUI apps are not always listed here)"
+          PID=$(awk '{print $2}' launch.log | head -1)
+          echo "host_pid=$PID"
+          # 逐秒记录存活/死亡与最后进程状态，定位精确死亡秒
+          (
+            for i in $(seq 1 45); do
+              if ps -p "$PID" >/dev/null 2>&1; then
+                echo "t=${i}s ALIVE $(ps -p "$PID" -o stat=,etime= | tr -s ' ')"
+              else
+                echo "t=${i}s DEAD (ps no longer lists pid $PID)"
+                break
+              fi
+              sleep 1
+            done
+          ) > liveness.log 2>&1 &
+          LIVE_PID=$!
+          sleep 45
+          wait "$LIVE_PID" 2>/dev/null || true
+          echo "=== liveness (host ps) ==="
+          cat liveness.log
           xcrun simctl io "$UDID" screenshot smoke.png
           ls -la smoke.png
-          echo "=== crash reports (empty means none) ==="
-          find "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data" \
-               "$HOME/Library/Logs/DiagnosticReports" -maxdepth 3 \
-               \( -name '*.ips' -o -name 'Crash*' -o -name 'iosApp-*' \) 2>/dev/null | head -10 || true
+          # 定向抓终止原因：旧版宽 grep+tail 被 nsurlsessiond 噪声淹没，这里改用 bundle id / SpringBoard 谓词
+          {
+            echo "=== predicate: eventMessage CONTAINS bundle id ==="
+            xcrun simctl spawn "$UDID" log show --style compact --last 2m \
+              --predicate 'eventMessage CONTAINS "com.hstudy.app.ios"' 2>&1 | tail -120
+            echo "=== predicate: SpringBoard terminate/exit/jetsam/watchdog ==="
+            xcrun simctl spawn "$UDID" log show --style compact --last 2m \
+              --predicate 'process == "SpringBoard" AND (eventMessage CONTAINS[c] "terminat" OR eventMessage CONTAINS[c] "exit" OR eventMessage CONTAINS[c] "jetsam" OR eventMessage CONTAINS[c] "watchdog")' 2>&1 | tail -80
+          } > app_unified.log 2>&1 || true
+          echo "=== unified log (tail 60) ==="
+          tail -60 app_unified.log
+          # 崩溃/jetsam 报告：去掉 maxdepth 限制并加 jetsam 名字，旧版 maxdepth 3 可能漏
+          find "$HOME/Library/Logs/DiagnosticReports" \
+               "$HOME/Library/Developer/CoreSimulator/Devices/$UDID" \
+               \( -name '*.ips' -o -name '*jetsam*' -o -name 'Crash*' \) 2>/dev/null > crashlist.txt || true
+          echo "=== crash/jetsam report paths (empty means none) ==="
+          cat crashlist.txt
           xcrun simctl terminate "$UDID" com.hstudy.app.ios || echo "SMOKE: terminate skipped (process already gone)"
           xcrun simctl shutdown "$UDID" || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: HStudy-ios-simulator-smoke
-          path: smoke.png
+          path: |
+            smoke.png
+            launch.log
+            liveness.log
+            app_unified.log
+            crashlist.txt
