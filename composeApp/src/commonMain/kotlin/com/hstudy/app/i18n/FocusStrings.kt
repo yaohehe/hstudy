@@ -30,15 +30,42 @@ package com.hstudy.app.i18n
  * 所以同样不需要复数函数。这条事实由
  * `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 钉住。
  *
- * 非 1:1 改动（Ruling 20 四条全部满足并在此披露）只有一种形态：**数值表达式从字符串模板内部挪到实参位**。
- * 页面原本写 `"${com.hstudy.app.ui.dt.strFormat("%.1f", x)}秒"`，函数化后写
- * `strings.secondsStatValue(com.hstudy.app.ui.dt.strFormat("%.1f", x))`；
- * `"${totalMinutes / 60}小时"` → `strings.hoursStatValue(totalMinutes / 60)`。
- * (a) 表接管的是文案 token（`秒`、`小时`、` 分钟`、`次`、`·`、语序）；
- * (b) 中文态输出逐字节相同，由字面量断言证明而非口头论证；
- * (c) 未动控制流、数据源（同一个 `strFormat` / 同一个除法）、组件与布局参数；
- * (d) 此处 + 任务报告。数值格式化（`%.1f`）**留在页面里**、不进文案表：spec §6 明确本阶段不引入
+ * **非 1:1 改动全清单（Ruling 20 四条全部满足，逐条点名披露）** —— 形态只有一种：
+ * **数值表达式从字符串模板内部挪到实参位**，Task 7 一共 **7 处**：本表 6 处 + [PomodoroStrings] 的
+ * [PomodoroStrings.deepBreathCount] 1 处（下面第 7 行一并列出，免得只翻一张表就以为清单齐了）。
+ * 下面 `strFormat` 均指页面里的 `com.hstudy.app.ui.dt.strFormat`，括号里是表接管的文案 token：
+ * 1. [secondsStatValue]：`"${strFormat("%.1f", trainingBestMs / 1000f)}秒"` →
+ *    `strings.secondsStatValue(strFormat("%.1f", trainingBestMs / 1000f))`（`秒`）
+ * 2. [hoursStatValue]：`"${totalMinutes / 60}小时"` → `strings.hoursStatValue(totalMinutes / 60)`（`小时`）
+ * 3. [elapsedValue]：`strFormat("%.1f 秒", elapsedMs / 1000f)` →
+ *    `strings.elapsedValue(strFormat("%.1f", elapsedMs / 1000f))`（` 秒`，空格在单位前面）
+ *    —— **7 处里唯一一处单位原本写在数字格式串内部**的，也就是把 ` 秒` 从 `%.1f` 后面拆进表里；
+ *    等价性靠 strFormat 对转换符之后普通字符的原样追加（`DateTimeCompat.kt:251-277`），
+ *    由 `StringsCopyTest.elapsedValueKeepsTheSplitFormatPatternByteIdentical` 专门钉住，
+ *    不靠"读了一遍 strFormat 说相同"；比对脚本 `scripts/i18n_template_diff.py` 的 `[strict]` 层
+ *    会把这一处单独打出来（其余 61 条整串逐字节相同）。
+ * 4. [personalBestValue]：`"🏆 个人最佳：${strFormat("%.1f", bestMs / 1000f)} 秒"` →
+ *    `strings.personalBestValue(strFormat("%.1f", bestMs / 1000f))`（`🏆 个人最佳：`、` 秒`）
+ * 5. [finishedLine]：`"🎉 完成！用时 ${strFormat("%.1f", seconds)} 秒 · 错误 $mistakes 次"` →
+ *    `strings.finishedLine(strFormat("%.1f", seconds), mistakes)`
+ *    （`🎉 完成！用时 `、` 秒 · 错误 `、` 次`；`·` 是文案分隔符，归表管）
+ * 6. [trainingDoneSnackbar]：`"🎯 训练完成！用时${strFormat("%.1f", seconds)}秒，注意力提升了！"` →
+ *    `strings.trainingDoneSnackbar(strFormat("%.1f", seconds))`（`🎯 训练完成！用时`、`秒，注意力提升了！`）
+ * 7. [PomodoroStrings.deepBreathCount]（在另一张表）：
+ *    `"第 ${(breathCycle + 1).coerceAtMost(totalBreathCycles)}/$totalBreathCycles 次深呼吸"` →
+ *    `strings.deepBreathCount((breathCycle + 1).coerceAtMost(totalBreathCycles), totalBreathCycles)`
+ *    （`第 `、`/`、` 次深呼吸`）
+ *
+ * 四条自查：(a) 挪动的每个 token 都是文案（单位、分隔符、`·`、语序）；
+ * (b) 中文态输出逐字节相同，由 [focusInterpolatedCopyPinsBothLanguages] 等字面量断言 +
+ * `scripts/i18n_template_diff.py` 证明，不是口头论证；
+ * (c) 未动控制流、数据源（同一个 `strFormat` 调用、同一个除法、同一批实参）、组件与布局参数；
+ * (d) 此处 + 任务报告 §7。数值格式化（`%.1f`）**留在页面里**、不进文案表：spec §6 明确本阶段不引入
  * locale 相关的数字格式，若把 `%.1f` 写进语言表就等于开了那个口子。
+ * 反过来，**不算例外**的插值位点是"模板里本来就是一个普通变量"那一类（brief 自己给的形态）：
+ * [totalSessionsLine]（原 `🎯 累计训练 $trainingCount 次`）、[sessionsStatValue]（原 `${trainingCount}次`）、
+ * [PomodoroStrings.breakOverSummary]、[PomodoroStrings.nextTargetLabel]（原 `下一个要点：$nextExpected`）、
+ * [PomodoroStrings.remainTime] —— 变量本来就在实参位上算好了，只是搬进表里，属于 1:1 等价替换。
  *
  * 行首 emoji 归文案表（Ruling 17）：`📊`、`🎯`、`🏆`、`🎉` 在中文原文里就贴在文案上，
  * 英文同位置保留；[emptyRecordsHint] 的 🍅 在句尾，两边都在句尾。由

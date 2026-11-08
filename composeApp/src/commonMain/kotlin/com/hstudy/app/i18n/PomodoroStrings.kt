@@ -30,10 +30,20 @@ package com.hstudy.app.i18n
  * 整表 CJK 守卫看不见它们（Ruling 20-b），所以由 `StringsCopyTest.pomodoroInterpolatedCopyPinsBothLanguages`
  * 用逐字打出来的期望串钉住两种语言，另有 [breakOverSummary] 的 Pomodoro/Pomodoros 单复数断言。
  *
- * **`分` 在本页只表示分钟，一处也不是积分**（裁定 1）：唯一出现单字"分"的是
- * `剩余 ${min}分${sec}秒`，它是时长而不是分值，因此 [remainTime] 不调用 [pointsWord]，
- * 英文按计划 brief 给定的串写成不随单复数变化的缩写 `min` / `s`。由
- * `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 钉住。
+ * **`分` 在本页不是积分单位**（裁定 1）。原先这里写"唯一出现单字『分』的是 `剩余 ${min}分${sec}秒`"，
+ * **那句话在本表内就是假的**，逐处更正 —— 中文侧含 `分` 的一共三处，含义各不相同：
+ * · [remainTime] `剩余 ${min}分${sec}秒 · …`：**分钟单位**，只有这一处是"裸 分 = 分钟"；
+ * · [cheerEveryMinute] `✨ 每一分钟都在积累成长！`：`分钟` 作为词整体出现，仍是时长；
+ * · [tipDrinkWater] `💧 喝杯水，补充水分`：`水分` = moisture，**既不是分钟也不是积分**，
+ *   英文 `Have a glass of water` 里没有单位，别把它当成漏译的单位字段去"修正"。
+ * 三处都不接 [pointsWord]：本页没有积分单位，英文按 brief 用不随单复数变化的缩写 `min` / `s`。
+ * 由 `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 钉住。
+ * **给迁移 `ui/focus/ChildPomodoroScreen.kt` 的那一轮（评审称 Task 7b；该页目前不在计划任何 Task 的文件清单里，
+ * 见 Task 7 报告 §13.2）的提醒**：该页第 246 行 `每专注 5 分钟 = +1 分（所有时长均有效）`
+ * 与第 247 行 `15分钟+3分 · 25分钟+5分 · 30分钟+6分 · 45分钟+9分`，**同一行里两种含义并存**，
+ * 本段的"整表只剩一种单位"结论不可外推：`N分钟` 里的是时长（min/hr/s），
+ * `+N 分` 里的是积分（该用 [pointsWord]）。判错方向的渲染结果是 "Focus 5 points = +1 min" 这种句子。
+ * 另外 `:145` 的 `今日已专注 $todayFocusMin 分钟${if (…)}…` 是"模板里带 if"的另一类非 1:1 位点。
  *
  * 非 1:1 改动（Ruling 20 四条全部满足并在此披露）只有一处形态：[deepBreathCount] 的中文原文是
  * `第 ${(breathCycle + 1).coerceAtMost(totalBreathCycles)}/$totalBreathCycles 次深呼吸`，
@@ -42,6 +52,8 @@ package com.hstudy.app.i18n
  * (a) 表只接管了文案 token（`第`、`/`、` 次深呼吸`）；(b) 中文态输出逐字节相同，由字面量断言证明；
  * (c) 表达式本身、控制流、组件、布局参数一律未动，只是把它从字符串模板里挪到实参位；(d) 见此处与报告。
  * [remainTime] 的两个实参在页面里本就是 `val min` / `val sec`，所以那条是纯字面量替换。
+ * **本页这一处是"全 Task 7 七处非 1:1 位点"里的第 7 处**，其余 6 处（全在 [FocusStrings]）逐一点名，
+ * 清单在 `FocusStrings` 的类注释里——两边合起来才是完整清单，只读本表会漏数。
  *
  * 行首 emoji 属于文案表而不是页面代码（Ruling 17）：中文原文就写着 `🍅 专注中`，
  * 所以 ZH 侧照抄、EN 侧同位置保留，页面不再拼 `"🍅 ${strings.x}"`。由

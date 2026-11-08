@@ -1,5 +1,6 @@
 package com.hstudy.app.i18n
 
+import com.hstudy.app.ui.dt.strFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -459,6 +460,42 @@ class StringsCopyTest {
         )
         assertEquals("下一个要点：13", AppStringsZh.focus.nextTargetLabel(13))
         assertEquals("Next, tap 13", AppStringsEn.focus.nextTargetLabel(13))
+    }
+
+    /**
+     * Ruling 20 里唯一一处**把单位从数字格式串内部拆出来**的位点的等价性证据（报告 §7 第 4 行、
+     * Task 7 评审 Important 1）：`ui/focus/ChildFocusTrainingScreen.kt:111`（迁移前）写
+     * `strFormat("%.1f 秒", elapsedMs / 1000f)`，单位 ` 秒` 在格式串**内部**；
+     * 迁移后写 `strings.elapsedValue(strFormat("%.1f", elapsedMs / 1000f))`，单位进了文案表。
+     * 62 条模板里只有这一条不是整串搬进表里的，所以它必须有自己的断言而不是靠口头论证
+     * （§4 的逐字节比对脚本把 `%.1f` 和 `${…}` 一起归一化，恰好会把它显示成"也相同"）。
+     *
+     * 等价性依赖两个事实，这里一个一条断言：
+     * 1) [com.hstudy.app.ui.dt.strFormat] 对转换符之后的普通字符原样追加
+     *    （`DateTimeCompat.kt:251-277`：处理完 `%.Nf` 后 `i = j + 1`，剩下的 ` 秒` 走 `sb.append(c)` 分支），
+     *    所以"拆开写"和"整串写"输出同一串；
+     * 2) [FocusStrings.elapsedValue] 的中文值就是那个带空格的 ` 秒`（已由
+     *    [focusInterpolatedCopyPinsBothLanguages] 逐字钉住），即单位确实归文案表接管。
+     *
+     * 第三条是绝对值断言，防止前两条"两边一起变"仍然相等而自证通过（本文件的硬约定：期望串逐字打）。
+     *
+     * 为什么放在 StringsCopyTest 而不是新建一个 dt 测试类：这里钉的是**这次迁移没改变渲染输出**
+     * 这条 Ruling 20 纪律，不是 strFormat 的通用格式行为（那是 DateTimeCompat 自己的测试职责，
+     * 本任务禁止改它）；而且 Task 7 的覆盖测试就是 `--tests "*StringsCopyTest*"`，
+     * 新类不在这条命令的覆盖范围内，评审闸门会看不见它。
+     *
+     * 反证见任务报告"Fix report (round 1)"：把断言 1 改成"strFormat 会丢掉转换符后面的文本"
+     * 这一假命题、以及把 DateTimeCompat 的追加分支临时改掉，本测试都变红。
+     */
+    @Test
+    fun elapsedValueKeepsTheSplitFormatPatternByteIdentical() {
+        val elapsedMs = 37500L
+        val before = strFormat("%.1f 秒", elapsedMs / 1000f)
+        val after = AppStringsZh.focus.elapsedValue(strFormat("%.1f", elapsedMs / 1000f))
+        assertEquals(strFormat("%.1f", elapsedMs / 1000f) + " 秒", before)
+        assertEquals(before, after)
+        assertEquals("37.5 秒", before)
+        assertEquals("37.5 秒", after)
     }
 
     /**
