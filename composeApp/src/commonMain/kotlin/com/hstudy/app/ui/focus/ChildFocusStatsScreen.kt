@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.dt.*
 
@@ -24,6 +25,7 @@ fun ChildFocusStatsScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.focus
     val app = AppGraph
     val totalMinutes by app.focusRepository.getTotalFocusMinutes().collectAsState(initial = 0)
 
@@ -41,7 +43,7 @@ fun ChildFocusStatsScreen(
     val trainingBestMs by app.userPreferences.focusTrainingBestMs.collectAsState(initial = 0L)
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "📊 专注统计", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.statsTitle, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -56,9 +58,9 @@ fun ChildFocusStatsScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatCard("今日专注", "${todayMinutes}分钟", "⏱️")
-                    StatCard("累计专注", "${totalMinutes}分钟", "📚")
-                    StatCard("约", "${totalMinutes / 60}小时", "🕐")
+                    StatCard(strings.todayFocusLabel, strings.minutesStatValue(todayMinutes), "⏱️")
+                    StatCard(strings.totalFocusLabel, strings.minutesStatValue(totalMinutes), "📚")
+                    StatCard(strings.approxLabel, strings.hoursStatValue(totalMinutes / 60), "🕐")
                 }
             }
 
@@ -66,14 +68,14 @@ fun ChildFocusStatsScreen(
             if (trainingCount > 0) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("🎯 专注力训练", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(strings.trainingTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-                            StatCard("累计训练", "${trainingCount}次", "🎯")
+                            StatCard(strings.sessionsLabel, strings.sessionsStatValue(trainingCount), "🎯")
                             if (trainingBestMs > 0L) {
-                                StatCard("方格最佳", "${com.hstudy.app.ui.dt.strFormat("%.1f", trainingBestMs / 1000f)}秒", "🏆")
+                                StatCard(strings.gridBestLabel, strings.secondsStatValue(com.hstudy.app.ui.dt.strFormat("%.1f", trainingBestMs / 1000f)), "🏆")
                             }
                         }
-                        Text("舒尔特方格练选择性注意，数字记忆练工作记忆，坚持训练专注力更强！",
+                        Text(strings.trainingBlurb,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -82,7 +84,7 @@ fun ChildFocusStatsScreen(
             // 7日柱状图
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("最近7天专注时长", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.last7DaysTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     val maxMinutes = dailyData.maxOfOrNull { it.totalMinutes }?.toFloat()?.coerceAtLeast(1f) ?: 1f
@@ -129,12 +131,12 @@ fun ChildFocusStatsScreen(
             }
 
             // 详细记录
-            Text("专注记录", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(strings.recordsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
             if (dailyData.isEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.padding(40.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("暂无专注记录，开始你的第一个番茄钟吧！🍅",
+                        Text(strings.emptyRecordsHint,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -149,7 +151,7 @@ fun ChildFocusStatsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(data.date, style = MaterialTheme.typography.bodyMedium)
-                                Text("${data.totalMinutes} 分钟",
+                                Text(strings.recordMinutesValue(data.totalMinutes),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary)
                             }

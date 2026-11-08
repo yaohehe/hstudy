@@ -9,6 +9,8 @@ data class AppStrings(
     val settings: SettingsStrings,
     val common: CommonStrings,
     val taskList: TaskListStrings,
+    val pomodoro: PomodoroStrings,
+    val focus: FocusStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -16,12 +18,16 @@ val AppStringsZh = AppStrings(
     settings = SettingsStringsZh,
     common = CommonStringsZh,
     taskList = TaskListStringsZh,
+    pomodoro = PomodoroStringsZh,
+    focus = FocusStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
     settings = SettingsStringsEn,
     common = CommonStringsEn,
     taskList = TaskListStringsEn,
+    pomodoro = PomodoroStringsEn,
+    focus = FocusStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

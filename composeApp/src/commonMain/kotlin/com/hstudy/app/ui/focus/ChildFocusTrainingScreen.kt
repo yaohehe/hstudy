@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
+    val strings = LocalStrings.current.focus
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -82,7 +84,7 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
                     scope.launch {
                         app.userPreferences.incrementFocusTrainingCount()
                         com.hstudy.app.ui.common.AchievementManager.evaluate(app)
-                        snackbarHostState.showSnackbar("🎯 训练完成！用时${com.hstudy.app.ui.dt.strFormat("%.1f", seconds)}秒，注意力提升了！")
+                        snackbarHostState.showSnackbar(strings.trainingDoneSnackbar(com.hstudy.app.ui.dt.strFormat("%.1f", seconds)))
                     }
                 }
             } else {
@@ -94,7 +96,7 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
     }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🎯 专注力训练", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.trainingTitle, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -102,23 +104,23 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("舒尔特方格", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("按 1→25 的顺序尽快点击，训练注意力集中",
+            Text(strings.schulteTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(strings.schulteHowTo,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center)
 
             // 用时显示
-            Text(com.hstudy.app.ui.dt.strFormat("%.1f 秒", elapsedMs / 1000f),
+            Text(strings.elapsedValue(com.hstudy.app.ui.dt.strFormat("%.1f", elapsedMs / 1000f)),
                 fontSize = 40.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             // 个人最佳记录（自我竞赛目标）
             if (bestMs > 0L) {
-                Text("🏆 个人最佳：${com.hstudy.app.ui.dt.strFormat("%.1f", bestMs / 1000f)} 秒",
+                Text(strings.personalBestValue(com.hstudy.app.ui.dt.strFormat("%.1f", bestMs / 1000f)),
                     style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.tertiary)
             }
             // 累计训练次数（坚持训练的见证）
             if (trainingCount > 0) {
-                Text("🎯 累计训练 $trainingCount 次", style = MaterialTheme.typography.bodySmall,
+                Text(strings.totalSessionsLine(trainingCount), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -126,27 +128,27 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
                 finished -> {
                     val seconds = elapsedMs / 1000f
                     val verdict = when {
-                        seconds < 25 -> "🌟 超棒！注意力非常集中！"
-                        seconds < 40 -> "👍 不错！继续保持！"
-                        else -> "💪 完成训练，多练会更快！"
+                        seconds < 25 -> strings.verdictExcellent
+                        seconds < 40 -> strings.verdictGood
+                        else -> strings.verdictPractice
                     }
                     if (isNewRecord) {
-                        Text("🎊 太厉害了！打破个人纪录！",
+                        Text(strings.newRecordBanner,
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary)
                     }
-                    Text("🎉 完成！用时 ${com.hstudy.app.ui.dt.strFormat("%.1f", seconds)} 秒 · 错误 $mistakes 次",
+                    Text(strings.finishedLine(com.hstudy.app.ui.dt.strFormat("%.1f", seconds), mistakes),
                         style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(verdict, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary)
-                    Button(onClick = { start() }) { Text("🔄 再来一次") }
+                    Button(onClick = { start() }) { Text(strings.tryAgainButton) }
                 }
                 !running -> {
-                    Text("每天练一练，专注力up up！还能赚积分～",
+                    Text(strings.dailyPracticeHint,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = { start() }) { Text("🚀 开始训练") }
+                    Button(onClick = { start() }) { Text(strings.startTrainingButton) }
                 }
                 else -> {
-                    Text("下一个要点：$nextExpected", style = MaterialTheme.typography.titleSmall,
+                    Text(strings.nextTargetLabel(nextExpected), style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }

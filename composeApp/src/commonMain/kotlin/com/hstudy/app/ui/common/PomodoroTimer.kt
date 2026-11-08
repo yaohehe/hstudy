@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.feedback
 import com.hstudy.app.ui.dt.monotonicMillis
@@ -44,6 +45,7 @@ fun PomodoroTimer(
     onActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalStrings.current.pomodoro
     var state by remember { mutableStateOf(PomodoroState.IDLE) }
     var remainingSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
     var totalSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
@@ -99,8 +101,8 @@ fun PomodoroTimer(
                     val min = remainingSeconds / 60
                     val sec = remainingSeconds % 60
                     Platform.feedback.showRunningNotification(
-                        title = if (state == PomodoroState.BREAK) "☕ 休息中" else "🍅 专注中",
-                        text = "剩余 ${min}分${sec}秒 · 息屏后仍会继续计时",
+                        title = if (state == PomodoroState.BREAK) strings.phaseBreak else strings.phaseFocus,
+                        text = strings.remainTime(min, sec),
                         progressPercent = if (totalSeconds > 0) (totalSeconds - remainingSeconds) * 100 / totalSeconds else 0
                     )
                 }
@@ -135,11 +137,11 @@ fun PomodoroTimer(
     // 专注中途鼓励（过半时显示，给孩子打气）
     val halfwayEncouragement = remember(completedPomodoros) {
         listOf(
-            "💪 已经过半了，继续保持！",
-            "🌟 专注的你最棒了！",
-            "🔥 坚持住，马上就完成了！",
-            "🧠 大脑正在高效运转！",
-            "✨ 每一分钟都在积累成长！"
+            strings.cheerHalfway,
+            strings.cheerProudest,
+            strings.cheerAlmostDone,
+            strings.cheerBrainWorking,
+            strings.cheerEveryMinute
         ).random()
     }
 
@@ -161,12 +163,12 @@ fun PomodoroTimer(
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        if (breathIn) "慢慢吸气" else "缓缓呼气",
+                        if (breathIn) strings.breatheIn else strings.breatheOut,
                         fontSize = 28.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("第 ${(breathCycle + 1).coerceAtMost(totalBreathCycles)}/$totalBreathCycles 次深呼吸",
+                    Text(strings.deepBreathCount((breathCycle + 1).coerceAtMost(totalBreathCycles), totalBreathCycles),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
@@ -217,8 +219,8 @@ fun PomodoroTimer(
                     color = progressColor
                 )
                 Text(
-                    text = if (isBreak) "☕ 休息中" else if (state == PomodoroState.IDLE) "🍅 准备开始"
-                        else if (state == PomodoroState.READY_NEXT) "🎉 休息结束" else "🍅 专注中",
+                    text = if (isBreak) strings.phaseBreak else if (state == PomodoroState.IDLE) strings.phaseStartReady
+                        else if (state == PomodoroState.READY_NEXT) strings.phaseBreakOver else strings.phaseFocus,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -248,7 +250,7 @@ fun PomodoroTimer(
         // 休息结束过渡提示
         if (state == PomodoroState.READY_NEXT) {
             Text(
-                "🎉 休息结束！已完成 $completedPomodoros 个番茄钟，继续加油！",
+                strings.breakOverSummary(completedPomodoros),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -261,7 +263,7 @@ fun PomodoroTimer(
         // 呼吸引导说明
         if (state == PomodoroState.BREATHING) {
             Text(
-                "跟随圆圈深呼吸，让心平静下来，准备进入专注状态",
+                strings.breathingGuide,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -273,12 +275,12 @@ fun PomodoroTimer(
         // 专注后科学休息建议（与专注前呼吸引导呼应，形成科学专注闭环）
         if (state == PomodoroState.BREAK) {
             val breakTips = listOf(
-                "🚶 站起来走动一下，活动活动身体",
-                "👀 看看窗外远处，让眼睛放松一下",
-                "💧 喝杯水，补充水分",
-                "🧘 做几个深呼吸，放松身心",
-                "🤸 伸个懒腰，伸展一下筋骨",
-                "🎵 听一首喜欢的歌，放松心情"
+                strings.tipWalkAround,
+                strings.tipLookFarAway,
+                strings.tipDrinkWater,
+                strings.tipBreathe,
+                strings.tipStretch,
+                strings.tipListenMusic
             )
             val tip = breakTips[completedPomodoros % breakTips.size]
             Card(
@@ -286,10 +288,10 @@ fun PomodoroTimer(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("☕ 科学休息", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                    Text(strings.breakCardTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onTertiaryContainer)
                     Text(tip, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                    Text("好好休息，下一轮专注更高效～", style = MaterialTheme.typography.bodySmall,
+                    Text(strings.breakCardNote, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
             }
@@ -314,7 +316,7 @@ fun PomodoroTimer(
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("开始专注")
+                        Text(strings.startFocusButton)
                     }
                 }
                 PomodoroState.BREATHING -> {
@@ -325,14 +327,14 @@ fun PomodoroTimer(
                         endTimeMillis = monotonicMillis() + totalSeconds * 1000L
                         state = PomodoroState.RUNNING
                     }) {
-                        Text("跳过，直接开始")
+                        Text(strings.skipBreathingButton)
                     }
                 }
                 PomodoroState.RUNNING -> {
                     OutlinedButton(onClick = { state = PomodoroState.PAUSED }) {
                         Icon(Icons.Filled.Pause, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("暂停")
+                        Text(strings.pauseButton)
                     }
                     TextButton(onClick = {
                         state = PomodoroState.IDLE
@@ -341,7 +343,7 @@ fun PomodoroTimer(
                     }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("结束")
+                        Text(strings.stopButton)
                     }
                 }
                 PomodoroState.PAUSED -> {
@@ -352,7 +354,7 @@ fun PomodoroTimer(
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("继续")
+                        Text(strings.resumeButton)
                     }
                     TextButton(onClick = {
                         state = PomodoroState.IDLE
@@ -361,14 +363,14 @@ fun PomodoroTimer(
                     }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("结束")
+                        Text(strings.stopButton)
                     }
                 }
                 PomodoroState.BREAK -> {
                     TextButton(onClick = {
                         state = PomodoroState.READY_NEXT
                     }) {
-                        Text("跳过休息")
+                        Text(strings.skipBreakButton)
                     }
                 }
                 PomodoroState.READY_NEXT -> {
@@ -378,14 +380,14 @@ fun PomodoroTimer(
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("开始下一轮专注")
+                        Text(strings.startNextRoundButton)
                     }
                     TextButton(onClick = {
                         state = PomodoroState.IDLE
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
                     }) {
-                        Text("先休息一下")
+                        Text(strings.restFirstButton)
                     }
                 }
             }
