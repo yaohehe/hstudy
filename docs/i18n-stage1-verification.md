@@ -291,7 +291,7 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-02 | 英文态会出现中英混排（设计代价），设置页有一行英文提示兜底 | spec §1 非目标 1、§7；V-09 |
 | L-03 | 家长审批列表、效率报表整体中文，其中出现的专注描述是存储的规范中文 | plan Ruling 27；`ParentApprovalScreen.kt:182`、`ChildEfficiencyReportScreen.kt:335` |
 | L-04 | 等级评语/鼓励语/成就名/宠物与积分动画组件仍是中文（`LearningScore`、`LevelSystem`、`AchievementManager` 等） | `ChildHomeScreen.kt:288`、`AchievementManager.kt:29-42` |
-| L-05 | `TaskEntity.difficultyName()`（`data/local/entity/TaskEntity.kt:50-54`）仍返回中文——但**当前零调用点**，英文态实际看不到（`grep -rn "difficultyName" composeApp/src` 只命中声明本身）。它是死代码里的中文，属阶段二清理项 |
+| L-05 | `TaskEntity.difficultyName()`（`data/local/entity/TaskEntity.kt:50-54`）仍返回中文，但**当前零调用点**，英文态实际看不到它——这是死代码里的中文，属阶段二清理项（本期不动 `data/**`） | `grep -rn "difficultyName" composeApp/src` 只命中声明本身；另一处在不参与构建的 `legacy/android-v2.88/` |
 | L-06 | `PointsBadge` 的单位是静态字段，英文 1 分显示 `⭐ 1 points`（需要"带计数的单位"字段，属页面改动，超出等价替换） | plan Ruling 22 相关（Task 6+8 新发现）；`CommonComponents.kt:108-131` |
 | L-07 | 进行中的番茄钟不跟随语言切换：通知与半场欢呼到阶段边界才换、完成回调 snackbar 与 `focusTarget` 选中值可能停留在旧语言 | spec §4（不重启协程的代价）；V-19/V-20/V-21 |
 | L-08 | 英文态 Android 系统分享面板标题仍是「分享文件」；iOS 分享面板根本没有标题位 | `AndroidFileSharer.kt:27`、`IosFileSharer.kt:34-38`；spec §11"家长远程控制"行注记；V-29 |
