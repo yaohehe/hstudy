@@ -70,6 +70,15 @@ FIELD_ASSIGN = re.compile(r"^\s*(\w+)\s*=", re.MULTILINE)
 # 所以页面必须一起带上，否则另一半的字段会被报成 invented。
 TASK7_REV = "d336fb8"      # Task 7 迁移前的父提交
 TASK7B_REV = "761b24e"     # Task 7b 迁移前的父提交（Ruling 23 的计划提交）
+# 下面这些只在**整枝组**用到（见 BRANCH_PAGES），默认组一条都没有改动，所以老命令的行为不变。
+TASK4_REV = "6f49951"      # Task 4（角色选择页）迁移前
+TASK5_REV = "767711d"      # Task 5（设置页语言分区）迁移前：那一版还没有语言分区
+TASK6_REV = "fdf8381"      # Task 6（公共控件）迁移前
+TASK8_REV = "2304fa7"      # Task 8（孩子任务列表）迁移前
+TASK9_REV = "20bc060"      # Task 9（孩子首页）迁移前
+TASK10_HOME_REV = "0c34b79"   # Task 10 家长首页迁移前
+TASK10_DASH_REV = "c77f91c"   # Task 10 数据看板迁移前（家长首页那一次已经把它迁走之前）
+TASK11_REV = "ad6aa93"     # Task 11（设置页其余 64 条）迁移前
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -84,6 +93,40 @@ DEFAULT_TABLES = [
 ]
 WORKTREE = "WORKTREE"
 REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一个人看不到它，也就不会被复验）"
+
+# ---- 整枝级（branch-wide）比对组：本分支迁移过的**全部**页面 × **全部**文案表 ----
+# 为什么需要它（终审第 9 条）：DISCLOSED_RESIDUALS 是在**各任务自己的窄组命令**里登记的，
+# 18 条里只有 6 条被默认组消耗，其余 12 条从来没有被任何一条持久命令复验过
+# （docs/i18n-stage1-verification.md §6 只记了默认组与设置页那条）。
+# 更糟的是原先的"成对登记缺一侧就失败"让**宽组天然不可能绿**：登记成页面单边的共享词
+# （`取消` / `确认` / `删除` / `分` / `+N分`）一旦把供值的那张表也带进来，表侧就成了 invented。
+# 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
+# （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
+#
+# 每个页面取**自己那批任务迁移前**的 rev（`git log --format=%h -1 <迁走它的那次提交>^`），
+# 同一页面被两批任务先后迁移的（ParentSettingsScreen）就带两个 rev，各取所需的一半原文。
+# 出处：Task 4=6f49951、Task 5=767711d、Task 6=fdf8381、Task 7=d336fb8、Task 7b=761b24e、
+# Task 8=2304fa7、Task 9=20bc060、Task 10=0c34b79/c77f91c、Task 11=ad6aa93、
+# 终审 Ruling 41 的家长密码门=本分支 HEAD 的前一次提交（`BRANCH_GATE_REV`）。
+BRANCH_GATE_REV = "41c3d39"   # 密码门迁移（Ruling 41）之前的 AppNavGraph
+BRANCH_PAGES = DEFAULT_PAGES + [
+    (TASK4_REV, "com/hstudy/app/ui/role/RoleSelectScreen.kt"),
+    (TASK5_REV, "com/hstudy/app/ui/parent/ParentSettingsScreen.kt"),
+    (TASK11_REV, "com/hstudy/app/ui/parent/ParentSettingsScreen.kt"),
+    (TASK6_REV, "com/hstudy/app/ui/common/CommonComponents.kt"),
+    (TASK8_REV, "com/hstudy/app/ui/child/ChildTaskListScreen.kt"),
+    (TASK9_REV, "com/hstudy/app/ui/child/ChildHomeScreen.kt"),
+    (TASK10_HOME_REV, "com/hstudy/app/ui/parent/ParentHomeScreen.kt"),
+    (TASK10_DASH_REV, "com/hstudy/app/ui/parent/ParentDashboardScreen.kt"),
+    (BRANCH_GATE_REV, "com/hstudy/app/ui/navigation/AppNavGraph.kt"),
+]
+BRANCH_TABLES = [
+    ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
+        "RoleStrings", "SettingsStrings", "CommonStrings", "TaskListStrings",
+        "PomodoroStrings", "FocusStrings", "ChildHomeStrings",
+        "ParentHomeStrings", "ParentDashboardStrings", "ParentGateStrings",
+    )
+]
 
 # 已披露残差的登记处。每条 {"page": 页面原文或 None, "table": 表侧模板或 None, "reason": 披露出处}，
 # page / table 至少给一个；两边的键都是**塌掉插值之后**的模板文本。
@@ -115,14 +158,24 @@ DISCLOSED_RESIDUALS = [
     },
     # Task 7b 第 1 轮审查第 8 条：三条通用按钮词从 FocusStrings 上收到 CommonStrings，
     # 中文值逐字节不变，但本命令的表组只有 Pomodoro/Focus 两张表，所以只登记页面侧。
-    {"page": "取消", "table": None,
+    {"page": "取消", "table": "取消",
      "reason": "审查第 8 条：上收为 CommonStrings.cancelButton（值未变，出处换了）。"
                "Task 11 复用同一条登记：ParentSettingsScreen.kt:192 与 :431 两处都取 common.cancelButton，"
-               "本命令的表组没有 CommonStrings 所以只登记页面侧"},
-    {"page": "确认", "table": None,
-     "reason": "审查第 8 条：上收为 CommonStrings.confirmButton（值未变，出处换了）"},
-    {"page": "删除", "table": None,
-     "reason": "审查第 8 条：上收为 CommonStrings.deleteContentDescription（值未变，出处换了）"},
+               "本命令的表组没有 CommonStrings 所以只登记页面侧。"
+               "终审 Ruling 41 之后登记成**两侧同形**：整枝组把 CommonStrings 带进表组，"
+               "页面侧 AppNavGraph.kt:283（家长密码门）与表侧 cancelButton 都是『取消』，"
+               "只登记单边会让宽组把表侧报成 invented（第 9 条点出的结构性恒红）"},
+    {"page": "确定", "table": "确定",
+     "reason": "终审 Ruling 41：家长密码门（AppNavGraph.kt:281）的提交按钮复用"
+               "SettingsStrings.passwordOkButton（同一个中文值『确定』、同一个语义），不在新表里重开同值槽；"
+               "表侧归 SettingsStrings，所以窄组（只带 ParentGateStrings）要靠这条双边登记说明它为什么只在页面侧。"
+               "与 CommonStrings.confirmButton 的『确认』是**两个中文值**（差一个字、字节不同），"
+               "两侧词形由 StringsCopyTest.settingsOkButtonIsNotTheCommonConfirmButton 钉住"},
+    {"page": "确认", "table": "确认",
+     "reason": "审查第 8 条：上收为 CommonStrings.confirmButton（值未变，出处换了）。"
+               "终审第 9 条改成两侧同形登记，宽组（--branch）与窄组都能复验它"},
+    {"page": "删除", "table": "删除",
+     "reason": "审查第 8 条：上收为 CommonStrings.deleteContentDescription（值未变，出处换了）。终审第 9 条改成两侧同形登记"},
     # ---- Task 9（孩子首页）的 5 条残差 ----
     # 前四条是 Ruling 25 的存储边界：原文**不进文案表**，而是搬到 ChildHomeStrings.kt 里的
     # CanonicalChildHomeText 常量（该对象不属于 Zh/En 表，所以本命令的表侧集合里看不到它们）。
@@ -138,12 +191,12 @@ DISCLOSED_RESIDUALS = [
     {"page": "完成布置任务: %s" % VALUE, "table": None,
      "reason": "Task 9 Ruling 25：:586 跨行 checkIn(bizKey, description) 的 description 参与 "
                "PointRepository.kt:256 幂等判等，值留在 CanonicalChildHomeText.assignmentDescription(name)"},
-    {"page": "+%s分" % VALUE, "table": None,
+    {"page": "+%s分" % VALUE, "table": "+%s分" % VALUE,
      "reason": "Task 9 跨表复用：ChildHomeScreen.kt:567 的 `+${a.points}分` 用 TaskListStrings.pointsEarnedLabel"
                "（同一中文值、同一语义 = 某件事值多少积分），本命令的表组只有 ChildHomeStrings，故只登记页面侧"},
     # ---- Task 10（家长首页 / 数据看板）的 2 条残差 ----
     # 家长首页那 59 条是逐字节整串搬进表的（strict 59/59，0 残差），只有仪表盘这一处需要登记。
-    {"page": "分", "table": None,
+    {"page": "分", "table": "分",
      "reason": "Task 10 Ruling 20 例外（与上面例外②同一类，单位来自另一张表）："
                "ParentDashboardScreen.kt:171 传给 ParentCompareRow(…, unit) 的 `分` 是**分钟**，"
                "迁移后由 CommonStrings.minuteLabel 供值；本命令的表组只有 ParentDashboardStrings，"
@@ -295,14 +348,19 @@ def parse_page_spec(spec, default_rev):
     return (default_rev, spec)
 
 
-def apply_disclosures(page, table, entries):
+def apply_disclosures(page, table, entries, scope_page=None, scope_table=None):
     """把已披露的残差从两侧集合里摘掉，并校验登记本身没有过期。
 
-    返回 (是否成立, 说明行列表)。校验规则：
+    返回 (是否成立, 说明行列表)。校验规则（终审第 9 条放宽了第 3 条，见下面粗体那段的括号）：
     * 两边都不在本次的集合里 -> 只提示，不判失败（命令可能只带了共享表的一部分页面）；
     * 只登记了一边的（page 或 table 为 None）：登记的那一边不在 -> 提示；在 -> 摘掉；
-    * 两边都登记了却只找得到一边 -> **失败**：那是"披露与代码不再成对"，
-      也就是有人改了拆分形态却没有跟着改登记（白名单不该变成永久消音）。
+    * 两边都登记了却只找得到一边：**先看另一半是不是根本不在这次命令的范围里**。
+      scope_page / scope_table 给出"整枝范围"（全部已迁页面 × 全部文案表，见 [_global_sets]）：
+      缺失的那一侧若**在整枝范围里存在**，就只是"这次没带它"——提示 + 摘掉能找到的一侧，不失败；
+      若连整枝范围里都不存在，那才是"披露与代码不再成对"（有人改了拆分形态却没改登记），**失败**。
+      原先不看范围就一律失败，后果是共享词的成对登记让宽组天然不可能退 0
+      （`取消` 登记在页面侧、CommonStrings 进了表组之后就成了 invented）。
+      白名单仍然会过期：过期判定的参照系从"这次命令带了什么"换成"整个分支还有什么"。
     """
     notes = []
     ok = True
@@ -317,9 +375,24 @@ def apply_disclosures(page, table, entries):
                          "不算失败，但这条披露没被复验：%s" % (page_text, table_text, reason))
             continue
         if page_text and table_text and on_page != on_table:
-            ok = False
-            notes.append("    （失效）披露成对登记了 %r 与 %r，这次只找得到%s一边：%s"
+            # 只找到一侧：另一半是"这次命令没带"，还是"整枝范围里已经不存在了"？
+            if not on_page:
+                stale = scope_page is not None and page_text not in scope_page
+            else:
+                stale = scope_table is not None and table_text not in scope_table
+            if stale:
+                notes.append("    （登记过期）%r / %r 只找得到%s一边，另一侧在**整枝范围**里也不存在了"
+                             "（那是有人改了拆分形态却没改登记）：%s"
+                             % (page_text, table_text, "页面" if on_page else "表", reason))
+                ok = False
+                continue
+            notes.append("    （单边在范围）%r / %r 这次只带到了%s那一侧，另一侧在整枝范围里存在、"
+                         "只是这条命令没带它（宽窄组合天然如此，不算过期）：%s"
                          % (page_text, table_text, "页面" if on_page else "表", reason))
+            if page_text and on_page:
+                page.pop(page_text)
+            if table_text and on_table:
+                table.pop(table_text)
             continue
         if page_text and on_page:
             page.pop(page_text)
@@ -327,6 +400,15 @@ def apply_disclosures(page, table, entries):
             table.pop(table_text)
         notes.append("    （已披露）page=%r table=%r：%s" % (page_text, table_text, reason))
     return ok, notes
+
+
+def _global_sets(tables_rev):
+    """整枝范围：全部已迁页面（各取自己迁移前的原文）× 全部文案表。
+
+    只用来判断"成对登记里缺失的那一侧到底是过期了还是这条命令没带它"（见 [apply_disclosures]
+    的第 3 条），所以它**不参与**任何等价性判定，结果按 tables_rev 缓存一次。
+    """
+    return page_templates(BRANCH_PAGES), table_templates(tables_rev, BRANCH_TABLES)
 
 
 def table_templates(rev, specs):
@@ -368,16 +450,34 @@ def main():
     ap.add_argument("--disclose", action="append", dest="disclose", default=[],
                     help="临时追加已披露残差：`页面原文` （表侧不再有整串）或 `页面原文=>表侧模板`；"
                          "长期形态是写进 DISCLOSED_RESIDUALS，好让下一个人看到上一轮披露了什么")
+    ap.add_argument("--branch", action="store_true",
+                    help="用**整枝级**的页面组与表组（本分支迁过的全部页面 × 全部文案表，"
+                         "见 BRANCH_PAGES / BRANCH_TABLES）；与 --page/--table 同时给出时以后者为准。"
+                         "docs/i18n-stage1-verification.md §6 记录的那条长期复验命令用的就是它")
     args = ap.parse_args()
 
     if args.pages:
         pages = [parse_page_spec(p, args.pages_rev) for p in args.pages]
+    elif args.branch:
+        pages = list(BRANCH_PAGES)
     else:
         pages = list(DEFAULT_PAGES)
-    tables = [t.split("#") for t in (args.tables or ["%s#%s" % (rel, m) for rel, m in DEFAULT_TABLES])]
+    if args.tables:
+        for t in args.tables:
+            if "#" not in t:
+                sys.exit("!! --table 需要 `<相对路径>#<Zh 变量名>` 两段形态，收到 %r。\n"
+                         "   路径相对 %s（**不要**带 composeApp/src/commonMain/kotlin/ 前缀），例如\n"
+                         "   --table com/hstudy/app/i18n/SettingsStrings.kt#SettingsStringsZh\n"
+                         "   （docs/i18n-stage1-verification.md §6 原先记录的那条命令就是因为缺 #Variable 段、\n"
+                         "    又带了完整前缀，直接 ValueError: not enough values to unpack。）"
+                         % (t, SRC_ROOT))
+        tables = [t.split("#") for t in args.tables]
+    else:
+        tables = list(BRANCH_TABLES if args.branch else DEFAULT_TABLES)
 
     page = page_templates(pages)
     table = table_templates(args.tables_rev, tables)
+    scope_page, scope_table = _global_sets(args.tables_rev)
 
     entries = list(DISCLOSED_RESIDUALS)
     for spec in args.disclose:
@@ -398,7 +498,7 @@ def main():
     print("distinct templates pages / tables        : %d / %d" % (len(page), len(table)))
 
     # 已披露的残差先摘掉（摘之前先校验登记本身没过期），三层比对都在摘掉之后进行。
-    disclosed_ok, disclosure_notes = apply_disclosures(page, table, entries)
+    disclosed_ok, disclosure_notes = apply_disclosures(page, table, entries, scope_page, scope_table)
     print("\n[disclose] 已披露残差是否仍然成立: %s" % ("YES" if disclosed_ok else "NO（登记过期，见下面）"))
     for note in disclosure_notes:
         print(note)
