@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.child.*
 import com.hstudy.app.ui.focus.*
 import com.hstudy.app.ui.habit.*
@@ -227,6 +228,8 @@ private fun RoleSelectDestination(
 ) {
     val app = AppGraph
     val scope = rememberCoroutineScope()
+    val strings = LocalStrings.current
+    val gate = strings.parentGate
     var showPasswordGate by remember { mutableStateOf(false) }
     var pwdInput by remember { mutableStateOf("") }
     var pwdError by remember { mutableStateOf<String?>(null) }
@@ -251,13 +254,13 @@ private fun RoleSelectDestination(
     if (showPasswordGate) {
         AlertDialog(
             onDismissRequest = { showPasswordGate = false },
-            title = { Text("🔒 请输入家长密码") },
+            title = { Text(gate.passwordGateTitle) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = pwdInput,
                         onValueChange = { pwdInput = it; pwdError = null },
-                        label = { Text("家长密码") },
+                        label = { Text(gate.passwordGateInputLabel) },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -275,12 +278,12 @@ private fun RoleSelectDestination(
                             showPasswordGate = false
                             onEnterParent()
                         } else {
-                            pwdError = "密码错误，请重试"
+                            pwdError = gate.passwordGateWrongPasswordError
                         }
                     }
-                }) { Text("确定") }
+                }) { Text(strings.settings.passwordOkButton) }
             },
-            dismissButton = { TextButton(onClick = { showPasswordGate = false }) { Text("取消") } }
+            dismissButton = { TextButton(onClick = { showPasswordGate = false }) { Text(strings.common.cancelButton) } }
         )
     }
 }

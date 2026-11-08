@@ -266,7 +266,7 @@ fun ParentSettingsScreen(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                                 ) {
                                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(strings.progressCardTitle(cp.deviceName), style = MaterialTheme.typography.titleSmall,
+                                        Text(strings.progressCardTitle(strings.deviceNameDisplayLabel(cp.deviceName)), style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Column { Text(strings.progressPointsLabel, style = MaterialTheme.typography.labelSmall)
@@ -316,8 +316,8 @@ fun ParentSettingsScreen(
                     // appLanguageFromStorage 解析成 SYSTEM，于是「存了 en 的设备」在 DataStore 首次
                     // emission 之前看到高亮的是「跟随系统」，随后跳一次。App.kt 根组合的 initial 用的是
                     // 同一个值，两处必须一致，否则首帧文案与首帧选中项对不上。
-                    // 局限同 App.kt：本次会话内改过选择后 startupLanguage 不回写，重进本页的首帧可能
-                    // 仍是启动时的高亮，等首次 emission 校正；比 null 的写法窄，但不消除窗口。
+                    // 局限同 App.kt，且**Ruling 46 之后已经不再是"会话内不回写"**：AppGraph 现在订阅
+                    // appLanguage 流刷新那个快照，所以切完语言后的任何一次重建都回锚到**当前**选择。
                     // 注：本段注释用「」而不用英文双引号。理由是读代码的人：引号里的中文看起来
                     // 像一条待迁移的界面字面量，得停下来判断它归不归文案表管；「」在中文排版里
                     // 明确表示「被指称的词」而不是「要显示的话」，这个判断就不用做了。

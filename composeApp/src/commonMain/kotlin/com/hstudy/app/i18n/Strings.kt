@@ -14,6 +14,7 @@ data class AppStrings(
     val childHome: ChildHomeStrings,
     val parentHome: ParentHomeStrings,
     val parentDashboard: ParentDashboardStrings,
+    val parentGate: ParentGateStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -26,6 +27,7 @@ val AppStringsZh = AppStrings(
     childHome = ChildHomeStringsZh,
     parentHome = ParentHomeStringsZh,
     parentDashboard = ParentDashboardStringsZh,
+    parentGate = ParentGateStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -37,6 +39,7 @@ val AppStringsEn = AppStrings(
     childHome = ChildHomeStringsEn,
     parentHome = ParentHomeStringsEn,
     parentDashboard = ParentDashboardStringsEn,
+    parentGate = ParentGateStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

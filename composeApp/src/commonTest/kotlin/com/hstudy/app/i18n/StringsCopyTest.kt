@@ -2066,7 +2066,8 @@ class StringsCopyTest {
      * - [SettingsStrings.deviceNameSavedMessage] 的实参是**数据**，中文态逐字节等于迁移前的
      *   `"已保存设备名称：$name"`；
      * - [SettingsStrings.progressCardTitle] 的实参是**孩子设备名**（来自对方设备的数据），
-     *   英文态那条把中文数据原样念出来是**已知上限**，进 Task 12 人工清单，不是本表写错。
+     *   渲染位在插值前过一层 [SettingsStrings.deviceNameDisplayLabel]（Ruling 42），于是英文态
+     *   至少不会把**规范兜底值**念成中文；父级/孩子自己起的名字仍按数据原样透传，那是已知上限。
      * 四条失败消息（[SettingsStrings.childProgressImportFailedMessage] / [backupFailureMessage] /
      * [restoreFailureMessage] / [exportFailedMessage]）的 `null` 分支**中英各钉一条、共 8 条**：
      * 迁移前 `${it.message}` 在 message 为 null 时渲染 "null"，改成实参位之后必须还是 "null"，
@@ -2101,6 +2102,20 @@ class StringsCopyTest {
         assertEquals("📊 Study progress from Mom's tablet", en.progressCardTitle("Mom's tablet"))
         // 内容透传的反面证据：跨设备传来的中文设备名在英文态仍是它自己的原文（不是漏译，是数据）
         assertEquals("📊 Study progress from 妈妈的平板", en.progressCardTitle("妈妈的平板"))
+        // Ruling 42：渲染位（ParentSettingsScreen.kt 的孩子进度卡片标题）现在把设备名先过一层
+        // deviceNameDisplayLabel 再插进 progressCardTitle，所以"整页英文态唯一"那句才是真话。
+        // 下面两条钉的是**这条管线在规范兜底值上的输出**：英文侧念 "Parent device"、
+        // 中文侧逐字节等于迁移前那条 `${cp.deviceName}的学习进度`（恒等映射，字节不变）。
+        // 为什么用字面量而不是只写 `en.progressCardTitle(en.deviceNameDisplayLabel(x))`：
+        // 两处调用可以一起改错，字面量不能。
+        assertEquals(
+            "📊 Study progress from Parent device",
+            en.progressCardTitle(en.deviceNameDisplayLabel(CanonicalParentSettingsText.DEVICE_NAME_FALLBACK)),
+        )
+        assertEquals(
+            "📊 家长设备的学习进度",
+            zh.progressCardTitle(zh.deviceNameDisplayLabel(CanonicalParentSettingsText.DEVICE_NAME_FALLBACK)),
+        )
 
         assertEquals("7天", zh.streakDaysValue(7))
         assertEquals("1天", zh.streakDaysValue(1))
@@ -2327,5 +2342,90 @@ class StringsCopyTest {
                 "家长设置页行首 emoji 应两表一致：$chinese / $english",
             )
         }
+    }
+
+    /**
+     * 家长密码门（`ui/navigation/AppNavGraph.kt` 的 RoleSelectDestination，终审 Ruling 41）三条字面量的
+     * ZH≠EN 漏译守卫。这个对话框是**所有已迁移页面的入口**：英文态下它是英文 App 里的一面中文墙，
+     * 所以它的文案必须与页面本体同源、同纪律。
+     */
+    @Test
+    fun parentGateCopyDiffers() {
+        assertDiffers(
+            AppStringsZh.parentGate.passwordGateTitle to AppStringsEn.parentGate.passwordGateTitle,
+            AppStringsZh.parentGate.passwordGateInputLabel to AppStringsEn.parentGate.passwordGateInputLabel,
+            AppStringsZh.parentGate.passwordGateWrongPasswordError to
+                AppStringsEn.parentGate.passwordGateWrongPasswordError,
+        )
+    }
+
+    /**
+     * 密码门三条 ZH 值与两个复用按钮的**逐字面量**钉子（`assertDiffers` 对"两边一起改"与
+     * "同形异义互换"都是瞎的，理由见 [CommonStrings] 类注释那段）。
+     *
+     * 复用而非重造（Ruling 41 的后半句）：门里的 `确定` / `取消` **不新建字段**，
+     * 分别取 [SettingsStrings.passwordOkButton] 与 [CommonStrings.cancelButton]。
+     * 下面最后两条把这两条复用钉成"值必须逐字节等于那两个既有字段的值"，
+     * 于是英文态要冒出第三种 OK/Confirm/Cancel 词形就会先在这里红。
+     */
+    @Test
+    fun parentGateButtonsComeFromTheirOwnTables() {
+        assertEquals("🔒 请输入家长密码", AppStringsZh.parentGate.passwordGateTitle)
+        assertEquals("🔒 Enter parent password", AppStringsEn.parentGate.passwordGateTitle)
+        assertEquals("家长密码", AppStringsZh.parentGate.passwordGateInputLabel)
+        assertEquals("Parent password", AppStringsEn.parentGate.passwordGateInputLabel)
+        assertEquals("密码错误，请重试", AppStringsZh.parentGate.passwordGateWrongPasswordError)
+        assertEquals("Wrong password, please try again", AppStringsEn.parentGate.passwordGateWrongPasswordError)
+        // 标题的装饰性 🔒 在表里、两侧同一枚（约定同 emojiStaysInsideTheSettingsTable）
+        assertEquals(
+            AppStringsZh.parentGate.passwordGateTitle.substringBefore(' '),
+            AppStringsEn.parentGate.passwordGateTitle.substringBefore(' '),
+        )
+        assertEquals("确定", AppStringsZh.settings.passwordOkButton)
+        assertEquals("取消", AppStringsZh.common.cancelButton)
+    }
+
+    /**
+     * §11"累计专注 = Total focus"（终审 Ruling 44）：同一个中文值在 [FocusStrings] 与
+     * [ParentDashboardStrings] 两张表里**必须同一个英文词形**。
+     *
+     * 本波次之前的状态是真实漂移：FocusStrings 写 "All-time focus"、ParentDashboardStrings 写
+     * "Total focus"。`assertDiffers` 抓不到它（两边都不等于中文），跨表的"同词同形"必须先
+     * **点名这两张表**才谈得上比对——形态与 [settingsStreakDaysMatchParentHomeForm] 一致。
+     * 取值理由：同卡片相邻两格已是 Total points / Total check-ins。
+     */
+    @Test
+    fun totalFocusLabelIsTheSameTwoWordsInBothTables() {
+        assertEquals("累计专注", AppStringsZh.focus.totalFocusLabel)
+        assertEquals("Total focus", AppStringsEn.focus.totalFocusLabel)
+        assertEquals("累计专注", AppStringsZh.parentDashboard.totalFocusLabel)
+        assertEquals("Total focus", AppStringsEn.parentDashboard.totalFocusLabel)
+        assertEquals(
+            AppStringsEn.parentDashboard.totalFocusLabel,
+            AppStringsEn.focus.totalFocusLabel,
+            "同一个「累计专注」在两张表念成两个词形（Ruling 44 已统一为 Total focus）",
+        )
+        assertEquals(
+            AppStringsZh.parentDashboard.totalFocusLabel,
+            AppStringsZh.focus.totalFocusLabel,
+        )
+    }
+
+    /**
+     * 英文侧省略号只有一个形状（终审 Ruling 44）：`…`（U+2026），不写三个句点。
+     *
+     * 中文侧**两种都有**且必须保持原字节（`正在处理…` 与 `备份中...` 来自迁移前的不同行），
+     * 所以本断言只扫英文表。上限要说清楚：data class 的 `toString()` 不含函数型字段的返回值
+     * （Ruling 20-b 的老盲区），因此这条只覆盖静态 String 字段；函数型英文值靠各自那段
+     * 逐字双语期望串（`settingsInterpolatedCopyPinsBothLanguages` 等）里的字面量承担。
+     */
+    @Test
+    fun englishTableUsesOneEllipsisForm() {
+        val rendered = AppStringsEn.toString()
+        assertFalse(
+            rendered.contains("..."),
+            "英文表里出现三个句点：本仓英文表统一用 U+2026（Ruling 44）",
+        )
+        assertTrue(rendered.contains('…'), "英文表应至少有一条 U+2026 省略号，否则上面那条断言是装饰")
     }
 }

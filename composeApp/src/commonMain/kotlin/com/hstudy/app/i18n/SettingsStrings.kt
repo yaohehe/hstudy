@@ -88,7 +88,7 @@ package com.hstudy.app.i18n
  *   [PomodoroStrings.targetLabel]、[CanonicalChildHomeText] 同一族）：中文原字节搬进
  *   [CanonicalParentSettingsText]（该对象不在 Zh/En 表里，存储闸门永久豁免 `Canonical*Text.*`，
  *   见 scripts/i18n_storage_boundary.py 已知边界），页面传给 sink 的只有它和用户输入；
- * - 英文态在**只读渲染位**换标签：`:302` 的保存回执把兜底值经 [deviceNameDisplayLabel] 念成
+ * - 英文态在**只读渲染位**换标签：`:304` 的保存回执把兜底值经 [deviceNameDisplayLabel] 念成
  *   "Parent device"，认不出的输入原样透传（历史行/用户自取名不受影响）；
  * - `:291` 那个 OutlinedTextField 的 `value` **刻意不本地化**：它是数据编辑器，
  *   把 "Parent device" 显示进可编辑框就等于让父级下一次保存把英文标签写回存储，
@@ -159,13 +159,27 @@ package com.hstudy.app.i18n
  *   ZH 侧不分支；由 `settingsEnglishPluralsCoverOneAndOther` 用"中文侧只是换数字"的等式钉住。
  * - [progressCardTitle]：中文"`${deviceName}的学习进度`"的所属关系在英文里必须换成前置介词短语
  *   "Study progress from …"（ZH 侧逐字节不变）；实参是**数据**（孩子设备名），属内容透传。
+ *   **终审 Ruling 42 之后渲染位先过一层 [deviceNameDisplayLabel]**（调用点
+ *   `ParentSettingsScreen.kt:269`（本波次改动后复算的当前坐标），
+ *   于是英文态不会再把规范兜底值"家长设备"原样念进英文句子；父级/孩子自己起的名字仍按数据透传。
+ *   中文侧恒等，所以这一层包装不改一个字节（两条字面量断言见
+ *   `StringsCopyTest.settingsInterpolatedCopyPinsBothLanguages` 的 progressCardTitle 段）。
  * - [deviceNameSavedMessage]：同上，实参是数据；英文语序 "Device name saved: X"。
  * - [deviceNameDisplayLabel]：中文侧恒等函数（规范值就是显示值），只有英文侧做映射——
  *   这条是"存规范值、渲染本地化"的必然形状，不是文案改动。
- * - [backupRunningLabel] / [restoreSuccessMessage]：中文的 `...`（三个句点）与 `…`（U+2026）
- *   在本页**两种都有**（`:158`/`:180` 三个句点、`:255` 单字符省略号），ZH 侧逐字节保留原样，
- *   EN 侧统一用三个句点，因为英文排版惯例不用 U+2026。间距/标点不参与 ZH 字节等价判定，
- *   但 `i18n_template_diff.py` 的 [B] 层比较中文文案里的标点，所以三条都逐字登记在测试里。
+ * - [backupRunningLabel] / [restoreSuccessMessage] / [processingLabel]：中文的 `...`（三个句点）与
+ *   `…`（U+2026）在本页**两种都有**（`:158`/`:180` 三个句点、`:255` 单字符省略号），
+ *   ZH 侧逐字节保留原样（标点参与 `i18n_template_diff.py` 的 [B] 层比对，改了就是改文案）。
+ *   **EN 侧自终审 Ruling 44 起统一用 `…`**：本仓英文表里"进行中"的三个词形此前分裂成
+ *   `Working...`（本页）与 `Working…`（[ChildHomeStrings.syncingLabel]）、
+ *   `Keep going…`（[ChildHomeStrings.weeklyChallengeInProgressNote]）、
+ *   `Watch closely…`（[FocusStrings.memoryWatchHint]），四对三多数取 U+2026，于是把本页三条
+ *   EN 值改成 `…`（3 个 EN 值，中文一字未动）。原先那句"英文排版惯例不用 U+2026"不再成立：
+ *   它顶多解释"不要混用"，解释不了"同一页两种混法"。
+ *   这三条**没有**逐字符的字面量测试登记（本页静态字段走 `settingsCopyDiffers` 的 ZH≠EN 穷举，
+ *   标点差异那种"两边都不同"的漂移它抓不到）——能被机器复验的是 `i18n_template_diff.py`
+ *   的 [B] 层对中文标点的集合相等，英文标点仍靠人工与这条注释。原写"三条都逐字登记在测试里"
+ *   是假陈述，终审第 7 条点出，已按实际形状改写。
  *
  * 函数型字段（本页 11 个，与上面"一进一出"那条和 `SETTINGS_STATIC_DIFFERS_FIELDS` 头注释同口径）
  * 的返回值不在 data class `toString()` 里（Ruling 20-b 的盲区），整表 CJK 扫描看不见，
@@ -449,14 +463,14 @@ val SettingsStringsEn = SettingsStrings(
     backupCardTitle = "💾 Backup and restore",
     backupNote = "Back up your child's study data — points, mistakes, focus and achievements — to restore it on a new device or after an accidental uninstall.",
     backupButton = "Back up data",
-    backupRunningLabel = "Backing up...",
+    backupRunningLabel = "Backing up…",                                       // Ruling 44：EN 省略号统一为 U+2026
     restoreButton = "Restore data",
     backupSuccessMessage = "✅ Backup complete — the file is saved in the app folder",
     backupFailureMessage = { detail -> "❌ Backup failed: $detail" },
     restoreDialogTitle = "Confirm data restore",
     restoreDialogNote = "Restoring overwrites all current data with the backup and restarts the app. This can't be undone. Continue?",
     restoreConfirmButton = "Confirm restore",
-    restoreSuccessMessage = "✅ Restore complete — the app is restarting...",
+    restoreSuccessMessage = "✅ Restore complete — the app is restarting…",
     restartAppNote = "Please reopen the app for the changes to take effect",
     restoreFailureMessage = { detail -> "❌ Restore failed: $detail" },
 
@@ -469,7 +483,7 @@ val SettingsStringsEn = SettingsStrings(
     transportNote = "💡 Transfer method — Bluetooth, Wi-Fi Direct, WeChat, email, any of them works",
     pushSettingsButton = "📤 Push settings to child",
     viewProgressButton = "📥 View child's progress",
-    processingLabel = "Working...",
+    processingLabel = "Working…",
     exportChooserTitle = "Send parent settings to your child's device",
     settingsExportedMessage = "✅ Settings exported — send the file to your child",
     exportFailedMessage = { detail -> "Export failed: $detail" },

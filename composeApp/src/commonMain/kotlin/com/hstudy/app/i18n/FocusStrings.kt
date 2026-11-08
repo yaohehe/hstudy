@@ -143,6 +143,13 @@ package com.hstudy.app.i18n
  * （已补进 §11 术语表）。Task 7b 新用的四个词也已同批补进 §11：
  * 记忆广度 = memory span、工作记忆 = working memory、黄金专注时段 = golden focus window、
  * 每日计划/今日计划 = today's plan。
+ *
+ * **累计专注 = Total focus（终审 Ruling 44）**：本表原译 "All-time focus"，与
+ * [ParentDashboardStrings.totalFocusLabel]（同一个中文值"累计专注"）漂移成两个英文词形。
+ * 统一取 "Total focus"，理由是同卡片相邻两格已经是 Total points / Total check-ins，
+ * "All-time" 在这一排里是唯一的异类。两侧的字面量与跨表同形由
+ * `StringsCopyTest.totalFocusLabelIsTheSameTwoWordsInBothTables` 钉住（`assertDiffers` 对
+ * 同形异义与"两表两个词形"都是瞎的，见 [CommonStrings] 类注释那段）。
  */
 data class FocusStrings(
     val statsTitle: String,
@@ -282,7 +289,7 @@ val FocusStringsZh = FocusStrings(
 val FocusStringsEn = FocusStrings(
     statsTitle = "📊 Focus stats",
     todayFocusLabel = "Today's focus",
-    totalFocusLabel = "All-time focus",
+    totalFocusLabel = "Total focus",   // Ruling 44：原写 "All-time focus"，与 ParentDashboardStrings 同一中文值漂移，统一为 Total focus
     approxLabel = "About",
     trainingTitle = "🎯 Focus training",
     sessionsLabel = "Sessions",

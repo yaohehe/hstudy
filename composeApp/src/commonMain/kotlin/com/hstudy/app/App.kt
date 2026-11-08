@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.catch
  *   不在自己内部重复解析），两者必须来自同一个 remember 结果，不允许各算各的。
  *   偏好读写走 AppGraph.userPreferences（全工程唯一 DataStore 实例），入口平台侧已保证
  *   AppGraph.bootstrap() 早于本 Composable 组合（Android HStudyApplication.onCreate / iOS initIosPlatform）；
- *   同一次 bootstrap 还会预读偏好写入 AppGraph.startupLanguage，用作首帧 initial，减少一帧错语言闪现。
+ *   同一次 bootstrap 还会订阅 appLanguage、把最新值写进 AppGraph.startupLanguage 用作首帧 initial（Ruling 46），
  * - 生效文案用 remember(storedLanguage) 缓存，避免每次重组重复调用平台桥接与解析。
  */
 @Composable
