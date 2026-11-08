@@ -27,16 +27,40 @@ COPY_REF = re.compile(r"\bstrings\.[A-Za-z]\w*|\bAppStrings(?:Zh|En)\.\w+|\w+Str
 
 CALL = re.compile(r"\b(" + "|".join(re.escape(s) for s in SINKS) + r")\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)")
 
+# 一级污点：`var x = ...strings.y...` / `val x = strings.y` / `mutableStateOf(strings.y)`
+# 之后的 sink 调用只要出现 x 就算违规。没有数据流分析，只做同文件赋值追踪，
+# 因为本类缺陷的实际形态就是"把文案赋给状态，再写库"。
+TAINT_ASSIGN = re.compile(
+    r"\b(?:var|val)\s+([A-Za-z_]\w*)\s*(?:by\s+remember\s*\{[^}]*\})?\s*=\s*(.*"
+    + r"strings\.[A-Za-z]\w*"
+    + r"|AppStrings(?:Zh|En)\.\w+.*"
+    + r"|(?:[A-Za-z]\w*Strings(?:Zh|En))\.\w+.*)",
+    re.DOTALL,
+)
+
+
+def collect_taint(text):
+    tainted = set()
+    for match in TAINT_ASSIGN.finditer(text):
+        tainted.add(match.group(1))
+    return tainted
+
 
 def scan(path):
-    hits = []
     with io.open(path, encoding="utf-8") as handle:
-        for lineno, line in enumerate(handle, 1):
-            code = line.split("//", 1)[0]
-            for match in CALL.finditer(code):
-                args = match.group(2)
-                if COPY_REF.search(args):
-                    hits.append((lineno, match.group(1), code.strip()))
+        raw = handle.read()
+    tainted = collect_taint(raw)
+    hits = []
+    for lineno, line in enumerate(raw.splitlines(), 1):
+        code = line.split("//", 1)[0]
+        for match in CALL.finditer(code):
+            args = match.group(2)
+            if COPY_REF.search(args):
+                hits.append((lineno, match.group(1), code.strip(), "直接引用文案表"))
+            else:
+                leaked = [name for name in tainted if re.search(r"\b%s\b" % re.escape(name), args)]
+                if leaked:
+                    hits.append((lineno, match.group(1), code.strip(), "经由变量 %s 传入" % ", ".join(sorted(leaked))))
     return hits
 
 
@@ -47,16 +71,16 @@ def main():
             if not name.endswith(".kt"):
                 continue
             full = os.path.join(dirpath, name)
-            for lineno, sink, text in scan(full):
-                found.append((os.path.relpath(full, SRC), lineno, sink, text))
+            for lineno, sink, text, why in scan(full):
+                found.append((os.path.relpath(full, SRC), lineno, sink, text, why))
     if not found:
-        print("存储边界守卫通过：没有文案表字符串出现在写库/业务键调用参数里")
+        print("存储边界守卫通过：没有文案表字符串（含经由变量传入）出现在写库/业务键调用参数里")
         return 0
     print("发现 %d 处疑似「界面文案进入存储或业务键」：" % len(found))
-    for rel, lineno, sink, text in found:
-        print("  %s:%d  %s(...)  ←  %s" % (rel, lineno, sink, text[:160]))
+    for rel, lineno, sink, text, why in found:
+        print("  %s:%d  %s(...)  [%s]\n      %s" % (rel, lineno, sink, why, text[:170]))
     print("\n处置要求：改为写入规范值（迁移前的原始文本或稳定 key），只在渲染时本地化；"
-          "若该值确实需要参与业务判等，禁止本地化。")
+          "若该值参与业务判等（如 bizKey 的 description 比较），一律不本地化。")
     return 1
 
 
