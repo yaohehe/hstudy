@@ -707,5 +707,27 @@ def main():
     return 1
 
 
+def _force_utf8_streams():
+    """stdout/stderr 钉 UTF-8（终审 D-B：修 GBK 崩溃**这一类**，不再写成"请先 export
+    PYTHONIOENCODING=utf-8"的环境注）。闸门打印中文的"为什么算文案"说明与 `↔` 这类符号，
+    管道/重定向到本机 cp936 控制台时 `print` 会抛 UnicodeEncodeError，于是**一条全绿的扫描
+    也会非零退出**——这正是"恒红的闸门没人读"要防的假红。
+    完整理由见 `scripts/i18n_template_diff.py` 的同名函数。
+
+    放在文件末尾：本文件的行号被自测与本文件自己的「检测通道」清单按坐标引用，护栏插进
+    import 之后会把那些坐标推成假引用。这里不移动任何一行既有代码。
+    自测的 `run_gate()` 另有 `PYTHONIOENCODING=utf-8`，那是"自测读到的字节恒为 UTF-8"的契约，
+    与本护栏互补：护栏管人直接跑闸门，环境变量管子进程输出。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):  # Python 3.7+ 的 TextIOWrapper；没有就退回原行为
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError, RuntimeError):
+                pass
+
+
+_force_utf8_streams()
+
 if __name__ == "__main__":
     sys.exit(main())

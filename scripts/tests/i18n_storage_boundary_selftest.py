@@ -211,8 +211,8 @@ def declared_functions():
 
 def main():
     global gate
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    # 终审 D-B：原先这两行是本文件唯一的编码护栏、且**只钉 stdout**（失败详情与 Traceback 走 stderr，
+    # GBK 管道上会二次抛、盖掉真正的断言失败）。换装搬到文件末尾的 _force_utf8_streams()：两条流一起钉。
 
     sys.path.insert(0, os.path.dirname(GATE))
     import i18n_storage_boundary as gate_module
@@ -554,6 +554,23 @@ def main():
           "空过防护 + 正则级机理断言全部符合预期。")
     return 0
 
+
+def _force_utf8_streams():
+    """stdout/stderr 钉 UTF-8（终审 D-B）。原先的护栏写在 `main()` 里、只管 stdout；这里两条流一起管，
+    并且搬到模块执行期——`main()` 之前若有打印也在 UTF-8 之下。完整理由见
+    `scripts/i18n_template_diff.py` 的同名函数。
+    放文件末尾是刻意的：闸门 docstring 按坐标引用本文件的 `selftest:306-307`、`selftest:26`、`:94-96`，
+    护栏插到那些行之前会把引用推成假引用；这里只在 `if __name__` 之前追加，不移动任何既有行。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):  # Python 3.7+ 的 TextIOWrapper；没有就退回原行为
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError, RuntimeError):
+                pass
+
+
+_force_utf8_streams()
 
 if __name__ == "__main__":
     sys.exit(main())

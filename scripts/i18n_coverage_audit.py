@@ -45,5 +45,24 @@ def main():
     return 0
 
 
+def _force_utf8_streams():
+    """stdout/stderr 钉 UTF-8：本脚本打印中文表头与中文文件名，管道/重定向到 GBK 控制台时
+    `print` 会抛 UnicodeEncodeError 让审计非零退出。完整理由见 `scripts/i18n_template_diff.py`
+    的同名函数（终审 D-B：修这一类，不写进文档当环境注）。
+
+    放在文件末尾是刻意的：`docs/i18n-stage1-verification.md` L-13 按行号引用本文件
+    （`scripts/i18n_coverage_audit.py:35`），护栏插到 import 之后会把那条引用推成假引用。
+    这里**不移动任何一行既有代码**，模块执行到此处即完成换装，`main()` 在其后才被调用。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):  # Python 3.7+ 的 TextIOWrapper；没有就退回原行为
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError, RuntimeError):
+                pass
+
+
+_force_utf8_streams()
+
 if __name__ == "__main__":
     sys.exit(main())
