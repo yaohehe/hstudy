@@ -4,6 +4,13 @@
 // 有名单没报出来的名字，自测直接失败 —— 这就是"不许凭想象往名单里塞名字"的机制，
 // 也是旧表里 addRecord/save/upsert/deleteBy/submitProof/recordMistake/saveHabit/setApproval
 // 这 8 个不存在条目再也不会悄悄留在表里的原因。
+// 9b 审查 Important 4 把对账补成了**双向**：光"有 fixture"是自证循环（fixture 自己就能凭空造一个
+// `deleteByTitle(`），所以自测现在还要求 SINK_STEMS/SINK_EXTRA 每一条都能在 commonMain 里找到
+// `fun <名字>(` 的真实声明（`dao.deleteMistake(` 那一条原来是 `deleteByTitle(`，真实树 0 处，
+// 已换成真实的 `deleteMistake`）。唯一留着没有真实声明的名字是 `upsertHabit`，它对应的词根在
+// RESERVED_STEMS 里明写着"预留"，自测反过来还盯着它：**一旦真实树出现 `fun upsert*(`
+// 就必须把它搬进 SINK_STEMS**。
+// add/set 两个大写后缀家族不在本文件（它们由形状规则覆盖，见 AddSetFamily.kt）。
 package com.hstudy.app.fixture
 
 import androidx.compose.runtime.Composable
@@ -26,7 +33,7 @@ fun SinkCoverageScreen() {
     dao.updateStatus(3L, ApprovalStatus.APPROVED, strings.reviewDoneNote)
     dao.updateReward(RewardEntity(name = strings.rewardStoreNote))
     dao.upsertHabit(HabitEntity(name = strings.habitNameFallback))
-    dao.deleteByTitle(strings.defaultTaskTitle)
+    dao.deleteMistake(strings.defaultTaskTitle)
     dao.softDeleteReward(2L, strings.rewardStoreNote)
     dao.markCompleted(9L, strings.weeklyChallengeDescription)
     app.focusRepository.recordFocusSession(25, strings.phaseFocus, 5)

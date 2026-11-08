@@ -42,7 +42,8 @@ fun CanonicalCompliantScreen() {
     LaunchedEffect(strings) { viewModel.onLanguageChanged(strings) }
 
     // 5) 文案只流向渲染面（Text / 提示列表），不流向存储：`add(...)` 是 buildList 的渲染列表，
-    //    词根故意不含 add/set（见脚本 SINK 名单第 5 条取证注释）
+    //    大写后缀规则 `\b(?:add|set)[A-Z]\w*(` 故意不匹配裸 `add(`；`setOf(`/`addAll(` 在
+    //    SINK_CAPSUFFIX_DENY 里逐字排除（脚本 SINK 名单第 5 条有取证说明）
     val weakTips = buildList {
         if (score < 20) add(strings.weakTipCheckin)
         add(taskListStrings.pointsEarnedLabel(2))
