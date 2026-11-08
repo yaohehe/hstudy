@@ -26,7 +26,18 @@
 * 注释里的中文按 Ruling 18 不算可迁移文案，脚本会剥掉 `//` 行注释与 `/* */` 块注释。
 * 表侧字段名按"字面量前最近的一个 `字段 =`"归属，只为把报错指到具体字段，不参与等价性判定。
 
-退出码：[A] 与 [B] 都成立返回 0，否则返回 1（可当闸门用）。
+退出码：[A]、[B] 与 [strict] 残差三者都成立才返回 0，否则返回 1（可当闸门用）。
+
+[strict] 那一路是本次补上的（原先只看 [A]/[B]）：这两层把数字格式串也塌成记号，所以
+"单位原本写在格式串内部、后来拆进文案表"的那一处在这两层看起来**和等价毫无区别**——
+第二条同样形态的拆分悄悄混进来也照样退 0。现在退 0 需要同时满足：
+* 拆分位点条数不超过 `--max-splits`（默认 1，就是 Task 7 披露的那一处 `strFormat("%.1f 秒", …)`）；
+* 所有 [strict] 残差都能被这些拆分位点解释（页面侧必须是数字格式串开头的字面量，
+  表侧必须是它塌掉格式串后的同形模板），有一条对不上就退 1 并把它打出来。
+
+副作用要知道：默认那一组是 Task 7 专属的（页面取 d336fb8），Task 7b 之后文案表里多了宿主页的字段，
+所以直接跑 `python scripts/i18n_template_diff.py` 会因为"表里有、页面没有"退 1——
+复现 Task 7 报告 §4 那两行结论要写 `--tables-rev ceaf0f5`（Task 7 的提交）。
 """
 import argparse
 import io
@@ -193,6 +204,9 @@ def main():
     ap.add_argument("--tables-rev", default=WORKTREE, help="文案表取的位置（默认 WORKTREE，也可给 rev）")
     ap.add_argument("--page", action="append", dest="pages", help="可重复；相对 %s 的页面路径" % SRC_ROOT)
     ap.add_argument("--table", action="append", dest="tables", help="可重复；表文件#Zh 变量名")
+    ap.add_argument("--max-splits", type=int, default=1,
+                    help="允许的 Ruling 20 格式串拆分位点条数（默认 1 = Task 7 披露的那一处）；"
+                         "出现第二条未披露的同形拆分时退出码变 1")
     args = ap.parse_args()
 
     pages = args.pages or DEFAULT_PAGES
@@ -223,6 +237,24 @@ def main():
         for rel, lineno, _ in page[text]:
             print("           页面 %s:%d  %-12r -> 表 %s" % (rel, lineno, text, table.get(collapse_formats(text), "未找到同形模板")))
 
+    # strict 残差是否**全部**由上面点名的拆分位点解释：解释不了的那几条就是"第二条拆分"或
+    # "某个 token 既不在页面也不在表里"，原先只有 [A]/[B] 参与退出码，它们会被归一化掉、闸门看不见。
+    split_page = {t for t in strict_only_page if any(fmt for _rel, _line, fmt in page[t])}
+    unexplained_page = sorted(set(strict_only_page) - split_page)
+    explained_table = {collapse_formats(t) for t in split_page}
+    unexplained_table = sorted(set(strict_only_table) - explained_table)
+    strict_clean = not unexplained_page and not unexplained_table
+    splits_allowed = len(splits) <= args.max_splits
+    print("[strict] 残差能否全部由拆分位点解释: %s（解释不了: 页面 %d / 表里 %d）"
+          % ("YES" if strict_clean else "NO", len(unexplained_page), len(unexplained_table)))
+    for text in unexplained_page:
+        print("    strict 残差、非拆分位点（页面有）: %r  来自 %s"
+              % (text, ["%s:%d" % site[:2] for site in page[text]]))
+    for text in unexplained_table:
+        print("    strict 残差、非拆分位点（表里有）: %r  字段 %s" % (text, table[text]))
+    print("[strict] 拆分位点条数是否在上限内: %s（%d 条，--max-splits=%d）"
+          % ("YES" if splits_allowed else "NO", len(splits), args.max_splits))
+
     # [A]：格式串也塌成数值位，比较模板集合。
     norm_page = {collapse_formats(t) for t in page}
     missing = sorted(norm_page - set(table))
@@ -244,7 +276,7 @@ def main():
     print("    distinct Chinese copy texts compared      : %d / %d" % (len(copy_page), len(copy_table)))
     for text in diff:
         print("    差异: %r" % text)
-    return 0 if not missing and not invented and not diff else 1
+    return 0 if (not missing and not invented and not diff and strict_clean and splits_allowed) else 1
 
 
 def miss_raw(page, norm_text):
