@@ -70,6 +70,34 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
   `NSNetServiceBrowserDelegate` 的 didFind/didRemove 两个回调在 Kotlin 侧签名冲突（只能实现其一），
   因此主机名取 Bonjour 的 `.local` 名称（系统 mDNSResponder 可解析），下线设备由下次扫描前清空兜底。
 
+## 语言（中 / English · 双语第一阶段）
+
+界面支持中文与英文。**当前状态是"双语第一阶段"（分支 `feature/i18n-stage1`，未发布）**，
+完整范围与人工验证清单见 [docs/i18n-stage1-verification.md](docs/i18n-stage1-verification.md)。
+
+- **双语覆盖什么**：13 个 UI 文件、425 条去重文案（按文件去重求和）——
+  角色选择、家长首页、家长仪表盘、家长设置、孩子首页、孩子任务列表、
+  专注统计 / 专注力训练、专注番茄钟（`common/PomodoroTimer.kt` 组件 + 其宿主 `ChildPomodoroScreen`）、
+  记忆训练、每日计划，以及 `common/CommonComponents.kt` 的公共控件文案。
+  计划最初的 10 个目标文件是 362 条，Task 7b 追加 3 个页面共 63 条。
+- **什么不是双语**：其余页面仍是中文（约 905 条去重文案 / 45 个文件，属阶段二，
+  复现 `python scripts/i18n_coverage_audit.py`）；写入数据库的种子内容与用户动作记录不本地化（设计文档 §5）；
+  日期与数字格式不本地化，英文态仍是 `yyyy-MM-dd`、周一起始（§6）。
+  因此**英文设备上会出现中英混排，这是分阶段的既定代价**，设置页英文态有一行提示兜底。
+- **切换机制**：默认跟随系统语言，家长设置页「🌐 语言」可手动覆盖为 跟随系统 / 中文 / English。
+  选择持久化（DataStore），**切换即时生效、不需要重启 App**，也不打断进行中的番茄钟计时。
+  实现是 `commonMain` 自持的按页面文案表（`i18n/Strings.kt` + `i18n/*Strings.kt`）
+  经 `CompositionLocalProvider(LocalStrings …)` 注入，`LocalDisplayLanguage` 提供生效语言；
+  不使用 Compose Multiplatform 的 resources/`LocalConfiguration`（1.7.3 的 commonMain 无该 API，已用编译探针证实）。
+- **验证上限（诚实声明）**：**双语的视觉效果无法由 CI 或本机自动验证**。
+  本机无 emulator/adb 设备、仓库无 Compose UI 测试依赖、Android CI 无模拟器、
+  Apple 目标在 Windows 上连链接都不会发生。自动闸门能证明的只有：
+  中文态逐字节等价（`python scripts/i18n_template_diff.py`）、文案不进写库调用
+  （`python scripts/i18n_storage_boundary.py`）、109 条单测、编译与打包。
+  **英文态的排版（换行/截断/挤压）、混排观感、iOS 运行时都需要人工确认**：
+  Android Studio 与 iOS 模拟器各走一遍「启动 → 首页 → 打卡 → 设置」，
+  逐条清单（含 33 项）见上面链接的 §2。
+
 ## 版本管理
 
 - 仓库：`github.com/yaohehe/hstudy`（public，以便 macOS runner 构建 iOS），主分支 `main`。
