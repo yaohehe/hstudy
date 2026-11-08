@@ -117,7 +117,8 @@ package com.hstudy.app.i18n
  *    它在组合期被直接调用，`when` 的分支结构、区间常量、`hour` 实参、返回类型都未动，
  *    变的只有"字面量 → `strings.<字段>`"和函数多了一个 `@Composable` 标记。
  * 5. **第 1 轮审查的存储修复改的是"实参从哪来"，形态与前四条不同**（Ruling 25 要求，不属于等价替换，
- *    但四条自查同样逐条走）：宿主页 :45 / :47 / :90 / :103 / :175 / :177 / :181 七行。
+ *    但四条自查同样逐条走）：宿主页 :14（import）/ :46 / :48 / :91 / :104 / :178 / :182 七行
+ *    （行号取本次修复后的树；页面里**没有**新增中文注释行，:44 那条注释是迁移前就在的）。
  *    (a) 挪动的 token 只有"存储侧改回规范中文"这一件事，界面文案 token 一个都没回到页面
  *        （页面里没有新增任何中文字面量，规范值在 [CanonicalFocusText]）；
  *    (b) 中文态输出逐字节不变：中文侧 [targetLabel] 是恒等函数、[CanonicalFocusText.recordDescription]
@@ -149,6 +150,12 @@ package com.hstudy.app.i18n
  * （迁移前页面里写的就是这四个字面量），`point_approvals.description` 收的是
  * [CanonicalFocusText.recordDescription] 的原文模板（= 本表 [focusRecordDescription] 的中文模板）。
  * 本地化只发生在渲染时：下拉框与选中值走 [targetLabel]，完成提示走 [focusDoneSnackbar] 前先过 [targetLabel]。
+ * 因此 [targetFreeStudy] / [targetReviewMistakes] / [targetPreviewLesson] / [targetFinishHomework] 与
+ * [focusRecordDescription] 这五条**宿主页已经不再调用**，但仍留在表里，三个理由缺一不可：
+ * 它们各对应一条迁移前的页面字面量（`scripts/i18n_template_diff.py` 的 [A] 层要求每条原文都有表侧出处，
+ * 删掉就等于把"页面曾经写过这句中文"的证据抹了）；[targetLabel] 的四个英文值必须与前三条逐字相等
+ * （由测试断言，防止同一句英文在表内出现两份并漂移）；`point_approvals.description` 的显示侧翻译
+ * 归 Task 10（家长端审批列表今天直接渲染存进去的原文，与未迁页面的行为一致）。
  * 为什么要这么麻烦：`ChildEfficiencyReportScreen.kt:335` 按 `taskTitle` 分组，
  * 存界面语言会让同一逻辑目标**永久裂成两根柱**；`PointRepository.kt:165` 又把审批描述拼进
  * `撤销打卡扣回：…` 写进 `point_records.note`，存英文正文就产出混语句子。

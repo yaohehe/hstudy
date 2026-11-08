@@ -20,6 +20,11 @@ SINKS = [
     "submitApproval", "recordFocusSession", "adjustPoints", "checkIn", "checkInForTask",
     "tryUnlockAchievement", "addRecord", "insert", "update", "save", "upsert", "deleteBy",
     "submitProof", "recordMistake", "saveHabit", "setApproval",
+    # Task 7b 第 1 轮审查补：每日计划的两条写入路径把 `DailyPlanEntity.taskTitle` 直接写库
+    # （ChildDailyPlanScreen.kt:100 addPlan / FocusRepository.kt:40），现有的 "insert"/"save" 匹配不到
+    # `addPlan(` 这种名字。这两个调用点当前传的是用户输入（对话框 TextField），但一旦有人
+    # 换成文案表就是这个缺陷的复发形态，所以按实际调用点补进来（补完扫描仍然 0 命中）。
+    "addPlan", "updatePlan",
 ]
 
 # 文案来源的三种写法：局部变量 strings.X、表字段 XyzStrings.y / AppStringsZh.x、直接调 lambda
