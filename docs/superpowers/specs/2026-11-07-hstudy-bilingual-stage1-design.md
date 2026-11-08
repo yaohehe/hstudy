@@ -136,7 +136,14 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 | 舒尔特方格 | **Schulte grid** | Task 7 实测需要；英语世界对该训练的通行名（不是逐字硬译 "Schulte square"） |
 | 个人最佳 / 个人纪录 | **Personal best / personal record** | Task 7 实测需要；代码 `focusTrainingBestMs`，两条文案分别对应"最佳成绩"和"破纪录"事件 |
 | 时长单位（分/小时/秒） | **min / hr / s** | Task 7 实测需要；与 Task 6 的 `CommonStringsEn.minuteLabel = "min"`、`hourLabel = "hr"` 同源。缩写不随单复数变化，所以时长文案不需要 one/other；`分` 作积分单位时另见 **Points** |
+| 时长 chip（`15分`） | **15 min** | Task 7b 实测需要；宿主页 `ChildPomodoroScreen.kt` 的专注/休息选项 chip。中文 `15分` 无空格、英文有空格，且单位仍取 `CommonStrings.minuteLabel`（不为这一处开第三个 `分` 字段） |
 | 基础 / 提升（任务分类） | **Basic / Advanced** | Task 6+8 实测需要；`ParentDashboardScreen`、`WeeklyTrackerScreen`、`ParentTaskManageScreen` 会复用 |
+| 记忆广度 / 数字记忆 | **memory span / number memory** | Task 7b 实测需要；`ChildMemoryTrainingScreen.kt` 顶栏与页内标题，两种训练之一（另一种是舒尔特方格） |
+| 工作记忆 | **working memory** | Task 7b 实测需要；`memoryHowTo`、`memoryEntryButton` 的说法与 §11"专注力训练"行一致（选择性注意 vs 工作记忆互补） |
+| 黄金专注时段 | **golden focus window** | Task 7b 实测需要；`ChildPomodoroScreen.kt` 由历史专注数据算出的高效时段（`goldenHour`），逐字硬译 "golden focus period" 会与"时段"混淆 |
+| 时段词（早上/上午/中午/下午/晚上/深夜） | **Early morning / Morning / Midday / Afternoon / Evening / Late night** | Task 7b 实测需要；六个值必须互不相同（同一字段的两两 ZH≠EN 断言依赖这一点），且英文按 24 小时制配 `8:00` 而不是 a.m./p.m. |
+| 今日计划 / 每日计划 | **today's plan** | Task 7b 实测需要；`ChildDailyPlanScreen.kt` 顶栏与空状态文案；与"任务 = Task"分行使用（计划是时间块，任务是打卡项） |
+| 积分规则 | **Points rules** | Task 7b 实测需要；`PomodoroStrings.pointsRulesTitle`，与"积分 = Points"同源 |
 | 我是家长 / 我是孩子 | **I'm the parent / I'm the learner** | 用户选定 learner，避免 kid 的低龄感，且与 parent 对称 |
 | 学习积分奖励（品牌行） | **Study Points & Rewards** | 实测 `RoleSelectScreen.kt:75` |
 | 好习惯，看得见 | **Build visible habits** | 实测 `RoleSelectScreen.kt:83`，允许按英文语序重组，不逐字硬译 |
