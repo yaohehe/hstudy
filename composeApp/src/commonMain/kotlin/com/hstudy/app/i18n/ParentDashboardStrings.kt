@@ -4,13 +4,18 @@ package com.hstudy.app.i18n
  * 家长数据看板（ui/parent/ParentDashboardScreen.kt）文案表（Task 10）。
  *
  * 清单口径：`python scripts/i18n_inventory.py parent/ParentDashboardScreen.kt` 迁移前给出**去重 36 条 /
- * 含插值 6 条**。本表落成 **35 个字段（其中 6 个函数型）**，少的那一条是 `:171` 传给
- * `ParentCompareRow(…, unit)` 的 `"分"`——它是**分钟**，与 [CommonStrings.minuteLabel] 同值同义，
- * 按"复用不新增"的约定直接取 [AppStrings.common]，不在本表重开一个 `分` 槽
- * （理由与 `PomodoroStrings.durationChip` 完全一样：同一个中文值有两处出处就会漂移）。
- * 这条复用因此由 `StringsCopyTest.parentDashboardDurationUnitComesFromCommon` 用字面量钉住，
- * 并在 `scripts/i18n_template_diff.py` 的 DISCLOSED_RESIDUALS 里登记为页面单边残差。
- * 其余 35 条逐字来自迁移前对应行（行号在行尾注释里），迁移后页面内 CJK 字面量 0 条。
+ * 含插值 6 条**。本表落成 **36 个字段（其中 6 个函数型）**，与清单的差额是**一进一出**两条，逐条可查：
+ * - **出去一条**：`:171` 传给 `ParentCompareRow(…, unit)` 的 `"分"` 是**分钟**，与
+ *   [CommonStrings.minuteLabel] 同值同义，按"复用不新增"的约定直接取 [AppStrings.common]，
+ *   不在本表重开一个 `分` 槽（理由与 `PomodoroStrings.durationChip` 完全一样：同一个中文值有两处
+ *   出处就会漂移）。这条复用由 `StringsCopyTest.parentDashboardDurationUnitComesFromCommon` 钉住，
+ *   并在 `scripts/i18n_template_diff.py` 的 DISCLOSED_RESIDUALS 里登记为**页面单边**残差；
+ * - **进来一条**：`:142` 的 `"${childScore.total}分"` 一条清单拆成 [scoreValue]（数值位）+
+ *   [scoreUnit]（评分单位位）两个字段，页面写 `strings.scoreValue(total, strings.scoreUnit)`。
+ *   拆的理由是这枚 `分` 与上面那枚 `分` **不同义**（评分 pts vs 分钟 min），
+ *   留在同一条模板里就等于让两个槽共用一个写法、英文侧的间距也没地方放；
+ *   登记为**表侧单边**残差（塌成 `⟨$⟩⟨$⟩` 后页面侧不再含汉字，见脚本注释例外①同一类）。
+ * 其余 34 条逐字来自迁移前对应行（行号在行尾注释里），迁移后两页页面内 CJK 字面量各 0 条。
  *
  * **存储边界（Ruling 25，本页实测为"只读页"**）：整页 0 个写库调用——所有 `app.*Repository` 出场都是
  * 读流（`get` 前缀配 `collectAsState`），没有 `adjustPoints` / `spendPoints` / `assignTask`
@@ -33,7 +38,8 @@ package com.hstudy.app.i18n
  * 1. **分钟（时长）**：[childPerformanceLine] 里的 `专注${m}分`、[focusMinutesValue]（`⟨$⟩分`）、
  *    [weakAreaFocusNote] 的 `${m}分钟`，以及页面 `:171` 第 4 个实参 `"分"`（复用 [CommonStrings.minuteLabel]）
  *    ——英文全部走 min / 分钟，**不得**出现 points；
- * 2. **评分单位**：[scoreValue]（`:142`，紧跟 `${childScore.total}` 的 0–100 得分）→ 英文 `pts`，
+ * 2. **评分单位**：[scoreUnit]（`:142` 里紧跟 `${childScore.total}` 的 0–100 得分，由 [scoreValue] 拼接）
+ *    → 英文 `pts`，
  *    与 [ChildHomeStrings.scoreUnit] 同一个概念、同一个词形，`assertDiffers` 对"两处评分单位互换"是瞎的，
  *    所以由 `StringsCopyTest.parentDashboardScoreUnitIsNotPoints` 逐字钉住两张表；
  * 3. **积分**：本页的积分概念全部以名词词组出场（"当前总积分""⭐ 获得积分""最近积分变动"），
@@ -49,14 +55,14 @@ package com.hstudy.app.i18n
  * - [childPerformanceLine]：五个实参都是**内容位**（等级名 / 完成数 / 总数 / 分钟 / 题数），
  *   参数显式命名、取数逻辑仍全部留在页面（`todayCompletedIds.size`、`tasks.size`、`todayFocusMin`、
  *   `todayReviewCount`、`childScore.grade`），本表只搬句式；
- * - [scoreValue]：`pts` 与 [ChildHomeStrings.scoreUnit] 是两张表各存一份同一个术语，
+ * - [scoreUnit]：`pts` 与 [ChildHomeStrings.scoreUnit] 是两张表各存一份同一个术语，
  *   刻意不复用 `childHome` 的字段——家长页反向依赖孩子端表会把两张表的演化绑在一起，
  *   一致性由测试断言（而不是由引用）保证。
  *
  * 函数型字段的返回值不在 data class `toString()` 里（Ruling 20-b 的盲区），整表 CJK 扫描看不见，
  * 因此 6 条每个都有逐字打出来的双语期望串，见
  * `StringsCopyTest.parentDashboardInterpolatedCopyPinsBothLanguages`；
- * 静态字段 29 条全部进 `StringsCopyTest.parentDashboardCopyDiffers` 的 ZH≠EN 穷举清单。
+ * 静态字段 30 条全部进 `StringsCopyTest.parentDashboardCopyDiffers` 的 ZH≠EN 穷举清单。
  *
  * 术语按设计文档 §11：积分 = Points、专注 = Focus、番茄钟 = Pomodoro、错题 = Mistakes、
  * 打卡 = Check in / Checked in、连续打卡 = Streak、基础/提升/习惯 = Basic / Advanced / Habits
@@ -78,7 +84,8 @@ data class ParentDashboardStrings(
     // ===== 孩子今日学习表现 =====
     val childPerformanceTitle: String,
     val childPerformanceLine: (grade: String, completed: Int, total: Int, focusMinutes: Int, reviewed: Int) -> String,
-    val scoreValue: (total: Int) -> String,
+    val scoreValue: (total: Int, scoreUnit: String) -> String,
+    val scoreUnit: String,
 
     // ===== 本周 vs 上周 =====
     val verdictNewStart: String,
@@ -87,7 +94,7 @@ data class ParentDashboardStrings(
     val verdictDeclined: String,
     val weekCompareTitle: String,
     val compareFocusLabel: String,
-    val focusMinutesValue: (minutes: Int) -> String,
+    val focusMinutesValue: (minutes: Int, minuteLabel: String) -> String,
     val compareReviewLabel: String,
     val mistakesReviewedValue: (count: Int) -> String,
     val reviewCountUnit: String,
@@ -131,7 +138,8 @@ val ParentDashboardStringsZh = ParentDashboardStrings(
     childPerformanceLine = { grade, completed, total, minutes, reviewed ->
         "$grade · 打卡${completed}/${total} · 专注${minutes}分 · 复习${reviewed}道"   // :139
     },
-    scoreValue = { total -> "${total}分" },                                  // :142（评分单位，非积分）
+    scoreValue = { total, unit -> "$total$unit" },                         // :142（单位来自下面 scoreUnit 槽）
+    scoreUnit = "分",                                                      // :142（评分单位，非积分）
 
     // ===== 本周 vs 上周 =====
     verdictNewStart = "🌱 新的开始，陪孩子一起加油！",                             // :163
@@ -140,7 +148,7 @@ val ParentDashboardStringsZh = ParentDashboardStrings(
     verdictDeclined = "💪 孩子本周略有下降，多鼓励加把劲！",                         // :166
     weekCompareTitle = "📅 孩子本周 vs 上周",                                  // :168
     compareFocusLabel = "🍅 专注时长",                                         // :171
-    focusMinutesValue = { minutes -> "${minutes}分" },                       // :171（分钟）
+    focusMinutesValue = { minutes, unit -> "$minutes$unit" },              // :171（分钟，单位来自 common.minuteLabel）
     compareReviewLabel = "📚 复习错题",                                        // :172
     mistakesReviewedValue = { count -> "${count}道" },                       // :172
     reviewCountUnit = "道",                                                  // :172（增减行用的量词）
@@ -188,7 +196,8 @@ val ParentDashboardStringsEn = ParentDashboardStrings(
     childPerformanceLine = { grade, completed, total, minutes, reviewed ->
         "$grade · Check-in $completed/$total · Focus $minutes min · Reviewed $reviewed"
     },
-    scoreValue = { total -> "$total pts" },        // 评分单位 pts，不是 points（见类注释同形异义第 2 条）
+    scoreValue = { total, unit -> "$total $unit" },    // 英文数值与单位之间要空格（ZH 侧不要，见类注释 Ruling 20 段）
+    scoreUnit = "pts",                                 // 评分单位 pts，不是 points（见类注释同形异义第 2 条）
 
     // ===== 本周 vs 上周 =====
     verdictNewStart = "🌱 A fresh start — let's build the habit together!",
@@ -197,7 +206,7 @@ val ParentDashboardStringsEn = ParentDashboardStrings(
     verdictDeclined = "💪 A little below last week — keep encouraging them.",
     weekCompareTitle = "📅 This week vs last week",
     compareFocusLabel = "🍅 Focus time",
-    focusMinutesValue = { minutes -> "$minutes min" },
+    focusMinutesValue = { minutes, unit -> "$minutes $unit" },
     compareReviewLabel = "📚 Mistakes reviewed",
     // Ruling 20：英文没有"道"这个量词，值位退化成纯数字、增减位的单位是空串（不是漏译，见类注释）
     mistakesReviewedValue = { count -> "$count" },

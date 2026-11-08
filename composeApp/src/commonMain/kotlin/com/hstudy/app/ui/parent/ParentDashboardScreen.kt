@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.ui.common.HStudyTopBar
@@ -33,6 +34,8 @@ fun ParentDashboardScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.parentDashboard
+    val commonStrings = LocalStrings.current.common
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val records by app.pointRepository.getAllRecords().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -92,7 +95,7 @@ fun ParentDashboardScreen(
     val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "📊 数据看板", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.pageTitle, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             ResponsiveContent(
@@ -107,7 +110,7 @@ fun ParentDashboardScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("当前总积分", style = MaterialTheme.typography.titleMedium)
+                            Text(strings.totalPointsLabel, style = MaterialTheme.typography.titleMedium)
                             Text("${totalPoints}", style = MaterialTheme.typography.displayLarge,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
@@ -115,10 +118,10 @@ fun ParentDashboardScreen(
 
                     // ===== 统计网格 =====
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        DashStatCard("本周获得", "+${weeklyEarned}", "⭐", Modifier.weight(1f))
-                        DashStatCard("本周消耗", "-${weeklySpent}", "💸", Modifier.weight(1f))
-                        DashStatCard("累计专注", "${totalFocusMin}m", "🍅", Modifier.weight(1f))
-                        DashStatCard("错题掌握", "${masteredCount}/${allMistakes.size}", "📚", Modifier.weight(1f))
+                        DashStatCard(strings.weeklyEarnedLabel, "+${weeklyEarned}", "⭐", Modifier.weight(1f))
+                        DashStatCard(strings.weeklySpentLabel, "-${weeklySpent}", "💸", Modifier.weight(1f))
+                        DashStatCard(strings.totalFocusLabel, "${totalFocusMin}m", "🍅", Modifier.weight(1f))
+                        DashStatCard(strings.mistakesMasteredLabel, "${masteredCount}/${allMistakes.size}", "📚", Modifier.weight(1f))
                     }
 
                     // ===== 孩子今日学习表现（与家长同步的学习质量反馈）=====
@@ -135,11 +138,11 @@ fun ParentDashboardScreen(
                                 Text(childScore.gradeEmoji, style = MaterialTheme.typography.headlineSmall)
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("孩子今日学习表现", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Text("${childScore.grade} · 打卡${todayCompletedIds.size}/${tasks.size} · 专注${todayFocusMin}分 · 复习${todayReviewCount}道",
+                                    Text(strings.childPerformanceTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Text(strings.childPerformanceLine(childScore.grade, todayCompletedIds.size, tasks.size, todayFocusMin, todayReviewCount),
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
-                                Text("${childScore.total}分", style = MaterialTheme.typography.titleLarge,
+                                Text(strings.scoreValue(childScore.total, strings.scoreUnit), style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                             Text("💡 ${childScore.encouragement}", style = MaterialTheme.typography.bodySmall,
@@ -160,17 +163,17 @@ fun ParentDashboardScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             val wVerdict = when {
-                                wLastFocus + wLastRev + wLastPts == 0 -> "🌱 新的开始，陪孩子一起加油！"
-                                wThisFocus > wLastFocus || wThisPts > wLastPts -> "📈 孩子本周比上周进步了！"
-                                wThisFocus == wLastFocus && wThisPts == wLastPts -> "➡️ 孩子本周和上周持平，稳定发挥。"
-                                else -> "💪 孩子本周略有下降，多鼓励加把劲！"
+                                wLastFocus + wLastRev + wLastPts == 0 -> strings.verdictNewStart
+                                wThisFocus > wLastFocus || wThisPts > wLastPts -> strings.verdictImproved
+                                wThisFocus == wLastFocus && wThisPts == wLastPts -> strings.verdictLevel
+                                else -> strings.verdictDeclined
                             }
-                            Text("📅 孩子本周 vs 上周", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.weekCompareTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             Text(wVerdict, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary)
-                            ParentCompareRow("🍅 专注时长", "${wThisFocus}分", wThisFocus - wLastFocus, "分")
-                            ParentCompareRow("📚 复习错题", "${wThisRev}道", wThisRev - wLastRev, "道")
-                            ParentCompareRow("⭐ 获得积分", "$wThisPts", wThisPts - wLastPts, "")
+                            ParentCompareRow(strings.compareFocusLabel, strings.focusMinutesValue(wThisFocus, commonStrings.minuteLabel), wThisFocus - wLastFocus, commonStrings.minuteLabel)
+                            ParentCompareRow(strings.compareReviewLabel, strings.mistakesReviewedValue(wThisRev), wThisRev - wLastRev, strings.reviewCountUnit)
+                            ParentCompareRow(strings.comparePointsLabel, "$wThisPts", wThisPts - wLastPts, "")
                         }
                     }
 
@@ -182,11 +185,11 @@ fun ParentDashboardScreen(
                             // 7日积分趋势折线图
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("📈 7日积分获取趋势", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(strings.trendTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(12.dp))
                                     if (dailyEarned.all { it == 0 }) {
                                         Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                                            Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(strings.noDataLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     } else {
                                         val maxVal = dailyEarned.max().toFloat().coerceAtLeast(1f)
@@ -227,11 +230,11 @@ fun ParentDashboardScreen(
                             // 任务分类分布
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("📋 任务分类分布", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(strings.categoryTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    CategoryBar("📝 基础", basicTasks, tasks.size, MaterialTheme.colorScheme.primary)
-                                    CategoryBar("📈 提升", enhanceTasks, tasks.size, MaterialTheme.colorScheme.tertiary)
-                                    CategoryBar("🏆 习惯", habitTasks, tasks.size, MaterialTheme.colorScheme.secondary)
+                                    CategoryBar(strings.categoryBasicLabel, basicTasks, tasks.size, MaterialTheme.colorScheme.primary)
+                                    CategoryBar(strings.categoryEnhanceLabel, enhanceTasks, tasks.size, MaterialTheme.colorScheme.tertiary)
+                                    CategoryBar(strings.categoryHabitLabel, habitTasks, tasks.size, MaterialTheme.colorScheme.secondary)
                                 }
                             }
                         }
@@ -240,13 +243,13 @@ fun ParentDashboardScreen(
                     // ===== 薄弱环节提示 =====
                     val weakAreas = mutableListOf<String>()
                     if (allMistakes.isNotEmpty() && masteredCount.toFloat() / allMistakes.size < 0.3f) {
-                        weakAreas.add("📚 错题掌握率较低 (${masteredCount}/${allMistakes.size})，建议加强复习")
+                        weakAreas.add(strings.weakAreaMistakesNote(masteredCount, allMistakes.size))
                     }
                     if (totalFocusMin < 60) {
-                        weakAreas.add("🍅 专注时长不足 (${totalFocusMin}分钟)，建议使用番茄钟")
+                        weakAreas.add(strings.weakAreaFocusNote(totalFocusMin))
                     }
                     if (tasks.isEmpty()) {
-                        weakAreas.add("📝 暂无学习任务，请使用积分模板或手动添加")
+                        weakAreas.add(strings.weakAreaNoTasksNote)
                     }
 
                     if (weakAreas.isNotEmpty()) {
@@ -255,7 +258,7 @@ fun ParentDashboardScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("⚠️ 薄弱项提示", style = MaterialTheme.typography.titleMedium,
+                                Text(strings.weakAreasTitle, style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 weakAreas.forEach { area ->
@@ -270,16 +273,16 @@ fun ParentDashboardScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("✅ 学习状态良好", style = MaterialTheme.typography.titleMedium,
+                                Text(strings.goodStatusTitle, style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                Text("继续保持当前的学习节奏！", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.goodStatusNote, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                         }
                     }
 
                     // ===== 最近积分变动 =====
-                    Text("最近积分变动", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.recentChangesTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     val recentRecords = records.take(10)
                     val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
                     recentRecords.forEach { record ->
@@ -295,7 +298,7 @@ fun ParentDashboardScreen(
                                 Text(typeEmoji, style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(record.note.ifEmpty { "积分变动" }, style = MaterialTheme.typography.bodyMedium)
+                                    Text(record.note.ifEmpty { strings.changeFallbackLabel }, style = MaterialTheme.typography.bodyMedium)
                                     Text(dateFormat.format(Date(record.date)), style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -329,13 +332,14 @@ private fun DashStatCard(label: String, value: String, emoji: String, modifier: 
 /** 本周 vs 上周对比行：显示本周值与较上周的增减（↑绿/↓红/→持平） */
 @Composable
 private fun ParentCompareRow(label: String, value: String, delta: Int, unit: String) {
+    val strings = LocalStrings.current.parentDashboard
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(88.dp))
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         val (arrow, color) = when {
             delta > 0 -> "↑$delta$unit" to Color(0xFF4CAF50)
             delta < 0 -> "↓${-delta}$unit" to MaterialTheme.colorScheme.error
-            else -> "→ 持平" to MaterialTheme.colorScheme.onSurfaceVariant
+            else -> strings.deltaFlatLabel to MaterialTheme.colorScheme.onSurfaceVariant
         }
         Text(arrow, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = color)
     }

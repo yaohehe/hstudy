@@ -137,6 +137,19 @@ DISCLOSED_RESIDUALS = [
     {"page": "+%s分" % VALUE, "table": None,
      "reason": "Task 9 跨表复用：ChildHomeScreen.kt:567 的 `+${a.points}分` 用 TaskListStrings.pointsEarnedLabel"
                "（同一中文值、同一语义 = 某件事值多少积分），本命令的表组只有 ChildHomeStrings，故只登记页面侧"},
+    # ---- Task 10（家长首页 / 数据看板）的 2 条残差 ----
+    # 家长首页那 59 条是逐字节整串搬进表的（strict 59/59，0 残差），只有仪表盘这一处需要登记。
+    {"page": "分", "table": None,
+     "reason": "Task 10 Ruling 20 例外（与上面例外②同一类，单位来自另一张表）："
+               "ParentDashboardScreen.kt:171 传给 ParentCompareRow(…, unit) 的 `分` 是**分钟**，"
+               "迁移后由 CommonStrings.minuteLabel 供值；本命令的表组只有 ParentDashboardStrings，"
+               "而那边没有这个值，所以只登记页面侧。评分单位那个 `分`（:142）是**另一个槽**，"
+               "见下面那条表侧登记，两者不得合并（由 StringsCopyTest.parentDashboardScoreUnitIsNotPoints 钉住）"},
+    {"page": None, "table": "分",
+     "reason": "Task 10 Ruling 20 例外（与上面例外①同一类，只在表侧可见）："
+               "ParentDashboardStrings.scoreUnit 是 :142 `${childScore.total}分` 的评分单位槽，"
+               "页面写成 `strings.scoreValue(total, strings.scoreUnit)`，"
+               "数值位与单位位塌成 `⟨$⟩⟨$⟩`（无汉字、不入页面集合），所以只有表侧有这一条"},
 ]
 
 
