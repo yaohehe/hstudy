@@ -24,6 +24,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Ensure gradlew is executable
         run: chmod +x gradlew
+      # 双语阶段的三道文案闸门（终审 Ruling 43）。放在 Gradle 构建之前：它们是秒级的纯静态检查，
+      # 失败原因是"某条界面文案进了写库调用"这种代码问题，不需要等编译跑完。
+      # 用 python3 而不是 python：GitHub 的 ubuntu 运行器不保证 `python` 这个别名存在
+      # （本机是 Windows，文档里的命令用 `python`）。
+      - name: i18n storage boundary (Ruling 25, blocking)
+        run: python3 scripts/i18n_storage_boundary.py
+      - name: i18n storage boundary self-test (Ruling 30, blocking)
+        run: python3 scripts/tests/i18n_storage_boundary_selftest.py
+      # 逐字节等价脚本要 `git show <rev>` 取迁移前的页面原文，而 actions/checkout@v4 默认
+      # fetch-depth: 1（浅克隆）——历史对象不在，脚本会退 1。这里刻意 continue-on-error，
+      # 浅克隆的红外面不该把绿构建变红（Ruling 43 明令非阻塞）；本地与带全历史的分支上它应当退 0，
+      # 复现命令见 docs/i18n-stage1-verification.md §6。
+      - name: i18n template byte-equivalence (Ruling 20, non-blocking)
+        continue-on-error: true
+        run: python3 scripts/i18n_template_diff.py
       - name: Build debug APK
         run: ./gradlew :composeApp:assembleDebug --no-daemon
       - name: Run unit tests

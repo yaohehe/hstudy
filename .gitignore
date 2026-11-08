@@ -43,6 +43,9 @@ IMG_*.jpg
 .kotlin/
 *.klib
 
+# Python 闸门脚本的字节码缓存（scripts/ 与 scripts/tests/ 各一处）
+scripts/__pycache__/
+
 # iOS build outputs
 build/ios/
 xcuserdata/
