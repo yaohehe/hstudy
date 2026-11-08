@@ -119,6 +119,24 @@ DISCLOSED_RESIDUALS = [
      "reason": "审查第 8 条：上收为 CommonStrings.confirmButton（值未变，出处换了）"},
     {"page": "删除", "table": None,
      "reason": "审查第 8 条：上收为 CommonStrings.deleteContentDescription（值未变，出处换了）"},
+    # ---- Task 9（孩子首页）的 5 条残差 ----
+    # 前四条是 Ruling 25 的存储边界：原文**不进文案表**，而是搬到 ChildHomeStrings.kt 里的
+    # CanonicalChildHomeText 常量（该对象不属于 Zh/En 表，所以本命令的表侧集合里看不到它们）。
+    # 登记成"页面单边"而不是"表侧同形"，是因为表侧取的是 `ChildHomeStringsZh` 变量段，
+    # 常量对象在其外——于是残差条数恰好等于"落库原文条数"，多一条就说明有人把存储文案挪进了表。
+    {"page": "今日学习表现优秀奖励", "table": None,
+     "reason": "Task 9 Ruling 25：ChildHomeScreen.kt:317 传给 adjustPoints(points, note) 的 note 落库，"
+               "值留在 CanonicalChildHomeText.EXCELLENT_BONUS_NOTE（逐字节不变、不本地化）"},
+    {"page": "连续打卡%s天里程碑奖励" % VALUE, "table": None,
+     "reason": "Task 9 Ruling 25：:478 的 adjustPoints note，值留在 CanonicalChildHomeText.streakMilestoneNote(days)"},
+    {"page": "每周挑战奖励：本周打卡5天", "table": None,
+     "reason": "Task 9 Ruling 25：:514 的 adjustPoints note，值留在 CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE"},
+    {"page": "完成布置任务: %s" % VALUE, "table": None,
+     "reason": "Task 9 Ruling 25：:586 跨行 checkIn(bizKey, description) 的 description 参与 "
+               "PointRepository.kt:256 幂等判等，值留在 CanonicalChildHomeText.assignmentDescription(name)"},
+    {"page": "+%s分" % VALUE, "table": None,
+     "reason": "Task 9 跨表复用：ChildHomeScreen.kt:567 的 `+${a.points}分` 用 TaskListStrings.pointsEarnedLabel"
+               "（同一中文值、同一语义 = 某件事值多少积分），本命令的表组只有 ChildHomeStrings，故只登记页面侧"},
 ]
 
 

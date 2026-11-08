@@ -4,6 +4,7 @@ import com.hstudy.app.ui.dt.strFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -48,6 +49,23 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "pomodoro.pointsRulesTitle",    // "💡 Points rules"（名词，不接数值）
     "pomodoro.pointsLadderNote",    // "15 min +3 points …"（同句两种 `分`，第 4 处词形都出自 pointsWord）
     "focus.dailyPracticeHint",      // "… you earn points too!"（名词）
+    // ---- Task 9 孩子首页新增 14 条。英文原文逐条留在行尾注释里：下一个改译文的人
+    // 看得见自己删掉的是哪一条（白名单会过期，这正是这条守卫的用途，不是装饰）。
+    // 注意本页还有一类**不该**提积分的字段：scoreUnit（评分单位 pts），见 childHomeScoreUnitIsNotPoints。
+    "childHome.excellentBonusMessage",       // "🌟 Great study today! Bonus +2 points!"
+    "childHome.claimExcellentBonusButton",   // "🌟 Claim the +2 points bonus"
+    "childHome.mistakesDueNote",             // "… it earns points too!"
+    "childHome.myApprovalRequestsTitle",     // "📝 My point requests"（§11 积分 = Points）
+    "childHome.weeklyChallengeClaimMessage", // "🏅 Challenge complete! +5 points"
+    "childHome.entryStartCheckinSubtitle",   // "Complete tasks to earn points"
+    "childHome.entryMyPetSubtitle",          // "Earn points to feed it and let it grow"
+    "childHome.step4Subtitle",               // "… study analysis and points details"
+    "childHome.entryLuckyDrawSubtitle",      // "Draw every day to win points"
+    "childHome.entryPointsDetailTitle",      // "Points details"
+    "childHome.entryPointsDetailSubtitle",   // "View your points history"
+    "childHome.entryRewardStoreSubtitle",    // "Trade points for rewards"
+    "childHome.entryWishBankSubtitle",       // "Save points toward a big wish"
+    "childHome.earnPointsForRewardsNote",    // "Finish tasks, earn points, …"
 )
 
 /**
@@ -1239,5 +1257,343 @@ class StringsCopyTest {
         // 这里要钉死的是"命中单例表"这一事实。
         assertSame(AppStringsZh, stringsFor(DisplayLanguage.ZH))
         assertSame(AppStringsEn, stringsFor(DisplayLanguage.EN))
+    }
+
+    /**
+     * 孩子首页（Task 9，`ui/child/ChildHomeScreen.kt`）漏译守卫：102 个字段里 **85 个静态 String 全数点名**，
+     * 17 个函数型字段由 [childHomeInterpolatedCopyPinsBothLanguages] 负责（Ruling 20-b）。
+     *
+     * 清单是穷举的，不是抽样：新增字段没进来 = 本断言少一条，审查时看得见；
+     * 漏译（EN 直接抄中文）则由本断言与 [englishTableContainsNoChineseLeftovers] 双抓。
+     * 本页没有跨字段同形异义需要防"英文值互换"的静态对（唯一的 `分` 同形是 [childHomeScoreUnitIsNotPoints]，
+     * 它跨的是 CommonStrings，见该断言的理由），所以本清单只做同字段 ZH≠EN。
+     */
+    @Test
+    fun childHomeCopyDiffers() {
+        val zh = AppStringsZh.childHome
+        val en = AppStringsEn.childHome
+        assertDiffers(
+            zh.pageTitle to en.pageTitle,
+            zh.switchRoleContentDescription to en.switchRoleContentDescription,
+            zh.encouragementNoTask to en.encouragementNoTask,
+            zh.encouragementFreshStart to en.encouragementFreshStart,
+            zh.encouragementAllDone to en.encouragementAllDone,
+            zh.encouragementAlmostThere to en.encouragementAlmostThere,
+            zh.encouragementOnTrack to en.encouragementOnTrack,
+            zh.encouragementKickoff to en.encouragementKickoff,
+            zh.todayCheckinTitle to en.todayCheckinTitle,
+            zh.todayAllDoneBanner to en.todayAllDoneBanner,
+            zh.difficultyChallengeLevel to en.difficultyChallengeLevel,
+            zh.difficultyAdvancedLevel to en.difficultyAdvancedLevel,
+            zh.difficultyNormalLevel to en.difficultyNormalLevel,
+            zh.learningScoreTitle to en.learningScoreTitle,
+            zh.scoreUnit to en.scoreUnit,
+            zh.scoreDimensionCheckin to en.scoreDimensionCheckin,
+            zh.scoreDimensionFocus to en.scoreDimensionFocus,
+            zh.scoreDimensionReview to en.scoreDimensionReview,
+            zh.weakTipCheckin to en.weakTipCheckin,
+            zh.weakTipFocus to en.weakTipFocus,
+            zh.weakTipReview to en.weakTipReview,
+            zh.improvementSuggestionsHeading to en.improvementSuggestionsHeading,
+            zh.excellentBonusMessage to en.excellentBonusMessage,
+            zh.claimExcellentBonusButton to en.claimExcellentBonusButton,
+            zh.excellentBonusClaimedNote to en.excellentBonusClaimedNote,
+            zh.mistakesDueNote to en.mistakesDueNote,
+            zh.mistakesAllDoneTitle to en.mistakesAllDoneTitle,
+            zh.mistakesAllDoneNote to en.mistakesAllDoneNote,
+            zh.viewAllAchievementsButton to en.viewAllAchievementsButton,
+            zh.myApprovalRequestsTitle to en.myApprovalRequestsTitle,
+            zh.parentSyncTitle to en.parentSyncTitle,
+            zh.receiveParentSettingsButton to en.receiveParentSettingsButton,
+            zh.sendProgressButton to en.sendProgressButton,
+            zh.shareProgressChooserTitle to en.shareProgressChooserTitle,
+            zh.progressExportedMessage to en.progressExportedMessage,
+            zh.exportFailedMessage to en.exportFailedMessage,
+            zh.syncingLabel to en.syncingLabel,
+            zh.claimBonusButton to en.claimBonusButton,
+            zh.weeklyChallengeTitle to en.weeklyChallengeTitle,
+            zh.weeklyChallengeClaimMessage to en.weeklyChallengeClaimMessage,
+            zh.claimButton to en.claimButton,
+            zh.weeklyChallengeClaimedNote to en.weeklyChallengeClaimedNote,
+            zh.weeklyChallengeInProgressNote to en.weeklyChallengeInProgressNote,
+            zh.parentAssignmentsTitle to en.parentAssignmentsTitle,
+            zh.completeAssignmentButton to en.completeAssignmentButton,
+            zh.step1Title to en.step1Title,
+            zh.step1Subtitle to en.step1Subtitle,
+            zh.entryStartCheckinTitle to en.entryStartCheckinTitle,
+            zh.entryStartCheckinSubtitle to en.entryStartCheckinSubtitle,
+            zh.entryMyPetTitle to en.entryMyPetTitle,
+            zh.entryMyPetSubtitle to en.entryMyPetSubtitle,
+            zh.step2Title to en.step2Title,
+            zh.step2Subtitle to en.step2Subtitle,
+            zh.entryPomodoroTitle to en.entryPomodoroTitle,
+            zh.entryPomodoroSubtitle to en.entryPomodoroSubtitle,
+            zh.entryMistakeNotebookTitle to en.entryMistakeNotebookTitle,
+            zh.entryMistakeNotebookSubtitle to en.entryMistakeNotebookSubtitle,
+            zh.step3Title to en.step3Title,
+            zh.step3Subtitle to en.step3Subtitle,
+            zh.entryDailyPlanTitle to en.entryDailyPlanTitle,
+            zh.entryDailyPlanSubtitle to en.entryDailyPlanSubtitle,
+            zh.entryDailyTargetTitle to en.entryDailyTargetTitle,
+            zh.entryDailyTargetSubtitle to en.entryDailyTargetSubtitle,
+            zh.entryScheduleTimelineTitle to en.entryScheduleTimelineTitle,
+            zh.entryScheduleTimelineSubtitle to en.entryScheduleTimelineSubtitle,
+            zh.entryHabitChallengeTitle to en.entryHabitChallengeTitle,
+            zh.entryHabitChallengeSubtitle to en.entryHabitChallengeSubtitle,
+            zh.entryGoalTrackerTitle to en.entryGoalTrackerTitle,
+            zh.entryGoalTrackerSubtitle to en.entryGoalTrackerSubtitle,
+            zh.step4Title to en.step4Title,
+            zh.step4Subtitle to en.step4Subtitle,
+            zh.entryLuckyDrawTitle to en.entryLuckyDrawTitle,
+            zh.entryLuckyDrawSubtitle to en.entryLuckyDrawSubtitle,
+            zh.entryEfficiencyReportTitle to en.entryEfficiencyReportTitle,
+            zh.entryEfficiencyReportSubtitle to en.entryEfficiencyReportSubtitle,
+            zh.entryPointsDetailTitle to en.entryPointsDetailTitle,
+            zh.entryPointsDetailSubtitle to en.entryPointsDetailSubtitle,
+            zh.entryRewardStoreTitle to en.entryRewardStoreTitle,
+            zh.entryRewardStoreSubtitle to en.entryRewardStoreSubtitle,
+            zh.entryWishBankTitle to en.entryWishBankTitle,
+            zh.entryWishBankSubtitle to en.entryWishBankSubtitle,
+            zh.entryWeeklyReportTitle to en.entryWeeklyReportTitle,
+            zh.entryWeeklyReportSubtitle to en.entryWeeklyReportSubtitle,
+            zh.myGoalTitle to en.myGoalTitle,
+            zh.earnPointsForRewardsNote to en.earnPointsForRewardsNote,
+        )
+    }
+
+    /**
+     * 孩子首页 17 个函数型字段的**逐字双语期望串**（Ruling 20-b 的强制形态）。
+     *
+     * 为什么必须逐字打出来，而不是"调 lambda 再和 lambda 自己拼的串比"：整表 CJK 扫描看不见函数型
+     * 字段的返回值（data class 的 toString() 打的是 lambda 句柄），所以插在函数里的中文只有靠这里的
+     * 期望串才抓得到。每条两行：中文侧证明迁移只是把字面量搬进表（页面原文另由
+     * scripts/i18n_template_diff.py 整页复验），英文侧证明"确实译成了英文、且内容参数还在原位"。
+     *
+     * 内容透传（brief 本页风险的第 1、2 条）在这里逐条点名：
+     * - [ChildHomeStrings.importFailedMessage] 的 detail 是 `result.exceptionOrNull()?.message`，
+     *   异常文本原样进串、不吞、不改固定文案；参数类型是 String?，所以 null 也照打 "null"（与迁移前一致）；
+     * - [ChildHomeStrings.tackleFirstHint] 把**任务标题**连同星级、难度名一起插进句子，实参位显式命名，
+     *   取数逻辑仍在页面里（difficulty -> 星级/名称），只有句式进了表；
+     * - [ChildHomeStrings.approvedRequestLine] / [rejectedRequestLine] 透传落库的 description
+     *   （规范中文，见 [CanonicalChildHomeText]），本地化的只有行首行尾的框架词；
+     * - [ChildHomeStrings.wishGoalNameLabel] / [saveTowardsRewardNote] 透传心愿名与奖励图标+名称。
+     * 这四组期望串里**故意保留中文输入**，就是在证明"只改文案来源、没改数据源"。
+     */
+    @Test
+    fun childHomeInterpolatedCopyPinsBothLanguages() {
+        val zh = AppStringsZh.childHome
+        val en = AppStringsEn.childHome
+
+        assertEquals("导入失败：boom", zh.importFailedMessage("boom"))
+        assertEquals("Import failed: boom", en.importFailedMessage("boom"))
+        assertEquals("导入失败：null", zh.importFailedMessage(null))
+        assertEquals("Import failed: null", en.importFailedMessage(null))
+
+        assertEquals("⚠️ 有每日必须任务未完成，已自动扣减 3 分", zh.mandatoryPenaltyMessage(3))
+        assertEquals("⚠️ Daily must-do tasks were missed — 3 points deducted automatically",
+            en.mandatoryPenaltyMessage(3))
+
+        assertEquals("先难后易 · 还有 2 个困难任务", zh.hardTaskFirstTitle(2))
+        assertEquals("Hard ones first · 2 hard tasks left", en.hardTaskFirstTitle(2))
+
+        assertEquals("趁精力充沛，先攻克「背 20 个单词」(⭐⭐⭐挑战)，剩下的会更轻松！",
+            zh.tackleFirstHint("背 20 个单词", "⭐⭐⭐", "挑战"))
+        // 英文侧的第三个实参是**英文难度名**：页面传的是 `strings.difficultyXxxLevel`，
+        // 所以英文态到这里时它已经是 "Challenge" 了（内容参数的语言由上游决定，本字段只负责句式）。
+        assertEquals("You're at your best right now — finish \"背 20 个单词\" (⭐⭐⭐ Challenge) first, " +
+            "and everything after it feels easier!",
+            en.tackleFirstHint("背 20 个单词", "⭐⭐⭐", "Challenge"))
+
+        assertEquals("今日有 3 道错题待复习", zh.mistakesDueTitle(3))
+        assertEquals("3 mistakes to review today", en.mistakesDueTitle(3))
+
+        assertEquals("⏳ 2 个申请待家长审核（+12 分，通过后计入）", zh.pendingApprovalSummary(2, 12))
+        assertEquals("⏳ 2 requests waiting for parent approval (+12 points, counted once approved)",
+            en.pendingApprovalSummary(2, 12))
+
+        assertEquals("✅ 数学作业 +5分", zh.approvedRequestLine("数学作业", 5))
+        assertEquals("✅ 数学作业 +5 points", en.approvedRequestLine("数学作业", 5))
+
+        assertEquals("❌ 语文朗读（未通过）", zh.rejectedRequestLine("语文朗读"))
+        assertEquals("❌ 语文朗读 (not approved)", en.rejectedRequestLine("语文朗读"))
+
+        assertEquals("连续打卡 7 天啦！", zh.streakMilestoneTitle(7))
+        assertEquals("7 days in a row — what a streak!", en.streakMilestoneTitle(7))
+
+        assertEquals("达成里程碑，领取 +15 积分奖励！", zh.streakMilestoneBonusNote(15))
+        assertEquals("Milestone reached — claim your +15 points reward!", en.streakMilestoneBonusNote(15))
+
+        assertEquals("🎉 领取成功！+5 积分", zh.streakMilestoneClaimedMessage(5))
+        assertEquals("🎉 Claimed! +5 points", en.streakMilestoneClaimedMessage(5))
+
+        assertEquals("进度 3/5 天 · 达成领 +5 积分", zh.weeklyChallengeProgressNote(3))
+        assertEquals("Progress 3/5 days · reach 5 for +5 points", en.weeklyChallengeProgressNote(3))
+
+        assertEquals("🎉 完成布置任务 +4分（待家长审核）！", zh.assignmentCompletedMessage(4))
+        assertEquals("🎉 Assignment done! +4 points (pending approval)", en.assignmentCompletedMessage(4))
+
+        assertEquals("心愿：乐高", zh.wishGoalNameLabel("乐高"))
+        assertEquals("Wish: 乐高", en.wishGoalNameLabel("乐高"))
+
+        assertEquals("已存 30/100 分，还差 70 分达成心愿！", zh.wishGoalProgressNote(30, 100, 70))
+        assertEquals("30/100 points saved — only 70 points to go!", en.wishGoalProgressNote(30, 100, 70))
+
+        assertEquals("🎉 现在可以兑换 2 个奖励啦，去商店看看吧！", zh.affordableRewardsNote(2))
+        assertEquals("🎉 You can afford 2 rewards now — take a look in the store!", en.affordableRewardsNote(2))
+
+        assertEquals("再攒 20 分就能兑换「🎮 游戏时间」", zh.saveTowardsRewardNote(20, "🎮", "游戏时间"))
+        assertEquals("Save 20 more points to get \"🎮 游戏时间\"",
+            en.saveTowardsRewardNote(20, "🎮", "游戏时间"))
+    }
+
+    /**
+     * 英文 one/other 覆盖（§8.3）：本页的计数句分布在 12 个函数型字段里。
+     *
+     * 为什么分支写在 lambda 内部而不是给 [Plurals.kt] 再加一个函数：本期约束不动 Plurals.kt
+     * （那里只有积分 pointsWord），所以"任务 / 错题 / 天 / 申请 / 奖励"的词形各就各位。
+     * 代价是这类分支以后可能漂，Task 10+ 若再遇到同名次词形应把函数补进 Plurals.kt。
+     * 中文侧没有单复数：`n = 1` 与 `n = 2` 的中文只差数字本身，由最后四条断言钉住，
+     * 防止有人把英文的 `if` 复制回中文表（与 taskListEnglishPluralsCoverOneAndOther 同一动机）。
+     */
+    @Test
+    fun childHomeEnglishPluralsCoverOneAndOther() {
+        val zh = AppStringsZh.childHome
+        val en = AppStringsEn.childHome
+        assertEquals("⚠️ Daily must-do tasks were missed — 1 point deducted automatically", en.mandatoryPenaltyMessage(1))
+        assertEquals("Hard ones first · 1 hard task left", en.hardTaskFirstTitle(1))
+        assertEquals("1 mistake to review today", en.mistakesDueTitle(1))
+        assertEquals("⏳ 1 request waiting for parent approval (+1 point, counted once approved)",
+            en.pendingApprovalSummary(1, 1))
+        assertEquals("✅ 数学作业 +1 point", en.approvedRequestLine("数学作业", 1))
+        assertEquals("1 day in a row — what a streak!", en.streakMilestoneTitle(1))
+        assertEquals("Milestone reached — claim your +1 point reward!", en.streakMilestoneBonusNote(1))
+        assertEquals("🎉 Claimed! +1 point", en.streakMilestoneClaimedMessage(1))
+        assertEquals("🎉 Assignment done! +1 point (pending approval)", en.assignmentCompletedMessage(1))
+        assertEquals("99/100 points saved — only 1 point to go!", en.wishGoalProgressNote(99, 100, 1))
+        assertEquals("🎉 You can afford 1 reward now — take a look in the store!", en.affordableRewardsNote(1))
+        assertEquals("Save 1 more point to get \"🎮 游戏时间\"", en.saveTowardsRewardNote(1, "🎮", "游戏时间"))
+
+        assertEquals("先难后易 · 还有 1 个困难任务", zh.hardTaskFirstTitle(1))
+        assertEquals("今日有 1 道错题待复习", zh.mistakesDueTitle(1))
+        assertEquals("连续打卡 1 天啦！", zh.streakMilestoneTitle(1))
+        assertEquals("🎉 现在可以兑换 1 个奖励啦，去商店看看吧！", zh.affordableRewardsNote(1))
+    }
+
+    /**
+     * `分` 的第三种语义（同形异义约定在本页的落点）。
+     *
+     * ChildHomeScreen.kt:290 的 `Text("分")` 紧跟 `${learningScore.total}`，是"今日学习表现"的
+     * **0–100 评分单位**，不是积分：LearningScoreCalculator 的 total 从不入账，入账的是旁边的
+     * adjustPoints(2, …)（而那次的 note 是规范中文）。所以英文必须写 `pts`：若复用
+     * [CommonStrings.pointsUnit]（英文 "points"），英文态会读出 "87 Points"，把一次评分念成 87 积分——
+     * 这正是 CommonStrings 头注释里"同形异义必须分槽、且只能有一个出处"要防的第二份出处。
+     * 两条中文值同字（都是 `分`），**跨字段**的英文互换 assertDiffers 抓不到，所以用字面量钉死。
+     *
+     * 同一段还钉 `提升` 的同形：本页"提升建议"是"改进建议"（How to improve），
+     * 不是 [TaskListStrings.filterEnhancement]（任务分类 `提升` = Advanced）；复用会把分类词念成动词。
+     */
+    @Test
+    fun childHomeScoreUnitIsNotPoints() {
+        assertEquals("分", AppStringsZh.childHome.scoreUnit)
+        assertEquals("pts", AppStringsEn.childHome.scoreUnit)
+        assertEquals("分", AppStringsZh.common.pointsUnit)
+        assertEquals("points", AppStringsEn.common.pointsUnit)
+        assertNotEquals(
+            AppStringsEn.common.pointsUnit, AppStringsEn.childHome.scoreUnit,
+        )
+        assertEquals("💡 提升建议：", AppStringsZh.childHome.improvementSuggestionsHeading)
+        assertEquals("💡 How to improve:", AppStringsEn.childHome.improvementSuggestionsHeading)
+        assertEquals("提升", AppStringsZh.taskList.filterEnhancement)
+        assertEquals("Advanced", AppStringsEn.taskList.filterEnhancement)
+    }
+
+    /**
+     * 存储边界（Ruling 25）在本页的四条落库/幂等原文：值必须与迁移前**逐字节相同**，
+     * 且必须留在 [CanonicalChildHomeText] 而不是文案表里。
+     *
+     * 为什么值得单独一条断言：`scripts/i18n_storage_boundary.py` 能证明"页面没把 strings.* 传给
+     * adjustPoints / checkIn"，但证明不了"规范值本身有没有被人顺手改成英文或改写措辞"；
+     * 后者一旦漂移，`PointRepository.kt:256` 的 `pending.description != description` 就会把
+     * 每一次完成判定成新业务，历史行按语言分裂。第二个方向（不得进文案表）由 assertFalse 抓：
+     * 表里出现这四条原文 = 有人把它接上了语言实例，闸门立刻会红。
+     */
+    @Test
+    fun childHomeStorageCopyStaysCanonical() {
+        assertEquals("今日学习表现优秀奖励", CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
+        assertEquals("每周挑战奖励：本周打卡5天", CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE)
+        assertEquals("连续打卡7天里程碑奖励", CanonicalChildHomeText.streakMilestoneNote(7))
+        assertEquals("完成布置任务: 数学作业", CanonicalChildHomeText.assignmentDescription("数学作业"))
+        val zhTable = AppStringsZh.childHome.toString()
+        val enTable = AppStringsEn.childHome.toString()
+        listOf("今日学习表现优秀奖励", "每周挑战奖励：本周打卡5天", "连续打卡", "完成布置任务: ")
+            .forEach { canonical ->
+                assertFalse(zhTable.contains(canonical), "落库原文又回到文案表里了：$canonical")
+                assertFalse(enTable.contains(canonical), "英文表里出现落库原文：$canonical")
+            }
+        // 渲染侧"连续打卡 $days 天啦！"与存储侧"连续打卡N天里程碑奖励"是两条不同的话：
+        // 前者可本地化、后者不可。这条断言钉住前者没被顺手改成规范值模板。
+        assertEquals("连续打卡 7 天啦！", AppStringsZh.childHome.streakMilestoneTitle(7))
+    }
+
+    /**
+     * emoji 留在文案表里（Ruling 17 在本页的落点）：页面不得再拼 `"🌟 ${strings.pageTitle}"`。
+     *
+     * 本页两种形态都有，所以两条检查分开做：
+     * - **行首 emoji + 空格 + 正文**（23 条，含一条函数型的 🎉 前缀）用 `substringBefore(' ')` 比较，
+     *   代理对整体取，不截半；
+     * - **行尾 emoji**（鼓励语 6 条 + [ChildHomeStrings.earnPointsForRewardsNote]）没有空格可切，
+     *   改成"两表都以同一枚 emoji 收尾"，并逐字打出期望 emoji（把 emoji 挪到行首也会红）。
+     * 4 步引导的 chip 图标（StepEntry 的第一个实参）不在本断言范围：它是**数据位**而不是文案串的一部分，
+     * 两种语言都不该跟着变，页面里也没有为它写中文。
+     */
+    @Test
+    fun emojiStaysInsideTheChildHomeTable() {
+        val zh = AppStringsZh.childHome
+        val en = AppStringsEn.childHome
+        listOf(
+            zh.pageTitle to en.pageTitle,
+            zh.todayCheckinTitle to en.todayCheckinTitle,
+            zh.todayAllDoneBanner to en.todayAllDoneBanner,
+            zh.scoreDimensionCheckin to en.scoreDimensionCheckin,
+            zh.scoreDimensionFocus to en.scoreDimensionFocus,
+            zh.scoreDimensionReview to en.scoreDimensionReview,
+            zh.weakTipCheckin to en.weakTipCheckin,
+            zh.weakTipFocus to en.weakTipFocus,
+            zh.weakTipReview to en.weakTipReview,
+            zh.improvementSuggestionsHeading to en.improvementSuggestionsHeading,
+            zh.excellentBonusMessage to en.excellentBonusMessage,
+            zh.claimExcellentBonusButton to en.claimExcellentBonusButton,
+            zh.excellentBonusClaimedNote to en.excellentBonusClaimedNote,
+            zh.viewAllAchievementsButton to en.viewAllAchievementsButton,
+            zh.myApprovalRequestsTitle to en.myApprovalRequestsTitle,
+            zh.parentSyncTitle to en.parentSyncTitle,
+            zh.receiveParentSettingsButton to en.receiveParentSettingsButton,
+            zh.sendProgressButton to en.sendProgressButton,
+            zh.claimBonusButton to en.claimBonusButton,
+            zh.weeklyChallengeClaimMessage to en.weeklyChallengeClaimMessage,
+            zh.weeklyChallengeClaimedNote to en.weeklyChallengeClaimedNote,
+            zh.parentAssignmentsTitle to en.parentAssignmentsTitle,
+            zh.affordableRewardsNote(2) to en.affordableRewardsNote(2),
+        ).forEach { (chinese, english) ->
+            assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "行首 emoji 应两表一致")
+        }
+        assertEquals("📝", en.encouragementNoTask.takeLast(2))
+        assertEquals("💪", en.encouragementFreshStart.takeLast(2))
+        assertEquals("🎉", en.encouragementAllDone.takeLast(2))
+        assertEquals("🌟", en.encouragementAlmostThere.takeLast(2))
+        assertEquals("👍", en.encouragementOnTrack.takeLast(2))
+        assertEquals("🚀", en.encouragementKickoff.takeLast(2))
+        assertEquals("💪", en.earnPointsForRewardsNote.takeLast(2))
+        listOf(
+            zh.encouragementNoTask to en.encouragementNoTask,
+            zh.encouragementFreshStart to en.encouragementFreshStart,
+            zh.encouragementAllDone to en.encouragementAllDone,
+            zh.encouragementAlmostThere to en.encouragementAlmostThere,
+            zh.encouragementOnTrack to en.encouragementOnTrack,
+            zh.encouragementKickoff to en.encouragementKickoff,
+            zh.earnPointsForRewardsNote to en.earnPointsForRewardsNote,
+        ).forEach { (chinese, english) ->
+            assertEquals(chinese.takeLast(2), english.takeLast(2), "行尾 emoji 应两表一致")
+        }
     }
 }
