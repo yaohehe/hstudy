@@ -37,9 +37,11 @@ python scripts/i18n_template_diff.py --branch                      # 同一命�
 grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMain | wc -l   # 0
 ```
 
-（编码环境注：上表所有 `python scripts/…` 行的 stdout 需要 UTF-8。在本机默认 GBK 控制台上直接跑
-`i18n_template_diff.py` 会在打印 `⟨$⟩` 残差说明处抛 `UnicodeEncodeError`（退出码 1，与闸门结论无关）；
-`export PYTHONIOENCODING=utf-8` 后本波次实测全部退出码 0，见 §6 的逐条记录。）
+（编码环境注：**已不需要任何前置环境变量**。终审 D-B 把护栏写进了四个脚本本身——每个脚本在模块执行期
+调用 `_force_utf8_streams()`，用 `hasattr` 守卫着把 stdout 与 stderr 一起 `reconfigure("utf-8")`。
+在此之前，本机默认 GBK 控制台上直接把 `i18n_template_diff.py` 接进管道会在打印 `⟨$⟩` 残差说明处抛
+`UnicodeEncodeError` 而**退出码 1**（症状是闸门红、根因是编码）。修复后实测：`PYTHONIOENCODING` 不设、
+输出接管道（此时 `sys.stdout.encoding` 仍是 `gbk`）四条命令全部 **exit 0**。）
 
 单测能证明的是**表值**（漏译、one/other、emoji 位置、规范值漂移），证明不了**页面是否读到表**，
 也证明不了排版。`AppLanguageResolveTest`（6 条）覆盖解析纯函数、`LanguagePreferenceTest`（2 条：
@@ -343,9 +345,10 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-13 | 清单脚本的两个已知口径问题：`i18n_inventory.py` 只剥 `//` 行注释，块注释里的中文会被算成"残留字面量"（`ChildFocusTrainingScreen.kt:23` 就是这种假阳性）；`i18n_coverage_audit.py` 用"文件名是否出现在 plan 文本里"判定覆盖 | `scripts/i18n_inventory.py:30`、`scripts/i18n_coverage_audit.py:35` |
 | L-14 | 双语视觉效果无法由 CI 验证；iOS 在本工作机上连链接都没发生过 | spec §9；§1、§2.5 |
 | L-15 | 阶段一是 v3.1.0 的**前半段**（Analytics 子项目未实施），版本号仍为 3.0.0/30000 | `docs/VERSIONING.md`；`composeApp/build.gradle.kts:89-90`；V-00b |
-| L-16 | **定时提醒类通知文案不进本地化范围（设计边界，不是漏译）**：错题复习提醒、每周学习周报、日程提醒与启动补挂提醒的 title/body 全部在**任何组合期之外**构造——`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们，英文态这些通知仍是中文。番茄钟常驻通知不在此列（它在计时协程里现取 `currentStrings`，见 V-16）。阶段二若要本地化这一路，得把文案传给调度/触发侧或按平台字符串资源处理，属于结构改动而非等价替换 | `AppGraph.kt:112`、`:120`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里）、`ui/mistake/ReviewReminderReceiver.kt:25`/`:55`/`:60`/`:61`、`ui/parent/WeeklyReportReceiver.kt:28-29`、`ui/schedule/ScheduleAlarmHelper.kt:64-65`（文案规则见该文件 `:18` KDoc）；Android 触发器侧另有自己的裸字面量（`androidMain/…/platform/ReviewReminderReceiver.kt:29`/`:37`、`androidMain/…/platform/WeeklyReportReceiver.kt:41-42`/`:53`，平台文件本阶段禁改） |
+| L-16 | **定时提醒类通知文案不进本地化范围（设计边界，不是漏译）**：错题复习提醒、每周学习周报、日程提醒与启动补挂提醒的 title/body 全部在**任何组合期之外**构造——`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们，英文态这些通知仍是中文。番茄钟常驻通知不在此列（它在计时协程里现取 `currentStrings`，见 V-16）。阶段二若要本地化这一路，得把文案传给调度/触发侧或按平台字符串资源处理，属于结构改动而非等价替换 | `AppGraph.kt:128`、`:136`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里；终审 Minor 3 把 `startupLanguage` 换成 `StateFlow` 后该文件 KDoc 变长，这两个坐标从 `:112`/`:120` 顺移到 `:128`/`:136`，本行按当前树复算）、`ui/mistake/ReviewReminderReceiver.kt:25`/`:55`/`:60`/`:61`、`ui/parent/WeeklyReportReceiver.kt:28-29`、`ui/schedule/ScheduleAlarmHelper.kt:64-65`（文案规则见该文件 `:18` KDoc）；Android 触发器侧另有自己的裸字面量（`androidMain/…/platform/ReviewReminderReceiver.kt:29`/`:37`、`androidMain/…/platform/WeeklyReportReceiver.kt:41-42`/`:53`，平台文件本阶段禁改） |
 | L-17 | 设备名兜底在 `data/**` 里各存了一份**表外副本**：家长控制导出包的 `家长设备`（`FamilySyncHelper.kt:107`，落进孩子设备存储，不在设置页出现）与进度包的 `孩子设备`（`:190` 与 DTO 默认值 `:82`）。它们不引用 `CanonicalParentSettingsText`/文案表，本阶段禁改 `data/**`，属阶段二与规范值常量对账的项（另见 spec §11"家长设备"行） | `grep -n "家长设备\|孩子设备" composeApp/src/commonMain/kotlin/com/hstudy/app/data/sync/FamilySyncHelper.kt`（3 处命中：`:82`/`:107`/`:190`） |
 | L-18 | `App.kt:60` 的 `.catch { emit(null) }` 是"降级不崩根"的例外：DataStore 读一旦抛错，上游以一次 `null` 完成、订阅就此终止，**本次会话语言被钉死在系统语言**，设置页切换不再生效，直到组合树重建（Android 配置变更 / iOS 重启）。代码注释写明了代价（`App.kt:54-59`），本清单此前未列 | `composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt:52-62` |
+| L-19 | **等价性登记表的"共享词遮蔽"**（终审 D-A 第 4 条裁决为记录、不修）：`i18n_template_diff.py` 的 `DISCLOSED_RESIDUALS`（现 19 条）里有**六条两侧同形**的通用词登记——`取消` / `确定` / `确认` / `删除` / `分` / `+⟨$⟩分`——而 `apply_disclosures()` 是在三层比对**之前**按**值**（不按字段）把它们从两侧集合里 `pop` 掉的。后果：在**默认组（窄组）**里新写或改出一条与这六个词**逐字节相同**的中文表值，会被无声摘掉，既不参与 `[strict]` 也不参与 `[A]/[B]`，等价性检查看不见它。边界要说清三条，别把它读成"闸门失效"：① 只有整串相同才遮蔽——`累计专注` 改成 `累计专注。` 这种真实漂移照旧报 `invented` 并退 1（本波次在当前树复做正对照实测：默认组 `[A] NO (1 missing, 1 invented)`、exit 1）；② 遮蔽的是**这条值**，不是这个字段，同字段其他值仍被比；③ `--branch` 整枝组里这六条是双边命中，摘掉等于"披露成立"，风险只在没带供值那张表的窄组。同一机制的第二个实例：表里第 19 条（`ParentDashboardStrings.scoreUnit` 的表侧单边 `分`）被第 13 条双边 `分`/`分` 先 pop，因而在整枝组恒报"（未用到）"——这就是 §6 那句"18 命中 / 1 未用到"里那 1 条的来历，不是登记过期。阶段二的收口形状：给登记加**字段名**限定（如 `table_field="CommonStrings.cancelButton"`）而不是继续按值 pop | 脚本头「已知边界」最后一条 + `scripts/i18n_template_diff.py` 的 [DISCLOSED_RESIDUALS] 注释；复跑：`python scripts/i18n_template_diff.py`（0）与"把一个 ZH 值改一个中文字"的 mutation（1） |
 
 ## 4. 英文措辞：一处已裁决关闭（Ruling 45），一处仍待裁决
 
@@ -384,8 +387,9 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 
 ## 6. 复现与回归
 
-（前提同 §1 的编码环境注：`export PYTHONIOENCODING=utf-8`。以下每条都是终审修复波次在当前树
-实跑过的，括注实测退出码。）
+（编码前提见 §1 末注：`export PYTHONIOENCODING=utf-8` **已经不需要**，四个脚本自带 UTF-8 换装护栏。
+以下每条都是终审修复波次在当前树实跑过的，括注实测退出码；终审 D-B 之后本波次又按"不设
+`PYTHONIOENCODING` + 输出接管道"的更严条件复跑过一遍，退出码逐条不变。）
 
 - 阶段一各页的中文态等价证明：`python scripts/i18n_template_diff.py`（默认组，实测 **exit 0**；
   distinct 123/120 → 披露后 **118/118**，`[strict]` **整串逐字节相同 117 条** + 1 条已披露的
@@ -396,7 +400,7 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
   `python scripts/i18n_template_diff.py --branch`（实测 **exit 0**；distinct 405/406 → 披露后 393/393，
   `[strict]` 392 条整串相同 + 同一条拆分位点。它把本分支全部已迁页面 × 全部 10 张表放进同一命题，
   `DISCLOSED_RESIDUALS` 登记表（现 19 条）整张受它复验（实跑 18 条命中打印、第 19 条与其同形条共用一次命中），
-  默认组只命中其中一小部分（实跑打印 3 条）。
+  默认组只碰到其中 6 条（实跑打印 3 条"已披露"双边/单边命中 + 3 条"单边在范围"），其余 13 条默认组用不到。
 - **`SettingsStrings` 这张表必须带两个页面 rev 才退 0**（表由 Task 5 与 Task 11 两批页面共同填写，
   其中语言分区那 5 条是 Task 5 为新功能新写、没有迁移前原文）：
   ```bash

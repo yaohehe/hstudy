@@ -3,16 +3,35 @@
 
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
-    python scripts/i18n_template_diff.py
-    python scripts/i18n_template_diff.py --tables-rev ceaf0f5      # 把文案表也钉回历史位置
-    python scripts/i18n_template_diff.py --pages-rev <rev> \\
-        --page <rev>:com/hstudy/app/ui/child/ChildHomeScreen.kt \\
+    python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部十张表
+    python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
+        --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
 
 `--page` 可以写成 `REV:路径`（也可以裸路径，此时用 `--pages-rev`），因为**同一张表可能服务两批
 迁移时间不同的页面**：Task 7 的三页在 d336fb8 还是中文，Task 7b 的三页要到 761b24e 才是中文。
 默认组就按这个方式把 6 个页面各取自己的迁移前 rev，表取工作区 —— 于是"表里每一条整串都能在
 某个页面的迁移前原文里找到，反之亦然"这个命题第一次变得可以被一条命令验证。
+
+哪些东西今天**能**钉回历史位置、哪些**不能**（终审 Minor 2 复核后写死在这里，因为上一版这段给的
+`--tables-rev ceaf0f5` 已经跑不通了，见下）：
+
+* **页面侧：可以逐个钉**，而且必须钉——每个页面取**它自己那批任务迁移前**的 rev，这是本命令能成立
+  的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
+  里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
+  带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部十张**表"可用**。限制不来自表侧读取本身，而来自
+  [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
+  [BRANCH_TABLES] 十张全读一遍。实测（终审当日，当前树）：
+      --tables-rev HEAD      -> 0        （十张齐全）
+      --tables-rev c3bd94a   -> 0        （Ruling 41 才新建 ParentGateStrings.kt，这是可用的最早 rev）
+      --tables-rev 41c3d39   -> **1**    `git show 41c3d39:…/ParentGateStrings.kt 失败`
+      --tables-rev ceaf0f5   -> **1**    `git show ceaf0f5:…/ChildHomeStrings.kt 失败`
+  旧版这段的示例就是最后那条，`d4d441b`（终审第 9 条，引入整枝范围）之后它恒退 1，所以**已删**。
+  真要复现某个早期提交的表读数，只能 `git checkout <rev> -- composeApp/src/commonMain/kotlin/
+  com/hstudy/app/i18n/` 把表带回工作区再跑、读完还原（那会把页面也一起带回，只能整树复现，
+  不是"表取历史 / 页面取现"的混合形态）；`--tables-rev` 做不到。
 
 组合的规矩（Task 9+ 采用前必读）：表侧整串必须能在**这次带进来的页面**里找到原文。
 只把一张表的一半页面带进命令，另一半页面拥有的字段就会被报成 `invented` —— 那是命令组合问题，
@@ -29,12 +48,27 @@
   比较两边的模板集合是否完全一致（missing = 页面有表里没有，invented = 反过来）。
 * [B] —— 去掉所有数值位之后，只比中文文案本身（空格、标点、`·`、emoji 都算文案）。
 
-局限（有意为之，别当成 bug）：
+已知边界（有意为之的局限，别当成 bug；命名与 `scripts/i18n_storage_boundary.py` 的「已知边界」段对齐）：
 * 只认非三引号的双引号字面量；本阶段迁移的文件里没有三引号字符串。
 * 相邻字符串拼接（`"a" + "b"`）算两条模板，所以中文表里不要写跨行拼接的**中文**值
   （Task 7 的 ZH 表没有；EN 表有，本脚本不读 EN 侧）。
 * 注释里的中文按 Ruling 18 不算可迁移文案，脚本会剥掉 `//` 行注释与 `/* */` 块注释。
 * 表侧字段名按"字面量前最近的一个 `字段 =`"归属，只为把报错指到具体字段，不参与等价性判定。
+* **登记会遮蔽表侧与它同名的值**（终审 D-A/第 4 条点出、控制器裁决为"只记录不修"）：
+  [apply_disclosures] 是在三层比对**之前**把登记的文本从两侧集合里 `pop` 掉的，它按**值**摘、
+  不按"这条值来自哪个字段"摘。于是登记表中那六条**两侧同形**的共享词——`取消` / `确定` / `确认` /
+  `删除` / `分` / `+⟨$⟩分`——是一个"免检名单"：任何人往任一中文表里**新写**一条与之逐字节相同的值，
+  这条值就在**默认组**里被无声摘掉，既不参与 [strict] 也不参与 [A]/[B]，等价性检查看不见它。
+  边界要说清楚三点：① 只有**整串逐字节相同**才被遮蔽，改成 `取消掉` / `确认。` 这类任何漂移都照旧
+  报 `invented` 并退 1（终审修复波次的正对照实测过：改一个中文字 → 默认组 [A] 立即 NO、退 1）；
+  ② 遮蔽的范围是"这条**值**"，不是"这个**字段**"——同字段的其他值仍被比；
+  ③ 整枝组（`--branch`）里这六条是**双边命中**（页面确实有同一个词），遮蔽的语义就是"这条披露成立"，
+  风险只在窄组：窄组没有供值的那张表，页面侧那一条本来就会被摘掉，表侧再冒出一条同形的就一并消失。
+  同一机制的第二个实例：登记表里 `分` 有两条（Task 10 的双边 `分`/`分` 与只看表侧的 scoreUnit
+  `None`/`分`），前者先 pop 掉表侧的 `分` 之后，后者在 `--branch` 组里恒报"（未用到）"——
+  它不是过期，是被前一条遮蔽（这就是整枝组"18 用到 / 1 未用到"里那 1 条的来历）。
+  阶段二若要收掉这个口子，形状是给登记加"字段名"限定（`table_field="CommonStrings.cancelButton"`）
+  而不是继续按值 pop。
 
 退出码：[A]、[B] 与 [strict] 残差三者都成立、且残差全部被"格式串拆分位点"或
 **已披露残差表** [DISCLOSED_RESIDUALS] 解释掉，才返回 0。
@@ -57,6 +91,34 @@ import os
 import re
 import subprocess
 import sys
+
+
+def _force_utf8_streams():
+    """把 stdout/stderr 钉在 UTF-8 上（终审 D-B：修 GBK 崩溃**这一类**，而不是把它写进文档当环境注）。
+
+    本脚本打印中文与 `⟨$⟩` 这类非 ASCII 记号。**只要 stdout 不是真控制台**（管道给 `head`、
+    重定向进日志文件、被 CI 的 step 收走），Python 就按 locale 编码写它——本机是 cp936/GBK，
+    于是 `print(note)` 撞上 `⟨`（U+27E8）抛 UnicodeEncodeError、**闸门退 1**。症状是"等价性检查红了"，
+    根因却是控制台编码，而一个会因环境而恒红的闸门正是本脚本 [DISCLOSED_RESIDUALS] 那段教义
+    （"恒红的闸门不会被读"）要避免的形态。改成 UTF-8 后这条崩溃类不再存在，且与 CI 的
+    Linux UTF-8 环境同形（同一个脚本、同一种字节）。
+
+    `errors="replace"` 只可能碰到**孤立代理码位**——本脚本的输入都是按 `encoding="utf-8"` 严格读入的
+    源文件与 `git show` 的 UTF-8 字节，产不出孤立代理；中文、`⟨$⟩`、emoji 一律原样输出。
+    它不是归一化：strict 层的"不许把不一致藏起来"靠的是集合比较，与流的错误处理器无关。
+
+    `reconfigure` 是 Python 3.7+ 的 `TextIOWrapper` 方法；更早的解释器、以及被测试框架换成没有该
+    方法的假流（pytest 的 capture）都会走 hasattr 分支直接跳过——那只是退回护栏之前的行为。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError, RuntimeError):
+                pass
+
+
+_force_utf8_streams()
 
 SRC_ROOT = "composeApp/src/commonMain/kotlin/"
 # 数值位记号：刻意用非汉字字符，否则"只剩插值"的排版串（`"${x}m"`）会被认成中文文案。
@@ -96,19 +158,29 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 
 # ---- 整枝级（branch-wide）比对组：本分支迁移过的**全部**页面 × **全部**文案表 ----
 # 为什么需要它（终审第 9 条）：DISCLOSED_RESIDUALS 是在**各任务自己的窄组命令**里登记的，
-# 18 条里只有 6 条被默认组消耗，其余 12 条从来没有被任何一条持久命令复验过
+# 当时那张表只有 18 条、且只有 6 条被默认组消耗，其余 12 条从来没有被任何一条持久命令复验过
 # （docs/i18n-stage1-verification.md §6 只记了默认组与设置页那条）。
 # 更糟的是原先的"成对登记缺一侧就失败"让**宽组天然不可能绿**：登记成页面单边的共享词
-# （`取消` / `确认` / `删除` / `分` / `+N分`）一旦把供值的那张表也带进来，表侧就成了 invented。
+# （`取消` / `确定` / `确认` / `删除` / `分` / `+⟨$⟩分` —— 就是终审 D-A 第 4 条点名的那六条
+# **两侧同形**登记）一旦把供值的那张表也带进来，表侧就成了 invented。
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
+#
+# 登记表的当前实况读数（终审 Minor 2 复算，改登记时必须同时改这里）：表里现在 **19 条**
+# （7 条两侧同形 + 5 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **13** 条默认组用不到；`--branch` 组碰到 **18** 条、只剩 **1** 条报
+# "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
+# 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
 #
 # 每个页面取**自己那批任务迁移前**的 rev（`git log --format=%h -1 <迁走它的那次提交>^`），
 # 同一页面被两批任务先后迁移的（ParentSettingsScreen）就带两个 rev，各取所需的一半原文。
 # 出处：Task 4=6f49951、Task 5=767711d、Task 6=fdf8381、Task 7=d336fb8、Task 7b=761b24e、
 # Task 8=2304fa7、Task 9=20bc060、Task 10=0c34b79/c77f91c、Task 11=ad6aa93、
-# 终审 Ruling 41 的家长密码门=本分支 HEAD 的前一次提交（`BRANCH_GATE_REV`）。
-BRANCH_GATE_REV = "41c3d39"   # 密码门迁移（Ruling 41）之前的 AppNavGraph
+# 终审 Ruling 41 的家长密码门=**c3bd94a 的父提交**（写这里时它恰好是 HEAD~1，HEAD 一动就不是了，
+# 所以按"迁移那次提交的父提交"这个不变量表述；当前树上是 HEAD~4 = 41c3d39）。
+# 这些常量现在全部是 CI 契约的一部分：android.yml 的等价性闸门带 fetch-depth: 0 且**阻塞**，
+# 任何一个 rev 从历史里消失都会把构建变红（终审 D-A 的 rev 存在性核对逐条走过）。
+BRANCH_GATE_REV = "41c3d39"   # 密码门迁移（Ruling 41，c3bd94a）之前的 AppNavGraph
 BRANCH_PAGES = DEFAULT_PAGES + [
     (TASK4_REV, "com/hstudy/app/ui/role/RoleSelectScreen.kt"),
     (TASK5_REV, "com/hstudy/app/ui/parent/ParentSettingsScreen.kt"),
@@ -440,7 +512,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
-    ap.add_argument("--tables-rev", default=WORKTREE, help="文案表取的位置（默认 WORKTREE，也可给 rev）")
+    ap.add_argument("--tables-rev", default=WORKTREE,
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部十张表的 rev 可用**"
+                         "（本分支上 c3bd94a 起，含 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 十张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                         "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)
     ap.add_argument("--table", action="append", dest="tables", help="可重复；表文件#Zh 变量名")
