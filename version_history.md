@@ -1,5 +1,60 @@
 # HStudy 版本更新记录
 
+## v3.1.0（未发布 · 双语第一阶段在分支 `feature/i18n-stage1` 上完成）
+
+**中英双语第一阶段（界面文案层）：13 个 UI 文件双语化，切换即时生效**
+
+> **版本号未升级**：本条记录的是**分支内已完成、尚未发布**的工作。
+> `composeApp/build.gradle.kts` 仍是 `versionName "3.0.0" / versionCode 30000`，
+> `iosApp/Info.plist` 与 `project.pbxproj` 同步保持 3.0.0/30000，没有 `v3.1.0` tag。
+> 按 `docs/VERSIONING.md`，版本号只在 CI 全绿的发布提交上一次性抬高。
+> 双语第一阶段只是 planned v3.1.0 的**前半段**——同一规划里的 Analytics（数据统计）子项目尚未实施，
+> 所以本分支不构成一个可发布版本。
+
+### 范围
+- 真正双语的 UI 文件（13 个 = 11 个页面 + 2 个共享组件）：
+  `role/RoleSelectScreen`、`parent/ParentHomeScreen`、`parent/ParentDashboardScreen`、
+  `parent/ParentSettingsScreen`、`child/ChildHomeScreen`、`child/ChildTaskListScreen`、
+  `focus/ChildFocusStatsScreen`、`focus/ChildFocusTrainingScreen`、`focus/ChildPomodoroScreen`、
+  `focus/ChildMemoryTrainingScreen`、`focus/ChildDailyPlanScreen`、
+  `common/CommonComponents`、`common/PomodoroTimer`
+- 425 条去重文案（计划最初的 10 个目标文件 362 条 + Task 7b 追加 3 页 63 条），落到 9 张按页面分组的
+  文案表里共 422 个字段，其中 **82 个函数型字段**（含参数文案：中英文语序不同，不用 `{0}` 位置插值，
+  英文复数在函数体内用 one/other 分支）
+  复核：`grep -cE "^    val \w+: " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/*Strings.kt`
+  （`Strings.kt` 的 9 个字段是聚合分组而非文案，已排除）
+- 未覆盖：约 905 条去重文案 / 45 个文件（`python scripts/i18n_coverage_audit.py`），属阶段二
+
+### 机制
+- 新增 `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/`：`AppLanguage`（`SYSTEM/ZH/EN` 设置值）
+  与 `DisplayLanguage`（`ZH/EN` 生效语言）分离，`resolveWith(systemTag)` 纯函数解析；
+  `expect/actual systemLanguageTag()` 是全设计唯一的平台契约点
+- 文案按页面分组存 `data class`（漏一条英文 = 编译错误，而不是运行时静默掉回中文），
+  `App.kt` 用 `CompositionLocalProvider(LocalStrings …)` 注入、`LocalDisplayLanguage` 下发生效语言；
+  偏好存 DataStore（`"system"/"zh"/"en"`），Flow 驱动根重组 → **切换不需要重启 App**
+- 不使用 Compose Multiplatform 的 resources / `LocalConfiguration`（1.7.3 的 commonMain 无该 API，已用编译探针证实）
+- 英文术语统一引用设计文档 §11 术语表：`docs/superpowers/specs/2026-11-07-hstudy-bilingual-stage1-design.md` §11
+
+### 限制（详见 docs/i18n-stage1-verification.md §3）
+- 英文态中英混排是既定代价：未迁移页面、家长审批列表与效率报表、等级评语/鼓励语/成就名仍是中文
+- 存储边界：文案不进写库调用（`scripts/i18n_storage_boundary.py` 作退出码闸门）。
+  测试期已写入英文的行**刻意不回改、不做数据迁移**，因此历史行与新写的规范中文值会在同一列表里并存；
+  英文设备上的家长密码门对话框（`ui/navigation/AppNavGraph.kt:254-283`）整块未迁移
+- 日期与数字格式不本地化（仍 `yyyy-MM-dd`、周一起始）；`PointsBadge` 英文 1 分显示 `1 points`；
+  Android 系统分享面板标题仍是硬编码的「分享文件」
+- **双语视觉效果无法自动验证**（本机无 emulator/adb、无 Compose UI 测试依赖、Apple 目标不可本机链接），
+  需要人工在 Android Studio 与 iOS 模拟器各走一遍启动 → 首页 → 打卡 → 设置，清单 33 项在同文件 §2
+
+### 技术信息
+- 版本号：未变（versionCode=30000, versionName="3.0.0"）；数据库 schema 不变（v12），无迁移
+- 提交序列：`27760d4`（Task 1）起至 `e87cbcb`（Task 11 修复轮）+ 本任务文档提交，全部在
+  `feature/i18n-stage1` 本地分支，**未 push**
+- 自动闸门：`:composeApp:testDebugUnitTest`（109 tests，其中 i18n 包 67 条）、
+  `:composeApp:compileCommonMainKotlinMetadata`、`:composeApp:assembleDebug`、
+  `scripts/i18n_template_diff.py`（中文态逐字节等价）、`scripts/i18n_storage_boundary.py`（+ 自测）
+
+---
+
 ## V3.0.0 (2026-11-07)
 **Kotlin Multiplatform 重构：一套代码同时支持 Android 与 iOS**
 
