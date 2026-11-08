@@ -130,6 +130,12 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 | 每日必须任务 | **Daily must-do** | 实测文案"有每日必须任务未完成，已自动扣减 X 分" |
 | 困难任务 | **Hard task** | 实测文案"还有 N 个困难任务"；代码 `hardTasksNotDone` |
 | 深呼吸 | **Breath** | 实测文案"第 N/M 次深呼吸"；代码 `breathCycle` |
+| 呼吸引导 | **Breathing guide** | Task 7 实测需要；`PomodoroTimer.kt` 的 `state == BREATHING` 分支文案 |
+| 科学休息 | **Smart break** | Task 7 实测需要；`PomodoroTimer.kt` 休息卡片标题，与 break tips 同组 |
+| 专注力训练 | **Focus training** | Task 7 实测需要；包名 `ui/focus` + 代码 `focusTrainingCount` / `focusTrainingBestMs` |
+| 舒尔特方格 | **Schulte grid** | Task 7 实测需要；英语世界对该训练的通行名（不是逐字硬译 "Schulte square"） |
+| 个人最佳 / 个人纪录 | **Personal best / personal record** | Task 7 实测需要；代码 `focusTrainingBestMs`，两条文案分别对应"最佳成绩"和"破纪录"事件 |
+| 时长单位（分/小时/秒） | **min / hr / s** | Task 7 实测需要；与 Task 6 的 `CommonStringsEn.minuteLabel = "min"`、`hourLabel = "hr"` 同源。缩写不随单复数变化，所以时长文案不需要 one/other；`分` 作积分单位时另见 **Points** |
 | 基础 / 提升（任务分类） | **Basic / Advanced** | Task 6+8 实测需要；`ParentDashboardScreen`、`WeeklyTrackerScreen`、`ParentTaskManageScreen` 会复用 |
 | 我是家长 / 我是孩子 | **I'm the parent / I'm the learner** | 用户选定 learner，避免 kid 的低龄感，且与 parent 对称 |
 | 学习积分奖励（品牌行） | **Study Points & Rewards** | 实测 `RoleSelectScreen.kt:75` |
