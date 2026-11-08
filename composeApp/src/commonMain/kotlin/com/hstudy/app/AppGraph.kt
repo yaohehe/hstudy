@@ -10,6 +10,8 @@ import com.hstudy.app.platform.ScheduledReminder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -64,9 +66,23 @@ object AppGraph {
      * 代价（诚实说明）：预读本身是异步的，若首帧早于首次 emission，此值仍为 null 并退化为 SYSTEM 推导；
      * 它只收窄窗口，不消除窗口，也不会插入空白帧。另一个代价是这条订阅随进程存活
      * （`appScope` 与进程同寿，bootstrap() 由 `initialized` 保证只跑一次，不存在重复订阅）。
+     *
+     * **为什么它是 `MutableStateFlow` 而不是一个裸 `var`（终审 Minor 3）**：写入点是 [bootstrap] 里那条
+     * `appScope.launch { … collect { … } }`，跑在 `Dispatchers.Default` 的线程上；读取点是 `App.kt` 与
+     * `ParentSettingsScreen.kt` 的**组合线程**。普通 `var` 在这两者之间没有 happens-before，是数据竞争：
+     * JVM 上可能长期读到过期值，Kotlin/Native（iOS 是本分支的一等目标平台）对并发可变状态更是未定义。
+     * commonMain 里**用不了 `@Volatile`**（`kotlin.jvm.Volatile` 是 JVM 专有注解，公共源码集不能引用），
+     * 所以选 `StateFlow`：它的 `value` 自带安全发布（一次写入对所有读者可见，读到的永远是完整引用），
+     * 顺带把"这个值会被别的线程改"写进了类型里——比 `var … private set` 更不容易被下一个人误用。
+     * **行为一字不变**：仍然只由那一条订阅写、仍然每次语言写入都刷新、仍然在 bootstrap() 里播种。
+     * 对外只给只读的 [StateFlow]（等价于原先的 `private set`），两个消费者各取一次 `.value` 当
+     * `collectAsState(initial = …)` 的首帧值；**不要**在这里改用 `collectAsState()`，那会把"取一次快照"
+     * 变成"再挂一条跟随存储的订阅"，与 DataStore 那条流重复。
      */
-    var startupLanguage: String? = null
-        private set
+    private val _startupLanguage = MutableStateFlow<String?>(null)
+
+    /** [_startupLanguage] 的只读视图；唯一的写入点在 [bootstrap] 的那条订阅里。 */
+    val startupLanguage: StateFlow<String?> = _startupLanguage
 
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var initialized = false
@@ -94,7 +110,7 @@ object AppGraph {
         init()
         // Ruling 46：首帧语言快照的**唯一赋值点**（见上面 [startupLanguage] 那段为什么在这里）。
         // 单独一条 launch：collect 永不返回，混进下面那条就会挡住补默认数据与恢复提醒的整段逻辑。
-        appScope.launch { userPreferences.appLanguage.collect { startupLanguage = it } }
+        appScope.launch { userPreferences.appLanguage.collect { _startupLanguage.value = it } }
         appScope.launch {
             if (!userPreferences.hasOnboarded.first()) {
                 taskRepository.initDefaultTasks()

@@ -323,7 +323,7 @@ fun ParentSettingsScreen(
                     // 明确表示「被指称的词」而不是「要显示的话」，这个判断就不用做了。
                     // （原先写的理由是 scripts/i18n_inventory.py 会把注释里的中文数进清单——
                     //  Ruling 18 之后脚本会剥掉 // 之后的内容，那条已经成立不了了，约定本身照旧。）
-                    val storedLanguage by app.userPreferences.appLanguage.collectAsState(initial = AppGraph.startupLanguage)
+                    val storedLanguage by app.userPreferences.appLanguage.collectAsState(initial = AppGraph.startupLanguage.value)
                     val currentLanguage = appLanguageFromStorage(storedLanguage)
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

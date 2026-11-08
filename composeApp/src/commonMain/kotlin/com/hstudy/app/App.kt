@@ -59,7 +59,7 @@ fun App() {
             // 订阅、顺带自愈一次；现在要恢复只能等平台侧重建组合（Android 配置变更 / iOS 重启）。
             .catch { emit(null) }
     }
-    val storedLanguage by appLanguageFlow.collectAsState(initial = AppGraph.startupLanguage)
+    val storedLanguage by appLanguageFlow.collectAsState(initial = AppGraph.startupLanguage.value)
     // storedLanguage 不变时不重新解析：systemLanguageTag() 要走平台桥接，stringsFor 也要建引用，
     // 放在 remember 外会让每次重组都重算。设备语言在运行中被更换时组合本就会被销毁重建
     // （Android 配置变更重建 Activity，iOS 改语言需重启 App），缓存随之失效，不必再加 key。
