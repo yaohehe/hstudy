@@ -28,7 +28,12 @@
   E 污点链      —— C/D 得到的名字集迭代到不动点（`val a = strings.x; val b = a;` → sink 算违规），
                     深度不设上限；9b 实测当前工作树第二轮不产生任何新名字，即该通道是纯增量
   F sink 名单   —— 见下方 SINK_STEMS / SINK_EXTRA / SINK_CAPSUFFIX / RESERVED_STEMS，
-                    每个词根/名字都带 commonMain 取证行号，且由自测反向对账"真实树里确有此声明"
+                    SINK_STEMS / SINK_EXTRA / SINK_CAPSUFFIX 每个词根/名字都带 commonMain 取证行号，
+                    且由自测反向对账"真实树里确有此声明"（自测第 3 节）。
+                    **RESERVED_STEMS 走的是相反的那条规则、不在"确有声明"的对账里**：
+                    它们是"预留、非现实"的词根，自测要求的是"真实树里**必须还没有**此声明"
+                    （selftest:306-307），一旦被真实代码用上就必须搬回 SINK_STEMS
+                    （selftest:26 与 :94-96 的注释就是这条规则本来的表述）。
   G 插值文案    —— 字符串字面量里的 `${strings.x}` / `$taintedVar` **算文案**（9b 审查 Critical 1：
                     双语迁移最常产出的复合说明就长这样；空白化时必须保留插值区，见
                     blank_string_contents）；fixture InterpolationCopy.kt / InterpolationNoFp.kt
@@ -50,10 +55,33 @@
     rememberUpdatedState(句柄)` 同形）——否则 ChildHomeScreen.kt:253 那种
     `val hardestName = when (…) { -> strings.x }` 的中间变量会变成"文案来源"，那是误报温床，
     它该走的是污点通道而不是句柄通道（两条都各有 fixture 钉住）；
+  - **句柄别名再包一层就看不见**（Task 10 补，四种形态全部实测：把句柄换成 sink 实参后闸门不报）：
+      · 函数**参数**句柄：`fun f(c: CommonStrings) { repo.adjustPoints(1, c.cancelButton) }`；
+      · **类字段 / 构造参数**句柄：`class X(private val common: CommonStrings)` → `common.<字段>` 进 sink；
+      · **解构**句柄：`val (a, b) = strings.common to strings.parentHome` → `a.<字段>` 进 sink
+        （C 通道要求 `=` 右端整个就是句柄，解构形没有 `val a = …` 这条赋值，所以进不了污点集）；
+      · **容器字段**句柄：`private val pair: Pair<CommonStrings, CommonStrings>` → `pair.first.<字段>`
+        （HANDLE_BIND 的形状锚在 `X.current.<组>` 的 `current` 上，字段名走不到这条规则）。
+    边界**不是**"别名一律漏抓"：`val g = remember { common }`、`val g = if (f) common else pet`、
+    `val g = holder.first`（`holder` 是**局部** `val holder = common to pet`）三种 Task 10 实测**能抓**
+    ——局部变量由 `X.current.<组>` 绑定后再被 remember/三元/局部 Pair 转一手，
+    仍会经 C+E 两条通道进污点集（DocProbe.kt 三条 sink 全部报红）。
+    真正的分水岭是"**句柄的最初来源是不是 `X.current.<组>` 赋值句**"：来自参数、字段、解构、
+    容器字段这三种"非赋值句来源"时，第一个句柄就不在污点集里，后面转几手都追不到。
+    复现配方（Task 10 用过的探针不在仓库里，是 gitignore 下的一次性目录）：
+    在 `<dir>/DocProbe2.kt` 里写上面四种形态，各配一条 `repo.adjustPoints(n, …)`，
+    再跑 `I18N_BOUNDARY_SRC=<dir> python scripts/i18n_storage_boundary.py`——
+    报出的行号里查不到那四条就是本条边界成立；Task 11/12 若要补通道，应先把这四种做成 fixture。
   - 文案赋值的**上限**（超出就漏抓，9b 审查 Important 5 要求逐条写在这里）：多行普通串/多行 lambda
     表达式里的文案（C 通道只允许 `=` 之后穿过纯空白行，中间一旦有内容的行就断）、
     `var` 已声明变量的**无关键字重新赋值**（上面第 1 条第 3 小点）、字段赋值（同第 1 条第 2 小点）、
     同文件 helper 的返回值（同第 1 条第 1 小点）；
+  - 三引号原始串赋值另有一道**行数上限** `_RAW_ASSIGN_MAX_LINES = 60`（Task 10 实测）：
+    原始串体的换行数超过 60 时 TAINT_ASSIGN_RAW 直接跳过这一条赋值，于是
+    `val note = 三个双引号 …${strings.x}…（66 行）… 三个双引号` + 下一行 `repo.adjustPoints(2, note)` **不报**，
+    而完全同形态、只有 12 行的那一条**报**（探针 DocProbe3.kt / DocProbe4.kt，同一目录同一命令）。
+    这道上限是"残缺语法最坏只吃这么多行"的保险，**不是覆盖率声明**：
+    它把"长帮助文本 / 引导文案"这一类（最可能被人顺手本地化后写库的形态）留在盲区里；
   - Canonical*Text.*（ChildHomeStrings.kt:193 / PomodoroStrings.kt:269）是 Ruling 25 处置方案的
     规范值出口，**不是**文案，本闸门永久豁免它——这是合规形态而非漏洞，不得删掉这条豁免；
   - `add`/`set` 只在**大写后缀**形态下算 sink（`addTask(` / `setDeviceName(`），裸 `add(`/`set(`
