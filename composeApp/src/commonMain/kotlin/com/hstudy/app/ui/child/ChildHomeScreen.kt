@@ -36,6 +36,7 @@ fun ChildHomeScreen(
 ) {
     val app = AppGraph
     val strings = LocalStrings.current.childHome
+    val taskListStrings = LocalStrings.current.taskList
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isSyncing by remember { mutableStateOf(false) }
@@ -549,7 +550,7 @@ fun ChildHomeScreen(
                     // 家长今日布置卡片（如有）
                     if (assignments.isNotEmpty()) {
                         Column(modifier = Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("📣 家长今日布置", style = MaterialTheme.typography.titleSmall,
+                            Text(strings.parentAssignmentsTitle, style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
                             assignments.forEach { a ->
                                 Card(
@@ -567,7 +568,7 @@ fun ChildHomeScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(a.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("+${a.points}分", style = MaterialTheme.typography.labelMedium,
+                                                Text(taskListStrings.pointsEarnedLabel(a.points), style = MaterialTheme.typography.labelMedium,
                                                     color = MaterialTheme.colorScheme.primary)
                                             }
                                             if (a.parentNote.isNotEmpty()) {
@@ -586,15 +587,15 @@ fun ChildHomeScreen(
                                                         app.pointRepository.checkIn(
                                                             bizKey = "ASSIGN:${a.id}:$assignDate",
                                                             actionType = "ASSIGNMENT",
-                                                            description = "完成布置任务: $name",
+                                                            description = CanonicalChildHomeText.assignmentDescription(name),
                                                             points = pts,
                                                             date = assignDate
                                                         )
                                                     }
-                                                    snackbarHostState.showSnackbar("🎉 完成布置任务 +${a.points}分（待家长审核）！")
+                                                    snackbarHostState.showSnackbar(strings.assignmentCompletedMessage(a.points))
                                                 }
                                             }) {
-                                                Text("完成")
+                                                Text(strings.completeAssignmentButton)
                                             }
                                         }
                                     }
@@ -603,51 +604,51 @@ fun ChildHomeScreen(
                         }
                     }
                     StepSection(
-                        step = 1, title = "每日打卡", subtitle = "完成今天的学习任务",
+                        step = 1, title = strings.step1Title, subtitle = strings.step1Subtitle,
                         color = MaterialTheme.colorScheme.primary,
                         entries = listOf(
-                            StepEntry("✏️", "开始打卡", "完成任务获得积分", Screen.ChildTaskList.route),
-                            StepEntry("🐾", "我的学习宠物", "赚积分喂养它进化", Screen.ChildPet.route)
+                            StepEntry("✏️", strings.entryStartCheckinTitle, strings.entryStartCheckinSubtitle, Screen.ChildTaskList.route),
+                            StepEntry("🐾", strings.entryMyPetTitle, strings.entryMyPetSubtitle, Screen.ChildPet.route)
                         ),
                         onNavigate = onNavigate
                     )
                 }
                 val step2 = @Composable {
                     StepSection(
-                        step = 2, title = "过程管理", subtitle = "专注学习、记录错题、提交证明",
+                        step = 2, title = strings.step2Title, subtitle = strings.step2Subtitle,
                         color = MaterialTheme.colorScheme.tertiary,
                         entries = listOf(
-                            StepEntry("🍅", "番茄钟", "专注学习计时", Screen.ChildPomodoro.route),
-                            StepEntry("📚", "错题本", "记录和复习错题", Screen.ChildMistakeList.route),
+                            StepEntry("🍅", strings.entryPomodoroTitle, strings.entryPomodoroSubtitle, Screen.ChildPomodoro.route),
+                            StepEntry("📚", strings.entryMistakeNotebookTitle, strings.entryMistakeNotebookSubtitle, Screen.ChildMistakeList.route),
                         ),
                         onNavigate = onNavigate
                     )
                 }
                 val step3 = @Composable {
                     StepSection(
-                        step = 3, title = "计划规划", subtitle = "安排时间、培养习惯、设定目标",
+                        step = 3, title = strings.step3Title, subtitle = strings.step3Subtitle,
                         color = MaterialTheme.colorScheme.secondary,
                         entries = listOf(
-                            StepEntry("📋", "每日计划", "安排学习时间", Screen.ChildDailyPlan.route),
-                            StepEntry("🎯", "每日学习目标", "自己定目标主动学", Screen.ChildDailyTarget.route),
-                            StepEntry("📅", "今日时间线", "查看今天日程安排", Screen.ChildScheduleTimeline.route),
-                            StepEntry("🎯", "习惯挑战", "21天习惯养成", Screen.ChildHabitChallenge.route),
-                            StepEntry("📈", "目标追踪", "学习进度与目标", Screen.ChildGoalTracker.route),
+                            StepEntry("📋", strings.entryDailyPlanTitle, strings.entryDailyPlanSubtitle, Screen.ChildDailyPlan.route),
+                            StepEntry("🎯", strings.entryDailyTargetTitle, strings.entryDailyTargetSubtitle, Screen.ChildDailyTarget.route),
+                            StepEntry("📅", strings.entryScheduleTimelineTitle, strings.entryScheduleTimelineSubtitle, Screen.ChildScheduleTimeline.route),
+                            StepEntry("🎯", strings.entryHabitChallengeTitle, strings.entryHabitChallengeSubtitle, Screen.ChildHabitChallenge.route),
+                            StepEntry("📈", strings.entryGoalTrackerTitle, strings.entryGoalTrackerSubtitle, Screen.ChildGoalTracker.route),
                         ),
                         onNavigate = onNavigate
                     )
                 }
                 val step4 = @Composable {
                     StepSection(
-                        step = 4, title = "数据反馈", subtitle = "查看学习分析和积分详情",
+                        step = 4, title = strings.step4Title, subtitle = strings.step4Subtitle,
                         color = MaterialTheme.colorScheme.inversePrimary,
                         entries = listOf(
-                            StepEntry("🎰", "幸运抽奖", "每日抽奖赢积分", Screen.ChildLuckyDraw.route),
-                            StepEntry("📊", "效率报表", "学习数据分析", Screen.ChildEfficiencyReport.route),
-                            StepEntry("⭐", "积分明细", "查看积分记录", Screen.ChildPoints.route),
-                            StepEntry("🎁", "奖励商店", "用积分兑换奖励", Screen.ChildRewardStore.route),
-                            StepEntry("🐷", "心愿存钱罐", "攒积分实现大心愿", Screen.ChildWishGoal.route),
-                            StepEntry("📅", "周报查看", "每周打卡汇总", Screen.ChildWeeklyView.route),
+                            StepEntry("🎰", strings.entryLuckyDrawTitle, strings.entryLuckyDrawSubtitle, Screen.ChildLuckyDraw.route),
+                            StepEntry("📊", strings.entryEfficiencyReportTitle, strings.entryEfficiencyReportSubtitle, Screen.ChildEfficiencyReport.route),
+                            StepEntry("⭐", strings.entryPointsDetailTitle, strings.entryPointsDetailSubtitle, Screen.ChildPoints.route),
+                            StepEntry("🎁", strings.entryRewardStoreTitle, strings.entryRewardStoreSubtitle, Screen.ChildRewardStore.route),
+                            StepEntry("🐷", strings.entryWishBankTitle, strings.entryWishBankSubtitle, Screen.ChildWishGoal.route),
+                            StepEntry("📅", strings.entryWeeklyReportTitle, strings.entryWeeklyReportSubtitle, Screen.ChildWeeklyView.route),
                         ),
                         onNavigate = onNavigate
                     )
@@ -760,6 +761,7 @@ private fun MyGoalCard(
     rewards: List<com.hstudy.app.data.local.entity.RewardEntity>,
     onNavigate: (String) -> Unit
 ) {
+    val strings = LocalStrings.current.childHome
     val mainWish = wishGoals.firstOrNull()
     val nextReward = rewards.firstOrNull { totalPoints < it.pointsCost }
     val affordableCount = rewards.count { totalPoints >= it.pointsCost }
@@ -776,7 +778,7 @@ private fun MyGoalCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("🎯", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("我的目标", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(strings.myGoalTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
 
             // 心愿存钱罐进度
@@ -792,7 +794,7 @@ private fun MyGoalCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(mainWish.iconEmoji, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("心愿：${mainWish.name}", style = MaterialTheme.typography.titleSmall,
+                            Text(strings.wishGoalNameLabel(mainWish.name), style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                             Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -802,7 +804,7 @@ private fun MyGoalCard(
                             modifier = Modifier.fillMaxWidth().height(8.dp),
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
-                        Text("已存 ${mainWish.savedPoints}/${mainWish.targetPoints} 分，还差 $remaining 分达成心愿！",
+                        Text(strings.wishGoalProgressNote(mainWish.savedPoints, mainWish.targetPoints, remaining),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -816,13 +818,13 @@ private fun MyGoalCard(
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (affordableCount > 0) {
-                        Text("🎉 现在可以兑换 $affordableCount 个奖励啦，去商店看看吧！",
+                        Text(strings.affordableRewardsNote(affordableCount),
                             style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                     }
                     if (nextReward != null) {
                         val need = nextReward.pointsCost - totalPoints
                         val progress = (totalPoints.toFloat() / nextReward.pointsCost).coerceIn(0f, 1f)
-                        Text("再攒 $need 分就能兑换「${nextReward.iconEmoji} ${nextReward.name}」",
+                        Text(strings.saveTowardsRewardNote(need, nextReward.iconEmoji, nextReward.name),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         LinearProgressIndicator(
                             progress = progress,
@@ -830,7 +832,7 @@ private fun MyGoalCard(
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     } else if (affordableCount == 0) {
-                        Text("完成任务赚积分，就能兑换奖励啦！加油💪",
+                        Text(strings.earnPointsForRewardsNote,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
