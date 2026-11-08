@@ -99,7 +99,7 @@ package com.hstudy.app.i18n
  * (b) 中文态输出逐字节相同，由 [focusInterpolatedCopyPinsBothLanguages] 等字面量断言 +
  * `scripts/i18n_template_diff.py` 证明，不是口头论证；
  * (c) 未动控制流、数据源（同一个 `strFormat` 调用、同一个除法、同一批实参）、组件与布局参数；
- * (d) 此处 + 任务报告 §7。数值格式化（`%.1f`）**留在页面里**、不进文案表：spec §6 明确本阶段不引入
+ * (d) 此处 + `scripts/i18n_template_diff.py`：它的 strict 层把这一处识别为**格式串拆分位点**并自动点名（`--max-splits` 默认 1 就是为这一条设的上限）。任务报告随分支作废，披露落点不再放 `.superpowers/`（plan Ruling 35）。数值格式化（`%.1f`）**留在页面里**、不进文案表：spec §6 明确本阶段不引入
  * locale 相关的数字格式，若把 `%.1f` 写进语言表就等于开了那个口子。
  * 反过来，**不算例外**的插值位点是"模板里本来就是一个普通变量"那一类（brief 自己给的形态）：
  * [totalSessionsLine]（原 `🎯 累计训练 $trainingCount 次`）、[sessionsStatValue]（原 `${trainingCount}次`）、

@@ -25,7 +25,7 @@ package com.hstudy.app.i18n
  *     有字段承接它，`scripts/i18n_template_diff.py` 那条"表侧整串能在页面原文里找到"的等价命题
  *     才继续成立——规范值对象 [CanonicalParentSettingsText] 在 `SettingsStringsZh` 变量段**之外**，
  *     脚本从来看不到它，所以把这条 ZH 值改掉或删掉，命令立刻报"仅页面有 1 「家长设备」"并退 1
- *     （本轮变异探针 E 实测，见任务报告）。
+ *     （变异探针 E 实测过；复现方式是把这条 ZH 值临时改掉再跑 `python scripts/i18n_template_diff.py` 的设置页那条命令，命令形态见 docs/i18n-stage1-verification.md §6）。
  *   - **漂移锚**：它的 ZH 值必须与规范常量逐字节一模一样。渲染位读的是存储、比的是常量，
  *     两处各改一半时中文态那一格会念出另一个串，这一对由
  *     `StringsCopyTest.settingsDeviceNameFallbackStaysCanonical` 的第 2 条钉住。
@@ -65,11 +65,19 @@ package com.hstudy.app.i18n
  *
  * ## 存储边界（Ruling 25 / 31 / 34）：本页是 stage1 里第一个**真有写库调用**的迁移页面
  *
- * **本节与下面各节的行号都是迁移前坐标**（rev `ad6aa93`，与值后面的行尾注释同源）；
- * 迁移后坐标见 §11 的"迁移前 :NNN（迁移后 :MMM）"双坐标行与任务报告 §2.1（Ruling 37）。
+ * **坐标口径（这一段里两种都有，别混读）**：本节与下面各节行文里的 `:NNN` 是**迁移前**坐标
+ * （rev `ad6aa93`，与值后面的行尾注释同源；同一约定见 spec §11 的"行号引用约定"段，Ruling 37）。
+ * **唯一例外是紧接着那份 sink 清单，它给的是当前树坐标**（两套数字差 1-2 行：不要拿本节行文里的
+ * `:299`/`:301` 去当前树的同一行找，也不要拿清单里的数字当迁移前坐标）。
  *
- * 该页全部写库/跨设备调用位点（任务报告 §2.1 按 sink 归成 9 组、12 个具体行；读侧的
- * `:48 pickTextFile` 与偏好 `first()` / `collectAsState` 不在这 12 行里）逐条溯源见该节。
+ * 该页全部写库/跨设备调用位点 = 9 组 / 12 个调用位点，**当前树坐标**（逐个 `grep -n` 复核）：
+ * `:54 importProgressReport(text)`、`:103 clearParentPassword()`、`:128 setWeeklyReportEnabled(enabled)`、
+ * `:152 BackupHelper.backup()`、`:178 BackupHelper.restore()`、`:231 exportControlConfig()`、
+ * `:233-235 shareFile(…, strings.exportChooserTitle)`、`:303 setDeviceName(name)`、
+ * `:339` / `:346` / `:353 setAppLanguage(SYSTEM/ZH/EN)`、`:382 setParentPassword(pwd)`。
+ * 读侧的 `pickTextFile`（当前 `:50`）与偏好 `first()` / `collectAsState` 不是写库位点，不在这一份里。
+ * 每条实参的来源与"是否文案"的判定审结在 `docs/i18n-stage1-verification.md` §5
+ * （任务报告随分支作废，纪律披露不再以 `.superpowers/` 为落点，plan Ruling 35）。
  * 唯一一条"页面中文进 sink"的既有通道是
  * `:299 → :301 setDeviceName(name)`：`name = deviceName.ifBlank { "家长设备" }`，父级没填设备名时
  * 这条中文兜底值就写进 DataStore 的 DEVICE_NAME，再被 `FamilySyncHelper.exportControlConfig()`
@@ -84,7 +92,7 @@ package com.hstudy.app.i18n
  *   "Parent device"，认不出的输入原样透传（历史行/用户自取名不受影响）；
  * - `:291` 那个 OutlinedTextField 的 `value` **刻意不本地化**：它是数据编辑器，
  *   把 "Parent device" 显示进可编辑框就等于让父级下一次保存把英文标签写回存储，
- *   正是本节要防的那件事。英文态这一格会显示规范中文兜底值，是**已知上限**，进 Task 12 人工清单
+ *   正是本节要防的那件事。英文态这一格会显示规范中文兜底值，是**已知上限**（docs/i18n-stage1-verification.md 的 V-30 与 L-12）
  *   （与 `parentDashboardInterpolatedCopyPinsBothLanguages` 记录的"英文态读出 优秀"同一类）。
  *
  * **被否决的另一种形态**（Ruling 38 要求记在这里，不是"以后再说"）：回执也**原样透传**，
@@ -94,7 +102,7 @@ package com.hstudy.app.i18n
  *   展示给人看**的地方，透传等于把存储侧的中文当界面文案推到英文用户眼前，与"规范值只活在存储里"
  *   这条处置的初衷相反；
  * - 本地化回执**不产生任何写回路径**：它只喂 `showSnackbar`，不进 `setDeviceName`、不进任何 sink
- *   （逐行核对见任务报告 §2.2 第 3 条），所以"能安全本地化的那一位"恰好就是"没有写回风险的那一位"。
+ *   （`error` 在当前树的全部出场：声明 `:400`、两处文案赋值 `:429`/`:430`、两处清空 `:410`/`:416`、一次判空 `:421`、一次渲染 `Text(error!!)` 在 `:422`，`grep -n "error" ui/parent/ParentSettingsScreen.kt` 可复核），所以"能安全本地化的那一位"恰好就是"没有写回风险的那一位"。
  *   编辑框那一格正好相反——它有写回路径，所以**必须**不本地化。两条合起来才是这一节的选择依据。
  *
  * 另一条**看着像 sink 其实不落库**的：`:232` 传给 `FamilySyncHelper.shareFile(filePath, title)` 的
@@ -110,8 +118,8 @@ package com.hstudy.app.i18n
  *   **根本没有标题这一行**，中英文用户都看不到任何标题。
  * 也就是说 [exportChooserTitle] 是一份"已双语、但目前只在数据层可见"的文案：它进表的价值是
  * 让 `i18n_inventory.py` 的本页残留计数归 0、并让两个平台将来开始使用 title 时值已经就位，
- * **不是**"英文用户现在就能看到英文分享标题"。这一条已按 Ruling 36 交给 Task 12 的
- * 人工验证 / 已知限制清单（`AndroidFileSharer.kt` 是平台文件，本任务禁改，改动是后续决策）。
+ * **不是**"英文用户现在就能看到英文分享标题"。这一条已按 Ruling 36 落进
+ * `docs/i18n-stage1-verification.md` 的已知限制 L-08 与人工验证项 V-29（`AndroidFileSharer.kt` 是平台文件，本任务禁改，改动是后续决策）。
  * 与 [ChildHomeStrings.shareProgressChooserTitle] 是同一条已披露取舍（ChildHomeStrings 类注释
  * Ruling 20 例外第 4 条；那一处同样只说了"不落库"、没说"不渲染"，已登记为 Task 12 的同一条），
  * 本字段的静态值同时进 `settingsCopyDiffers` 的穷举清单。
@@ -173,7 +181,7 @@ package com.hstudy.app.i18n
  *
  * **§11 里署名"Task 11 实测需要"的七行，每行点名一条真实存在的测试**（本轮补的是"数据备份与恢复"
  * 那一行；"每条带真实测试名"这句话说的是这七行，且逐行机械复核过——脚本把 §11 与本页 KDoc 里
- * 像测试名的 token 与 commonTest 的 `fun NAME(` 定义集合做成员检查，结果见任务报告的引用复核一节）：
+ * 像测试名的 token 与 commonTest 的 `fun NAME(` 定义集合做成员检查，Task 12 按同一形状重跑过一轮，未解析 0）：下面 7 行的每一个名字都可用 `grep -rn "fun <名字>(" composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/` 复核
  * - 中文量词次·个 → `settingsEnglishDropsTheMeasureWords`
  * - 确定 / 确认 → `settingsOkButtonIsNotTheCommonConfirmButton`
  * - 家长远程控制（分区名）→ `settingsCopyDiffers`
@@ -193,7 +201,7 @@ package com.hstudy.app.i18n
  *   在 [ChildHomeStrings.todayCheckinTitle] 与 [TaskListStrings.checkInTitle] 里是**同一个词形**，
  *   只改本页这一处会新造一处跨表漂移；② §11"周报 = Weekly Report"与本表英文值 `Weekly report`
  *   只差大小写，那是术语表管辖的改动，本轮**没有**擅自改词形，也没有假装两者一致——
- *   差异写在 §11 那一行的"依据"格里，与 Task 12 的人工清单同一处指认。
+ *   差异写在 §11 那一行的"依据"格里，与 `docs/i18n-stage1-verification.md` §4 第 1 项（两处待裁决的英文大小写）同一处指认。
  */
 data class SettingsStrings(
     // ===== 语言分区（Task 5，字段与值原样保留）=====

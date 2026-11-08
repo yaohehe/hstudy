@@ -653,8 +653,8 @@ class StringsCopyTest {
     }
 
     /**
-     * Ruling 20 里唯一一处**把单位从数字格式串内部拆出来**的位点的等价性证据（报告 §7 第 4 行、
-     * Task 7 评审 Important 1）：`ui/focus/ChildFocusTrainingScreen.kt:111`（迁移前）写
+     * Ruling 20 里唯一一处**把单位从数字格式串内部拆出来**的位点的等价性证据（Task 7 评审 Important 1；
+     * `scripts/i18n_template_diff.py` 的 strict 层把这一处当格式串拆分位点自动点名）：`ui/focus/ChildFocusTrainingScreen.kt:111`（迁移前）写
      * `strFormat("%.1f 秒", elapsedMs / 1000f)`，单位 ` 秒` 在格式串**内部**；
      * 迁移后写 `strings.elapsedValue(strFormat("%.1f", elapsedMs / 1000f))`，单位进了文案表。
      * 62 条模板里只有这一条不是整串搬进表里的，所以它必须有自己的断言而不是靠口头论证
@@ -674,7 +674,7 @@ class StringsCopyTest {
      * 本任务禁止改它）；而且 Task 7 的覆盖测试就是 `--tests "*StringsCopyTest*"`，
      * 新类不在这条命令的覆盖范围内，评审闸门会看不见它。
      *
-     * 反证见任务报告"Fix report (round 1)"：把断言 1 改成"strFormat 会丢掉转换符后面的文本"
+     * 反证（Task 11 修复轮实测，复现方式就写在下面两条事实里）：把断言 1 改成"strFormat 会丢掉转换符后面的文本"
      * 这一假命题、以及把 DateTimeCompat 的追加分支临时改掉，本测试都变红。
      */
     @Test
@@ -1216,7 +1216,8 @@ class StringsCopyTest {
      *    已经写进去的英文行都仍能显示——这正是"不做迁移、不做模式匹配回填"能成立的条件；
      * 6. 页面侧那七行的调用参数本身**测不到**（没有 Compose UI 测试依赖，spec §9），
      *    能被自动证明的是 `scripts/i18n_storage_boundary.py` 以退出码守住"文案表的值不进 sink"，
-     *    输出贴在任务报告 Fix report §1（修复前 2 处命中、修复后 0）。
+     *    复现：`python scripts/i18n_storage_boundary.py`（当前退出码 0）与
+     *    `grep -rnE "(submitApproval|recordFocusSession)\(.*strings\." composeApp/src/commonMain`（0 命中）。
      */
     @Test
     fun focusTargetsAreStoredAsCanonicalTextAndLocalizedOnlyAtRender() {

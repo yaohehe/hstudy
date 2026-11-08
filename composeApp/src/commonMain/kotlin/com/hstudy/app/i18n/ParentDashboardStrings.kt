@@ -21,7 +21,7 @@ package com.hstudy.app.i18n
  * 读流（`get` 前缀配 `collectAsState`），没有 `adjustPoints` / `spendPoints` / `assignTask`
  * 也没有 DAO 的 `insert` 与 `update`，
  * 连 `showSnackbar` 都没有。所以本表**不需要** `Canonical…` 规范值对象（[CanonicalChildHomeText] 那一族），
- * 也没有参与幂等判等的值。逐条留证见任务报告的"sink 实参来源表"。
+ * 也没有参与幂等判等的值。四类闸门盲区（helper 返回值 / 字段赋值 / 无关键字再赋值 / 跨行与三引号）的逐条审结见 `docs/i18n-stage1-verification.md` §5（任务报告随分支作废，plan Ruling 35）。
  *
  * 本表要交代两处**跨文件聚合**进来的中文，它们不属于本页清单、本任务也不迁：
  * - [childPerformanceLine] 的第一个实参 `grade` 出自 `ui/common/LearningScoreCalculator.kt:36-42`

@@ -15,7 +15,7 @@ package com.hstudy.app.i18n
  * 但 `MenuAction` 是本文件里的**渲染模型**（只被 `HomeMenuCard` 取出去进 `Text()`），
  * `SetupRow` 是 `@Composable`，五个实参全部通向 `Text`，没有任何一条进入 update/insert 或业务判等。
  * `:155` 的 `showSnackbar(...)` 是一次性 UI 提示，不落库。所以本表**不需要** CanonicalParentHomeText：
- * 没有一条迁移的文案进存储。逐条留证见任务报告的"sink 实参来源表"。
+ * 没有一条迁移的文案进存储。四类闸门盲区（helper 返回值 / 字段赋值 / 无关键字再赋值 / 跨行与三引号）的逐条审结见 `docs/i18n-stage1-verification.md` §5（任务报告随分支作废，plan Ruling 35）。
  *
  * 同形异义（`分`）：本页 **0 处**。`:114` 的 `${streak}天` 是天数、`:136` 的 `${n} 道` 是题数，
  * 都不是积分也不是分钟；积分概念的出场全是名词性的菜单标题（[menuPointsTitle]、[menuTemplateTitle]），

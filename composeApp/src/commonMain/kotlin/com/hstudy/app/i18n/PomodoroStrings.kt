@@ -124,9 +124,9 @@ package com.hstudy.app.i18n
  *    (b) 中文态输出逐字节不变：中文侧 [targetLabel] 是恒等函数、[CanonicalFocusText.recordDescription]
  *        与 [focusRecordDescription] 的中文模板同字，两处等式由测试逐条钉住；
  *    (c) 控制流、组件、布局参数、`when` 分支一律未动，变的只有三个实参的来源与两处显示前加一层映射；
- *    (d) 此处 + [CanonicalFocusText] 的注释 + 报告"Fix report (round 1)" §1。
+ *    (d) 此处 + [CanonicalFocusText] 的注释 + `docs/i18n-stage1-verification.md` §5 的存储边界审结（任务报告随分支作废，plan Ruling 35）。
  *    副作用要写清楚：页面的 `git diff` 双侧闸门这几行**两边都不满足原形态**（新增行没有 `strings.`、
- *    删除行没有中文），因为这次是把文案**从**存储调用里**拿出来**——报告 §1 逐行点名，不藏计数。
+ *    删除行没有中文），因为这次是把文案**从**存储调用里**拿出来**——这几行在下面 [targetFreeStudy] 等四个规范目标与 [focusRecordDescription] 的字段 KDoc 里逐行点名，并由 plan Ruling 40 的三类可披露例外覆盖（跨表复用 / 规范值与文案值互换 / 取句柄行），不藏计数；审结记录在 `docs/i18n-stage1-verification.md` §5。
  *
  * 行首 emoji 属于文案表而不是页面代码（Ruling 17）：中文原文就写着 `🍅 专注中`，
  * 所以 ZH 侧照抄、EN 侧同位置保留，页面不再拼 `"🍅 ${strings.x}"`。Task 7b 的宿主页同一条规矩：
