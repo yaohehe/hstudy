@@ -67,7 +67,11 @@ package com.hstudy.app.i18n
  *    等价性靠 strFormat 对转换符之后普通字符的原样追加（`DateTimeCompat.kt:251-277`），
  *    由 `StringsCopyTest.elapsedValueKeepsTheSplitFormatPatternByteIdentical` 专门钉住，
  *    不靠"读了一遍 strFormat 说相同"；比对脚本 `scripts/i18n_template_diff.py` 的 `[strict]` 层
- *    会把这一处单独打出来（其余 61 条整串逐字节相同）。
+ *    会把这一处单独打出来。"其余 61 条整串逐字节相同"是**当时默认组**的读数——命令是
+ *    `python scripts/i18n_template_diff.py`，跑在默认组恰好等于这三个页面 × 这两张表的
+ *    提交 `44b83fb` 的树上（Task 7 修复轮，log `task7fix-equivalence.log`，exit 0）；
+ *    默认组随 Task 7b 之后扩容，当前树同命令给 117 条整串（见 docs/i18n-stage1-verification.md §1/§6），
+ *    且把表钉回 `ceaf0f5` 已不可能（残差登记表的整枝复验要求当时全部表存在）。
  * 4. [personalBestValue]：`"🏆 个人最佳：${strFormat("%.1f", bestMs / 1000f)} 秒"` →
  *    `strings.personalBestValue(strFormat("%.1f", bestMs / 1000f))`（`🏆 个人最佳：`、` 秒`）
  * 5. [finishedLine]：`"🎉 完成！用时 ${strFormat("%.1f", seconds)} 秒 · 错误 $mistakes 次"` →

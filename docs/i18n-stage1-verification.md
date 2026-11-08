@@ -30,16 +30,27 @@
 ```bash
 python scripts/i18n_storage_boundary.py                          # 文案不进写库调用
 python scripts/tests/i18n_storage_boundary_selftest.py            # 上一条每条检测通道都有必红 fixture
-python scripts/i18n_template_diff.py                              # 中文态逐字节等价（118/118 条整串）
-./gradlew :composeApp:testDebugUnitTest                            # 109 tests / 0 failures（其中 i18n 包 67 条）
+python scripts/i18n_template_diff.py                              # 中文态逐字节等价（默认组：distinct 118/118，其中 [strict] 整串逐字节相同 117 条 + 1 条已披露的格式串拆分位点）
+python scripts/i18n_template_diff.py --branch                      # 同一命题的**整枝组**（本分支全部已迁页面 × 全部 10 张表）：distinct 405/406，披露后 393/393，[strict] 392 条整串相同 + 1 条拆分
+./gradlew :composeApp:testDebugUnitTest                            # 113 tests / 0 failures（其中 i18n 包 71 条：StringsCopyTest 63 + AppLanguageResolveTest 6 + LanguagePreferenceTest 2）
 ./gradlew :composeApp:compileCommonMainKotlinMetadata              # commonMain 元数据 + 平台纯净度
 grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMain | wc -l   # 0
 ```
 
+（编码环境注：上表所有 `python scripts/…` 行的 stdout 需要 UTF-8。在本机默认 GBK 控制台上直接跑
+`i18n_template_diff.py` 会在打印 `⟨$⟩` 残差说明处抛 `UnicodeEncodeError`（退出码 1，与闸门结论无关）；
+`export PYTHONIOENCODING=utf-8` 后本波次实测全部退出码 0，见 §6 的逐条记录。）
+
 单测能证明的是**表值**（漏译、one/other、emoji 位置、规范值漂移），证明不了**页面是否读到表**，
 也证明不了排版。`AppLanguageResolveTest`（6 条）覆盖解析纯函数、`LanguagePreferenceTest`（2 条：
 `languagePersistsAcrossReads`、`languageRewriteReplacesPreviousChoiceAndLocksWireFormat`）
-覆盖偏好读写与线格式；`StringsCopyTest`（59 条）覆盖六张表的文案。
+覆盖偏好读写与线格式；`StringsCopyTest`（**63** 条）覆盖**十张表**的文案——十张是聚合根
+`AppStrings` 的字段数（`role / settings / common / taskList / pomodoro / focus / childHome / parentHome /
+parentDashboard` 九张 + 终审 Ruling 41 新加的 `parentGate`），复核：
+`grep -c "^    val " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt` → 10。
+原文写的是"六张表 / 59 条"，那是 Task 10 之前的读数（终审第 7 条点出，本波次复算后按当前树改正；
+`StringsCopyTest` 的 4 条新增 = `parentGateCopyDiffers`、`parentGateButtonsComeFromTheirOwnTables`、
+`totalFocusLabelIsTheSameTwoWordsInBothTables`、`englishTableUsesOneEllipsisForm`）。
 
 ## 2. 人工验证清单
 
@@ -69,7 +80,8 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
 - [ ] **V-02 手动覆盖即时生效**：设置页 → 语言 → English → 返回首页与打卡页，文案变英文，
   **不需要重启 App**（spec §1 目标、§4 数据流：写偏好 → Flow 发出 → 根重组）。
 - [ ] **V-03 切换即时性的例外要接受**：语言切换**不**重建导航栈、不打断进行中的番茄钟计时（spec §4）。
-  进行中的那一轮文案何时变英文见 V-19、V-20。
+  "跑一轮中途切语言"在当前树上不可达（入口只在家长设置页、一次只组合一个目的地），文案何时变英文的
+  逐条说明见 V-19/V-20/V-21 与 L-07。
 - [ ] **V-04 持久化**：关闭 App（杀进程）重开 → 语言选择保持。
   存储线格式是 `"system" / "zh" / "en"`（`AppLanguage.toStorageValue()`），缺省视为 `system`。
 - [ ] **V-05 首帧语言闪现**：构造"存储选择与设备语言相反"的设备（存储 `en` + 系统中文，**以及反向**），
@@ -101,7 +113,7 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
   **中文态必须看不到这一行，英文态必须看到**（spec §7）。这条是组合期分支，
   单测只能证明表值存在，证明不了"只在英文态渲染"，所以只能人工看。
 - [ ] **V-10 专注统计页三列 StatCard**：`ChildFocusStatsScreen.kt:59-63`（`Arrangement.SpaceEvenly` 里三张卡）
-  与 `:72-75`、`:122`。英文标签 `All-time focus` / `Sessions` + 值 `12 sessions` 在三等分宽度里是否溢出。
+  与 `:72-75`、`:122`。英文标签 `Total focus`（终审 Ruling 44 前写作 `All-time focus`）/ `Sessions` + 值 `12 sessions` 在三等分宽度里是否溢出。
 - [ ] **V-11 孩子首页评分维度条标签位**：`ChildHomeScreen.kt:846-848` 的 `ScoreDimensionBar`
   把标签放在**固定 `64.dp`** 宽度里，英文态 `✏️ Check-in` 之类是否截断。
 - [ ] **V-12 积分徽章**：`PointsBadge`（`CommonComponents.kt:108`，`Row(spacedBy(4.dp))` + 三段 `Text`）
@@ -115,27 +127,44 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
   这类长按钮文案，以及积分阶梯说明 `pointsLadderNote` 那一长串是否溢出。
 - [ ] **V-15 长 snackbar 的时长与截断**：撤销打卡扣回（`↩️ Check-in undone for … · 5 points removed`）
   与成就解锁两条，`SnackbarDuration.Short` 是否够读完。
-- [ ] **V-16 系统通知栏文案**：番茄钟进行中的常驻通知（title/text/progress）。
-  它在组合期构造、由系统渲染，本机完全看不到内容。
+- [ ] **V-16 系统通知栏文案（仅限番茄钟常驻通知这一条）**：`PomodoroTimer.kt:104-106` 在
+  `LaunchedEffect` 协程里用 `currentStrings`（`rememberUpdatedState`，`:49`）现取 title/text，
+  词源仍是 `LocalStrings`，表值由 `StringsCopyTest.runningNotificationCopyIsPinnedInBothLanguages` 钉住；
+  渲染由系统完成，本机看不到内容。**注意覆盖面**：定时提醒类通知（错题复习/周报/日程）的文案
+  在**组合期之外**构造，`LocalStrings` 按构造到不了它们，英文态仍是中文——这是设计边界而非漏译，见 **L-16**，
+  本条**不**替你确认那一路。
 - [ ] **V-17 中文态零位移回归**：以上每一页在**中文态**下应与迁移前逐字、逐位一致
   （`i18n_template_diff.py` 证明字节相同，但"字节相同"不等于"排版没动"——
   字段拆分可能改变组合期布局输入，需人眼确认徽章行、chip 行没有回流）。
 - [ ] **V-18 平板/折叠展开宽度**：V-07…V-16 里凡是走 `ResponsiveContent` 双分支的页面，
   Medium/Expanded 分支单独再看一遍（两分支共用字段，但共用字段也共用长度问题）。
 
-### 2.3 运行中切换语言的陈旧文案（设计取舍，需确认"看起来可接受"）
+### 2.3 运行中切换语言：现在**无法**在组合期内做到（可达性 + 两条仍然成立的取舍）
 
-- [ ] **V-19 进行中的番茄钟**：跑一轮专注，中途切语言。
-  预期：**当前这一轮的常驻通知与"半场欢呼"文案保持旧语言**，到下一个阶段边界（IDLE→RUNNING→BREAK）
-  或下一个番茄钟才换（`PomodoroTimer.kt` 的 `LaunchedEffect(state)` 与 `remember(completedPomodoros)` 索引）。
-  这是刻意保留的：把 `strings` 加进 key 会重启计时协程，与 spec §4"不打断进行中的番茄钟"冲突。
-- [ ] **V-20 完成回调的 snackbar**：同一条测试里，专注完成后弹出的
-  `focusDoneSnackbar` 仍可能用页面在 effect 创建时捕获的语言（`onComplete` 是页面传入的回调，
-  `rememberUpdatedState` 只覆盖组件内部）。预期"偶尔一条旧语言"，属已知上限。
-- [ ] **V-21 专注目标选中值**：切语言后 `focusTarget` 的选中值仍是旧语言的字符串
-  （其 `remember` key 刻意不含 `strings`，否则切语言会把用户已选目标冲掉）。
-  预期表现：下拉框里旧语言的选中值和新语言的预设项列表**不匹配**（不崩，但看起来怪）。
-  存储侧写的是规范中文（见 §3.4），所以这只影响显示。
+> **本波次重写这一节的原因（终审第 7 条）**：原先 V-19/V-20/V-21 描述的是 **Task 7b 之前**的
+> 陈旧行为（`git show d282cb3` 的提交信息就写着"并修语言切换后的进行中文案陈旧"）。
+> 当前树上 `PomodoroTimer.kt:49` 已经是 `val currentStrings by rememberUpdatedState(strings)`，
+> `:142-150` 的半场欢呼候选项每次组合都从 `strings` 重新取词、`remember` 只存**索引**，
+> 通知文本读的也是 `currentStrings`——即"进行中的番茄钟保持旧语言"这件事**已经被修掉了**。
+> 照原样留着这三条，验证人会把已被修好的行为当成回归去报，所以逐条改写并说明上限在哪里。
+
+- [ ] **V-19 语言切换在组合期是不可达操作（先确认这一点，再谈陈旧）**
+  切换语言的唯一入口是家长设置页的三枚 `FilterChip`（`ParentSettingsScreen.kt:336`/`:343`/`:350`，
+  `setAppLanguage` 写入点在各自的 `onClick` 里：`:339`/`:346`/`:353`），
+  而 `AppNavGraph` 一次只组合**一个目的地**（`AppNavGraph.kt:58` 起的那个 `when {}` 分支）——
+  孩子端的番茄钟页面与它不在同一棵组合树里，退出番茄钟页面时 `remember` 状态随之销毁。
+  所以"跑一轮专注、中途切语言"这条动作在本版本**做不到**，不是难做，是没有路径。
+  能做到的等价验证是：① 切语言 → 回角色页 → 重新进入番茄钟 → 文案是新语言；
+  ② 配置变更（旋转）时正在跑的番茄钟：Android 会重建 Activity，`endTimeMillis` 之类的
+  `remember` 状态丢失，这属 §2.1 的 V-04 一族，不是语言问题。
+- [ ] **V-20 完成回调 snackbar 的语言（仍然存在的上限，但成因换了）**
+  `onComplete` 是宿主页面传入的回调，`rememberUpdatedState` 只覆盖 `PomodoroTimer` 组件内部；
+  由于 V-19 那条不可达，这一处实际只会在"回调跨越一次配置变更重建"时才可能旧语言。
+  预期：看不到旧语言。看到了就是新的回归，值得报。
+- [ ] **V-21 专注目标选中值**（这条**不受** Task 7b 影响，取舍仍然成立）
+  `focusTarget` 的 `remember` key 刻意不含 `strings`（否则切语言会把用户已选目标冲掉），
+  所以选中值本身是旧语言那个串。当前只在"重建组合树"时可见。
+  存储侧写的是规范中文（见 §3.4），所以只影响显示、不影响判等。
 
 ### 2.4 阶段一**预期**中的中英混排（不是缺陷，但必须先确认"看起来像有意为之"）
 
@@ -150,7 +179,7 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
 - [ ] **V-23 效率报表整体中文**：`ui/habit/ChildEfficiencyReportScreen.kt` 同样 0 处 `strings.`，
   且 `:335` 按 `taskTitle` 分组——测试期写入的英文行与规范中文行会**裂成两根柱**（见 §3.4）。
   出处：plan Ruling 25③、Ruling 27。
-- [ ] **V-24 孩子首页露出的中文等级词/鼓励语**：`ChildHomeScreen.kt:288` 直接把
+- [ ] **V-24 孩子首页露出的中文等级词/鼓励语**：`ChildHomeScreen.kt:289` 直接把
   `LearningScore.grade` 与 `encouragement` 插进句子（值出自 `ui/common/LearningScore.kt:36-50`
   的中文 `when`，如 `优秀`、`今天学习超棒！…`）；`:143` 的 `LevelSystem.getLevelInfo`、
   `:196` `AnimatedPointsDisplay`、`:200` `StreakBadge`、`:339` `PetPreviewCard`、`:388` `AchievementBadges`
@@ -167,13 +196,15 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
   `ui/schedule/ParentScheduleManageScreen.kt:226-241`：`AlertDialog` 的标题 `添加日程`/`编辑日程`（`:228`）、
   标签 `时间`（`:233`）、`日程标题（如：起床、写作业）`（`:241`）全中文，中间夹 `07 hr : 00 min`（步进器调用 `:234`）。
   同页 `:45` 的 `contentDescription = "添加日程"` 与 `:141` 的 `"✅ 已添加日程"` 同理。
-- [ ] **V-28 家长密码门对话框全中文**：`ui/navigation/AppNavGraph.kt:254-283`
-  （`🔒 请输入家长密码` / `家长密码` / `密码错误，请重试` / `确定` / `取消`）**不在阶段一的 13 个文件里**，
-  英文设备上从任何入口触发家长验证都会掉进一个纯中文对话框。
-  这一条是本任务从 `scripts/i18n_coverage_audit.py` 的新发现（plan/台账均未点名），**建议列为阶段二的第一批**：
-  它是阶段一已迁移页面的**必经门禁**，观感上最像 bug。
-  顺带事实：这里的 `确定`/`取消` 是页面裸字面量，与已迁移的
-  `SettingsStrings.passwordOkButton` / `CommonStrings.cancelButton` 不同源（阶段二若迁这里应复用既有字段）。
+- [ ] **V-28 家长密码门对话框（Ruling 41 起已双语，验证"确实跟表走"）**：`ui/navigation/AppNavGraph.kt:253-288`
+  的对话框原先整块中文（本清单在 Task 12 的新发现），终审 Ruling 41 已迁入
+  `ParentGateStrings`（字段声明 `ParentGateStrings.kt:28-30` = 标题 / 输入框标签 / 校验失败提示，
+  Zh/EN 两侧逐条在 `:34-36` / `:40-42`），
+  两个按钮**复用既有字段**（`确定` ← `strings.settings.passwordOkButton`，`AppNavGraph.kt:284`；
+  `取消` ← `strings.common.cancelButton`，`:286`）。
+  复核：`python scripts/i18n_inventory.py navigation/AppNavGraph.kt` → `出现 0 次 / 去重 0 条`（本波次实跑 0）。
+  人工侧要看的：英文态从**任意**家长入口触发门禁，三句 + 两枚按钮都应是英文；
+  出现整块中文即是回归（曾是限制的这条已由 Ruling 41 关闭，见 L-09）。
 - [ ] **V-29 Android 分享面板标题**：英文态导出家长设置/学习进度时，系统分享面板标题仍是中文「分享文件」
   （`composeApp/src/androidMain/…/platform/AndroidFileSharer.kt:27` 硬编码，`shareTextFile` 签名里没有标题位；
   `FamilySyncHelper.kt:249-260` 收下 `title` 参数就丢弃）。
@@ -201,7 +232,8 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
   从未在本机观测过，V-01 因此可能只在 Android 上成立；② iOS 改系统语言通常需要重启 App，
   "跟随系统"在 iOS 上的生效时机与 Android 不同。
 - [ ] **V-33 iOS 文件分享与推送文案**：阶段一没动平台分享器与通知桥接，
-  但 `LocalStrings` 现在会喂英文串给分享/通知路径，iOS 侧的实际呈现（尤其 V-29 的"无标题行"）需目视一次。
+  但 `LocalStrings` 现在会喂英文串给分享路径与番茄钟常驻通知（V-16；后者的词源是组合期的
+  `currentStrings`，定时提醒类通知不在其列，见 L-16），iOS 侧的实际呈现（尤其 V-29 的"无标题行"）需目视一次。
 
 ## 3. 已知限制
 
@@ -230,16 +262,24 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
 - **10 个 plan 原始目标文件 = 362 条去重**（plan Global Constraints"第一阶段规模"条、
   `docs/superpowers/plans/2026-11-07-bilingual-stage1-inventory.md` 的十个分节小计）。
 - **Task 7b 追加的 3 页 = 63 条**（复现：对 `git show 761b24e:…` 的三个文件跑同一段正则统计，得 32 / 17 / 14）。
-- **合计 425 条 / 13 个文件**（11 个页面 + 2 个共享组件文件）。注意 `ParentSettingsScreen` 的
-  语言分区 6 条里有 5 条是 Task 5 **新写的文案**、不是从页面搬来的（`SettingsStrings.kt:36-41` 披露，
+- **合计 425 条 / 13 个文件**（11 个页面 + 2 个共享组件文件）。注意两点：其一，终审 Ruling 41 起
+  `ui/navigation/AppNavGraph.kt` 的家长密码门（迁移前 5 条去重）也双语化了——它是**第 14 个文件**，
+  那 5 条不计入 425（门禁不属于"阶段一的 13 个文件清单"，见 V-28 与 spec §11"家长密码"行）；其二，
+  `ParentSettingsScreen` 的语言分区 6 条里有 5 条是 Task 5 **新写的文案**、不是从页面搬来的（`SettingsStrings.kt:36-41` 披露，
   `i18n_template_diff.py` 里五条表侧单边登记），所以"425 条迁移位点"与"425 条翻译工作量"口径略有出入。
 - **未覆盖**：`python scripts/i18n_coverage_audit.py` 当前给出
   **计划未覆盖页面 905 条去重文案**（按文件各自去重求和；944 次出现；这 45 个 `.kt` 文件
-  跨文件再去重后是 810 条）。spec §2 的全仓口径是 1661 处出现 / 1406 条去重（含 `data/` 与非 UI 文件），
+  跨文件再去重后是 810 条。终审修复波次按当前树复跑，退出码 0、四个数字一字未变）。
+  spec §2 的全仓口径是 1661 处出现 / 1406 条去重（含 `data/` 与非 UI 文件），
   所以阶段二的规模量级是"约九成文案"。
-  本清单**修正**了台账 Ruling 23 里"973 条 / 约 35 个文件"这个数字：那是 Task 7b 之前的读数，
-  且 `i18n_coverage_audit.py` 用"文件名是否出现在 plan 文本里"判定覆盖，Task 7b 之后三个页面
-  从两侧同时消失（迁移完就没有中文字面量了）。以脚本当前输出为准。
+  本清单**修正**了台账 Ruling 23 里"973 条 / 约 35 个文件"这个数字：那是 Task 7b 之前的读数。
+  **复跑时还要读到分类口径这一层（终审第 10 条）**：脚本用"文件名是否出现在 plan 文本里"判定覆盖，
+  于是 `AppNavGraph.kt` 与 `DateTimeCompat.kt` 早在**没被迁移的时候**就已被算成"已覆盖"——
+  前者藏着门禁对话框那几条（Ruling 41 迁移后它们才真正既不在页面也不在 905 里，数字因此没动），
+  后者今天仍贡献着 8 条"已覆盖"计数里的 7 条星期名（`星期一`…`星期日`，未被迁移、也未计入 905，
+  本波次实跑：被判"已覆盖"且含中文的只剩 `DateTimeCompat.kt` 7 条 + `ChildFocusTrainingScreen.kt`
+  1 条块注释假阳性）。所以 905 是"计划口径的阶段二积压"，不是全仓剩余文案的完备清单：
+  `DateTimeCompat.kt` 的 7 条与 `data/**` 侧（§3.1 末条、L-17）都要另账处理。
 - **不动的东西**：schema 与迁移（v12，未变）、`data/**`、`ui/dt/DateTimeCompat.kt` 的格式行为、
   平台分享器与通知桥接、Compose Multiplatform 版本（spec §1 非目标第 5 条）。
 
@@ -254,13 +294,14 @@ one/other 覆盖、emoji 位置。已被实现者点名"如果别扭就改表值
 - `Study process` / `Complete`（而非 `Done`）等可读性优先的取舍（Task 9 自查）；
 - `减少时` / `增加分` 这类**中文本身**就别扭的插值产物，按等价替换原样保留（Task 6+8 自查）——
   要改是文案决定，不是翻译漏了。
-- 另有两处英文**大小写**待裁决，见 §4。
+- 另有一处英文**大小写**待裁决（§4 第 2 条）；§4 第 1 条已在终审 Ruling 45 裁决关闭。
 
 ### 3.3 英文态混排是设计代价，不是缺陷清单
 
 spec §1 非目标第 1 条："不迁移其余页面（保持中文），因此英文态会出现中英混排"。
-V-22…V-28 列的是**已知会混排的位置**。设置页那一行英文提示
-（`Some screens are not translated yet and stay in Chinese.`，`SettingsStrings.kt:412`）
+V-22…V-27 列的是**已知会混排的位置**（V-28 原先也在这一列，Ruling 41 起门禁已双语、只剩验证项；
+V-29/V-30 是平台与规范值侧的既成混排）。设置页那一行英文提示
+（`Some screens are not translated yet and stay in Chinese.`，`SettingsStrings.kt:434`）
 就是给这个代价兜底的，所以它只在英文态出现（V-09）。
 
 ### 3.4 存储边界：英文行不回改，英文设备因此仍会读到中文
@@ -290,28 +331,33 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-01 | 阶段一只双语 425 条 / 13 个文件，其余 ~905 条（45 文件）仍是中文 | §3.1 |
 | L-02 | 英文态会出现中英混排（设计代价），设置页有一行英文提示兜底 | spec §1 非目标 1、§7；V-09 |
 | L-03 | 家长审批列表、效率报表整体中文，其中出现的专注描述是存储的规范中文 | plan Ruling 27；`ParentApprovalScreen.kt:182`、`ChildEfficiencyReportScreen.kt:335` |
-| L-04 | 等级评语/鼓励语/成就名/宠物与积分动画组件仍是中文（`LearningScore`、`LevelSystem`、`AchievementManager` 等） | `ChildHomeScreen.kt:288`、`AchievementManager.kt:29-42` |
+| L-04 | 等级评语/鼓励语/成就名/宠物与积分动画组件仍是中文（`LearningScore`、`LevelSystem`、`AchievementManager` 等） | `ChildHomeScreen.kt:289`、`AchievementManager.kt:29-42` |
 | L-05 | `TaskEntity.difficultyName()`（`data/local/entity/TaskEntity.kt:50-54`）仍返回中文，但**当前零调用点**，英文态实际看不到它——这是死代码里的中文，属阶段二清理项（本期不动 `data/**`） | `grep -rn "difficultyName" composeApp/src` 只命中声明本身；另一处在不参与构建的 `legacy/android-v2.88/` |
 | L-06 | `PointsBadge` 的单位是静态字段，英文 1 分显示 `⭐ 1 points`（需要"带计数的单位"字段，属页面改动，超出等价替换） | plan Ruling 22 相关（Task 6+8 新发现）；`CommonComponents.kt:108-131` |
-| L-07 | 进行中的番茄钟不跟随语言切换：通知与半场欢呼到阶段边界才换、完成回调 snackbar 与 `focusTarget` 选中值可能停留在旧语言 | spec §4（不重启协程的代价）；V-19/V-20/V-21 |
+| L-07 | 番茄钟进行中的文案陈旧**已不是限制**（Task 7b `d282cb3` 起 `rememberUpdatedState` + 索引式 `remember`，见 V-19 注记），且"跑一轮中途切语言"在本版本**不可达**（语言入口只在家长设置页、`AppNavGraph` 一次只组合一个目的地）；仍然成立的取舍只剩 `focusTarget` 选中值不随语言（key 刻意不含 `strings`，否则冲掉用户已选目标）与跨越配置变更的完成回调 | spec §4；V-19/V-20/V-21；`PomodoroTimer.kt:49`、`:142-150` |
 | L-08 | 英文态 Android 系统分享面板标题仍是「分享文件」；iOS 分享面板根本没有标题位 | `AndroidFileSharer.kt:27`、`IosFileSharer.kt:34-38`；spec §11"家长远程控制"行注记；V-29 |
-| L-09 | 家长密码门对话框（导航层）完全未迁移，英文态任何家长入口都会掉进中文对话框 | `AppNavGraph.kt:254-283`；V-28（本清单的新发现） |
+| L-09 | （已关闭，编号保留防指针漂移）家长密码门对话框曾是整块中文门禁，**终审 Ruling 41 已迁入 `ParentGateStrings`**、两个按钮复用既有字段，英文态不再是限制；验证项转为 V-28 的"确认真的跟表走" | `AppNavGraph.kt:253-288`、`ParentGateStrings.kt:28-30/34-36/40-42`；V-28 |
 | L-10 | 英文态日期/数字格式不本地化（`yyyy-MM-dd`、周一起始、`8:00`） | spec §6；V-31 |
 | L-11 | 未迁移页面里的公共控件（顶栏返回说明、`hr`/`min` 步进器）会形成"中文页面嵌英文控件"的反向混排 | `ParentScheduleManageScreen.kt:228-241`；V-27 |
 | L-12 | 测试期写入的英文行不回改；渲染期映射对认不出的输入原样透传 | §3.4；V-00a |
 | L-13 | 清单脚本的两个已知口径问题：`i18n_inventory.py` 只剥 `//` 行注释，块注释里的中文会被算成"残留字面量"（`ChildFocusTrainingScreen.kt:23` 就是这种假阳性）；`i18n_coverage_audit.py` 用"文件名是否出现在 plan 文本里"判定覆盖 | `scripts/i18n_inventory.py:30`、`scripts/i18n_coverage_audit.py:35` |
 | L-14 | 双语视觉效果无法由 CI 验证；iOS 在本工作机上连链接都没发生过 | spec §9；§1、§2.5 |
 | L-15 | 阶段一是 v3.1.0 的**前半段**（Analytics 子项目未实施），版本号仍为 3.0.0/30000 | `docs/VERSIONING.md`；`composeApp/build.gradle.kts:89-90`；V-00b |
+| L-16 | **定时提醒类通知文案不进本地化范围（设计边界，不是漏译）**：错题复习提醒、每周学习周报、日程提醒与启动补挂提醒的 title/body 全部在**任何组合期之外**构造——`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们，英文态这些通知仍是中文。番茄钟常驻通知不在此列（它在计时协程里现取 `currentStrings`，见 V-16）。阶段二若要本地化这一路，得把文案传给调度/触发侧或按平台字符串资源处理，属于结构改动而非等价替换 | `AppGraph.kt:112`、`:120`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里）、`ui/mistake/ReviewReminderReceiver.kt:25`/`:55`/`:60`/`:61`、`ui/parent/WeeklyReportReceiver.kt:28-29`、`ui/schedule/ScheduleAlarmHelper.kt:64-65`（文案规则见该文件 `:18` KDoc）；Android 触发器侧另有自己的裸字面量（`androidMain/…/platform/ReviewReminderReceiver.kt:29`/`:37`、`androidMain/…/platform/WeeklyReportReceiver.kt:41-42`/`:53`，平台文件本阶段禁改） |
+| L-17 | 设备名兜底在 `data/**` 里各存了一份**表外副本**：家长控制导出包的 `家长设备`（`FamilySyncHelper.kt:107`，落进孩子设备存储，不在设置页出现）与进度包的 `孩子设备`（`:190` 与 DTO 默认值 `:82`）。它们不引用 `CanonicalParentSettingsText`/文案表，本阶段禁改 `data/**`，属阶段二与规范值常量对账的项（另见 spec §11"家长设备"行） | `grep -n "家长设备\|孩子设备" composeApp/src/commonMain/kotlin/com/hstudy/app/data/sync/FamilySyncHelper.kt`（3 处命中：`:82`/`:107`/`:190`） |
+| L-18 | `App.kt:60` 的 `.catch { emit(null) }` 是"降级不崩根"的例外：DataStore 读一旦抛错，上游以一次 `null` 完成、订阅就此终止，**本次会话语言被钉死在系统语言**，设置页切换不再生效，直到组合树重建（Android 配置变更 / iOS 重启）。代码注释写明了代价（`App.kt:54-59`），本清单此前未列 | `composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt:52-62` |
 
-## 4. 两处英文措辞待裁决（不是笔误）
+## 4. 英文措辞：一处已裁决关闭（Ruling 45），一处仍待裁决
 
-这两处**刻意没有改**，因为改动越出"等价替换 + 本页范围"。裁决权在用户/控制器。
+原先这里的两处"刻意没有改"，第 1 条已由终审 Ruling 45 裁决关闭；第 2 条仍越出"等价替换 + 本页范围"，裁决权在用户/控制器。
 
-1. **`Weekly report`（设置页分区）vs `Weekly Report`（spec §11"周报"词条）**
-   设置页三条英文落地值（`weeklyReportTitle` / `weeklyReportOnMessage` / `weeklyReportOffMessage`）
-   一律句首大写，而 §11 给的是词组大写。改动牵动 3 条 EN 值 + §11 三行
-   （`:122` 周报本身、`:156` 效率报表行**逐字引用**了 `周报 = Weekly Report`、`:168` 每周学习周报行），
-   见 spec §11"每周学习周报"行。人工侧只需确认：英文态设置页那一格读起来可接受。
+1. **`Weekly report`（设置页分区）vs `Weekly Report`（spec §11"周报"词条）——已裁决（终审 Ruling 45）**
+   裁决方向是**改术语表、不改实现**：§11 的"周报"行（spec `:122`）、逐字引用它的"效率报表"行（`:156`）
+   与"每周学习周报"行（`:168`）三行统一为句首大写 `Weekly report`；三条英文落地值
+   `weeklyReportTitle` / `weeklyReportOnMessage` / `weeklyReportOffMessage`（当前树
+   `SettingsStrings.kt:457`/`:459`/`:460`）与 `ParentHomeStrings.kt:240` 的 `Weekly reports`
+   **一个字节都没动**——裁决理由原文"不为凑一行术语表重排 6 个 EN 值"。
+   人工侧只剩：英文态设置页那一格读起来可接受。
 2. **`Today's Check-in`（标题式大写）vs `Total check-ins`（句首式）**
    同一张进度卡里的两种大小写（`SettingsStrings.progressTodayCheckinLabel` / `progressCheckinLabel`）。
    未改的理由是跨表的：`Today's Check-in` 在 `ChildHomeStrings.todayCheckinTitle`
@@ -338,17 +384,36 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 
 ## 6. 复现与回归
 
-- 阶段一各页的中文态等价证明：`python scripts/i18n_template_diff.py`（默认组，退出码 0，
-  `[strict]` 整串逐字节相同、`[A]/[B]` 双向 0 残差）。
+（前提同 §1 的编码环境注：`export PYTHONIOENCODING=utf-8`。以下每条都是终审修复波次在当前树
+实跑过的，括注实测退出码。）
+
+- 阶段一各页的中文态等价证明：`python scripts/i18n_template_diff.py`（默认组，实测 **exit 0**；
+  distinct 123/120 → 披露后 **118/118**，`[strict]` **整串逐字节相同 117 条** + 1 条已披露的
+  格式串拆分位点（`%.1f 秒` ↔ `⟨$⟩ 秒`，就是 `FocusStrings.elapsedValue` 那处），`[A]/[B]` 双向 0 残差。
+  注意"118 条"是**披露后的模板集合大小**，"117 条"才是**整串相同**的条数，两个数字不是一回事，
+  旧文档把 118/118 写成"条整串"是假陈述，本波次已按工具当日输出改正）。
+- **整枝组（终审第 9 条新发布的长期复验命令，`d4d441b` 起脚本自带 `--branch`）**：
+  `python scripts/i18n_template_diff.py --branch`（实测 **exit 0**；distinct 405/406 → 披露后 393/393，
+  `[strict]` 392 条整串相同 + 同一条拆分位点。它把本分支全部已迁页面 × 全部 10 张表放进同一命题，
+  `DISCLOSED_RESIDUALS` 登记表（现 19 条）整张受它复验（实跑 18 条命中打印、第 19 条与其同形条共用一次命中），
+  默认组只命中其中一小部分（实跑打印 3 条）。
 - **`SettingsStrings` 这张表必须带两个页面 rev 才退 0**（表由 Task 5 与 Task 11 两批页面共同填写，
   其中语言分区那 5 条是 Task 5 为新功能新写、没有迁移前原文）：
   ```bash
   python scripts/i18n_template_diff.py \
     --page 767711d:com/hstudy/app/ui/parent/ParentSettingsScreen.kt \
     --page ad6aa93:com/hstudy/app/ui/parent/ParentSettingsScreen.kt \
-    --table composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/SettingsStrings.kt
+    --table com/hstudy/app/i18n/SettingsStrings.kt#SettingsStringsZh
   ```
-  不带 `--page 767711d:` 时那 5 条会被报成 `invented` 并退 1。登记落点在脚本的 `DISCLOSED_RESIDUALS`。
+  `--table` 的形态是 **相对 `composeApp/src/commonMain/kotlin/` 的路径 + `#Zh 变量名`**；
+  本清单原先记录的 `composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/SettingsStrings.kt`
+  （全前缀、无 `#Variable`）**跑不出 0**——本波次实测该原样命令 **exit 1**，
+  脚本自 `d4d441b` 起会把这种写法直接拦成带示例的用法错误（更早的版本是裸 `ValueError: not enough values to unpack`），
+  上面改正后的那条实测 **exit 0**。不带 `--page 767711d:` 时那 5 条会被报成 `invented` 并退 1。
+  登记落点在脚本的 `DISCLOSED_RESIDUALS`。
 - 清单残留：`python scripts/i18n_inventory.py parent/ParentSettingsScreen.kt …`（13 个文件应全为 0，
-  除 §3.1 说明的那条块注释假阳性）。
-- 覆盖规模：`python scripts/i18n_coverage_audit.py`。
+  除 §3.1 说明的那条块注释假阳性；本波次 13 个文件逐一实跑，仅此 1 处非 0）。
+- 覆盖规模：`python scripts/i18n_coverage_audit.py`（实测 **exit 0**；905 条 / 944 次 / 45 文件 / 跨文件 810 条，
+  与 §3.1 的引用逐字一致；分类口径的坑见 §3.1"复跑时还要读到分类口径这一层"）。
+- 存储边界：`python scripts/i18n_storage_boundary.py`（实测 **exit 0**）与其自测
+  `python scripts/tests/i18n_storage_boundary_selftest.py`（实测 **exit 0**，186 断言 / 0 失败）。

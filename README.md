@@ -93,10 +93,10 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
   本机无 emulator/adb 设备、仓库无 Compose UI 测试依赖、Android CI 无模拟器、
   Apple 目标在 Windows 上连链接都不会发生。自动闸门能证明的只有：
   中文态逐字节等价（`python scripts/i18n_template_diff.py`）、文案不进写库调用
-  （`python scripts/i18n_storage_boundary.py`）、109 条单测、编译与打包。
+  （`python scripts/i18n_storage_boundary.py`）、113 条单测、编译与打包。
   **英文态的排版（换行/截断/挤压）、混排观感、iOS 运行时都需要人工确认**：
   Android Studio 与 iOS 模拟器各走一遍「启动 → 首页 → 打卡 → 设置」，
-  逐条清单（含 33 项）见上面链接的 §2。
+  逐条清单（36 项 = V-01…V-33 共 33 项 + V-00a/b/c 三条验证前准备）见上面链接的 §2。
 
 ## 版本管理
 

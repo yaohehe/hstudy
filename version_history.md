@@ -18,11 +18,12 @@
   `focus/ChildFocusStatsScreen`、`focus/ChildFocusTrainingScreen`、`focus/ChildPomodoroScreen`、
   `focus/ChildMemoryTrainingScreen`、`focus/ChildDailyPlanScreen`、
   `common/CommonComponents`、`common/PomodoroTimer`
-- 425 条去重文案（计划最初的 10 个目标文件 362 条 + Task 7b 追加 3 页 63 条），落到 9 张按页面分组的
-  文案表里共 422 个字段，其中 **82 个函数型字段**（含参数文案：中英文语序不同，不用 `{0}` 位置插值，
+- 425 条去重文案（计划最初的 10 个目标文件 362 条 + Task 7b 追加 3 页 63 条），落到 10 张按页面分组的
+  文案表里共 425 个字段（终审 Ruling 41 新增 `ParentGateStrings` 3 个字段：9 张 422 → 10 张 425），
+  其中 **82 个函数型字段**（含参数文案：中英文语序不同，不用 `{0}` 位置插值，
   英文复数在函数体内用 one/other 分支）
   复核：`grep -cE "^    val \w+: " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/*Strings.kt`
-  （`Strings.kt` 的 9 个字段是聚合分组而非文案，已排除）
+  （`Strings.kt` 的 10 个字段是聚合分组而非文案，已排除）
 - 未覆盖：约 905 条去重文案 / 45 个文件（`python scripts/i18n_coverage_audit.py`），属阶段二
 
 ### 机制
@@ -39,17 +40,18 @@
 - 英文态中英混排是既定代价：未迁移页面、家长审批列表与效率报表、等级评语/鼓励语/成就名仍是中文
 - 存储边界：文案不进写库调用（`scripts/i18n_storage_boundary.py` 作退出码闸门）。
   测试期已写入英文的行**刻意不回改、不做数据迁移**，因此历史行与新写的规范中文值会在同一列表里并存；
-  英文设备上的家长密码门对话框（`ui/navigation/AppNavGraph.kt:254-283`）整块未迁移
+  家长密码门对话框曾在英文设备上整块未迁移，终审 Ruling 41 已关闭该限制（门禁迁入 `ParentGateStrings`、
+  按钮复用既有字段，见 docs/i18n-stage1-verification.md 的 L-09/V-28）
 - 日期与数字格式不本地化（仍 `yyyy-MM-dd`、周一起始）；`PointsBadge` 英文 1 分显示 `1 points`；
   Android 系统分享面板标题仍是硬编码的「分享文件」
 - **双语视觉效果无法自动验证**（本机无 emulator/adb、无 Compose UI 测试依赖、Apple 目标不可本机链接），
-  需要人工在 Android Studio 与 iOS 模拟器各走一遍启动 → 首页 → 打卡 → 设置，清单 33 项在同文件 §2
+  需要人工在 Android Studio 与 iOS 模拟器各走一遍启动 → 首页 → 打卡 → 设置，清单 36 项（V-01…V-33 + 三条 V-00 准备项）在同文件 §2
 
 ### 技术信息
 - 版本号：未变（versionCode=30000, versionName="3.0.0"）；数据库 schema 不变（v12），无迁移
 - 提交序列：`27760d4`（Task 1）起至 `e87cbcb`（Task 11 修复轮）+ 本任务文档提交，全部在
   `feature/i18n-stage1` 本地分支，**未 push**
-- 自动闸门：`:composeApp:testDebugUnitTest`（109 tests，其中 i18n 包 67 条）、
+- 自动闸门：`:composeApp:testDebugUnitTest`（113 tests，其中 i18n 包 71 条）、
   `:composeApp:compileCommonMainKotlinMetadata`、`:composeApp:assembleDebug`、
   `scripts/i18n_template_diff.py`（中文态逐字节等价）、`scripts/i18n_storage_boundary.py`（+ 自测）
 
