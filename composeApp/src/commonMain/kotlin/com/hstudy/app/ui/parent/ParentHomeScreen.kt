@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -31,6 +32,7 @@ fun ParentHomeScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.parentHome
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val today = com.hstudy.app.data.repository.PointRepository.getTodayString()
@@ -62,12 +64,12 @@ fun ParentHomeScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "👨‍👩‍👧 家长管理台",
+                title = strings.pageTitle,
                 actions = {
                     PointsBadge(points = totalPoints)
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onSwitchRole) {
-                        Icon(Icons.Filled.SwapHoriz, contentDescription = "切换角色")
+                        Icon(Icons.Filled.SwapHoriz, contentDescription = strings.switchRoleContentDescription)
                     }
                 }
             )
@@ -102,22 +104,22 @@ fun ParentHomeScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            Text("📋 孩子今日概览", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(strings.childTodayOverviewTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                OverviewStat("今日打卡", "${todayCompleted}/${todayTotal}")
-                                OverviewStat("完成率", "${completionRate}%")
-                                OverviewStat("连续打卡", "${streak}天")
-                                OverviewStat("待审证明", "${pendingProofCount}")
+                                OverviewStat(strings.overviewCheckin, "${todayCompleted}/${todayTotal}")
+                                OverviewStat(strings.overviewCompletionRate, "${completionRate}%")
+                                OverviewStat(strings.overviewStreak, strings.streakDaysValue(streak))
+                                OverviewStat(strings.overviewPendingProofs, "${pendingProofCount}")
                             }
 
                         if (completionRate == 100 && todayTotal > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("🎉 今日任务全部完成！", style = MaterialTheme.typography.bodyMedium,
+                            Text(strings.todayAllDoneBanner, style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                         }
 
@@ -127,13 +129,13 @@ fun ParentHomeScreen(
                                 onClick = { onNavigate(Screen.ParentProofReview.route) },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("📷 有 ${pendingProofCount} 个证明待审核，点击前往")
+                                Text(strings.pendingProofsButton(pendingProofCount))
                             }
                         }
 
                         if (unmasteredMistakes > 5) {
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("📚 还有 ${unmasteredMistakes} 道错题未掌握",
+                            Text(strings.unmasteredMistakesNote(unmasteredMistakes),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
@@ -152,7 +154,7 @@ fun ParentHomeScreen(
                     onLoadRewards = {
                         scope.launch {
                             app.rewardRepository.initDefaultRewards()
-                            snackbarHostState.showSnackbar("✅ 已载入预设奖励")
+                            snackbarHostState.showSnackbar(strings.presetRewardsLoadedMessage)
                         }
                     },
                     onNavigate = onNavigate
@@ -181,10 +183,10 @@ fun ParentHomeScreen(
                                 Text("⏰", style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("设备数据已 ${syncDaysAgo} 天未同步",
+                                    Text(strings.syncOverdueTitle(syncDaysAgo),
                                         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onErrorContainer)
-                                    Text("点击去同步，保持家长手机与孩子设备数据一致",
+                                    Text(strings.syncOverdueNote,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onErrorContainer)
                                 }
@@ -198,21 +200,21 @@ fun ParentHomeScreen(
 
                 // ===== 功能菜单 =====
                 val items = listOf(
-                    MenuAction("任务管理", "创建、编辑学习任务", Icons.Filled.Task, Screen.ParentTaskManage.route),
-                    MenuAction("布置今日任务", "给孩子推送当天任务", Icons.Filled.Assignment, Screen.ParentAssignTask.route),
-                    MenuAction("积分模板", "一键应用预设任务方案", Icons.Filled.AutoAwesome, Screen.ParentTaskTemplate.route),
-                    MenuAction("积分管理", "查看记录、手动调整", Icons.Filled.Stars, Screen.ParentPoints.route),
-                    MenuAction("奖励商店", "设置可兑换的奖励", Icons.Filled.CardGiftcard, Screen.ParentRewardManage.route),
-                    MenuAction("心愿目标", "设定存钱罐大目标", Icons.Filled.Star, Screen.ParentWishGoalManage.route),
-                    MenuAction("每日日程", "设置定时提醒", Icons.Filled.Schedule, Screen.ParentScheduleManage.route),
-                    MenuAction("完成证明", "审核孩子提交的证明", Icons.Filled.Verified, Screen.ParentProofReview.route, pendingProofCount),
-                    MenuAction("积分审核", "审核孩子的积分申请", Icons.Filled.Approval, Screen.ParentApproval.route, pendingApprovalCount),
-                    MenuAction("错题分析", "孩子错题分布与掌握情况", Icons.Filled.MenuBook, Screen.ParentMistakeReview.route),
-                    MenuAction("辅导建议", "基于数据的科学辅导方法", Icons.Filled.Psychology, Screen.ParentTutoringAdvice.route),
-                    MenuAction("数据看板", "学习数据统计", Icons.Filled.Dashboard, Screen.ParentDashboard.route),
-                    MenuAction("成长报告", "汇总成长数据、一键分享", Icons.Filled.EmojiEvents, Screen.ParentGrowthReport.route),
-                    MenuAction("周报总览", "每周打卡与积分汇总", Icons.Filled.CalendarViewWeek, Screen.ParentWeeklyReport.route),
-                    MenuAction("家长设置", "密码保护与数据同步", Icons.Filled.Settings, Screen.ParentSettings.route),
+                    MenuAction(strings.menuTaskManageTitle, strings.menuTaskManageSubtitle, Icons.Filled.Task, Screen.ParentTaskManage.route),
+                    MenuAction(strings.menuAssignTaskTitle, strings.menuAssignTaskSubtitle, Icons.Filled.Assignment, Screen.ParentAssignTask.route),
+                    MenuAction(strings.menuTemplateTitle, strings.menuTemplateSubtitle, Icons.Filled.AutoAwesome, Screen.ParentTaskTemplate.route),
+                    MenuAction(strings.menuPointsTitle, strings.menuPointsSubtitle, Icons.Filled.Stars, Screen.ParentPoints.route),
+                    MenuAction(strings.menuRewardStoreTitle, strings.menuRewardStoreSubtitle, Icons.Filled.CardGiftcard, Screen.ParentRewardManage.route),
+                    MenuAction(strings.menuWishGoalTitle, strings.menuWishGoalSubtitle, Icons.Filled.Star, Screen.ParentWishGoalManage.route),
+                    MenuAction(strings.menuScheduleTitle, strings.menuScheduleSubtitle, Icons.Filled.Schedule, Screen.ParentScheduleManage.route),
+                    MenuAction(strings.menuProofTitle, strings.menuProofSubtitle, Icons.Filled.Verified, Screen.ParentProofReview.route, pendingProofCount),
+                    MenuAction(strings.menuApprovalTitle, strings.menuApprovalSubtitle, Icons.Filled.Approval, Screen.ParentApproval.route, pendingApprovalCount),
+                    MenuAction(strings.menuMistakeAnalysisTitle, strings.menuMistakeAnalysisSubtitle, Icons.Filled.MenuBook, Screen.ParentMistakeReview.route),
+                    MenuAction(strings.menuCoachingTitle, strings.menuCoachingSubtitle, Icons.Filled.Psychology, Screen.ParentTutoringAdvice.route),
+                    MenuAction(strings.menuDashboardTitle, strings.menuDashboardSubtitle, Icons.Filled.Dashboard, Screen.ParentDashboard.route),
+                    MenuAction(strings.menuGrowthReportTitle, strings.menuGrowthReportSubtitle, Icons.Filled.EmojiEvents, Screen.ParentGrowthReport.route),
+                    MenuAction(strings.menuWeeklyReportTitle, strings.menuWeeklyReportSubtitle, Icons.Filled.CalendarViewWeek, Screen.ParentWeeklyReport.route),
+                    MenuAction(strings.menuSettingsTitle, strings.menuSettingsSubtitle, Icons.Filled.Settings, Screen.ParentSettings.route),
                 )
 
                 if (isTablet) {
@@ -285,6 +287,7 @@ private fun SetupAssistantCard(
     onLoadRewards: () -> Unit,
     onNavigate: (String) -> Unit
 ) {
+    val strings = LocalStrings.current.parentHome
     val allConfigured = taskCount > 0 && rewardCount > 0 && wishCount > 0 && scheduleCount > 0
 
     Card(
@@ -296,30 +299,30 @@ private fun SetupAssistantCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("🚀", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("快速配置助手", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(strings.setupAssistantTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
 
             if (allConfigured) {
-                Text("🎉 任务、奖励、心愿、日程都已配置完成，可以直接开始使用啦！",
+                Text(strings.setupAllDoneNote,
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
             } else {
-                Text("只需几步即可完成配置，点击右侧按钮快速补齐：",
+                Text(strings.setupIntroNote,
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
 
-                SetupRow(ok = taskCount > 0, okText = "学习任务已配置（${taskCount}个）", missingText = "还没有学习任务",
-                    actionLabel = "去配置", onClick = { onNavigate(Screen.ParentTaskManage.route) })
+                SetupRow(ok = taskCount > 0, okText = strings.setupTasksConfigured(taskCount), missingText = strings.setupTasksMissing,
+                    actionLabel = strings.setupTasksAction, onClick = { onNavigate(Screen.ParentTaskManage.route) })
 
                 if (rewardCount > 0) {
-                    SetupRow(ok = true, okText = "奖励商店已配置（${rewardCount}个）", missingText = "", actionLabel = "", onClick = {})
+                    SetupRow(ok = true, okText = strings.setupRewardsConfigured(rewardCount), missingText = "", actionLabel = "", onClick = {})
                 } else {
-                    SetupRow(ok = false, okText = "", missingText = "奖励商店还是空的", actionLabel = "一键载入", onClick = onLoadRewards)
+                    SetupRow(ok = false, okText = "", missingText = strings.setupRewardsMissing, actionLabel = strings.setupRewardsAction, onClick = onLoadRewards)
                 }
 
-                SetupRow(ok = wishCount > 0, okText = "心愿存钱罐已配置（${wishCount}个）", missingText = "还没设定心愿目标",
-                    actionLabel = "去设定", onClick = { onNavigate(Screen.ParentWishGoalManage.route) })
+                SetupRow(ok = wishCount > 0, okText = strings.setupWishConfigured(wishCount), missingText = strings.setupWishMissing,
+                    actionLabel = strings.setupWishAction, onClick = { onNavigate(Screen.ParentWishGoalManage.route) })
 
-                SetupRow(ok = scheduleCount > 0, okText = "每日日程已配置（${scheduleCount}项）", missingText = "还没设置每日日程",
-                    actionLabel = "去设置", onClick = { onNavigate(Screen.ParentScheduleManage.route) })
+                SetupRow(ok = scheduleCount > 0, okText = strings.setupScheduleConfigured(scheduleCount), missingText = strings.setupScheduleMissing,
+                    actionLabel = strings.setupScheduleAction, onClick = { onNavigate(Screen.ParentScheduleManage.route) })
             }
         }
     }
