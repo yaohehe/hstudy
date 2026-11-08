@@ -23,26 +23,39 @@ SINKS = [
 ]
 
 # 文案来源的三种写法：局部变量 strings.X、表字段 XyzStrings.y / AppStringsZh.x、直接调 lambda
-COPY_REF = re.compile(r"\bstrings\.[A-Za-z]\w*|\bAppStrings(?:Zh|En)\.\w+|\w+Strings(?:Zh|En)\.\w+")
+COPY_SOURCE = (
+    r"\bstrings\.[A-Za-z]\w*"
+    r"|\bAppStrings(?:Zh|En)\.\w+"
+    r"|(?:[A-Za-z]\w*Strings(?:Zh|En))\.\w+"
+)
+COPY_REF = re.compile(COPY_SOURCE)
 
 CALL = re.compile(r"\b(" + "|".join(re.escape(s) for s in SINKS) + r")\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)")
 
-# 一级污点：`var x = ...strings.y...` / `val x = strings.y` / `mutableStateOf(strings.y)`
+# 一级污点（赋值形态）：`var x = ...strings.y...` / `val x = strings.y`
 # 之后的 sink 调用只要出现 x 就算违规。没有数据流分析，只做同文件赋值追踪，
 # 因为本类缺陷的实际形态就是"把文案赋给状态，再写库"。
 TAINT_ASSIGN = re.compile(
     r"\b(?:var|val)\s+([A-Za-z_]\w*)\s*(?:by\s+remember\s*\{[^}]*\})?\s*=\s*(.*"
-    + r"strings\.[A-Za-z]\w*"
-    + r"|AppStrings(?:Zh|En)\.\w+.*"
-    + r"|(?:[A-Za-z]\w*Strings(?:Zh|En))\.\w+.*)",
+    + COPY_SOURCE + r".*)",
     re.DOTALL,
+)
+
+# 一级污点（委托形态）：`var x by remember { mutableStateOf(strings.y) }`。
+# Task 7b 审查的实证补：原先只有上面那条，所以 ChildPomodoroScreen.kt:47 这一形**漏抓**，
+# :175 的 recordFocusSession(minutes, focusTarget, 0) 当时只报了 :177 的直接引用。
+# 规范值不是文案：读的是 CanonicalFocusText.* / 字面量时，COPY_SOURCE 匹配不上，不会误报。
+TAINT_DELEGATE = re.compile(
+    r"\b(?:var|val)\s+([A-Za-z_]\w*)\s+by\s+remember(?:Saveable)?\s*(?:\([^()]*\))?\s*\{[^}]*"
+    + COPY_SOURCE + r"[^}]*\}"
 )
 
 
 def collect_taint(text):
     tainted = set()
-    for match in TAINT_ASSIGN.finditer(text):
-        tainted.add(match.group(1))
+    for pattern in (TAINT_ASSIGN, TAINT_DELEGATE):
+        for match in pattern.finditer(text):
+            tainted.add(match.group(1))
     return tainted
 
 
