@@ -60,7 +60,7 @@ data class ChildHomeStrings(
     val encouragementAlmostThere: String,
     val encouragementOnTrack: String,
     val encouragementKickoff: String,
-    val importFailedMessage: (detail: String) -> String,
+    val importFailedMessage: (detail: String?) -> String,
     val mandatoryPenaltyMessage: (penalty: Int) -> String,
 
     // ===== 今日打卡进度 =====

@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.CanonicalChildHomeText
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.navigation.Screen
@@ -33,6 +35,7 @@ fun ChildHomeScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.childHome
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isSyncing by remember { mutableStateOf(false) }
@@ -47,7 +50,7 @@ fun ChildHomeScreen(
                     if (result.isSuccess) {
                         snackbarHostState.showSnackbar("✅ ${result.getOrNull()}")
                     } else {
-                        snackbarHostState.showSnackbar("导入失败：${result.exceptionOrNull()?.message}")
+                        snackbarHostState.showSnackbar(strings.importFailedMessage(result.exceptionOrNull()?.message))
                     }
                     isSyncing = false
                 }
@@ -92,7 +95,7 @@ fun ChildHomeScreen(
     LaunchedEffect(Unit) {
         val penalty = com.hstudy.app.data.repository.MandatoryPenaltyHelper.processPenalties(app)
         if (penalty > 0) {
-            snackbarHostState.showSnackbar("⚠️ 有每日必须任务未完成，已自动扣减 $penalty 分")
+            snackbarHostState.showSnackbar(strings.mandatoryPenaltyMessage(penalty))
         }
     }
 
@@ -120,12 +123,12 @@ fun ChildHomeScreen(
 
     // 鼓励语
     val encouragement = when {
-        todayTotal == 0 -> "还没有任务哦，请爸爸妈妈添加 📝"
-        todayCompleted == 0 -> "新的一天，加油打卡吧！💪"
-        todayCompleted == todayTotal -> "太棒了！今天全部完成！🎉"
-        todayCompleted.toFloat() / todayTotal >= 0.7f -> "快完成啦，继续加油！🌟"
-        todayCompleted.toFloat() / todayTotal >= 0.3f -> "不错不错，保持节奏！👍"
-        else -> "开始今天的学习之旅吧！🚀"
+        todayTotal == 0 -> strings.encouragementNoTask
+        todayCompleted == 0 -> strings.encouragementFreshStart
+        todayCompleted == todayTotal -> strings.encouragementAllDone
+        todayCompleted.toFloat() / todayTotal >= 0.7f -> strings.encouragementAlmostThere
+        todayCompleted.toFloat() / todayTotal >= 0.3f -> strings.encouragementOnTrack
+        else -> strings.encouragementKickoff
     }
 
     // 积分卡片呼吸动画
@@ -141,10 +144,10 @@ fun ChildHomeScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "🌟 我的学习",
+                title = strings.pageTitle,
                 actions = {
                     IconButton(onClick = onSwitchRole) {
-                        Icon(Icons.Filled.SwapHoriz, contentDescription = "切换角色")
+                        Icon(Icons.Filled.SwapHoriz, contentDescription = strings.switchRoleContentDescription)
                     }
                 }
             )
@@ -216,7 +219,7 @@ fun ChildHomeScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("📊 今日打卡", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(strings.todayCheckinTitle, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             Text("${todayCompleted}/${todayTotal}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                         }
                         Spacer(modifier = Modifier.height(6.dp))
@@ -231,7 +234,7 @@ fun ChildHomeScreen(
                         )
                         if (todayCompleted == todayTotal && todayTotal > 0) {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("🎊 今日任务全部完成！", style = MaterialTheme.typography.titleSmall,
+                            Text(strings.todayAllDoneBanner, style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -246,7 +249,7 @@ fun ChildHomeScreen(
                 if (hardTasksNotDone.isNotEmpty() && todayCompleted < todayTotal) {
                     val hardest = hardTasksNotDone.maxByOrNull { it.difficulty }!!
                     val hardestStars = when (hardest.difficulty) { 3 -> "⭐⭐⭐"; 2 -> "⭐⭐"; else -> "⭐" }
-                    val hardestName = when (hardest.difficulty) { 3 -> "挑战"; 2 -> "进阶"; else -> "普通" }
+                    val hardestName = when (hardest.difficulty) { 3 -> strings.difficultyChallengeLevel; 2 -> strings.difficultyAdvancedLevel; else -> strings.difficultyNormalLevel }
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
@@ -255,9 +258,9 @@ fun ChildHomeScreen(
                             Text("🐸", fontSize = 28.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("先难后易 · 还有 ${hardTasksNotDone.size} 个困难任务", style = MaterialTheme.typography.titleSmall,
+                                Text(strings.hardTaskFirstTitle(hardTasksNotDone.size), style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                Text("趁精力充沛，先攻克「${hardest.title}」($hardestStars$hardestName)，剩下的会更轻松！",
+                                Text(strings.tackleFirstHint(hardest.title, hardestStars, hardestName),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                         }
@@ -281,27 +284,27 @@ fun ChildHomeScreen(
                             Text(learningScore.gradeEmoji, fontSize = 32.sp)
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("今日学习表现", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(strings.learningScoreTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                 Text("${learningScore.grade} · ${learningScore.encouragement}",
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                             Text("${learningScore.total}", style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Text("分", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(strings.scoreUnit, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         }
                         // 三维度得分条
-                        ScoreDimensionBar("✏️ 打卡", learningScore.checkinScore, 40, MaterialTheme.colorScheme.primary)
-                        ScoreDimensionBar("🍅 专注", learningScore.focusScore, 30, MaterialTheme.colorScheme.tertiary)
-                        ScoreDimensionBar("📚 复习", learningScore.reviewScore, 30, MaterialTheme.colorScheme.secondary)
+                        ScoreDimensionBar(strings.scoreDimensionCheckin, learningScore.checkinScore, 40, MaterialTheme.colorScheme.primary)
+                        ScoreDimensionBar(strings.scoreDimensionFocus, learningScore.focusScore, 30, MaterialTheme.colorScheme.tertiary)
+                        ScoreDimensionBar(strings.scoreDimensionReview, learningScore.reviewScore, 30, MaterialTheme.colorScheme.secondary)
                         // 维度改进建议（把评分反馈转化为具体行动指引）
                         val weakTips = buildList {
-                            if (learningScore.checkinScore < 20 && todayTotal > 0 && todayCompleted < todayTotal) add("✏️ 还有任务没完成，加油打卡！")
-                            if (learningScore.focusScore < 15) add("🍅 专注时间还不够，用番茄钟专注一会儿吧！")
-                            if (learningScore.reviewScore < 15 && dueMistakes.isNotEmpty()) add("📚 还有错题待复习，去复习几道吧！")
+                            if (learningScore.checkinScore < 20 && todayTotal > 0 && todayCompleted < todayTotal) add(strings.weakTipCheckin)
+                            if (learningScore.focusScore < 15) add(strings.weakTipFocus)
+                            if (learningScore.reviewScore < 15 && dueMistakes.isNotEmpty()) add(strings.weakTipReview)
                         }
                         if (weakTips.isNotEmpty() && learningScore.total < 85) {
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("💡 提升建议：", style = MaterialTheme.typography.labelSmall,
+                                Text(strings.improvementSuggestionsHeading, style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 weakTips.forEach { tip ->
                                     Text("· $tip", style = MaterialTheme.typography.labelSmall,
@@ -314,16 +317,16 @@ fun ChildHomeScreen(
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        app.pointRepository.adjustPoints(2, "今日学习表现优秀奖励")
+                                        app.pointRepository.adjustPoints(2, CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
                                         app.userPreferences.setDailyExcellentBonusDate(today)
                                         com.hstudy.app.ui.common.AchievementManager.evaluate(app)
-                                        snackbarHostState.showSnackbar("🌟 学习表现优秀！奖励 +2 分！")
+                                        snackbarHostState.showSnackbar(strings.excellentBonusMessage)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("🌟 领取优秀奖励 +2分") }
+                            ) { Text(strings.claimExcellentBonusButton) }
                         } else if (learningScore.total >= 85) {
-                            Text("✅ 今日优秀奖励已领取，明天继续加油！",
+                            Text(strings.excellentBonusClaimedNote,
                                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     }
