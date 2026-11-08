@@ -21,7 +21,7 @@
 | 缺口 | 事实 | 复核命令 |
 |---|---|---|
 | 无设备 | 本机没有挂载任何 Android 设备，也没有启动中的 emulator（AVD 存在，但 C: 剩余空间不足以安全启动一个） | `"$ANDROID_SDK/platform-tools/adb.exe" devices`，`$ANDROID_SDK` 取 `local.properties` 里的 `sdk.dir`（期望：`List of devices attached` 下面为空。`adb` 本身不在 PATH 上，所以要给绝对路径） |
-| 无 UI 测试依赖 | 仓库没有 Compose UI 测试依赖，也没有 `androidTest` / `iosTest` 源集 | `grep -rn "compose.test\|androidTest" composeApp/build.gradle.kts`（期望：0 命中） |
+| 无 UI 测试依赖 | 仓库没有 Compose UI 测试依赖，也没有 `androidTest` / `iosTest` 源集 | `grep -rn -e "compose.test" -e "androidTest" composeApp/build.gradle.kts`（期望：0 命中） |
 | Apple 目标不可本机编 | Windows 上只能编 commonMain 元数据与 Android 目标；iOS 链接/打包只在 macOS CI 上发生 | `./gradlew :composeApp:compileCommonMainKotlinMetadata` |
 | Android CI 无模拟器 | CI 跑 `assembleDebug` + `testDebugUnitTest`，不跑设备 | `.github/workflows/android.yml` |
 
