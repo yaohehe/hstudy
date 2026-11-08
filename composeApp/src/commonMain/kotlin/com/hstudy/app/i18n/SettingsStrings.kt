@@ -6,7 +6,8 @@ package com.hstudy.app.i18n
  * **两个出处**（Ruling 4：同一张表分两轮扩展，不重建）：
  * - 语言分区 6 条来自 Task 5，逐字节原样保留（含两种 locale 下同值的自称词
  *   [languageZh] / [languageEn]，Ruling 6）；
- * - 其余 63 个字段 + 1 个规范值常量来自 Task 11，覆盖该页迁移前清单剩下的 64 条
+ * - 其余 **64** 个字段 + 1 个规范值常量来自 Task 11（`grep -c "^    val "` = 70，70 − 6 = 64，
+ *   与下面"一进一出"那条同口径），覆盖该页迁移前清单剩下的 64 条
  *   （`python scripts/i18n_inventory.py parent/ParentSettingsScreen.kt` 迁移前给**去重 64 条 /
  *   含插值 10 条**；迁移后该页 CJK 字面量 0 条）。
  *
@@ -19,7 +20,16 @@ package com.hstudy.app.i18n
  *   照 [CommonStrings.confirmButton] 复用会把 ZH 字节改掉，所以 [passwordOkButton] 留在本表，
  *   两侧词形由同一条测试钉住；见下面"确定 / 确认"那段。）
  * - **进来一条**：`:299` 的 `"家长设备"` 是**落库值**、不进文案表（见下面"存储边界"那一段），
- *   但英文态要有它的显示名，于是本表多出一个纯显示字段 [deviceNameFallbackLabel]。
+ *   本表却仍要多一个 [deviceNameFallbackLabel]。**理由不是"英文态要有它的显示名"这么轻**：
+ *   - **出处**：这条中文本来就是迁移前那 64 条清单里的一条字面量。页面不再持有它之后，ZH 侧必须
+ *     有字段承接它，`scripts/i18n_template_diff.py` 那条"表侧整串能在页面原文里找到"的等价命题
+ *     才继续成立——规范值对象 [CanonicalParentSettingsText] 在 `SettingsStringsZh` 变量段**之外**，
+ *     脚本从来看不到它，所以把这条 ZH 值改掉或删掉，命令立刻报"仅页面有 1 「家长设备」"并退 1
+ *     （本轮变异探针 E 实测，见任务报告）。
+ *   - **漂移锚**：它的 ZH 值必须与规范常量逐字节一模一样。渲染位读的是存储、比的是常量，
+ *     两处各改一半时中文态那一格会念出另一个串，这一对由
+ *     `StringsCopyTest.settingsDeviceNameFallbackStaysCanonical` 的第 2 条钉住。
+ *   "英文态要有显示名"是这两条的**结果**，不是它进表的原因。
  *   一进一出，64 - 1 + 1 = 64 个新字段（其中 11 个函数型：10 条来自插值清单 +
  *   [deviceNameDisplayLabel] 这条"渲染期映射"）。
  *
@@ -55,7 +65,12 @@ package com.hstudy.app.i18n
  *
  * ## 存储边界（Ruling 25 / 31 / 34）：本页是 stage1 里第一个**真有写库调用**的迁移页面
  *
- * 该页八个 sink 的实参来源逐条见任务报告。唯一一条"页面中文进 sink"的既有通道是
+ * **本节与下面各节的行号都是迁移前坐标**（rev `ad6aa93`，与值后面的行尾注释同源）；
+ * 迁移后坐标见 §11 的"迁移前 :NNN（迁移后 :MMM）"双坐标行与任务报告 §2.1（Ruling 37）。
+ *
+ * 该页全部写库/跨设备调用位点（任务报告 §2.1 按 sink 归成 9 组、12 个具体行；读侧的
+ * `:48 pickTextFile` 与偏好 `first()` / `collectAsState` 不在这 12 行里）逐条溯源见该节。
+ * 唯一一条"页面中文进 sink"的既有通道是
  * `:299 → :301 setDeviceName(name)`：`name = deviceName.ifBlank { "家长设备" }`，父级没填设备名时
  * 这条中文兜底值就写进 DataStore 的 DEVICE_NAME，再被 `FamilySyncHelper.exportControlConfig()`
  * （`data/sync/FamilySyncHelper.kt:107` 读同一偏好，自己还带一份同字面量的读侧兜底）打进家长控制包
@@ -72,12 +87,34 @@ package com.hstudy.app.i18n
  *   正是本节要防的那件事。英文态这一格会显示规范中文兜底值，是**已知上限**，进 Task 12 人工清单
  *   （与 `parentDashboardInterpolatedCopyPinsBothLanguages` 记录的"英文态读出 优秀"同一类）。
  *
+ * **被否决的另一种形态**（Ruling 38 要求记在这里，不是"以后再说"）：回执也**原样透传**，
+ * 即页面写 `strings.deviceNameSavedMessage(name)`、不套 [deviceNameDisplayLabel]，让本页两处
+ * （编辑框 + 回执）都不本地化。否决理由有两条，都是可观测的：
+ * - 那样英文态保存一次就念出 `Device name saved: 家长设备`——回执是**整页唯一一处把规范值当标签
+ *   展示给人看**的地方，透传等于把存储侧的中文当界面文案推到英文用户眼前，与"规范值只活在存储里"
+ *   这条处置的初衷相反；
+ * - 本地化回执**不产生任何写回路径**：它只喂 `showSnackbar`，不进 `setDeviceName`、不进任何 sink
+ *   （逐行核对见任务报告 §2.2 第 3 条），所以"能安全本地化的那一位"恰好就是"没有写回风险的那一位"。
+ *   编辑框那一格正好相反——它有写回路径，所以**必须**不本地化。两条合起来才是这一节的选择依据。
+ *
  * 另一条**看着像 sink 其实不落库**的：`:232` 传给 `FamilySyncHelper.shareFile(filePath, title)` 的
- * `"发送家长设置到孩子设备"`。实测 `data/sync/FamilySyncHelper.kt:249-256` 根本没用 title 参数
- * （只读文件后转给 `Platform.fileSharer.shareTextFile`），存储字节与它无关，所以它走选项 (b)：
- * 进文案表 [exportChooserTitle] 并在英文态本地化。与 [ChildHomeStrings.shareProgressChooserTitle]
- * 是同一条已披露取舍（ChildHomeStrings 类注释 Ruling 20 例外第 4 条），同理由也写进
- * `StringsCopyTest.settingsInterpolatedCopyPinsBothLanguages` 之外的静态清单。
+ * `"发送家长设置到孩子设备"`。实测 `data/sync/FamilySyncHelper.kt:249-260` 根本没用 title 参数
+ * （只读文件后转给 `Platform.fileSharer.shareTextFile(fileName, content, mimeType)`，三个实参里没有它），
+ * 存储字节与它无关，所以它走选项 (b)：进文案表 [exportChooserTitle]。
+ *
+ * **但要说清它今天的真实可见性（这是既成事实，不是假设）**：这一串**在两个平台上都渲染不出来**。
+ * - Android：`androidMain/…/platform/AndroidFileSharer.kt:27` 把分享面板的标题写死成
+ *   `Intent.createChooser(sendIntent, "分享文件")`，`shareTextFile` 的签名里压根没有标题位，
+ *   所以**英文态用户在系统分享面板上看到的仍是中文「分享文件」**，与本表的语言无关；
+ * - iOS：`iosMain/…/platform/IosFileSharer.kt:34-38` 用 `UIActivityViewController` 直接呈现，
+ *   **根本没有标题这一行**，中英文用户都看不到任何标题。
+ * 也就是说 [exportChooserTitle] 是一份"已双语、但目前只在数据层可见"的文案：它进表的价值是
+ * 让 `i18n_inventory.py` 的本页残留计数归 0、并让两个平台将来开始使用 title 时值已经就位，
+ * **不是**"英文用户现在就能看到英文分享标题"。这一条已按 Ruling 36 交给 Task 12 的
+ * 人工验证 / 已知限制清单（`AndroidFileSharer.kt` 是平台文件，本任务禁改，改动是后续决策）。
+ * 与 [ChildHomeStrings.shareProgressChooserTitle] 是同一条已披露取舍（ChildHomeStrings 类注释
+ * Ruling 20 例外第 4 条；那一处同样只说了"不落库"、没说"不渲染"，已登记为 Task 12 的同一条），
+ * 本字段的静态值同时进 `settingsCopyDiffers` 的穷举清单。
  *
  * `setDeviceName` 的**用户输入**（父级自己打的业务名）不是文案：不进表、不参与任何断言、
  * 不做"看起来像中文就翻一遍"的处理。`setParentPassword` / `setAppLanguage` /
@@ -122,16 +159,41 @@ package com.hstudy.app.i18n
  *   EN 侧统一用三个句点，因为英文排版惯例不用 U+2026。间距/标点不参与 ZH 字节等价判定，
  *   但 `i18n_template_diff.py` 的 [B] 层比较中文文案里的标点，所以三条都逐字登记在测试里。
  *
- * 函数型字段（本页 10 个）的返回值不在 data class `toString()` 里（Ruling 20-b 的盲区），
- * 整表 CJK 扫描看不见，因此每个都有逐字打出来的双语期望串，见
- * `StringsCopyTest.settingsInterpolatedCopyPinsBothLanguages`；静态字段全部进
- * `settingsCopyDiffers` 的 ZH≠EN 穷举清单。
+ * 函数型字段（本页 11 个，与上面"一进一出"那条和 `SETTINGS_STATIC_DIFFERS_FIELDS` 头注释同口径）
+ * 的返回值不在 data class `toString()` 里（Ruling 20-b 的盲区），整表 CJK 扫描看不见，
+ * 因此每个都有逐字打出来的双语期望串，见 `StringsCopyTest.settingsInterpolatedCopyPinsBothLanguages`；
+ * 四条失败消息（[childProgressImportFailedMessage] / [backupFailureMessage] / [restoreFailureMessage] /
+ * [exportFailedMessage]）的 `null` 分支中英两侧各钉一条，共 8 条，缺一条就是"改了文案"。
+ * 静态字段（59 个）全部进 `settingsCopyDiffers` 的清单，其中 57 条参与 ZH≠EN，
+ * 两个自称词只做成员校验、不进 ZH≠EN（Ruling 6，见上面"自称词规则"那段）。
  *
  * 术语按设计文档 §11：家长审核 = Approval、设备配对 = Pairing（[remoteControlNote] 里的"配对"）、
  * 周报 = Weekly Report、连续打卡 = Streak、打卡 = Check in / Checked in、错题 = Mistakes、
- * 专注 = Focus、番茄钟 = Pomodoro、积分 = Points、时长单位 = min。本轮为"数据备份与恢复 /
- * 家长远程控制 / 完成证明之外的确定 vs 确认 / 量词次·个 / 兜底设备名"补的词条同步进 §11，
- * 每条带真实测试名。
+ * 专注 = Focus、番茄钟 = Pomodoro、积分 = Points、时长单位 = min。
+ *
+ * **§11 里署名"Task 11 实测需要"的七行，每行点名一条真实存在的测试**（本轮补的是"数据备份与恢复"
+ * 那一行；"每条带真实测试名"这句话说的是这七行，且逐行机械复核过——脚本把 §11 与本页 KDoc 里
+ * 像测试名的 token 与 commonTest 的 `fun NAME(` 定义集合做成员检查，结果见任务报告的引用复核一节）：
+ * - 中文量词次·个 → `settingsEnglishDropsTheMeasureWords`
+ * - 确定 / 确认 → `settingsOkButtonIsNotTheCommonConfirmButton`
+ * - 家长远程控制（分区名）→ `settingsCopyDiffers`
+ * - 每周学习周报（分区名）→ `settingsCopyDiffers` + `emojiStaysInsideTheSettingsTable`
+ * - 数据备份与恢复（分区名，本轮补的一行）→ `emojiStaysInsideTheSettingsTable`
+ * - 连续打卡天数槽 → `settingsStreakDaysMatchParentHomeForm`
+ * - 家长设备兜底 → `settingsDeviceNameFallbackStaysCanonical`
+ *
+ * **英文卡片内的三处措辞漂移**（审查 round 1 的 Minor，逐处判过"改得起改不起"）：
+ * - [pushStepNote] 的英文标签是 "Push settings"、[pushSettingsButton] 却写 "Send settings to child"：
+ *   同卡两个动词。已按 [viewStepNote] / [viewProgressButton] 那一对的既有形状统一成
+ *   "Push settings" + "Push settings to child"（英文侧改动，中文逐字节未动，无 §11 词条管辖）；
+ * - [restoreConfirmButton] 原译 "Restore now" 丢掉了中文 `确认恢复` 的确认语气，已改 "Confirm restore"
+ *   （与 [restoreDialogTitle] "Confirm data restore" 同形，也正是 §11"确认 = Confirm"那一条的方向）；
+ * - **没改的两处，交给控制器裁决**：① [progressTodayCheckinLabel] 的 "Today's Check-in"（标题式大写）
+ *   与同卡 [progressCheckinLabel] 的 "Total check-ins"（句首式）不一致，但 "Today's Check-in"
+ *   在 [ChildHomeStrings.todayCheckinTitle] 与 [TaskListStrings.checkInTitle] 里是**同一个词形**，
+ *   只改本页这一处会新造一处跨表漂移；② §11"周报 = Weekly Report"与本表英文值 `Weekly report`
+ *   只差大小写，那是术语表管辖的改动，本轮**没有**擅自改词形，也没有假装两者一致——
+ *   差异写在 §11 那一行的"依据"格里，与 Task 12 的人工清单同一处指认。
  */
 data class SettingsStrings(
     // ===== 语言分区（Task 5，字段与值原样保留）=====
@@ -193,6 +255,18 @@ data class SettingsStrings(
     val pushSettingsButton: String,
     val viewProgressButton: String,
     val processingLabel: String,
+    /**
+     * 导出家长控制包后交给 `FamilySyncHelper.shareFile(filePath, title)` 的那句标题。
+     *
+     * **它目前在哪里都渲染不出来**（类注释"存储边界"那一节的双语版本，此处逐条落名）：
+     * `data/sync/FamilySyncHelper.kt:249-260` 收下 title 却从不使用它；
+     * `AndroidFileSharer.kt:27` 把系统分享面板的标题写死成 `"分享文件"`（`shareTextFile` 的签名
+     * 里没有标题位），所以**英文态用户在 Android 上仍看到中文**；
+     * `IosFileSharer.kt:34-38` 的 `UIActivityViewController` 干脆没有标题这一行。
+     * 英文值因此是"表已双语、屏幕未生效"的状态：进表是为了让本页残留计数归 0，
+     * 并让对方一开始用 title 时值已就位。Android 那处硬编码在本任务禁改的平台文件里
+     * （`androidMain`），已作为后续项上交控制器，可见性本身进 Task 12 的已知限制清单。
+     */
     val exportChooserTitle: String,
     val settingsExportedMessage: String,
     val exportFailedMessage: (detail: String?) -> String,
@@ -373,7 +447,7 @@ val SettingsStringsEn = SettingsStrings(
     backupFailureMessage = { detail -> "❌ Backup failed: $detail" },
     restoreDialogTitle = "Confirm data restore",
     restoreDialogNote = "Restoring overwrites all current data with the backup and restarts the app. This can't be undone. Continue?",
-    restoreConfirmButton = "Restore now",
+    restoreConfirmButton = "Confirm restore",
     restoreSuccessMessage = "✅ Restore complete — the app is restarting...",
     restartAppNote = "Please reopen the app for the changes to take effect",
     restoreFailureMessage = { detail -> "❌ Restore failed: $detail" },
@@ -385,7 +459,7 @@ val SettingsStringsEn = SettingsStrings(
     pushStepNote = "📤 Push settings — send the tasks and rewards you set up to your child's device",
     viewStepNote = "📥 View progress — receive the study report your child sends you",
     transportNote = "💡 Transfer method — Bluetooth, Wi-Fi Direct, WeChat, email, any of them works",
-    pushSettingsButton = "📤 Send settings to child",
+    pushSettingsButton = "📤 Push settings to child",
     viewProgressButton = "📥 View child's progress",
     processingLabel = "Working...",
     exportChooserTitle = "Send parent settings to your child's device",
