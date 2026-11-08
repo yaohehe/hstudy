@@ -182,8 +182,8 @@ package com.hstudy.app.i18n
  * - 连续打卡天数槽 → `settingsStreakDaysMatchParentHomeForm`
  * - 家长设备兜底 → `settingsDeviceNameFallbackStaysCanonical`
  *
- * **英文卡片内的三处措辞漂移**（审查 round 1 的 Minor，逐处判过"改得起改不起"）：
- * - [pushStepNote] 的英文标签是 "Push settings"、[pushSettingsButton] 却写 "Send settings to child"：
+ * **英文侧四处措辞漂移**（审查 round 1 的 Minor：改了 2 处、留 2 处待裁决，逐处判过"改得起改不起"）：
+ * - [pushStepNote] 的英文标签是 "Push settings"、[pushSettingsButton] **原**写 "Send settings to child"：
  *   同卡两个动词。已按 [viewStepNote] / [viewProgressButton] 那一对的既有形状统一成
  *   "Push settings" + "Push settings to child"（英文侧改动，中文逐字节未动，无 §11 词条管辖）；
  * - [restoreConfirmButton] 原译 "Restore now" 丢掉了中文 `确认恢复` 的确认语气，已改 "Confirm restore"
