@@ -12,6 +12,8 @@ data class AppStrings(
     val pomodoro: PomodoroStrings,
     val focus: FocusStrings,
     val childHome: ChildHomeStrings,
+    val parentHome: ParentHomeStrings,
+    val parentDashboard: ParentDashboardStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -22,6 +24,8 @@ val AppStringsZh = AppStrings(
     pomodoro = PomodoroStringsZh,
     focus = FocusStringsZh,
     childHome = ChildHomeStringsZh,
+    parentHome = ParentHomeStringsZh,
+    parentDashboard = ParentDashboardStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -31,6 +35,8 @@ val AppStringsEn = AppStrings(
     pomodoro = PomodoroStringsEn,
     focus = FocusStringsEn,
     childHome = ChildHomeStringsEn,
+    parentHome = ParentHomeStringsEn,
+    parentDashboard = ParentDashboardStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {
