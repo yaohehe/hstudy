@@ -355,8 +355,8 @@ fun ChildHomeScreen(
                             Text("📚", fontSize = 28.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("今日有 ${dueMistakes.size} 道错题待复习", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text("及时复习记得牢，复习还能赚积分哦～", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.mistakesDueTitle(dueMistakes.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(strings.mistakesDueNote, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                             Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
@@ -373,9 +373,9 @@ fun ChildHomeScreen(
                             Text("🎉", fontSize = 28.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("今日待复习错题已全部完成！", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                                Text(strings.mistakesAllDoneTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                Text("坚持间隔复习，记忆越来越牢固，真棒！", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.mistakesAllDoneNote, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                         }
@@ -386,7 +386,7 @@ fun ChildHomeScreen(
                 // ===== 成就徽章 =====
                 AchievementBadges(modifier = Modifier.padding(horizontal = 4.dp))
                 TextButton(onClick = { onNavigate(com.hstudy.app.ui.navigation.Screen.ChildAchievements.route) }) {
-                    Text("🏅 查看全部成就中心 →")
+                    Text(strings.viewAllAchievementsButton)
                 }
 
                 // ===== 积分申请状态（孩子查看审核进度）=====
@@ -399,18 +399,18 @@ fun ChildHomeScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("📝 我的积分申请", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.myApprovalRequestsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             if (pendingApprovalCount > 0) {
-                                Text("⏳ $pendingApprovalCount 个申请待家长审核（+$pendingApprovalPoints 分，通过后计入）",
+                                Text(strings.pendingApprovalSummary(pendingApprovalCount, pendingApprovalPoints),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                             recentApproved.forEach { a ->
-                                Text("✅ ${a.description} +${a.requestedPoints}分", style = MaterialTheme.typography.labelSmall,
+                                Text(strings.approvedRequestLine(a.description, a.requestedPoints), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                             recentRejected.forEach { a ->
-                                Text("❌ ${a.description}（未通过）", style = MaterialTheme.typography.labelSmall,
+                                Text(strings.rejectedRequestLine(a.description), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error)
                             }
                         }
@@ -424,13 +424,13 @@ fun ChildHomeScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("👨‍👩‍👧 家长同步", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(strings.parentSyncTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
                                 onClick = { importControlLauncher() },
                                 enabled = !isSyncing,
                                 modifier = Modifier.weight(1f)
-                            ) { Text("📥 接收家长设置", style = MaterialTheme.typography.labelSmall) }
+                            ) { Text(strings.receiveParentSettingsButton, style = MaterialTheme.typography.labelSmall) }
                             OutlinedButton(
                                 onClick = {
                                     scope.launch {
@@ -438,21 +438,21 @@ fun ChildHomeScreen(
                                         val result = com.hstudy.app.data.sync.FamilySyncHelper.exportProgressReport()
                                         if (result.isSuccess) {
                                             com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
-                                                result.getOrNull()!!, "发送学习进度给家长"
+                                                result.getOrNull()!!, strings.shareProgressChooserTitle
                                             )
-                                            snackbarHostState.showSnackbar("✅ 进度已导出，请发送给家长")
+                                            snackbarHostState.showSnackbar(strings.progressExportedMessage)
                                         } else {
-                                            snackbarHostState.showSnackbar("导出失败")
+                                            snackbarHostState.showSnackbar(strings.exportFailedMessage)
                                         }
                                         isSyncing = false
                                     }
                                 },
                                 enabled = !isSyncing,
                                 modifier = Modifier.weight(1f)
-                            ) { Text("📤 发送进度给家长", style = MaterialTheme.typography.labelSmall) }
+                            ) { Text(strings.sendProgressButton, style = MaterialTheme.typography.labelSmall) }
                         }
                         if (isSyncing) {
-                            Text("正在处理…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.syncingLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -472,17 +472,17 @@ fun ChildHomeScreen(
                             Text("🔥", fontSize = 32.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("连续打卡 $days 天啦！", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text("达成里程碑，领取 +$bonus 积分奖励！", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.streakMilestoneTitle(days), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(strings.streakMilestoneBonusNote(bonus), style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                             Button(onClick = {
                                 scope.launch {
-                                    app.pointRepository.adjustPoints(bonus, "连续打卡${days}天里程碑奖励")
+                                    app.pointRepository.adjustPoints(bonus, CanonicalChildHomeText.streakMilestoneNote(days))
                                     app.userPreferences.claimStreakMilestone(days)
-                                    snackbarHostState.showSnackbar("🎉 领取成功！+$bonus 积分")
+                                    snackbarHostState.showSnackbar(strings.streakMilestoneClaimedMessage(bonus))
                                 }
-                            }) { Text("🎁 领取") }
+                            }) { Text(strings.claimBonusButton) }
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -500,8 +500,8 @@ fun ChildHomeScreen(
                         Text("🏅", fontSize = 32.sp)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("每周挑战：本周打卡 5 天", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Text("进度 ${weekCheckinDays.coerceAtMost(5)}/5 天 · 达成领 +5 积分", style = MaterialTheme.typography.bodySmall,
+                            Text(strings.weeklyChallengeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.weeklyChallengeProgressNote(weekCheckinDays.coerceAtMost(5)), style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
                             Spacer(modifier = Modifier.height(4.dp))
                             LinearProgressIndicator(
@@ -514,14 +514,14 @@ fun ChildHomeScreen(
                         when {
                             weeklyChallengeClaimable -> Button(onClick = {
                                 scope.launch {
-                                    app.pointRepository.adjustPoints(5, "每周挑战奖励：本周打卡5天")
+                                    app.pointRepository.adjustPoints(5, CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE)
                                     app.userPreferences.claimWeeklyChallenge(weekStartStr)
-                                    snackbarHostState.showSnackbar("🏅 挑战达成！+5 积分")
+                                    snackbarHostState.showSnackbar(strings.weeklyChallengeClaimMessage)
                                 }
-                            }) { Text("领取") }
-                            weeklyChallengeClaimed -> Text("✅ 本周已领取", style = MaterialTheme.typography.labelSmall,
+                            }) { Text(strings.claimButton) }
+                            weeklyChallengeClaimed -> Text(strings.weeklyChallengeClaimedNote, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
-                            else -> Text("加油中…", style = MaterialTheme.typography.labelSmall,
+                            else -> Text(strings.weeklyChallengeInProgressNote, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     }
