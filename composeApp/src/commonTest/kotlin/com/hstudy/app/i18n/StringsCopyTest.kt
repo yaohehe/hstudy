@@ -81,6 +81,53 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "parentDashboard.weakAreaNoTasksNote",    // "… apply a points template or add one by hand"
     "parentDashboard.recentChangesTitle",     // "Recent points activity"
     "parentDashboard.changeFallbackLabel",    // "Points change"（record.note 为空时的兜底显示，不进存储）
+    // ---- Task 11 家长设置页新增 4 条（英文原文逐条留在行尾注释里）。
+    // 本页唯一一枚裸 `分`（:275）是**分钟**，走 CommonStrings.minuteLabel，不在这份清单里，
+    // 见 settingsDurationUnitComesFromCommon；本页没有评分单位（pts）与积分单位裸槽出场。
+    "settings.passwordMissingNote",           // "…can't change points or task rules on their own."
+    "settings.weeklyReportNote",              // "…check-ins, focus, review and points — no need to open the app."
+    "settings.backupNote",                    // "Back up your child's study data — points, mistakes, …"
+    "settings.progressPointsLabel",           // "⭐ Total points"（§11 积分 = Points）
+)
+
+/**
+ * Task 11：家长设置页 `SettingsStrings` 里**必须进 ZH≠EN 穷举清单**的静态字段名（57 个）。
+ *
+ * 为什么把字段名单独做成一份**集合**而不是只写一长排 `zh.x to en.x`：
+ * [settingsCopyDiffers] 里那份手写清单是**开放枚举**——Task 9/10 的教训（见
+ * [EN_STATIC_POINTS_MENTIONS] 头注释）是"新增字段没进清单，守卫就看不见它"。
+ * 这里把 [staticCopyValues] 从表里**算出来**的键集与这份声明做集合相等，两个方向都红：
+ * 加了字段没登记 → 红；登记了却删掉/改名 → 也红。
+ * 两个自称词 [SettingsStrings.languageZh] / [SettingsStrings.languageEn] 按 Ruling 6 **不在**清单里
+ * （它们故意同值），由 [languageOptionLabelsAreEndonymsInBothLocales] 保护；
+ * 11 个函数型字段进不了 `toString()`（Ruling 20-b），由
+ * [settingsInterpolatedCopyPinsBothLanguages] 逐字钉住。
+ */
+private val SETTINGS_STATIC_DIFFERS_FIELDS = setOf(
+    // Task 5 的语言分区（languageZh / languageEn 两个自称词除外）
+    "languageTitle", "languageSystem", "languageNote", "partialTranslationNote",
+    // 顶栏与家长密码
+    "pageTitle", "passwordCardTitle", "passwordSetNote", "passwordMissingNote",
+    "changePasswordButton", "setPasswordButton", "clearPasswordButton",
+    "passwordClearedMessage", "passwordSetMessage",
+    // 密码对话框
+    "passwordDialogEditTitle", "passwordDialogSetTitle", "newPasswordLabel",
+    "confirmPasswordLabel", "passwordTooShortError", "passwordMismatchError", "passwordOkButton",
+    // 每周学习周报
+    "weeklyReportTitle", "weeklyReportNote", "weeklyReportOnMessage", "weeklyReportOffMessage",
+    // 数据备份与恢复
+    "backupCardTitle", "backupNote", "backupButton", "backupRunningLabel", "restoreButton",
+    "backupSuccessMessage", "restoreDialogTitle", "restoreDialogNote", "restoreConfirmButton",
+    "restoreSuccessMessage", "restartAppNote",
+    // 家长远程控制
+    "remoteControlTitle", "remoteControlNote", "howToTitle", "pushStepNote", "viewStepNote",
+    "transportNote", "pushSettingsButton", "viewProgressButton", "processingLabel",
+    "exportChooserTitle", "settingsExportedMessage", "progressImportedMessage",
+    // 孩子进度卡片
+    "progressPointsLabel", "progressStreakLabel", "progressFocusLabel", "progressCheckinLabel",
+    "progressMistakesLabel", "progressTodayCheckinLabel",
+    // 设备名称
+    "deviceNameLabel", "deviceNamePlaceholder", "saveDeviceNameButton", "deviceNameFallbackLabel",
 )
 
 /**
@@ -1721,6 +1768,22 @@ class StringsCopyTest {
         // 四条趋势判词必须互不相同（同一个 when 的四支，两支同值就等于少了一档反馈）
         assertEquals(4, listOf(zh.verdictNewStart, zh.verdictImproved, zh.verdictLevel, zh.verdictDeclined).distinct().size)
         assertEquals(4, listOf(en.verdictNewStart, en.verdictImproved, en.verdictLevel, en.verdictDeclined).distinct().size)
+        // Ruling 34 携带项 1：§11"数据看板 = Data dashboard"那行声称本测试保证"菜单入口名与页面顶栏名
+        // 同词形"，但跨表比较原本并不存在，这里补上（两行、两侧都查）。
+        // 形状与 brief 给的写法**方向相反**，以代码为准：带 emoji 的是**页面顶栏**
+        // （ParentDashboardStrings.pageTitle = "📊 数据看板" / "📊 Data dashboard"，ParentDashboardScreen.kt:95），
+        // 菜单入口名没有 emoji（ParentHomeStrings.menuDashboardTitle = "数据看板" / "Data dashboard"，
+        // ParentHomeScreen.kt:212），所以 `substringAfter(' ')` 只能取在 pageTitle 那一边。
+        assertEquals(
+            AppStringsEn.parentHome.menuDashboardTitle,
+            AppStringsEn.parentDashboard.pageTitle.substringAfter(' '),
+            "同一个功能的菜单入口名与页面顶栏名在英文里不是同一个词形",
+        )
+        assertEquals(
+            AppStringsZh.parentHome.menuDashboardTitle,
+            AppStringsZh.parentDashboard.pageTitle.substringAfter(' '),
+            "同一个功能的菜单入口名与页面顶栏名在中文里不是同一个词形",
+        )
     }
 
     /**
@@ -1956,6 +2019,294 @@ class StringsCopyTest {
             dashZh.weakAreaFocusNote(30) to dashEn.weakAreaFocusNote(30),
         ).forEach { (chinese, english) ->
             assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "数据看板行首 emoji 应两表一致")
+        }
+    }
+
+    // =====================================================================
+    // Task 11：家长设置页（ui/parent/ParentSettingsScreen.kt）
+    // =====================================================================
+
+    /**
+     * 家长设置页 57 个**静态**字段的 ZH≠EN 穷举 + 清单本身的闭合校验（Ruling 34 携带项 3 要求的
+     * "自称的守卫必须真的存在且真的穷举"）。
+     *
+     * 两条断言方向相反，缺一条就会漏一类错：
+     * - 集合相等：表里算出来的静态字段名必须与 [SETTINGS_STATIC_DIFFERS_FIELDS] 完全一致
+     *   （新增字段没登记 → 红；登记了但字段被删/改名 → 也红）。这是 Task 9/10 那份手写清单
+     *   的闭合版本，理由见那份清单的注释。
+     * - 逐字段 ZH≠EN：报错能点名是哪条中文没译。
+     * 两个自称词（[SettingsStrings.languageZh] / [languageEn]）按 Ruling 6 刻意留在集合里做
+     * **成员校验**、但不进 assertDiffers；11 个函数型字段由
+     * [settingsInterpolatedCopyPinsBothLanguages] 负责（整表扫描与 assertDiffers 都看不见它们）。
+     */
+    @Test
+    fun settingsCopyDiffers() {
+        val zh = staticCopyValues(AppStringsZh.settings).toMap()
+        val en = staticCopyValues(AppStringsEn.settings).toMap()
+        val endonyms = setOf("languageZh", "languageEn")   // Ruling 6：两种 locale 下同值，不参与漏译比较
+        assertEquals(
+            SETTINGS_STATIC_DIFFERS_FIELDS + endonyms,
+            zh.keys,
+            "SettingsStrings 的静态字段清单与实际字段不再一致：新增字段必须同时进 " +
+                "SETTINGS_STATIC_DIFFERS_FIELDS（或自称词豁免），删掉的字段要从清单里一起撤",
+        )
+        assertEquals(zh.keys, en.keys, "两张表的字段集合必须对齐（data class 本就同源，这条防的是解析异常）")
+        assertDiffers(
+            *SETTINGS_STATIC_DIFFERS_FIELDS.sorted().map { zh.getValue(it) to en.getValue(it) }.toTypedArray()
+        )
+    }
+
+    /**
+     * 家长设置页 11 个函数型字段的**逐字双语期望串**（Ruling 20-b：整表 CJK 扫描看不见函数型返回值）。
+     *
+     * 三条与本页存储边界直接相关的：
+     * - [SettingsStrings.deviceNameDisplayLabel] 是"存规范值、渲染本地化"的那一步（Ruling 25/34），
+     *   英文侧认得出的只有规范兜底值，认不出的一律原样透传（父级自取的名字、跨设备传来的名字）；
+     * - [SettingsStrings.deviceNameSavedMessage] 的实参是**数据**，中文态逐字节等于迁移前的
+     *   `"已保存设备名称：$name"`；
+     * - [SettingsStrings.progressCardTitle] 的实参是**孩子设备名**（来自对方设备的数据），
+     *   英文态那条把中文数据原样念出来是**已知上限**，进 Task 12 人工清单，不是本表写错。
+     * 四条失败消息的 `null` 分支都单独钉了一条：迁移前 `${it.message}` 在 message 为 null 时
+     * 渲染 "null"，改成实参位之后必须还是 "null"，否则就是改了文案。
+     */
+    @Test
+    fun settingsInterpolatedCopyPinsBothLanguages() {
+        val zh = AppStringsZh.settings
+        val en = AppStringsEn.settings
+
+        assertEquals("导入失败：文件已损坏", zh.childProgressImportFailedMessage("文件已损坏"))
+        assertEquals("导入失败：null", zh.childProgressImportFailedMessage(null))
+        assertEquals("Import failed: file is broken", en.childProgressImportFailedMessage("file is broken"))
+        assertEquals("Import failed: null", en.childProgressImportFailedMessage(null))
+
+        assertEquals("❌ 备份失败：disk full", zh.backupFailureMessage("disk full"))
+        assertEquals("❌ 备份失败：null", zh.backupFailureMessage(null))
+        assertEquals("❌ Backup failed: disk full", en.backupFailureMessage("disk full"))
+
+        assertEquals("❌ 恢复失败：disk full", zh.restoreFailureMessage("disk full"))
+        assertEquals("❌ Restore failed: disk full", en.restoreFailureMessage("disk full"))
+
+        assertEquals("导出失败：文件已损坏", zh.exportFailedMessage("文件已损坏"))
+        assertEquals("Export failed: file is broken", en.exportFailedMessage("file is broken"))
+
+        assertEquals("📊 妈妈的平板的学习进度", zh.progressCardTitle("妈妈的平板"))
+        assertEquals("📊 Study progress from Mom's tablet", en.progressCardTitle("Mom's tablet"))
+        // 内容透传的反面证据：跨设备传来的中文设备名在英文态仍是它自己的原文（不是漏译，是数据）
+        assertEquals("📊 Study progress from 妈妈的平板", en.progressCardTitle("妈妈的平板"))
+
+        assertEquals("7天", zh.streakDaysValue(7))
+        assertEquals("1天", zh.streakDaysValue(1))
+        assertEquals("0天", zh.streakDaysValue(0))
+
+        assertEquals("45分", zh.progressFocusMinutesValue(45, AppStringsZh.common.minuteLabel))
+        assertEquals("45 min", en.progressFocusMinutesValue(45, AppStringsEn.common.minuteLabel))
+
+        assertEquals("12次", zh.completionsValue(12))
+        assertEquals("1次", zh.completionsValue(1))
+        assertEquals("3个", zh.todayCheckinsValue(3))
+
+        assertEquals("已保存设备名称：家长设备", zh.deviceNameSavedMessage(zh.deviceNameFallbackLabel))
+        assertEquals("已保存设备名称：妈妈的手机", zh.deviceNameSavedMessage("妈妈的手机"))
+        assertEquals("Device name saved: Parent device", en.deviceNameSavedMessage(en.deviceNameFallbackLabel))
+        assertEquals("Device name saved: Mom's phone", en.deviceNameSavedMessage("Mom's phone"))
+
+        assertEquals("家长设备", zh.deviceNameDisplayLabel(CanonicalParentSettingsText.DEVICE_NAME_FALLBACK))
+        assertEquals("妈妈的手机", zh.deviceNameDisplayLabel("妈妈的手机"))
+        assertEquals("Parent device", en.deviceNameDisplayLabel(CanonicalParentSettingsText.DEVICE_NAME_FALLBACK))
+        assertEquals("Mom's phone", en.deviceNameDisplayLabel("Mom's phone"))
+    }
+
+    /**
+     * [SettingsStrings.streakDaysValue] 的英文 one/other（Ruling 20 例外：[Plurals.kt] 本期不改，
+     * 分支写在函数体内）。中文侧用"只换数字"的等式钉住它不分支，形态与
+     * [parentHomeEnglishPluralsCoverOneAndOther] 一致。
+     */
+    @Test
+    fun settingsEnglishPluralsCoverOneAndOther() {
+        val zh = AppStringsZh.settings
+        val en = AppStringsEn.settings
+        assertEquals("7 days", en.streakDaysValue(7))
+        assertEquals("1 day", en.streakDaysValue(1))
+        assertEquals("10 days", en.streakDaysValue(10))
+        assertEquals(zh.streakDaysValue(1).replace("1", "7"), zh.streakDaysValue(7), "中文侧不该出现单复数分支")
+    }
+
+    /**
+     * `次`（`:279`）与 `个`（`:283`）是中文量词，英文没有对应词：**整词删掉**，值槽退化成纯数字。
+     * 与 §11 的"道"那条、[parentDashboardEnglishDropsTheMeasureWord] 是同一条处置，
+     * 差别只在本页连单位字段都不需要开（英文侧没有单位槽）。
+     * 两侧都写死，这样"顺手把英文补成 times / items"会被点名。
+     */
+    @Test
+    fun settingsEnglishDropsTheMeasureWords() {
+        val zh = AppStringsZh.settings
+        val en = AppStringsEn.settings
+        assertEquals("0次", zh.completionsValue(0))
+        assertEquals("12个", zh.todayCheckinsValue(12))
+        assertEquals("12", en.completionsValue(12))
+        assertEquals("0", en.completionsValue(0))
+        assertEquals("1", en.todayCheckinsValue(1))
+        assertEquals("3", en.todayCheckinsValue(3))
+        // 中文侧那两枚量词绝不能被误接成分钟单位（同形风险与 `分` 同源）
+        assertNotEquals(zh.completionsValue(3), zh.progressFocusMinutesValue(3, AppStringsZh.common.minuteLabel))
+        assertNotEquals(en.completionsValue(3), "min")
+    }
+
+    /**
+     * `:275` 的 `${cp.totalFocusMinutes}分` 是**分钟**，单位复用 [CommonStrings.minuteLabel]：
+     * 本表**不**开任何 `分` 槽。这条穷举（"本表静态值里没有任何一条等于 分"）就是"没重开出处"的证据，
+     * 形态与 [parentDashboardDurationUnitComesFromCommon] / [durationChipReusesTheCommonMinuteLabel] 一致；
+     * 有人把分钟词抄进 SettingsStrings（哪怕只是 ZH 侧）都会在这里红，而不必等漏译守卫。
+     */
+    @Test
+    fun settingsDurationUnitComesFromCommon() {
+        assertEquals("分", AppStringsZh.common.minuteLabel)
+        assertEquals("min", AppStringsEn.common.minuteLabel)
+        val zhStatics = staticCopyValues(AppStringsZh.settings).toMap()
+        assertEquals(
+            emptySet(),
+            zhStatics.filterValues { it == "分" }.keys,
+            "SettingsStrings 出现 `分` 槽就说明分钟那条被从 CommonStrings 挪了过来，复用与残差登记要一起改",
+        )
+        assertEquals("45分", AppStringsZh.settings.progressFocusMinutesValue(45, AppStringsZh.common.minuteLabel))
+        assertEquals("45 min", AppStringsEn.settings.progressFocusMinutesValue(45, AppStringsEn.common.minuteLabel))
+        // 本页的时长侧绝不调积分词（`分` 三 senses 之一，另两种见 §11）
+        assertFalse(
+            AppStringsEn.settings.progressFocusMinutesValue(30, AppStringsEn.common.minuteLabel)
+                .contains(pointsWord(2)),
+            "专注时长里混进了积分词",
+        )
+    }
+
+    /**
+     * `:192` / `:431` 的 `"取消"` 复用 [CommonStrings.cancelButton]，本表**不**重开一个槽
+     * （brief 明令"已在 CommonStrings 的必须复用"）。两条都是字面量钉死：
+     * 换出处与互换英文值这两种错都只看得住"值 + 集合"这一对，assertDiffers 对互换是瞎的。
+     */
+    @Test
+    fun settingsCancelButtonComesFromCommon() {
+        assertEquals("取消", AppStringsZh.common.cancelButton)
+        assertEquals("Cancel", AppStringsEn.common.cancelButton)
+        assertEquals(
+            emptySet(),
+            staticCopyValues(AppStringsZh.settings).toMap().filterValues { it == "取消" }.keys,
+            "SettingsStrings 里重新写了 取消，等于给同一个中文值开出第二处出处",
+        )
+    }
+
+    /**
+     * `:429` 的 `"确定"` **不是** [CommonStrings.confirmButton]（`确认`）：两个中文值差一个字、
+     * 字节也不同，照 `确认` 复用会改掉中文态字节（brief 的逐字节等价优先），
+     * 各写一份又留下两个英文词可以互相漂移。处置是 ZH 各自原样、EN 分词形（OK / Confirm），
+     * 并在此逐字钉住四边；§11 已补同名词条。
+     */
+    @Test
+    fun settingsOkButtonIsNotTheCommonConfirmButton() {
+        assertEquals("确定", AppStringsZh.settings.passwordOkButton)
+        assertEquals("OK", AppStringsEn.settings.passwordOkButton)
+        assertEquals("确认", AppStringsZh.common.confirmButton)
+        assertEquals("Confirm", AppStringsEn.common.confirmButton)
+        assertNotEquals(AppStringsZh.settings.passwordOkButton, AppStringsZh.common.confirmButton)
+        assertNotEquals(AppStringsEn.settings.passwordOkButton, AppStringsEn.common.confirmButton)
+    }
+
+    /**
+     * §11"连续打卡 = Streak"在家长两个页面的**天数值槽**必须同词形：
+     * [ParentHomeStrings.streakDaysValue]（ParentHomeScreen.kt:114）与本页
+     * [SettingsStrings.streakDaysValue]（ParentSettingsScreen.kt:273）是两张表各存一份
+     * 同一个概念（与 [parentDashboardScoreUnitIsNotPoints] 里"评分单位两张表各存一份、
+     * 由断言而不是引用保证一致"同一选择，理由也相同：家长设置页不该反向依赖家长首页表）。
+     */
+    @Test
+    fun settingsStreakDaysMatchParentHomeForm() {
+        listOf(0, 1, 7, 10).forEach { days ->
+            assertEquals(
+                AppStringsEn.parentHome.streakDaysValue(days),
+                AppStringsEn.settings.streakDaysValue(days),
+                "同一个 Streak 天数槽在两张表念成两个词形：$days",
+            )
+            assertEquals(
+                AppStringsZh.parentHome.streakDaysValue(days),
+                AppStringsZh.settings.streakDaysValue(days),
+            )
+        }
+        // 同一个 Streak 概念的行标签在两页也必须同词形（本页带一枚 🔥，取空格前那枚 emoji 之后比较，
+        // 形态与 categoryWordsMatchTheTaskListFilters 一致）
+        assertEquals(
+            AppStringsEn.parentHome.overviewStreak,
+            AppStringsEn.settings.progressStreakLabel.substringAfter(' '),
+        )
+        assertEquals(
+            AppStringsZh.parentHome.overviewStreak,
+            AppStringsZh.settings.progressStreakLabel.substringAfter(' '),
+        )
+    }
+
+    /**
+     * 存储边界（Ruling 25 / 31 / 34）：`:299 → :301 setDeviceName(name)` 的兜底值是**落库值**，
+     * 保留迁移前的中文原字节，英文态只在只读渲染位换标签。
+     * 三条各自的作用：
+     * - 第 1 条钉住落库值本身没被"顺手翻译"（这条一红就意味着 DEVICE_NAME 按语言分裂）；
+     * - 第 2 条钉住"规范值与显示字段同源"：表里那条 ZH 与常量必须一模一样，
+     *   漂移就说明有人把其中一处改了而另一处没跟上（同一个缺陷形状见
+     *   [focusTargetsAreStoredAsCanonicalTextAndLocalizedOnlyAtRender] 的"两个出处必须一模一样"）；
+     * - 第 3 条钉住英文态确实给出英文标签，且认不出的输入原样透传（历史行不会被吞）。
+     */
+    @Test
+    fun settingsDeviceNameFallbackStaysCanonical() {
+        assertEquals("家长设备", CanonicalParentSettingsText.DEVICE_NAME_FALLBACK)
+        assertEquals(
+            CanonicalParentSettingsText.DEVICE_NAME_FALLBACK,
+            AppStringsZh.settings.deviceNameFallbackLabel,
+            "规范值与显示字段不同源：中文态那一格就会显示另一个串",
+        )
+        assertEquals("Parent device", AppStringsEn.settings.deviceNameFallbackLabel)
+        assertEquals(
+            "Parent device",
+            AppStringsEn.settings.deviceNameDisplayLabel(CanonicalParentSettingsText.DEVICE_NAME_FALLBACK),
+        )
+        assertEquals("some phone", AppStringsEn.settings.deviceNameDisplayLabel("some phone"))
+    }
+
+    /**
+     * 本页 emoji 全部在表内（Ruling 17 / Task 5 那条约定的整页版）：21 条静态 + 3 条函数型出场，
+     * 两侧行首 emoji 必须同一枚。页面若拼 `"🔒 ${strings.x}"` 就等于把文案放回页面代码。
+     */
+    @Test
+    fun emojiStaysInsideTheSettingsTable() {
+        val zh = AppStringsZh.settings
+        val en = AppStringsEn.settings
+        listOf(
+            zh.languageTitle to en.languageTitle,
+            zh.pageTitle to en.pageTitle,
+            zh.passwordCardTitle to en.passwordCardTitle,
+            zh.weeklyReportTitle to en.weeklyReportTitle,
+            zh.weeklyReportOnMessage to en.weeklyReportOnMessage,
+            zh.backupCardTitle to en.backupCardTitle,
+            zh.backupSuccessMessage to en.backupSuccessMessage,
+            zh.restoreSuccessMessage to en.restoreSuccessMessage,
+            zh.remoteControlTitle to en.remoteControlTitle,
+            zh.pushStepNote to en.pushStepNote,
+            zh.viewStepNote to en.viewStepNote,
+            zh.transportNote to en.transportNote,
+            zh.pushSettingsButton to en.pushSettingsButton,
+            zh.viewProgressButton to en.viewProgressButton,
+            zh.settingsExportedMessage to en.settingsExportedMessage,
+            zh.progressImportedMessage to en.progressImportedMessage,
+            zh.progressPointsLabel to en.progressPointsLabel,
+            zh.progressStreakLabel to en.progressStreakLabel,
+            zh.progressFocusLabel to en.progressFocusLabel,
+            zh.progressCheckinLabel to en.progressCheckinLabel,
+            zh.progressMistakesLabel to en.progressMistakesLabel,
+            zh.progressTodayCheckinLabel to en.progressTodayCheckinLabel,
+            zh.backupFailureMessage("x") to en.backupFailureMessage("x"),
+            zh.restoreFailureMessage("x") to en.restoreFailureMessage("x"),
+            zh.progressCardTitle("Phone") to en.progressCardTitle("Phone"),
+        ).forEach { (chinese, english) ->
+            assertEquals(
+                chinese.substringBefore(' '), english.substringBefore(' '),
+                "家长设置页行首 emoji 应两表一致：$chinese / $english",
+            )
         }
     }
 }

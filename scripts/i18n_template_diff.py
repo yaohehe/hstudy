@@ -96,7 +96,9 @@ DISCLOSED_RESIDUALS = [
     {
         "page": "%s分" % VALUE, "table": None,
         "reason": "Task 7b Ruling 20 例外②：durationChip 的单位实参来自 CommonStrings.minuteLabel，"
-                  "表侧那条 `$minutes$unit` 塌成 %s%s、不含汉字因此不入集合（见 PomodoroStrings 类注释）"
+                  "表侧那条 `$minutes$unit` 塌成 %s%s、不含汉字因此不入集合（见 PomodoroStrings 类注释）。"
+                  "Task 11 复用同一条登记：ParentSettingsScreen.kt:275 的 `${cp.totalFocusMinutes}分` "
+                  "走 SettingsStrings.progressFocusMinutesValue(n, common.minuteLabel)"
                   % (VALUE, VALUE),
     },
     {
@@ -114,7 +116,9 @@ DISCLOSED_RESIDUALS = [
     # Task 7b 第 1 轮审查第 8 条：三条通用按钮词从 FocusStrings 上收到 CommonStrings，
     # 中文值逐字节不变，但本命令的表组只有 Pomodoro/Focus 两张表，所以只登记页面侧。
     {"page": "取消", "table": None,
-     "reason": "审查第 8 条：上收为 CommonStrings.cancelButton（值未变，出处换了）"},
+     "reason": "审查第 8 条：上收为 CommonStrings.cancelButton（值未变，出处换了）。"
+               "Task 11 复用同一条登记：ParentSettingsScreen.kt:192 与 :431 两处都取 common.cancelButton，"
+               "本命令的表组没有 CommonStrings 所以只登记页面侧"},
     {"page": "确认", "table": None,
      "reason": "审查第 8 条：上收为 CommonStrings.confirmButton（值未变，出处换了）"},
     {"page": "删除", "table": None,
@@ -150,6 +154,25 @@ DISCLOSED_RESIDUALS = [
                "ParentDashboardStrings.scoreUnit 是 :142 `${childScore.total}分` 的评分单位槽，"
                "页面写成 `strings.scoreValue(total, strings.scoreUnit)`，"
                "数值位与单位位塌成 `⟨$⟩⟨$⟩`（无汉字、不入页面集合），所以只有表侧有这一条"},
+    # ---- Task 11（家长设置页剩余 64 条）----
+    # 页面侧只有一条 `⟨$⟩分`（:275 `${cp.totalFocusMinutes}分`，单位来自 CommonStrings.minuteLabel），
+    # 与上面 Task 7b 例外②同形，因此由那条登记复用；`取消`（:192 / :431）复用上面审查第 8 条那条。
+    # 其余 62 条 strict 层逐字节相同、0 条 missing。
+    # 下面五条是**只有表侧**的：语言分区那 6 个字段是 Task 5 为该功能**新写**的文案
+    # （`git show 767711d` 的 ParentSettingsScreen 里根本没有语言分区，所以页面侧没有原文可比），
+    # 由 Task 11 首次把这张表带进本命令时才暴露。`languageEn` = "English" 不含汉字、不入集合，
+    # 所以新写的是 6 个字段里的这 5 条。理由同时写在 SettingsStrings.kt 类注释"新写而非搬来的五条"。
+    {"page": None, "table": "🌐 语言",
+     "reason": "Task 5 新写文案（迁移前该页没有语言分区，无页面原文可比）：SettingsStringsZh.languageTitle"},
+    {"page": None, "table": "跟随系统",
+     "reason": "Task 5 新写文案（同上）：SettingsStringsZh.languageSystem"},
+    {"page": None, "table": "中文",
+     "reason": "Task 5 新写文案 + 自称词（Ruling 6：两种 locale 下同值，见 EN_TABLE_ENDONYMS）："
+               "SettingsStringsZh.languageZh"},
+    {"page": None, "table": "选择界面显示语言，立即生效。",
+     "reason": "Task 5 新写文案（同上）：SettingsStringsZh.languageNote"},
+    {"page": None, "table": "部分页面仍在适配英文，会暂时保持中文显示。",
+     "reason": "Task 5 新写文案（同上，且只在英文态渲染，spec §7）：SettingsStringsZh.partialTranslationNote"},
 ]
 
 

@@ -20,7 +20,15 @@ package com.hstudy.app.i18n
  *   两侧词形由同一条测试钉住；见下面"确定 / 确认"那段。）
  * - **进来一条**：`:299` 的 `"家长设备"` 是**落库值**、不进文案表（见下面"存储边界"那一段），
  *   但英文态要有它的显示名，于是本表多出一个纯显示字段 [deviceNameFallbackLabel]。
- *   一进一出，64 - 1 + 1 = 64 个新字段（其中 10 个函数型）。
+ *   一进一出，64 - 1 + 1 = 64 个新字段（其中 11 个函数型：10 条来自插值清单 +
+ *   [deviceNameDisplayLabel] 这条"渲染期映射"）。
+ *
+ * **新写而非搬来的五条**（Task 5，`scripts/i18n_template_diff.py` 的表侧单边登记）：
+ * [languageTitle] / [languageSystem] / [languageZh] / [languageNote] / [partialTranslationNote]
+ * 这五条中文在本页**迁移前的原文里不存在**——`git show 767711d` 的那份 ParentSettingsScreen 还没有
+ * 语言分区，Task 5 是为这个新功能新写的文案，因此"表侧整串能在页面原文里找到"这条等价命题
+ * 对这五条不成立。它们由 DISCLOSED_RESIDUALS 里五条**表侧单边**登记点名（[languageEn] = "English"
+ * 不含汉字，本来就不入集合），逐字节等价的证据只对本页 62 条迁移位点成立。
  *
  * ZH 六条的措辞与该页既有分区一致：标题是名词短语（对照"🔒 家长密码"/"💾 数据备份与恢复"），
  * 说明句用陈述句 + 句号收尾（对照"定期备份孩子的学习数据……时可恢复。"）。
@@ -29,7 +37,7 @@ package com.hstudy.app.i18n
  * 该页既有四个标题的字面量本来就含 emoji，Task 11 是整串迁移的；页面若在代码里拼
  * "🌐 + 表值"，就等于在页面代码里新增一条 UI 文案，与既有约定分叉。
  * 由 StringsCopyTest.sectionTitleCarriesItsEmojiInsideTheTable 与
- * `emojiStaysInsideTheSettingsTable` 钉住（后者穷举本页 16 条带 emoji 的文案）。
+ * `emojiStaysInsideTheSettingsTable` 钉住（后者穷举本页 22 条带 emoji 的静态文案与 3 条函数型出场）。
  *
  * [partialTranslationNote] 只在**英文态**渲染（spec §7），中文态下页面不显示这一行。
  * ZH 侧的值仍然保留：两份表必须字段对齐（data class 的构造是编译期成对的），Task 11 之后
@@ -407,7 +415,7 @@ val SettingsStringsEn = SettingsStrings(
     deviceNameFallbackLabel = "Parent device",
     // 存储的是规范中文（见 CanonicalParentSettingsText），这里只在渲染时换英文标签；
     // 认不出来的输入原样返回 —— 父级自己起的设备名，以及本分支测试期已写入的英文行。
-    // 字面量与上面 deviceNameFallbackLabel 是同一词的 two 出处，与 PomodoroStrings.targetLabel
+    // 字面量与上面 deviceNameFallbackLabel 是同一个词的两处出处，与 PomodoroStrings.targetLabel
     // 那一族同形；两侧必须一模一样，由 StringsCopyTest.settingsDeviceNameFallbackStaysCanonical 钉住。
     deviceNameDisplayLabel = { stored ->
         if (stored == CanonicalParentSettingsText.DEVICE_NAME_FALLBACK) "Parent device" else stored
