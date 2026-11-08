@@ -2066,8 +2066,10 @@ class StringsCopyTest {
      *   `"已保存设备名称：$name"`；
      * - [SettingsStrings.progressCardTitle] 的实参是**孩子设备名**（来自对方设备的数据），
      *   英文态那条把中文数据原样念出来是**已知上限**，进 Task 12 人工清单，不是本表写错。
-     * 四条失败消息的 `null` 分支都单独钉了一条：迁移前 `${it.message}` 在 message 为 null 时
-     * 渲染 "null"，改成实参位之后必须还是 "null"，否则就是改了文案。
+     * 四条失败消息（[SettingsStrings.childProgressImportFailedMessage] / [backupFailureMessage] /
+     * [restoreFailureMessage] / [exportFailedMessage]）的 `null` 分支**中英各钉一条、共 8 条**：
+     * 迁移前 `${it.message}` 在 message 为 null 时渲染 "null"，改成实参位之后必须还是 "null"，
+     * 否则就是改了文案（例如顺手写成 `${detail ?: ""}`，中文态会念出"备份失败："这个半截句子）。
      */
     @Test
     fun settingsInterpolatedCopyPinsBothLanguages() {
@@ -2082,12 +2084,17 @@ class StringsCopyTest {
         assertEquals("❌ 备份失败：disk full", zh.backupFailureMessage("disk full"))
         assertEquals("❌ 备份失败：null", zh.backupFailureMessage(null))
         assertEquals("❌ Backup failed: disk full", en.backupFailureMessage("disk full"))
+        assertEquals("❌ Backup failed: null", en.backupFailureMessage(null))
 
         assertEquals("❌ 恢复失败：disk full", zh.restoreFailureMessage("disk full"))
+        assertEquals("❌ 恢复失败：null", zh.restoreFailureMessage(null))
         assertEquals("❌ Restore failed: disk full", en.restoreFailureMessage("disk full"))
+        assertEquals("❌ Restore failed: null", en.restoreFailureMessage(null))
 
         assertEquals("导出失败：文件已损坏", zh.exportFailedMessage("文件已损坏"))
+        assertEquals("导出失败：null", zh.exportFailedMessage(null))
         assertEquals("Export failed: file is broken", en.exportFailedMessage("file is broken"))
+        assertEquals("Export failed: null", en.exportFailedMessage(null))
 
         assertEquals("📊 妈妈的平板的学习进度", zh.progressCardTitle("妈妈的平板"))
         assertEquals("📊 Study progress from Mom's tablet", en.progressCardTitle("Mom's tablet"))
@@ -2147,9 +2154,19 @@ class StringsCopyTest {
         assertEquals("0", en.completionsValue(0))
         assertEquals("1", en.todayCheckinsValue(1))
         assertEquals("3", en.todayCheckinsValue(3))
-        // 中文侧那两枚量词绝不能被误接成分钟单位（同形风险与 `分` 同源）
+        // 中文侧那两枚量词绝不能被误接成分钟单位（同形风险与 `分` 同源）：钉的是**量词字符本身**，
+        // 不是"整串 != min"那种在纯数字英文侧恒真的比较（上一轮那条就是这种近真空断言）。
         assertNotEquals(zh.completionsValue(3), zh.progressFocusMinutesValue(3, AppStringsZh.common.minuteLabel))
-        assertNotEquals(en.completionsValue(3), "min")
+        assertEquals('次', zh.completionsValue(3).last())
+        assertEquals('个', zh.todayCheckinsValue(3).last())
+        assertNotEquals(zh.completionsValue(3).last(), AppStringsZh.common.minuteLabel.single())
+        assertNotEquals(zh.todayCheckinsValue(3).last(), AppStringsZh.common.minuteLabel.single())
+        // 英文侧是**纯数字**：0..12 穷举，任何补出来的单位词（min / times / items）都会在这里点名红，
+        // 未穷举的那些数也一并覆盖，不再依赖"上面那四条恰好写过 12 / 0 / 1 / 3"。
+        (0..12).forEach { n ->
+            assertEquals(n.toString(), en.completionsValue(n), "英文 completions 位只能是纯数字：$n")
+            assertEquals(n.toString(), en.todayCheckinsValue(n), "英文 todayCheckins 位只能是纯数字：$n")
+        }
     }
 
     /**
@@ -2269,8 +2286,9 @@ class StringsCopyTest {
     }
 
     /**
-     * 本页 emoji 全部在表内（Ruling 17 / Task 5 那条约定的整页版）：21 条静态 + 3 条函数型出场，
-     * 两侧行首 emoji 必须同一枚。页面若拼 `"🔒 ${strings.x}"` 就等于把文案放回页面代码。
+     * 本页 emoji 全部在表内（Ruling 17 / Task 5 那条约定的整页版）：**22** 条静态 + 3 条函数型出场
+     * （下面那个 `listOf` 共 25 对，逐对数过），两侧行首 emoji 必须同一枚。
+     * 页面若拼 `"🔒 ${strings.x}"` 就等于把文案放回页面代码。
      */
     @Test
     fun emojiStaysInsideTheSettingsTable() {
