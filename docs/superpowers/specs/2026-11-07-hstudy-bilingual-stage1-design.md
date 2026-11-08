@@ -147,6 +147,11 @@ UserPreferences.appLanguage (Flow)  +  systemLanguageTag()
 | 我是家长 / 我是孩子 | **I'm the parent / I'm the learner** | 用户选定 learner，避免 kid 的低龄感，且与 parent 对称 |
 | 学习积分奖励（品牌行） | **Study Points & Rewards** | 实测 `RoleSelectScreen.kt:75` |
 | 好习惯，看得见 | **Build visible habits** | 实测 `RoleSelectScreen.kt:83`，允许按英文语序重组，不逐字硬译 |
+| 任务难度三档（普通 / 进阶 / 挑战） | **Normal / Advanced / Challenge** | Task 9 实测需要；`ChildHomeScreen.kt:249` 与 `data/local/entity/TaskEntity.kt:50-54 difficultyName()`。"进阶"与任务分类"提升"（**Basic / Advanced** 那一行）在英文里同名 Advanced：两者都是"更高的那一档"，但分属**难度轴**与**分类轴**，字段名不同（`difficultyAdvancedLevel` vs `filterEnhancement`），不要合并成一个字段 |
+| 先难后易（吃青蛙原则） | **Hard ones first** | Task 9 实测需要；`ChildHomeScreen.kt:258`，代码变量 `hardTasksNotDone`。逐字硬译 "hard first, easy later" 英文里没有这种说法，注释里的"吃青蛙"也不该进界面 |
+| 学习表现评分的单位「分」 | **pts** | Task 9 实测需要；`ChildHomeScreen.kt:290` 紧跟 `${learningScore.total}` 的 0–100 评分单位。**不是**积分：与"积分 = Points"必须分开译，否则英文态把一次评分念成 87 积分（同形异义，见 `ChildHomeStrings` 类注释与 `childHomeScoreUnitIsNotPoints`） |
+| 心愿存钱罐 | **Wish Pool** | Task 9 实测需要；`ChildHomeScreen.kt:646` 的入口名与"许愿池"是同一个功能（同一路由 `Screen.ChildWishGoal`），沿用本表既有词条，不开第三个名字。与 Reward Store 并列出现时各自带一句说明（本表下方规则） |
+| 效率报表 | **Efficiency report** | Task 9 实测需要；`ChildHomeScreen.kt:643`，代码 `ChildEfficiencyReportScreen`。与"周报 = Weekly Report"分属两个入口，不可互换 |
 
 **Wish Pool 的配套文案规则**（该词在英文里不常见，需靠句子把语义撑起来）
 - 首次进入许愿池页面时，副标题必须用一句解释性英文，例如 `Spend your points on wishes you set yourself.`
