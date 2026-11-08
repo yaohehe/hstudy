@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.DailyPlanEntity
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -25,6 +26,7 @@ fun ChildDailyPlanScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.focus
     val scope = rememberCoroutineScope()
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     val plans by app.focusRepository.getPlansByDate(today).collectAsState(initial = emptyList())
@@ -37,7 +39,7 @@ fun ChildDailyPlanScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "📋 今日计划",
+                title = strings.dailyPlanTitle,
                 onNavigateBack = onNavigateBack,
                 actions = {
                     Text("${completedCount}/${plans.size}", style = MaterialTheme.typography.labelMedium,
@@ -47,7 +49,7 @@ fun ChildDailyPlanScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "添加计划")
+                Icon(Icons.Filled.Add, contentDescription = strings.addPlanDescription)
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -60,7 +62,7 @@ fun ChildDailyPlanScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("📅", style = MaterialTheme.typography.displayLarge)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("还没有今日计划，点击下方 + 添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.dailyPlanEmptyHint, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
@@ -104,7 +106,7 @@ fun ChildDailyPlanScreen(
                         )
                     )
                     showAddDialog = false
-                    snackbarHostState.showSnackbar("✅ 计划已添加")
+                    snackbarHostState.showSnackbar(strings.planAddedSnackbar)
                 }
             }
         )
@@ -117,6 +119,7 @@ private fun PlanCard(
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = LocalStrings.current.focus
     val bgColor = if (plan.isCompleted)
         MaterialTheme.colorScheme.secondaryContainer
     else
@@ -132,10 +135,10 @@ private fun PlanCard(
         ) {
             IconButton(onClick = onToggle) {
                 if (plan.isCompleted) {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = "已完成",
+                    Icon(Icons.Filled.CheckCircle, contentDescription = strings.planCompletedDescription,
                         tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(28.dp))
                 } else {
-                    Icon(Icons.Filled.RadioButtonUnchecked, contentDescription = "未完成", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Filled.RadioButtonUnchecked, contentDescription = strings.planUncompletedDescription, modifier = Modifier.size(28.dp))
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -152,7 +155,7 @@ private fun PlanCard(
                 )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Filled.Delete, contentDescription = strings.deletePlanDescription, tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -164,6 +167,7 @@ private fun AddPlanDialog(
     onDismiss: () -> Unit,
     onAdd: (String, Int, Int, Int, Int) -> Unit
 ) {
+    val strings = LocalStrings.current.focus
     var title by remember { mutableStateOf("") }
     var startHour by remember { mutableIntStateOf(8) }
     var startMinute by remember { mutableIntStateOf(0) }
@@ -172,21 +176,21 @@ private fun AddPlanDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("📋 添加学习计划") },
+        title = { Text(strings.addPlanDialogTitle) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title, onValueChange = { title = it },
-                    label = { Text("学习内容") }, singleLine = true,
+                    label = { Text(strings.planSubjectLabel) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("时间段", style = MaterialTheme.typography.labelLarge)
+                Text(strings.planTimeRangeLabel, style = MaterialTheme.typography.labelLarge)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TimePickerField("开始", startHour, startMinute) { h, m -> startHour = h; startMinute = m }
+                    TimePickerField(strings.planStartLabel, startHour, startMinute) { h, m -> startHour = h; startMinute = m }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("~")
                     Spacer(modifier = Modifier.width(8.dp))
-                    TimePickerField("结束", endHour, endMinute) { h, m -> endHour = h; endMinute = m }
+                    TimePickerField(strings.planEndLabel, endHour, endMinute) { h, m -> endHour = h; endMinute = m }
                 }
             }
         },
@@ -194,9 +198,9 @@ private fun AddPlanDialog(
             Button(
                 onClick = { if (title.isNotBlank()) onAdd(title, startHour, startMinute, endHour, endMinute) },
                 enabled = title.isNotBlank()
-            ) { Text("添加") }
+            ) { Text(strings.addPlanButton) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancelButton) } }
     )
 }
 

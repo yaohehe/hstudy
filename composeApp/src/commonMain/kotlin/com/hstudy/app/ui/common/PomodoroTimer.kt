@@ -46,6 +46,7 @@ fun PomodoroTimer(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current.pomodoro
+    val currentStrings by rememberUpdatedState(strings)
     var state by remember { mutableStateOf(PomodoroState.IDLE) }
     var remainingSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
     var totalSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
@@ -101,8 +102,8 @@ fun PomodoroTimer(
                     val min = remainingSeconds / 60
                     val sec = remainingSeconds % 60
                     Platform.feedback.showRunningNotification(
-                        title = if (state == PomodoroState.BREAK) strings.phaseBreak else strings.phaseFocus,
-                        text = strings.remainTime(min, sec),
+                        title = if (state == PomodoroState.BREAK) currentStrings.phaseBreak else currentStrings.phaseFocus,
+                        text = currentStrings.remainTime(min, sec),
                         progressPercent = if (totalSeconds > 0) (totalSeconds - remainingSeconds) * 100 / totalSeconds else 0
                     )
                 }

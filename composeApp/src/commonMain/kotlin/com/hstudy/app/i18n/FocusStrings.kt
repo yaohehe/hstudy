@@ -1,20 +1,25 @@
 package com.hstudy.app.i18n
 
 /**
- * 专注页两屏文案表（Task 7）：`ui/focus/ChildFocusStatsScreen.kt`（迁移前 17 条去重字面量）+
+ * 专注页四屏文案表：Task 7 的两屏 `ui/focus/ChildFocusStatsScreen.kt`（迁移前 17 条去重字面量）+
  * `ui/focus/ChildFocusTrainingScreen.kt`（16 条，另有 1 处"注意力热身"在迁移前第 22 行的 KDoc 块注释里，
- * 按 Ruling 18 不是可迁移文案、留在注释里）。
+ * 按 Ruling 18 不是可迁移文案、留在注释里）；Task 7b 再加两屏 `ui/focus/ChildMemoryTrainingScreen.kt`
+ * （17 条）与 `ui/focus/ChildDailyPlanScreen.kt`（14 条），**按 Ruling 23 不再为页面文案新建第三张表**。
  *
  * 两屏合用一张表，因为 `🎯 专注力训练` 在两页各出现一次且同值同义（统计页的分区标题 /
  * 训练页的顶栏标题）——拆成两个字段就会有两个英文值可以互相漂移。于是
  * 33 条去重字面量 → **31 个字段**（另 `${todayMinutes}分钟` 与 `${totalMinutes}分钟`
  * 是同一个 [minutesStatValue] 的两个使用点）。
+ * Task 7b 的 31 条 → **30 个新字段**（少的一条是 `🚀 开始训练`：记忆子页第 82 行与舒尔特页第 148 行
+ * 同值同义，**复用 [startTrainingButton]** 而不是再造一个）。
  *
- * 11 条函数型字段：设计文档 §3 规定带参数文案存函数而不是 `{0}` 模板（中英语序不同）。
+ * 17 条函数型字段（Task 7 的 11 条 + Task 7b 记忆子页的 6 条）：设计文档 §3 规定带参数文案存函数而不是 `{0}` 模板（中英语序不同）。
  * 它们进不了 `StringsCopyTest.englishTableContainsNoChineseLeftovers`（data class `toString()`
  * 打印的是 lambda 对象本身，不含返回值），所以每个都由
- * `StringsCopyTest.focusInterpolatedCopyPinsBothLanguages` 用**逐字打出来的期望串**双语钉死（Ruling 20-b），
- * 单复数另见 `pomodoroAndFocusEnglishPluralsCoverOneAndOther`。
+ * `StringsCopyTest.focusInterpolatedCopyPinsBothLanguages`（Task 7 的 11 条）或
+ * `StringsCopyTest.memoryTrainingInterpolatedCopyPinsBothLanguages`（Task 7b 的 6 条）
+ * 用**逐字打出来的期望串**双语钉死（Ruling 20-b），
+ * 单复数另见 `pomodoroAndFocusEnglishPluralsCoverOneAndOther` 与 `task7bEnglishPluralsCoverOneAndOther`。
  *
  * **时长单位字段刻意有四个几乎同形的**（[minutesStatValue] `45分钟` / [recordMinutesValue] `45 分钟` /
  * [secondsStatValue] `12.3秒` / [elapsedValue] `37.5 秒`）：源文件里空格位置本来就不同，
@@ -23,12 +28,23 @@ package com.hstudy.app.i18n
  * 顺带一句实现细节：`${minutes}分钟` 必须带花括号、`$minutes 分钟` 可以不带，取决于中文前面
  * 有没有空格——别把这两种写法"统一"成同一种，那会改变输出（空格就是要钉住的东西）。
  *
- * **`分` / `秒` 在这里全是时长，不是积分**（裁定 1）：本页没有任何字段调用 [pointsWord]，
- * 英文用不随单复数变化的缩写 min / hr / s（与 [CommonStrings] 的 `minuteLabel = "min"`、
- * `hourLabel = "hr"` 同源，且这些是 StatCard 里 `titleMedium` 的紧凑数值位）。
- * 唯一提到积分的是 [dailyPracticeHint]（`还能赚积分～`）——"积分"在那里是名词不是单位、不接数值，
- * 所以同样不需要复数函数。这条事实由
- * `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 钉住。
+ * **`分` / `秒` 在本表按 occurrence 说，不按整表说**（裁定 1；Task 7 时这里写的是"本表没有任何字段
+ * 调用 [pointsWord]"，**那句话从 Task 7b 起对本表不再成立**）：
+ * · 时长一侧：[minutesStatValue] / [recordMinutesValue] / [hoursStatValue] / [secondsStatValue] /
+ *   [elapsedValue] / [personalBestValue] 六条全是时长、不接 [pointsWord]，
+ *   英文用不随单复数变化的缩写 min / hr / s（与 [CommonStrings] 的 `minuteLabel = "min"`、
+ *   `hourLabel = "hr"` 同源，且这些是 StatCard 里 `titleMedium` 的紧凑数值位）；
+ * · 积分名词一侧：[dailyPracticeHint]（`还能赚积分～`）里"积分"是名词、不接数值，所以不需要复数函数；
+ * · **积分单位一侧（Task 7b 新增，本表第一处）**：[memorySuccessLine] 的 `+${points}分`
+ *   （记忆子页第 106 行）同一句里既有"记住 N 位数字"（位数）又有"+N 分"（积分），
+ *   所以做成 `(level, points)` 两个实参、英文词形只能出自 [pointsWord]，
+ *   页面两处都传同一个 `level`（迁移前就是同一个变量）。这一条由
+ *   `StringsCopyTest.pointsAndMinutesSharingOneLineUseSeparateSlots` 与
+ *   `StringsCopyTest.pomodoroAndFocusMinuteUnitsAreMinutesNotPoints` 一起钉住
+ *   （后者的字段清单已随本次扩到这一条）。
+ * 记忆子页的 `位数字` 英文写成不带分支的 "digits"，因为页面可达取值最小是 3
+ * （`level` 初值 3，`回到 ${level - 1} 位` 那把按钮要求 `level > 3`）；若以后放开下限，
+ * 按 [Plurals.kt] 的约定去那里加一个同样窄的 digitsWord，而不是写 `plural(n, word)` 泛化模板。
  *
  * **非 1:1 改动全清单（Ruling 20 四条全部满足，逐条点名披露）** —— 形态只有一种：
  * **数值表达式从字符串模板内部挪到实参位**，Task 7 一共 **7 处**：本表 6 处 + [PomodoroStrings] 的
@@ -56,6 +72,20 @@ package com.hstudy.app.i18n
  *    `strings.deepBreathCount((breathCycle + 1).coerceAtMost(totalBreathCycles), totalBreathCycles)`
  *    （`第 `、`/`、` 次深呼吸`）
  *
+ * **Task 7b 在本表新增的非 1:1 位点（3 处，形态仍是"表达式挪到实参位"，逐条点名）**：
+ * 8. [memoryChallengeButton]：`"挑战 ${level + 1} 位 →"` → `strings.memoryChallengeButton(level + 1)`
+ *    （`挑战 `、` 位 →`；加法表达式从模板内部挪到实参位，与上面第 7 条同形）
+ * 9. [memoryStepBackButton]：`"回到 ${level - 1} 位"` → `strings.memoryStepBackButton(level - 1)`
+ *    （`回到 `、` 位`；同上）
+ * 10. [memorySuccessLine]：`"🎉 太棒了！记住了 $level 位数字！+${level}分"` →
+ *     `strings.memorySuccessLine(level, level)`。迁移前同一句里两个槽位都由同一个 `level` 填，
+ *     迁移后表内把它们做成两个**具名实参** `level`（位数）与 `points`（积分），页面仍传同一个变量：
+ *     目的是让"位数"与"积分"在结构上分槽（裁定 1），英文的 `+N points` 才能唯一出自 [pointsWord]。
+ *     （`🎉 太棒了！记住了 `、` 位数字！+`、`分`）
+ * 宿主页 `ui/focus/ChildPomodoroScreen.kt` 的 4 处（todayFocusSummary/overHoursNote 拆分、
+ * durationChip 的单位来自另一张表、pointsPerFocusRule 的两个数字、goldenHourLabel 加 `@Composable`）
+ * 列在 [PomodoroStrings] 的类注释里——**两张表的清单合起来才是本次的完整清单**。
+ *
  * 四条自查：(a) 挪动的每个 token 都是文案（单位、分隔符、`·`、语序）；
  * (b) 中文态输出逐字节相同，由 [focusInterpolatedCopyPinsBothLanguages] 等字面量断言 +
  * `scripts/i18n_template_diff.py` 证明，不是口头论证；
@@ -64,18 +94,46 @@ package com.hstudy.app.i18n
  * locale 相关的数字格式，若把 `%.1f` 写进语言表就等于开了那个口子。
  * 反过来，**不算例外**的插值位点是"模板里本来就是一个普通变量"那一类（brief 自己给的形态）：
  * [totalSessionsLine]（原 `🎯 累计训练 $trainingCount 次`）、[sessionsStatValue]（原 `${trainingCount}次`）、
- * [PomodoroStrings.breakOverSummary]、[PomodoroStrings.nextTargetLabel]（原 `下一个要点：$nextExpected`）、
+ * [PomodoroStrings.breakOverSummary]、[nextTargetLabel]（原 `下一个要点：$nextExpected`，本表字段，
+ *  Task 7 的这行注释当时把它写成了 `PomodoroStrings.nextTargetLabel`，是个失效的文档链接，本次顺手改对）、
  * [PomodoroStrings.remainTime] —— 变量本来就在实参位上算好了，只是搬进表里，属于 1:1 等价替换。
+ * Task 7b 里属于这一类的还有 [memoryBestLine] / [memoryReadyLine] / [memoryInputPrompt]
+ * （实参分别是页面上已有的 `bestLevel` / `level`）与宿主页的 [PomodoroStrings.completedPomodorosLine] /
+ * [PomodoroStrings.focusRecordDescription] / [PomodoroStrings.focusDoneSnackbar] /
+ * [PomodoroStrings.goldenHourNowNote] / [PomodoroStrings.goldenHourGeneralNote]。
+ *
+ * **复用而不复制的同形/同义位点（Task 7b 第二件事）**：
+ * · 记忆子页第 82 行 `🚀 开始训练` == 舒尔特页第 148 行 → 复用 [startTrainingButton]，不新增字段；
+ * · 宿主页两处 `${min}分` → 一个 [PomodoroStrings.durationChip]，且单位取自
+ *   [CommonStrings.minuteLabel]（本表与 [PomodoroStrings] 都不开第三个 `分` 字段）；
+ * · **没有**为记忆子页另造一个"专注力训练"标题字段：训练子页的标题类文案在本表只有
+ *   [trainingTitle]（`🎯 专注力训练`）与 [schulteTitle]（`舒尔特方格`）两个出处，
+ *   记忆子页的 `🧠 记忆广度训练` 是**另一种训练**（工作记忆，不是选择性注意），
+ *   与那两个字段不同值也不同义，所以做成新字段 [memoryTitle] 而不是复用（复用会把两种训练混成一个名字）；
+ *   宿主页那两个入口按钮（`🎯 专注力训练·舒尔特方格（专注前热身）` /
+ *   `🧠 记忆广度训练·数字记忆（练工作记忆）`）在 [PomodoroStrings.schulteEntryButton] /
+ *   [PomodoroStrings.memoryEntryButton]，是**整句 CTA**、不是这两个标题字段的同义复制：
+ *   把它们写成 `trainingTitle + "·" + schulteTitle + "（专注前热身）"` 才会真的越界——
+ *   `·` 与 `（…）` 是文案 token，必须留在表里，而且行首 🎯 已经在 [trainingTitle] 内、拼不出第二份。
+ *   Task 7 的 [trainingBlurb] 早就是同一种做法（整句里出现"舒尔特方格"和"数字记忆"，没有反查 schulteTitle）。
  *
  * 行首 emoji 归文案表（Ruling 17）：`📊`、`🎯`、`🏆`、`🎉` 在中文原文里就贴在文案上，
- * 英文同位置保留；[emptyRecordsHint] 的 🍅 在句尾，两边都在句尾。由
+ * 英文同位置保留；[emptyRecordsHint] 的 🍅 在句尾，两边都在句尾。Task 7b 的两屏同样照搬：
+ * [memoryTitle] 🧠、[memoryMissPrompt] 😊、[memoryRetryButton] 🔄、[dailyPlanTitle] 📋、
+ * [planAddedSnackbar] ✅、[addPlanDialogTitle] 📋，函数型的 [memoryBestLine] 🏆 /
+ * [memorySuccessLine] 🎉 也在表内；**行中没有 emoji 的那几条**（[memoryHeading]、[memoryPracticeAgainButton]、
+ * [planSubjectLabel] 等）中文原文就没有，英文也不补。由
  * `StringsCopyTest.emojiStaysInsideThePomodoroAndFocusTables` 钉住。
  * 统计页记录行右侧的 `"${data.totalMinutes}m"` 与 `Text("📅")` 不含中文、英文态也已成立，
- * 与 [CommonStrings]（Task 6）保留 `Text("⭐")` 的既有做法一致，留在页面里未动。
+ * 与 [CommonStrings]（Task 6）保留 `Text("⭐")` 的既有做法一致，留在页面里未动；
+ * 每日计划页的 `Text("${completedCount}/${plans.size}")`、`Text("~")`、`Text("📅")`、
+ * `Text("$label ")`（TimePickerField 的单位后置空格）同一道理，不含中文、留在页面。
  *
  * 术语按设计文档 §11：专注 = Focus、番茄钟 = Pomodoro、积分 = Points；
  * 新增：舒尔特方格 = Schulte grid、专注力训练 = Focus training、个人最佳 = Personal best
- * （已补进 §11 术语表）。
+ * （已补进 §11 术语表）。Task 7b 新用的四个词也已同批补进 §11：
+ * 记忆广度 = memory span、工作记忆 = working memory、黄金专注时段 = golden focus window、
+ * 每日计划/今日计划 = today's plan。
  */
 data class FocusStrings(
     val statsTitle: String,
@@ -109,6 +167,41 @@ data class FocusStrings(
     val startTrainingButton: String,
     val nextTargetLabel: (next: Int) -> String,
     val trainingDoneSnackbar: (seconds: String) -> String,
+
+    // ===== ui/focus/ChildMemoryTrainingScreen.kt（Task 7b 记忆广度子页，17 条 → 16 个字段）=====
+    // 少的那一条是 `🚀 开始训练`：与舒尔特页第 148 行同值同义，复用已有的 [startTrainingButton]。
+    val memoryTitle: String,
+    val memoryHeading: String,
+    val memoryHowTo: String,
+    val memoryBestLine: (level: Int) -> String,
+    val memoryReadyLine: (level: Int) -> String,
+    val memoryShowPrompt: String,
+    val memoryWatchHint: String,
+    val memoryInputPrompt: (level: Int) -> String,
+    val memoryConfirmButton: String,
+    val memorySuccessLine: (level: Int, points: Int) -> String,
+    val memoryChallengeButton: (level: Int) -> String,
+    val memoryPracticeAgainButton: String,
+    val memoryMissPrompt: String,
+    val memoryEncourageHint: String,
+    val memoryRetryButton: String,
+    val memoryStepBackButton: (level: Int) -> String,
+
+    // ===== ui/focus/ChildDailyPlanScreen.kt（Task 7b 每日计划子页，14 条 → 14 个字段，全非函数型）=====
+    val dailyPlanTitle: String,
+    val addPlanDescription: String,
+    val dailyPlanEmptyHint: String,
+    val planAddedSnackbar: String,
+    val planCompletedDescription: String,
+    val planUncompletedDescription: String,
+    val deletePlanDescription: String,
+    val addPlanDialogTitle: String,
+    val planSubjectLabel: String,
+    val planTimeRangeLabel: String,
+    val planStartLabel: String,
+    val planEndLabel: String,
+    val addPlanButton: String,
+    val cancelButton: String,
 )
 
 val FocusStringsZh = FocusStrings(
@@ -143,6 +236,40 @@ val FocusStringsZh = FocusStrings(
     startTrainingButton = "🚀 开始训练",
     nextTargetLabel = { next -> "下一个要点：$next" },
     trainingDoneSnackbar = { seconds -> "🎯 训练完成！用时${seconds}秒，注意力提升了！" },
+
+    // ===== ui/focus/ChildMemoryTrainingScreen.kt（Task 7b）：逐字来自该页迁移前的对应行 =====
+    memoryTitle = "🧠 记忆广度训练",                                       // :59
+    memoryHeading = "数字记忆广度",                                        // :67
+    memoryHowTo = "记住闪现的数字串，凭记忆输出来，训练工作记忆",              // :68
+    memoryBestLine = { level -> "🏆 本次最佳：记住 $level 位数字" },         // :73
+    memoryReadyLine = { level -> "准备好了吗？从 $level 位数字开始！" },      // :81
+    memoryShowPrompt = "集中注意力，记住这些数字：",                          // :85
+    memoryWatchHint = "认真看…",                                          // :88
+    memoryInputPrompt = { level -> "数字是什么？凭记忆输入（$level 位）：" },  // :92
+    memoryConfirmButton = "确认",                                          // :102
+    memorySuccessLine = { level, points -> "🎉 太棒了！记住了 $level 位数字！+${points}分" }, // :106
+    memoryChallengeButton = { level -> "挑战 $level 位 →" },                // :110（页面传 level + 1）
+    memoryPracticeAgainButton = "再练一次",                                 // :111
+    memoryMissPrompt = "😊 没关系！正确答案是：",                            // :114
+    memoryEncourageHint = "多练几次，记忆力会越来越强！",                     // :117
+    memoryRetryButton = "🔄 再试一次",                                     // :120
+    memoryStepBackButton = { level -> "回到 $level 位" },                   // :122（页面传 level - 1）
+
+    // ===== ui/focus/ChildDailyPlanScreen.kt（Task 7b）=====
+    dailyPlanTitle = "📋 今日计划",                                        // :40
+    addPlanDescription = "添加计划",                                       // :50（FAB 的 contentDescription）
+    dailyPlanEmptyHint = "还没有今日计划，点击下方 + 添加",                   // :63
+    planAddedSnackbar = "✅ 计划已添加",                                    // :107
+    planCompletedDescription = "已完成",                                   // :135
+    planUncompletedDescription = "未完成",                                  // :138
+    deletePlanDescription = "删除",                                        // :155
+    addPlanDialogTitle = "📋 添加学习计划",                                  // :175
+    planSubjectLabel = "学习内容",                                          // :180
+    planTimeRangeLabel = "时间段",                                          // :183
+    planStartLabel = "开始",                                               // :185
+    planEndLabel = "结束",                                                 // :189
+    addPlanButton = "添加",                                                // :197
+    cancelButton = "取消",                                                 // :199
 )
 
 val FocusStringsEn = FocusStrings(
@@ -180,4 +307,43 @@ val FocusStringsEn = FocusStrings(
     startTrainingButton = "🚀 Start training",
     nextTargetLabel = { next -> "Next, tap $next" },
     trainingDoneSnackbar = { seconds -> "🎯 Training done in $seconds s — your attention is warmed up!" },
+
+    // ===== ui/focus/ChildMemoryTrainingScreen.kt（Task 7b）=====
+    // "位数字" 的最小真实取值是 3（level 初值 3，"回到 N 位" 按钮要求 level > 3），
+    // 所以英文 "digits" 不带 one/other 分支；可达性论证见类注释，若以后放开下限要在 Plurals.kt 加窄函数。
+    memoryTitle = "🧠 Memory span training",
+    memoryHeading = "Digit memory span",
+    memoryHowTo = "Watch the digits while they flash, then type them back from memory — " +
+        "this trains your working memory.",
+    memoryBestLine = { level -> "🏆 Best this round: $level digits remembered" },
+    memoryReadyLine = { level -> "Ready? Let's start with $level digits!" },
+    memoryShowPrompt = "Concentrate and remember these digits:",
+    memoryWatchHint = "Watch closely…",
+    memoryInputPrompt = { level -> "What were the digits? Type them from memory ($level digits):" },
+    memoryConfirmButton = "Check",
+    memorySuccessLine = { level, points ->
+        "🎉 Amazing! You remembered $level digits — +$points ${pointsWord(points)}"
+    },
+    memoryChallengeButton = { level -> "Try $level digits →" },
+    memoryPracticeAgainButton = "Practice again",
+    memoryMissPrompt = "😊 That's okay! The answer was:",
+    memoryEncourageHint = "Practice a few more times and your memory keeps getting stronger!",
+    memoryRetryButton = "🔄 Try once more",
+    memoryStepBackButton = { level -> "Back to $level digits" },
+
+    // ===== ui/focus/ChildDailyPlanScreen.kt（Task 7b）=====
+    dailyPlanTitle = "📋 Today's plan",
+    addPlanDescription = "Add plan",
+    dailyPlanEmptyHint = "No plan for today yet — tap the + below to add one",
+    planAddedSnackbar = "✅ Plan added",
+    planCompletedDescription = "Done",
+    planUncompletedDescription = "Not done",
+    deletePlanDescription = "Delete",
+    addPlanDialogTitle = "📋 Add a study plan",
+    planSubjectLabel = "What to study",
+    planTimeRangeLabel = "Time range",
+    planStartLabel = "Start",
+    planEndLabel = "End",
+    addPlanButton = "Add",
+    cancelButton = "Cancel",
 )

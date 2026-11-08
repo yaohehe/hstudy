@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 
@@ -22,6 +23,8 @@ fun ChildPomodoroScreen(
     onNavigateToMemory: () -> Unit = {}
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.pomodoro
+    val common = LocalStrings.current.common
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -39,9 +42,9 @@ fun ChildPomodoroScreen(
 
     // 专注目标：让专注更有目的性（靶向专注）
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
-    val presetTargets = listOf("自由学习", "复习错题", "预习新课", "完成作业")
+    val presetTargets = listOf(strings.targetFreeStudy, strings.targetReviewMistakes, strings.targetPreviewLesson, strings.targetFinishHomework)
     val allTargets = presetTargets + tasks.map { it.title }
-    var focusTarget by remember { mutableStateOf("自由学习") }
+    var focusTarget by remember { mutableStateOf(strings.targetFreeStudy) }
     var targetExpanded by remember { mutableStateOf(false) }
 
     // 黄金专注时段：根据历史专注数据找出效率最高的时段，引导把难题安排在最佳时间
@@ -59,7 +62,7 @@ fun ChildPomodoroScreen(
 
     Scaffold(
         topBar = {
-            HStudyTopBar(title = "🍅 番茄钟", onNavigateBack = onNavigateBack)
+            HStudyTopBar(title = strings.pageTitle, onNavigateBack = onNavigateBack)
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -77,7 +80,7 @@ fun ChildPomodoroScreen(
                     modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("🎯 本次专注目标", style = MaterialTheme.typography.labelLarge)
+                    Text(strings.targetHeading, style = MaterialTheme.typography.labelLarge)
                     Spacer(modifier = Modifier.height(6.dp))
                     ExposedDropdownMenuBox(
                         expanded = targetExpanded,
@@ -117,8 +120,8 @@ fun ChildPomodoroScreen(
                         )
                     ) {
                         Text(
-                            if (isGoldenNow) "🌟 现在正是你的黄金专注时段（$goldenLabel），效率最高，抓紧专注！"
-                            else "💡 你的黄金专注时段是 $goldenLabel，那时专注效率最高哦～",
+                            if (isGoldenNow) strings.goldenHourNowNote(goldenLabel)
+                            else strings.goldenHourGeneralNote(goldenLabel),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = if (isGoldenNow) FontWeight.Bold else FontWeight.Normal,
                             color = if (isGoldenNow) MaterialTheme.colorScheme.onTertiaryContainer
@@ -142,14 +145,14 @@ fun ChildPomodoroScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    "今日已专注 $todayFocusMin 分钟${if (todayFocusMin >= 60) "（超${todayFocusMin / 60}小时）" else ""}",
+                                    strings.todayFocusSummary(todayFocusMin, if (todayFocusMin >= 60) strings.overHoursNote(todayFocusMin / 60) else ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 if (todayPomodoroCount > 0) {
                                     Text(
-                                        "完成 $todayPomodoroCount 个番茄钟 🍅×$todayPomodoroCount",
+                                        strings.completedPomodorosLine(todayPomodoroCount),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
@@ -171,11 +174,11 @@ fun ChildPomodoroScreen(
                             val points = minutes / 5
                             app.focusRepository.recordFocusSession(minutes, focusTarget, 0)
                             if (points > 0) {
-                                app.pointApprovalRepository.submitApproval("FOCUS_COMPLETE", "专注「$focusTarget」${minutes}分钟", points)
+                                app.pointApprovalRepository.submitApproval("FOCUS_COMPLETE", strings.focusRecordDescription(focusTarget, minutes), points)
                             }
                             app.userPreferences.boostPetMood(3)
                             app.userPreferences.incrementPomodoroTodayCount()
-                            snackbarHostState.showSnackbar("🍅 「$focusTarget」专注完成！+${points}分已提交家长审核")
+                            snackbarHostState.showSnackbar(strings.focusDoneSnackbar(focusTarget, points))
                         }
                     }
                 )
@@ -187,14 +190,14 @@ fun ChildPomodoroScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("专注:", style = MaterialTheme.typography.labelLarge,
+                    Text(strings.focusLengthLabel, style = MaterialTheme.typography.labelLarge,
                         color = if (isTimerActive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                     listOf(15, 25, 30, 45).forEach { min ->
                         FilterChip(
                             selected = focusMinutes == min,
                             onClick = { if (!isTimerActive) focusMinutes = min },
                             enabled = !isTimerActive,
-                            label = { Text("${min}分") }
+                            label = { Text(strings.durationChip(min, common.minuteLabel)) }
                         )
                     }
                 }
@@ -202,19 +205,19 @@ fun ChildPomodoroScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("休息:", style = MaterialTheme.typography.labelLarge,
+                    Text(strings.breakLengthLabel, style = MaterialTheme.typography.labelLarge,
                         color = if (isTimerActive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                     listOf(3, 5, 10).forEach { min ->
                         FilterChip(
                             selected = breakMinutes == min,
                             onClick = { if (!isTimerActive) breakMinutes = min },
                             enabled = !isTimerActive,
-                            label = { Text("${min}分") }
+                            label = { Text(strings.durationChip(min, common.minuteLabel)) }
                         )
                     }
                 }
                 if (isTimerActive) {
-                    Text("⏱️ 计时中，时长设置已锁定", style = MaterialTheme.typography.labelSmall,
+                    Text(strings.lengthLockedNote, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
@@ -223,9 +226,9 @@ fun ChildPomodoroScreen(
                     modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("🧘 专注前呼吸引导", style = MaterialTheme.typography.bodySmall)
+                    Text(strings.breathingSwitchTitle, style = MaterialTheme.typography.bodySmall)
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(if (skipBreathing) "已跳过" else "开启", style = MaterialTheme.typography.labelSmall,
+                    Text(if (skipBreathing) strings.breathingStateSkipped else strings.breathingStateOn, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Switch(
                         checked = !skipBreathing,
@@ -242,19 +245,19 @@ fun ChildPomodoroScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("💡 积分规则", style = MaterialTheme.typography.titleSmall)
-                        Text("每专注 5 分钟 = +1 分（所有时长均有效）", style = MaterialTheme.typography.bodySmall)
-                        Text("15分钟+3分 · 25分钟+5分 · 30分钟+6分 · 45分钟+9分", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                        Text("息屏后仍会继续计时，放心锁屏专注！", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(strings.pointsRulesTitle, style = MaterialTheme.typography.titleSmall)
+                        Text(strings.pointsPerFocusRule(5, 1), style = MaterialTheme.typography.bodySmall)
+                        Text(strings.pointsLadderNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text(strings.lockScreenNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 // 专注力训练入口（专注前热身）
                 OutlinedButton(onClick = onNavigateToTraining) {
-                    Text("🎯 专注力训练·舒尔特方格（专注前热身）")
+                    Text(strings.schulteEntryButton)
                 }
                 OutlinedButton(onClick = onNavigateToMemory) {
-                    Text("🧠 记忆广度训练·数字记忆（练工作记忆）")
+                    Text(strings.memoryEntryButton)
                 }
             }
         }
@@ -262,14 +265,16 @@ fun ChildPomodoroScreen(
 }
 
 /** 将小时（0-23）转为友好的时段描述 */
+@Composable
 private fun goldenHourLabel(hour: Int): String {
+    val strings = LocalStrings.current.pomodoro
     val period = when (hour) {
-        in 5..8 -> "早上"
-        in 9..11 -> "上午"
-        in 12..13 -> "中午"
-        in 14..17 -> "下午"
-        in 18..22 -> "晚上"
-        else -> "深夜"
+        in 5..8 -> strings.goldenPeriodEarlyMorning
+        in 9..11 -> strings.goldenPeriodMorning
+        in 12..13 -> strings.goldenPeriodMidday
+        in 14..17 -> strings.goldenPeriodAfternoon
+        in 18..22 -> strings.goldenPeriodEvening
+        else -> strings.goldenPeriodLateNight
     }
-    return "$period${hour}点"
+    return strings.goldenPeriodHour(period, hour)
 }

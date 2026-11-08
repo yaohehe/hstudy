@@ -10,6 +10,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
     val app = AppGraph
+    val strings = LocalStrings.current.focus
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -56,7 +58,7 @@ fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
     }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🧠 记忆广度训练", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.memoryTitle, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -64,13 +66,13 @@ fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("数字记忆广度", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("记住闪现的数字串，凭记忆输出来，训练工作记忆",
+            Text(strings.memoryHeading, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(strings.memoryHowTo,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center)
 
             if (bestLevel > 0) {
-                Text("🏆 本次最佳：记住 $bestLevel 位数字", style = MaterialTheme.typography.bodySmall,
+                Text(strings.memoryBestLine(bestLevel), style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
             }
 
@@ -78,18 +80,18 @@ fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
 
             when (phase) {
                 "idle" -> {
-                    Text("准备好了吗？从 $level 位数字开始！", style = MaterialTheme.typography.bodyMedium)
-                    Button(onClick = { startRound(level) }) { Text("🚀 开始训练") }
+                    Text(strings.memoryReadyLine(level), style = MaterialTheme.typography.bodyMedium)
+                    Button(onClick = { startRound(level) }) { Text(strings.startTrainingButton) }
                 }
                 "showing" -> {
-                    Text("集中注意力，记住这些数字：", style = MaterialTheme.typography.bodyMedium)
+                    Text(strings.memoryShowPrompt, style = MaterialTheme.typography.bodyMedium)
                     Text(sequence, fontSize = 44.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary, letterSpacing = 8.sp)
-                    Text("认真看…", style = MaterialTheme.typography.bodySmall,
+                    Text(strings.memoryWatchHint, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 "input" -> {
-                    Text("数字是什么？凭记忆输入（$level 位）：", style = MaterialTheme.typography.bodyMedium)
+                    Text(strings.memoryInputPrompt(level), style = MaterialTheme.typography.bodyMedium)
                     OutlinedTextField(
                         value = userInput,
                         onValueChange = { userInput = it.filter { c -> c.isDigit() }.take(level) },
@@ -99,27 +101,27 @@ fun ChildMemoryTrainingScreen(onNavigateBack: () -> Unit) {
                             fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
                         )
                     )
-                    Button(onClick = { checkAnswer() }, enabled = userInput.length == level) { Text("确认") }
+                    Button(onClick = { checkAnswer() }, enabled = userInput.length == level) { Text(strings.memoryConfirmButton) }
                 }
                 "result" -> {
                     if (lastCorrect) {
-                        Text("🎉 太棒了！记住了 $level 位数字！+${level}分",
+                        Text(strings.memorySuccessLine(level, level),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary)
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = { startRound(level + 1) }) { Text("挑战 ${level + 1} 位 →") }
-                            OutlinedButton(onClick = { startRound(level) }) { Text("再练一次") }
+                            Button(onClick = { startRound(level + 1) }) { Text(strings.memoryChallengeButton(level + 1)) }
+                            OutlinedButton(onClick = { startRound(level) }) { Text(strings.memoryPracticeAgainButton) }
                         }
                     } else {
-                        Text("😊 没关系！正确答案是：", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.memoryMissPrompt, style = MaterialTheme.typography.bodyMedium)
                         Text(sequence, fontSize = 36.sp, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.tertiary, letterSpacing = 6.sp)
-                        Text("多练几次，记忆力会越来越强！", style = MaterialTheme.typography.bodySmall,
+                        Text(strings.memoryEncourageHint, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = { startRound(level) }) { Text("🔄 再试一次") }
+                            Button(onClick = { startRound(level) }) { Text(strings.memoryRetryButton) }
                             if (level > 3) {
-                                OutlinedButton(onClick = { startRound(level - 1) }) { Text("回到 ${level - 1} 位") }
+                                OutlinedButton(onClick = { startRound(level - 1) }) { Text(strings.memoryStepBackButton(level - 1)) }
                             }
                         }
                     }

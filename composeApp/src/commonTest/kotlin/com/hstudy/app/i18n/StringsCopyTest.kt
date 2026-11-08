@@ -530,16 +530,18 @@ class StringsCopyTest {
     }
 
     /**
-     * 同形异义单位（裁定 1 在本页的落点）：`分` 在番茄钟/专注页**只表示分钟，一处也不是积分**。
+     * 同形异义单位（裁定 1）：**这个事实按"字段"说，不按"表"说**。
+     *
+     * Task 7 时这一条写的是"番茄钟表里没有积分单位"，那句话**只对 `common/PomodoroTimer.kt`
+     * 那 31 条成立**；Task 7b 把宿主页面 `ui/focus/ChildPomodoroScreen.kt` 迁进同一张表之后，
+     * 表里就同时有了两种 `分`（`每专注 5 分钟 = +1 分` 那一行是两种含义同行），
+     * 所以整表 `toString()` 式的绝对断言在这里必然是假的，改成**逐字段点名**：
+     * · 时长字段的英文只能是 min / hr / s，出现 points 就是把分钟译成了积分；
+     * · 积分字段的英文词形只能出自 [pointsWord]，见 [pointsAndMinutesSharingOneLineUseSeparateSlots]。
      *
      * 与 Task 6 的反例对照：CommonComponents 里 `"分"` 既做积分单位又做分钟标签，所以那里必须拆
-     * `pointsUnit` / `minuteLabel` 并靠字面量钉死；本页的 `分` 全部出现在时长里
-     * （`剩余 N分M秒`、`N分钟`、`N 分钟`），因此**没有任何字段调用 [pointsWord]**，
-     * 英文一律用不随单复数变化的缩写 min / hr / s（与 CommonStringsEn.minuteLabel = "min" 同源）。
-     *
-     * 唯一提到积分的字段是 [FocusStrings.dailyPracticeHint]（`还能赚积分～`）：那里"积分"是名词
-     * 而不是单位，不接数值，所以同样不需要 [pointsWord]。本测试把这个事实也钉住：
-     * 两表里 "point" 只允许出现在这一条里，出现别处即说明有人把分钟改成了积分。
+     * `pointsUnit` / `minuteLabel` 并靠字面量钉死；本表的时长字段没有一个接 [pointsWord]，
+     * 英文一律用不随单复数变化的缩写 min / hr / s（与 [CommonStringsEn.minuteLabel] = "min" 同源）。
      */
     @Test
     fun pomodoroAndFocusMinuteUnitsAreMinutesNotPoints() {
@@ -551,31 +553,44 @@ class StringsCopyTest {
         assertEquals("2小时", AppStringsZh.focus.hoursStatValue(2))
         assertEquals("2 hr", AppStringsEn.focus.hoursStatValue(2))
         assertEquals("60秒", AppStringsZh.focus.secondsStatValue("60"))
+        // 组件本体（Task 7 的 31 条）里没有积分单位，逐条点名而不是扫整表 toString()
         assertFalse(
-            AppStringsZh.pomodoro.toString().contains("积分"),
-            "番茄钟表里不该出现积分单位：这里的 分 全是分钟",
+            AppStringsZh.pomodoro.remainTime(45, 30).contains("积分") ||
+                AppStringsZh.pomodoro.phaseFocus.contains("积分") ||
+                AppStringsZh.pomodoro.cheerEveryMinute.contains("积分") ||
+                AppStringsZh.pomodoro.tipDrinkWater.contains("积分"),
+            "组件文案里不该出现积分单位：PomodoroTimer 的 分 全是分钟",
         )
-        assertFalse(
-            AppStringsEn.pomodoro.toString().contains(pointsWord(2)),
-            "番茄钟表（英文）不该出现 points：分 在本页只表示分钟",
-        )
-        val focusEnUnits = listOf(
+        val durationEnOutputs = listOf(
+            AppStringsEn.pomodoro.remainTime(30, 30),
             AppStringsEn.focus.minutesStatValue(30),
             AppStringsEn.focus.recordMinutesValue(30),
             AppStringsEn.focus.hoursStatValue(5),
             AppStringsEn.focus.secondsStatValue("12.3"),
             AppStringsEn.focus.elapsedValue("12.3"),
             AppStringsEn.focus.personalBestValue("12.3"),
+            // Task 7b 宿主页新增的三条时长渲染
+            AppStringsEn.pomodoro.durationChip(45, AppStringsEn.common.minuteLabel),
+            AppStringsEn.pomodoro.overHoursNote(2),
+            AppStringsEn.pomodoro.todayFocusSummary(45, ""),
         )
         assertTrue(
-            focusEnUnits.none { it.contains(pointsWord(2)) },
-            "专注页的时长字段英文必须用 min/hr/s，不得混进 points：$focusEnUnits",
+            durationEnOutputs.none { it.contains(pointsWord(2)) },
+            "时长字段的英文必须用 min/hr/s，不得混进 points：$durationEnOutputs",
         )
-        assertTrue(
-            AppStringsEn.focus.dailyPracticeHint.contains("points"),
-            "本页只有 dailyPracticeHint（还能赚积分～）该提到 points，实际：" +
-                AppStringsEn.focus.dailyPracticeHint,
-        )
+        // 提到 points 的字段是穷举出来的，不是"整表只允许一条"：Task 7 一条 + Task 7b 四条
+        listOf(
+            AppStringsEn.focus.dailyPracticeHint,
+            AppStringsEn.pomodoro.focusDoneSnackbar("Free study", 5),
+            AppStringsEn.pomodoro.pointsPerFocusRule(5, 1),
+            AppStringsEn.pomodoro.pointsLadderNote,
+            AppStringsEn.focus.memorySuccessLine(3, 3),
+        ).forEach {
+            assertTrue(it.contains("point"), "本该提到积分的字段丢了 points：$it")
+        }
+        // 组件本体里唯一含"水分"的一处与单位无关，别把它当漏译的单位字段改
+        assertEquals("💧 喝杯水，补充水分", AppStringsZh.pomodoro.tipDrinkWater)
+        assertEquals("💧 Have a glass of water", AppStringsEn.pomodoro.tipDrinkWater)
     }
 
     /**
@@ -607,6 +622,14 @@ class StringsCopyTest {
             zh.tipStretch to en.tipStretch,
             zh.tipListenMusic to en.tipListenMusic,
             zh.breakCardTitle to en.breakCardTitle,
+            // Task 7b 宿主页面（ui/focus/ChildPomodoroScreen.kt）新增的字段
+            zh.pageTitle to en.pageTitle,
+            zh.targetHeading to en.targetHeading,
+            zh.lengthLockedNote to en.lengthLockedNote,
+            zh.breathingSwitchTitle to en.breathingSwitchTitle,
+            zh.pointsRulesTitle to en.pointsRulesTitle,
+            zh.schulteEntryButton to en.schulteEntryButton,
+            zh.memoryEntryButton to en.memoryEntryButton,
         )
         pairs.forEach { (chinese, english) ->
             assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "行首 emoji 应两表一致")
@@ -626,6 +649,13 @@ class StringsCopyTest {
             focusZh.newRecordBanner to focusEn.newRecordBanner,
             focusZh.tryAgainButton to focusEn.tryAgainButton,
             focusZh.startTrainingButton to focusEn.startTrainingButton,
+            // Task 7b 记忆子页 + 每日计划子页
+            focusZh.memoryTitle to focusEn.memoryTitle,
+            focusZh.memoryMissPrompt to focusEn.memoryMissPrompt,
+            focusZh.memoryRetryButton to focusEn.memoryRetryButton,
+            focusZh.dailyPlanTitle to focusEn.dailyPlanTitle,
+            focusZh.planAddedSnackbar to focusEn.planAddedSnackbar,
+            focusZh.addPlanDialogTitle to focusEn.addPlanDialogTitle,
         ).forEach { (chinese, english) ->
             assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "行首 emoji 应两表一致")
         }
@@ -633,6 +663,307 @@ class StringsCopyTest {
             AppStringsEn.focus.emptyRecordsHint.endsWith("🍅"),
             "空状态提示的 🍅 留在句尾（与中文态同位置），实际：${AppStringsEn.focus.emptyRecordsHint}",
         )
+        // 函数型字段的行首 emoji 同样在表内（Ruling 17 对 lambda 字段的落点，整表扫描看不见它们）
+        listOf(
+            AppStringsZh.pomodoro.goldenHourNowNote("早上8点") to AppStringsEn.pomodoro.goldenHourNowNote("8:00"),
+            AppStringsZh.pomodoro.goldenHourGeneralNote("早上8点") to AppStringsEn.pomodoro.goldenHourGeneralNote("8:00"),
+            AppStringsZh.pomodoro.focusDoneSnackbar("自由学习", 5) to AppStringsEn.pomodoro.focusDoneSnackbar("Free study", 5),
+            AppStringsZh.focus.memoryBestLine(3) to AppStringsEn.focus.memoryBestLine(3),
+        ).forEach { (chinese, english) ->
+            assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "lambda 的行首 emoji 应两表一致")
+        }
+    }
+
+    /**
+     * 番茄钟宿主页面（Task 7b，`ui/focus/ChildPomodoroScreen.kt`）漏译守卫。
+     *
+     * 清单：去重 32 条字面量 → **33 个新字段**，其中 10 个函数型（见
+     * [pomodoroPageInterpolatedCopyPinsBothLanguages]），本清单只穷举其余 23 个 String 字段。
+     * 32 → 33 的差额来自两处反向修正，都不是"多写一条"：
+     * · `自由学习` 出现两处（预设项列表 + `focusTarget` 初值）、`${min}分` 出现两处（专注 chips /
+     *   休息 chips），同值同义各**共用一个字段**（-2）；
+     * · 第 145 行 `今日已专注 $todayFocusMin 分钟${if (…超N小时…)}` 一条字面量落成
+     *   [PomodoroStrings.todayFocusSummary] + [PomodoroStrings.overHoursNote] 两个字段（+1），
+     *   见该字段的 Ruling 20 披露。
+     *
+     * `已跳过` / `开启` 与 `专注:` / `休息:` 各自成对，是同一控件的两种状态/两个轴，
+     * 没有同形异义风险（`分` 的同形异义处理在 [durationChipReusesTheCommonMinuteLabel]）。
+     */
+    @Test
+    fun pomodoroPageCopyDiffers() {
+        val zh = AppStringsZh.pomodoro
+        val en = AppStringsEn.pomodoro
+        assertDiffers(
+            zh.pageTitle to en.pageTitle,
+            zh.targetFreeStudy to en.targetFreeStudy,
+            zh.targetReviewMistakes to en.targetReviewMistakes,
+            zh.targetPreviewLesson to en.targetPreviewLesson,
+            zh.targetFinishHomework to en.targetFinishHomework,
+            zh.targetHeading to en.targetHeading,
+            zh.focusLengthLabel to en.focusLengthLabel,
+            zh.breakLengthLabel to en.breakLengthLabel,
+            zh.lengthLockedNote to en.lengthLockedNote,
+            zh.breathingSwitchTitle to en.breathingSwitchTitle,
+            zh.breathingStateSkipped to en.breathingStateSkipped,
+            zh.breathingStateOn to en.breathingStateOn,
+            zh.pointsRulesTitle to en.pointsRulesTitle,
+            zh.pointsLadderNote to en.pointsLadderNote,
+            zh.lockScreenNote to en.lockScreenNote,
+            zh.schulteEntryButton to en.schulteEntryButton,
+            zh.memoryEntryButton to en.memoryEntryButton,
+            zh.goldenPeriodEarlyMorning to en.goldenPeriodEarlyMorning,
+            zh.goldenPeriodMorning to en.goldenPeriodMorning,
+            zh.goldenPeriodMidday to en.goldenPeriodMidday,
+            zh.goldenPeriodAfternoon to en.goldenPeriodAfternoon,
+            zh.goldenPeriodEvening to en.goldenPeriodEvening,
+            zh.goldenPeriodLateNight to en.goldenPeriodLateNight,
+        )
+    }
+
+    /**
+     * 番茄钟宿主页 10 条函数型字段的双语字面量断言（Ruling 20-b）。
+     *
+     * 参数取页面真实传入的形状：`goldenLabel` 是 [PomodoroStrings.goldenPeriodHour] 的产物
+     * （中文态 `早上8点`、英文态 `Early morning · 8:00`），`todayFocusSummary` 的第二实参是
+     * [PomodoroStrings.overHoursNote] 的产物或空串（`else ""` 那条分支同样是设备真实输出），
+     * `durationChip` 的单位实参就是页面从 [CommonStrings.minuteLabel] 取到的那一个值。
+     */
+    @Test
+    fun pomodoroPageInterpolatedCopyPinsBothLanguages() {
+        val zh = AppStringsZh.pomodoro
+        val en = AppStringsEn.pomodoro
+        assertEquals(
+            "🌟 现在正是你的黄金专注时段（早上8点），效率最高，抓紧专注！",
+            zh.goldenHourNowNote("早上8点"),
+        )
+        assertEquals(
+            "🌟 Right now is your golden focus window (Early morning · 8:00) — that's your best time, make it count!",
+            en.goldenHourNowNote("Early morning · 8:00"),
+        )
+        assertEquals("💡 你的黄金专注时段是 早上8点，那时专注效率最高哦～", zh.goldenHourGeneralNote("早上8点"))
+        assertEquals(
+            "💡 Your golden focus window is Early morning · 8:00 — that's when you focus best.",
+            en.goldenHourGeneralNote("Early morning · 8:00"),
+        )
+        // 第 145 行拆出来的两个字段：有注记 / 无注记两种都要钉（else "" 是真实分支）
+        assertEquals("（超2小时）", zh.overHoursNote(2))
+        assertEquals(" (over 2 hr)", en.overHoursNote(2))
+        assertEquals("今日已专注 90 分钟（超1小时）", zh.todayFocusSummary(90, zh.overHoursNote(1)))
+        assertEquals("You've focused 90 min today (over 1 hr)", en.todayFocusSummary(90, en.overHoursNote(1)))
+        assertEquals("今日已专注 25 分钟", zh.todayFocusSummary(25, ""))
+        assertEquals("You've focused 25 min today", en.todayFocusSummary(25, ""))
+        assertEquals("完成 3 个番茄钟 🍅×3", zh.completedPomodorosLine(3))
+        assertEquals("Completed 3 Pomodoros 🍅×3", en.completedPomodorosLine(3))
+        assertEquals("专注「自由学习」25分钟", zh.focusRecordDescription("自由学习", 25))
+        assertEquals("Focus on Free study for 25 min", en.focusRecordDescription("Free study", 25))
+        assertEquals("🍅 「自由学习」专注完成！+5分已提交家长审核", zh.focusDoneSnackbar("自由学习", 5))
+        assertEquals(
+            "🍅 Focus on 'Free study' done! +5 points sent for approval",
+            en.focusDoneSnackbar("Free study", 5),
+        )
+        assertEquals("15分", zh.durationChip(15, AppStringsZh.common.minuteLabel))
+        assertEquals("15 min", en.durationChip(15, AppStringsEn.common.minuteLabel))
+        assertEquals("每专注 5 分钟 = +1 分（所有时长均有效）", zh.pointsPerFocusRule(5, 1))
+        assertEquals("Every 5 min of focus = +1 point (every length counts)", en.pointsPerFocusRule(5, 1))
+        assertEquals("早上8点", zh.goldenPeriodHour("早上", 8))
+        assertEquals("Early morning · 8:00", en.goldenPeriodHour("Early morning", 8))
+    }
+
+    /**
+     * 数字记忆广度子页（Task 7b，`ui/focus/ChildMemoryTrainingScreen.kt`）漏译守卫：
+     * 去重 17 条 → 本表 16 个新字段（10 个 String 在本清单 + 6 个函数型见
+     * [memoryTrainingInterpolatedCopyPinsBothLanguages]）+ **复用 [FocusStrings.startTrainingButton]**
+     * 一条：第 82 行的 `🚀 开始训练` 与舒尔特页第 148 行同值同义，共用字段而不是再造一个。
+     */
+    @Test
+    fun memoryTrainingCopyDiffers() {
+        val zh = AppStringsZh.focus
+        val en = AppStringsEn.focus
+        assertDiffers(
+            zh.memoryTitle to en.memoryTitle,
+            zh.memoryHeading to en.memoryHeading,
+            zh.memoryHowTo to en.memoryHowTo,
+            zh.memoryShowPrompt to en.memoryShowPrompt,
+            zh.memoryWatchHint to en.memoryWatchHint,
+            zh.memoryConfirmButton to en.memoryConfirmButton,
+            zh.memoryPracticeAgainButton to en.memoryPracticeAgainButton,
+            zh.memoryMissPrompt to en.memoryMissPrompt,
+            zh.memoryEncourageHint to en.memoryEncourageHint,
+            zh.memoryRetryButton to en.memoryRetryButton,
+        )
+    }
+
+    /**
+     * 记忆子页 6 条函数型字段的双语字面量断言。
+     *
+     * 参数是页面上真实算好的值：`挑战 ${level + 1} 位` 传的是 `level + 1`、`回到 ${level - 1} 位`
+     * 传的是 `level - 1`（两处 Ruling 20 的"表达式挪到实参位"，与 Task 7 的 deepBreathCount 同形），
+     * 所以断言里的 4 和 3 就是设备上出现的数字，而不是把 `level` 又拼一遍。
+     */
+    @Test
+    fun memoryTrainingInterpolatedCopyPinsBothLanguages() {
+        val zh = AppStringsZh.focus
+        val en = AppStringsEn.focus
+        assertEquals("🏆 本次最佳：记住 5 位数字", zh.memoryBestLine(5))
+        assertEquals("🏆 Best this round: 5 digits remembered", en.memoryBestLine(5))
+        assertEquals("准备好了吗？从 3 位数字开始！", zh.memoryReadyLine(3))
+        assertEquals("Ready? Let's start with 3 digits!", en.memoryReadyLine(3))
+        assertEquals("数字是什么？凭记忆输入（4 位）：", zh.memoryInputPrompt(4))
+        assertEquals("What were the digits? Type them from memory (4 digits):", en.memoryInputPrompt(4))
+        assertEquals("🎉 太棒了！记住了 3 位数字！+3分", zh.memorySuccessLine(3, 3))
+        assertEquals("🎉 Amazing! You remembered 3 digits — +3 points", en.memorySuccessLine(3, 3))
+        assertEquals("挑战 4 位 →", zh.memoryChallengeButton(4))
+        assertEquals("Try 4 digits →", en.memoryChallengeButton(4))
+        assertEquals("回到 3 位", zh.memoryStepBackButton(3))
+        assertEquals("Back to 3 digits", en.memoryStepBackButton(3))
+    }
+
+    /**
+     * 每日计划子页（Task 7b，`ui/focus/ChildDailyPlanScreen.kt`）漏译守卫：14 条字面量 → 14 个字段，
+     * 全是非函数型（清单里插值 0 条）。落在 [FocusStrings] 而不是新造第三张表（Ruling 23）。
+     *
+     * `已完成` / `未完成` 是 `contentDescription`（读屏），与 Task 8 的
+     * [TaskListStrings.completedContentDescription]（`已完成(点击撤销)`）**不同值**，所以不能复用那条；
+     * `开始` / `结束` 是时分步进器的轴标签，与 [CommonStrings.hourLabel] / [minuteLabel] 无关
+     * （那两个是单位 `时` / `分`，这里是"Start"/"End"），同理不复用。
+     */
+    @Test
+    fun dailyPlanCopyDiffers() {
+        val zh = AppStringsZh.focus
+        val en = AppStringsEn.focus
+        assertDiffers(
+            zh.dailyPlanTitle to en.dailyPlanTitle,
+            zh.addPlanDescription to en.addPlanDescription,
+            zh.dailyPlanEmptyHint to en.dailyPlanEmptyHint,
+            zh.planAddedSnackbar to en.planAddedSnackbar,
+            zh.planCompletedDescription to en.planCompletedDescription,
+            zh.planUncompletedDescription to en.planUncompletedDescription,
+            zh.deletePlanDescription to en.deletePlanDescription,
+            zh.addPlanDialogTitle to en.addPlanDialogTitle,
+            zh.planSubjectLabel to en.planSubjectLabel,
+            zh.planTimeRangeLabel to en.planTimeRangeLabel,
+            zh.planStartLabel to en.planStartLabel,
+            zh.planEndLabel to en.planEndLabel,
+            zh.addPlanButton to en.addPlanButton,
+            zh.cancelButton to en.cancelButton,
+        )
+    }
+
+    /**
+     * **同一行两种 `分`**（Task 7b 必须做对的第一件事，裁定 1 在本页的落点）。
+     *
+     * 宿主页第 246 行 `每专注 5 分钟 = +1 分（所有时长均有效）` 和第 247 行
+     * `15分钟+3分 · …`、记忆子页第 106 行 `记住了 $level 位数字！+${level}分`：
+     * 前者 `5 分钟` 是时长、`+1 分` 是积分。判错方向的渲染是 "Focus 5 points = +1 min"。
+     *
+     * 防错手段是**结构上的**，不是口头上的：[PomodoroStrings.pointsPerFocusRule] 把两个数值做成
+     * 两个**具名实参** `minutes` / `points`，积分词形只能由 `pointsWord(points)` 产生，
+     * 时长词形只能是 `分钟` / `min`，位置互换在类型上就写不出来。下面每个用例都**两条一起断言**
+     * （brief Step 5：同行双单位必须两条都断言），并另加一条 `points = 1` 的边界，
+     * 因为"1 分 = 1 point"正是这一行的实际取值。
+     */
+    @Test
+    fun pointsAndMinutesSharingOneLineUseSeparateSlots() {
+        val zh = AppStringsZh.pomodoro
+        val en = AppStringsEn.pomodoro
+        // 第 246 行：时长槽 + 积分槽
+        assertEquals("每专注 5 分钟 = +1 分（所有时长均有效）", zh.pointsPerFocusRule(5, 1))
+        assertEquals("Every 5 min of focus = +1 point (every length counts)", en.pointsPerFocusRule(5, 1))
+        // 同一个字段的边界取值：积分 1 用单数、时长 1 仍用 min（缩写不随单复数变化，§11）
+        assertEquals("每专注 1 分钟 = +1 分（所有时长均有效）", zh.pointsPerFocusRule(1, 1))
+        assertEquals("Every 1 min of focus = +1 point (every length counts)", en.pointsPerFocusRule(1, 1))
+        assertFalse(en.pointsPerFocusRule(5, 1).contains("min = +1 min"), "积分槽被写成了时长槽")
+        // 第 247 行：四个"时长+积分"对，中文一个字段照抄，英文每处积分词形都出自 pointsWord
+        assertEquals("15分钟+3分 · 25分钟+5分 · 30分钟+6分 · 45分钟+9分", zh.pointsLadderNote)
+        assertEquals(
+            "15 min +3 points · 25 min +5 points · 30 min +6 points · 45 min +9 points",
+            en.pointsLadderNote,
+        )
+        // 记忆子页第 106 行：`位数字` 是位数、`+N分` 是积分，两个实参在页面里同源（都是 level）
+        assertEquals("🎉 太棒了！记住了 6 位数字！+6分", AppStringsZh.focus.memorySuccessLine(6, 6))
+        assertEquals("🎉 Amazing! You remembered 6 digits — +6 points", AppStringsEn.focus.memorySuccessLine(6, 6))
+        assertEquals(
+            "🍅 「自由学习」专注完成！+1分已提交家长审核",
+            zh.focusDoneSnackbar("自由学习", 1),
+        )
+        assertEquals(
+            "🍅 Focus on 'Free study' done! +1 point sent for approval",
+            en.focusDoneSnackbar("Free study", 1),
+        )
+    }
+
+    /**
+     * 步进器/时长 chip 的 `分` **必须复用 [CommonStrings.minuteLabel]**（Task 7b 第二件事），
+     * 也就是全工程只有两个 `分` 字段：积分的 `pointsUnit` 与分钟的 `minuteLabel`，
+     * 宿主页不再开第三个（否则 Task 6+8 的字面量同形异义守卫就管不到这一处）。
+     *
+     * [PomodoroStrings.durationChip] 因此把单位做成实参，页面传 `common.minuteLabel` 进来：
+     * 中文 `15` + `分` = `15分`（与迁移前逐字节相同，中文模板里本来就没有空格），
+     * 英文 `15` + ` ` + `min`（空格在表里，不在页面里）。
+     *
+     * 两条英文断言合起来才抓得住互换错误：若有人把 `minuteLabel` 的英文改成 "points"，
+     * `durationChip` 会渲染出 "15 points"，第三条 assertFalse 立刻红；
+     * 若有人把 pointsUnit 改成 "min"，[commonUnitLabelsPinnedByLiteral] 那边红。
+     */
+    @Test
+    fun durationChipReusesTheCommonMinuteLabel() {
+        assertEquals("15分", AppStringsZh.pomodoro.durationChip(15, AppStringsZh.common.minuteLabel))
+        assertEquals("25分", AppStringsZh.pomodoro.durationChip(25, AppStringsZh.common.minuteLabel))
+        assertEquals("3分", AppStringsZh.pomodoro.durationChip(3, AppStringsZh.common.minuteLabel))
+        val chipFromMinuteLabel = AppStringsEn.pomodoro.durationChip(15, AppStringsEn.common.minuteLabel)
+        assertEquals("15 min", chipFromMinuteLabel)
+        assertFalse(
+            chipFromMinuteLabel.contains(AppStringsEn.common.pointsUnit),
+            "时长 chip 里出现了积分单位：单位实参必须来自 common.minuteLabel，不是 pointsUnit",
+        )
+        // 休息 chips 与专注 chips 共用同一个字段（同值同义），所以 3/5/10 与 15/25/30/45 走同一条渲染
+        assertEquals("5 min", AppStringsEn.pomodoro.durationChip(5, AppStringsEn.common.minuteLabel))
+    }
+
+    /**
+     * Task 7b 新增英文 one/other（spec §3 末句 + §8.3），并钉住中文没有单复数。
+     *
+     * 可达性逐条核过：`todayPomodoroCount` 首完成即 1（`Completed 1 Pomodoros` 是真会出现的错误）；
+     * `overHoursNote` 的 hours 在 60–119 分钟时是 1，但 `hr` 是 §11 定的缩写、不随数变化，
+     * 所以那条**不该**有 if —— 一并断言，防止有人"顺手加复数"（与 Task 7 的 min/hr/s 断言同一理由）。
+     * 记忆子页的"位数字"最小取值是 3（`level` 初值 3，`回到 N 位` 按钮要求 `level > 3`），
+     * 所以英文用不带分支的 "digits"；这条可达性写在 [FocusStrings.memoryBestLine] 的字段注释里，
+     * 若后续任务放开下限，需要在 `Plurals.kt` 加一个同样窄的 digitsWord（本任务禁止改那个文件）。
+     */
+    @Test
+    fun task7bEnglishPluralsCoverOneAndOther() {
+        assertEquals("完成 1 个番茄钟 🍅×1", AppStringsZh.pomodoro.completedPomodorosLine(1))
+        assertEquals("Completed 1 Pomodoro 🍅×1", AppStringsEn.pomodoro.completedPomodorosLine(1))
+        assertEquals("Completed 2 Pomodoros 🍅×2", AppStringsEn.pomodoro.completedPomodorosLine(2))
+        // 缩写单位没有单复数
+        assertEquals(" (over 1 hr)", AppStringsEn.pomodoro.overHoursNote(1))
+        assertEquals("（超1小时）", AppStringsZh.pomodoro.overHoursNote(1))
+        assertEquals("1 min", AppStringsEn.pomodoro.durationChip(1, AppStringsEn.common.minuteLabel))
+        assertEquals(
+            "Every 15 min of focus = +15 points (every length counts)",
+            AppStringsEn.pomodoro.pointsPerFocusRule(15, 15),
+        )
+        // 中文侧 1 与 15 同形，防止有人把英文的 if 复制回中文表
+        assertEquals("完成 15 个番茄钟 🍅×15", AppStringsZh.pomodoro.completedPomodorosLine(15))
+    }
+
+    /**
+     * Step 4 功能修正（`rememberUpdatedState`）的字面量证据。
+     *
+     * 改动本身在 `PomodoroTimer.kt` 的 `LaunchedEffect(state)` 里：把闭包捕获的 `strings` 换成
+     * `currentStrings`（key 仍是 `state`，计时循环不重启）。本文件不能测组合期行为（没有 Compose UI
+     * 测试依赖，spec §8 / Task 12 之前的约定），能被自动证明的是**这两条被通知使用的文案**在两种语言里
+     * 逐字是什么——`currentStrings` 与 `strings` 取的是同一个表实例，所以钉住表值就钉住了通知内容；
+     * 中文态输出逐字节不变（Ruling 20(b)）由第 1、2、3 条断言承担。
+     */
+    @Test
+    fun runningNotificationCopyIsPinnedInBothLanguages() {
+        assertEquals("🍅 专注中", AppStringsZh.pomodoro.phaseFocus)
+        assertEquals("☕ 休息中", AppStringsZh.pomodoro.phaseBreak)
+        assertEquals("剩余 8分20秒 · 息屏后仍会继续计时", AppStringsZh.pomodoro.remainTime(8, 20))
+        assertEquals("🍅 Focusing", AppStringsEn.pomodoro.phaseFocus)
+        assertEquals("☕ On a break", AppStringsEn.pomodoro.phaseBreak)
+        assertEquals("8 min 20 s left · Keeps counting with the screen off", AppStringsEn.pomodoro.remainTime(8, 20))
     }
 
     @Test
