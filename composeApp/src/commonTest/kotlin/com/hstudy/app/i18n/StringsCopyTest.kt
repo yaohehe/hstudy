@@ -66,6 +66,21 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "childHome.entryRewardStoreSubtitle",    // "Trade points for rewards"
     "childHome.entryWishBankSubtitle",       // "Save points toward a big wish"
     "childHome.earnPointsForRewardsNote",    // "Finish tasks, earn points, …"
+    // ---- Task 10 家长首页 / 数据看板新增 11 条（英文原文逐条留在行尾注释里）。
+    // 两页各有一类**不该**提积分的 `分`：parentDashboard.scoreUnit（评分 pts）与
+    // parentDashboard.focusMinutesValue / childPerformanceLine 里的分钟，见
+    // parentDashboardScoreUnitIsNotPoints 与 parentDashboardDurationUnitComesFromCommon。
+    "parentHome.menuTemplateTitle",           // "Points templates"（§11 积分 = Points，功能入口名）
+    "parentHome.menuPointsTitle",             // "Points management"
+    "parentHome.menuApprovalTitle",           // "Approve point requests"（§11 家长审核 = Approval）
+    "parentHome.menuApprovalSubtitle",        // "Review the point requests your child sent"
+    "parentHome.menuWeeklyReportSubtitle",    // "Weekly check-ins and points summary"（§11 周报 = Weekly Report）
+    "parentDashboard.totalPointsLabel",       // "Current total points"
+    "parentDashboard.comparePointsLabel",     // "⭐ Points earned"
+    "parentDashboard.trendTitle",             // "📈 Points earned over 7 days"
+    "parentDashboard.weakAreaNoTasksNote",    // "… apply a points template or add one by hand"
+    "parentDashboard.recentChangesTitle",     // "Recent points activity"
+    "parentDashboard.changeFallbackLabel",    // "Points change"（record.note 为空时的兜底显示，不进存储）
 )
 
 /**
@@ -1594,6 +1609,353 @@ class StringsCopyTest {
             zh.earnPointsForRewardsNote to en.earnPointsForRewardsNote,
         ).forEach { (chinese, english) ->
             assertEquals(chinese.takeLast(2), english.takeLast(2), "行尾 emoji 应两表一致")
+        }
+    }
+
+    /**
+     * 家长首页 51 个**静态**字段的 ZH≠EN 穷举（8 个函数型见
+     * [parentHomeInterpolatedCopyPinsBothLanguages] 与 [parentHomeEnglishPluralsCoverOneAndOther]）。
+     */
+    @Test
+    fun parentHomeCopyDiffers() {
+        val zh = AppStringsZh.parentHome
+        val en = AppStringsEn.parentHome
+        assertDiffers(
+            zh.pageTitle to en.pageTitle,
+            zh.switchRoleContentDescription to en.switchRoleContentDescription,
+            zh.childTodayOverviewTitle to en.childTodayOverviewTitle,
+            zh.overviewCheckin to en.overviewCheckin,
+            zh.overviewCompletionRate to en.overviewCompletionRate,
+            zh.overviewStreak to en.overviewStreak,
+            zh.overviewPendingProofs to en.overviewPendingProofs,
+            zh.todayAllDoneBanner to en.todayAllDoneBanner,
+            zh.presetRewardsLoadedMessage to en.presetRewardsLoadedMessage,
+            zh.syncOverdueNote to en.syncOverdueNote,
+            zh.menuTaskManageTitle to en.menuTaskManageTitle,
+            zh.menuTaskManageSubtitle to en.menuTaskManageSubtitle,
+            zh.menuAssignTaskTitle to en.menuAssignTaskTitle,
+            zh.menuAssignTaskSubtitle to en.menuAssignTaskSubtitle,
+            zh.menuTemplateTitle to en.menuTemplateTitle,
+            zh.menuTemplateSubtitle to en.menuTemplateSubtitle,
+            zh.menuPointsTitle to en.menuPointsTitle,
+            zh.menuPointsSubtitle to en.menuPointsSubtitle,
+            zh.menuRewardStoreTitle to en.menuRewardStoreTitle,
+            zh.menuRewardStoreSubtitle to en.menuRewardStoreSubtitle,
+            zh.menuWishGoalTitle to en.menuWishGoalTitle,
+            zh.menuWishGoalSubtitle to en.menuWishGoalSubtitle,
+            zh.menuScheduleTitle to en.menuScheduleTitle,
+            zh.menuScheduleSubtitle to en.menuScheduleSubtitle,
+            zh.menuProofTitle to en.menuProofTitle,
+            zh.menuProofSubtitle to en.menuProofSubtitle,
+            zh.menuApprovalTitle to en.menuApprovalTitle,
+            zh.menuApprovalSubtitle to en.menuApprovalSubtitle,
+            zh.menuMistakeAnalysisTitle to en.menuMistakeAnalysisTitle,
+            zh.menuMistakeAnalysisSubtitle to en.menuMistakeAnalysisSubtitle,
+            zh.menuCoachingTitle to en.menuCoachingTitle,
+            zh.menuCoachingSubtitle to en.menuCoachingSubtitle,
+            zh.menuDashboardTitle to en.menuDashboardTitle,
+            zh.menuDashboardSubtitle to en.menuDashboardSubtitle,
+            zh.menuGrowthReportTitle to en.menuGrowthReportTitle,
+            zh.menuGrowthReportSubtitle to en.menuGrowthReportSubtitle,
+            zh.menuWeeklyReportTitle to en.menuWeeklyReportTitle,
+            zh.menuWeeklyReportSubtitle to en.menuWeeklyReportSubtitle,
+            zh.menuSettingsTitle to en.menuSettingsTitle,
+            zh.menuSettingsSubtitle to en.menuSettingsSubtitle,
+            zh.setupAssistantTitle to en.setupAssistantTitle,
+            zh.setupAllDoneNote to en.setupAllDoneNote,
+            zh.setupIntroNote to en.setupIntroNote,
+            zh.setupTasksMissing to en.setupTasksMissing,
+            zh.setupTasksAction to en.setupTasksAction,
+            zh.setupRewardsMissing to en.setupRewardsMissing,
+            zh.setupRewardsAction to en.setupRewardsAction,
+            zh.setupWishMissing to en.setupWishMissing,
+            zh.setupWishAction to en.setupWishAction,
+            zh.setupScheduleMissing to en.setupScheduleMissing,
+            zh.setupScheduleAction to en.setupScheduleAction,
+        )
+        // 三个"去 X"按钮英文必须互不相同：它们同屏并排出现，同译会把四个入口念成同一个动作。
+        assertDiffers(
+            en.setupTasksAction to en.setupWishAction,
+            en.setupTasksAction to en.setupScheduleAction,
+            en.setupWishAction to en.setupScheduleAction,
+        )
+    }
+
+    /** 数据看板 30 个**静态**字段的 ZH≠EN 穷举（6 个函数型见 [parentDashboardInterpolatedCopyPinsBothLanguages]）。 */
+    @Test
+    fun parentDashboardCopyDiffers() {
+        val zh = AppStringsZh.parentDashboard
+        val en = AppStringsEn.parentDashboard
+        assertDiffers(
+            zh.pageTitle to en.pageTitle,
+            zh.totalPointsLabel to en.totalPointsLabel,
+            zh.weeklyEarnedLabel to en.weeklyEarnedLabel,
+            zh.weeklySpentLabel to en.weeklySpentLabel,
+            zh.totalFocusLabel to en.totalFocusLabel,
+            zh.mistakesMasteredLabel to en.mistakesMasteredLabel,
+            zh.childPerformanceTitle to en.childPerformanceTitle,
+            zh.scoreUnit to en.scoreUnit,
+            zh.verdictNewStart to en.verdictNewStart,
+            zh.verdictImproved to en.verdictImproved,
+            zh.verdictLevel to en.verdictLevel,
+            zh.verdictDeclined to en.verdictDeclined,
+            zh.weekCompareTitle to en.weekCompareTitle,
+            zh.compareFocusLabel to en.compareFocusLabel,
+            zh.compareReviewLabel to en.compareReviewLabel,
+            zh.reviewCountUnit to en.reviewCountUnit,
+            zh.comparePointsLabel to en.comparePointsLabel,
+            zh.trendTitle to en.trendTitle,
+            zh.noDataLabel to en.noDataLabel,
+            zh.categoryTitle to en.categoryTitle,
+            zh.categoryBasicLabel to en.categoryBasicLabel,
+            zh.categoryEnhanceLabel to en.categoryEnhanceLabel,
+            zh.categoryHabitLabel to en.categoryHabitLabel,
+            zh.weakAreasTitle to en.weakAreasTitle,
+            zh.weakAreaNoTasksNote to en.weakAreaNoTasksNote,
+            zh.goodStatusTitle to en.goodStatusTitle,
+            zh.goodStatusNote to en.goodStatusNote,
+            zh.recentChangesTitle to en.recentChangesTitle,
+            zh.changeFallbackLabel to en.changeFallbackLabel,
+            zh.deltaFlatLabel to en.deltaFlatLabel,
+        )
+        // 四条趋势判词必须互不相同（同一个 when 的四支，两支同值就等于少了一档反馈）
+        assertEquals(4, listOf(zh.verdictNewStart, zh.verdictImproved, zh.verdictLevel, zh.verdictDeclined).distinct().size)
+        assertEquals(4, listOf(en.verdictNewStart, en.verdictImproved, en.verdictLevel, en.verdictDeclined).distinct().size)
+    }
+
+    /**
+     * 家长首页 8 个函数型字段的**逐字双语期望串**（Ruling 20-b：整表 CJK 扫描看不见函数型返回值，
+     * 只有把期望串逐字打出来才抓得到插在函数里的中文）。
+     *
+     * 内容透传：本表 8 条实参全是页面自己算出来的 `Int` 计数（todayCompleted / pendingProofCount /
+     * unmasteredMistakes / syncDaysAgo / taskCount / rewardCount / wishCount / scheduleCount），
+     * 没有一条是文案串，所以本页不存在"把中文数据念成英文数据"的风险；
+     * 有这种风险的是仪表盘那条跨文件的 grade，见 [parentDashboardInterpolatedCopyPinsBothLanguages]。
+     */
+    @Test
+    fun parentHomeInterpolatedCopyPinsBothLanguages() {
+        val zh = AppStringsZh.parentHome
+        val en = AppStringsEn.parentHome
+
+        assertEquals("7天", zh.streakDaysValue(7))
+        assertEquals("1天", zh.streakDaysValue(1))
+        assertEquals("0天", zh.streakDaysValue(0))
+        assertEquals("📷 有 3 个证明待审核，点击前往", zh.pendingProofsButton(3))
+        assertEquals("📷 有 1 个证明待审核，点击前往", zh.pendingProofsButton(1))
+        assertEquals("📚 还有 6 道错题未掌握", zh.unmasteredMistakesNote(6))
+        assertEquals("📚 还有 1 道错题未掌握", zh.unmasteredMistakesNote(1))
+        assertEquals("设备数据已 9 天未同步", zh.syncOverdueTitle(9))
+        assertEquals("设备数据已 1 天未同步", zh.syncOverdueTitle(1))
+        assertEquals("学习任务已配置（4个）", zh.setupTasksConfigured(4))
+        assertEquals("奖励商店已配置（3个）", zh.setupRewardsConfigured(3))
+        assertEquals("心愿存钱罐已配置（2个）", zh.setupWishConfigured(2))
+        assertEquals("每日日程已配置（5项）", zh.setupScheduleConfigured(5))
+
+        assertEquals("📷 3 proofs await review — tap to open", en.pendingProofsButton(3))
+        assertEquals("📷 1 proof awaits review — tap to open", en.pendingProofsButton(1))
+        assertEquals("📚 6 mistakes are still not mastered", en.unmasteredMistakesNote(6))
+        assertEquals("📚 1 mistake is still not mastered", en.unmasteredMistakesNote(1))
+        assertEquals("Device data has not been synced for 9 days", en.syncOverdueTitle(9))
+        assertEquals("Device data has not been synced for 1 day", en.syncOverdueTitle(1))
+        assertEquals("Study tasks set up (4)", en.setupTasksConfigured(4))
+        assertEquals("Reward store set up (3)", en.setupRewardsConfigured(3))
+        assertEquals("Wish Pool set up (2)", en.setupWishConfigured(2))
+        assertEquals("Daily schedule set up (5)", en.setupScheduleConfigured(5))
+    }
+
+    /**
+     * 家长首页 4 条英文 one/other 分支（Ruling 20 例外：[Plurals.kt] 本期不改，分支写在函数体内）。
+     * 形态与 [childHomeEnglishPluralsCoverOneAndOther] 一致：1 与 >=2 两侧逐字打出来，
+     * 并用"中文侧只是换数字"的等式钉住中文不分支（改成 if 也会红）。
+     */
+    @Test
+    fun parentHomeEnglishPluralsCoverOneAndOther() {
+        val zh = AppStringsZh.parentHome
+        val en = AppStringsEn.parentHome
+        assertEquals("7 days", en.streakDaysValue(7))
+        assertEquals("1 day", en.streakDaysValue(1))
+        assertEquals("10 days", en.streakDaysValue(10))
+        assertEquals("7 proofs await review — tap to open", en.pendingProofsButton(7).substringAfter("📷 "))
+        assertEquals("7 mistakes are still not mastered", en.unmasteredMistakesNote(7).substringAfter("📚 "))
+        assertEquals("Device data has not been synced for 10 days", en.syncOverdueTitle(10))
+        listOf(
+            zh.streakDaysValue(1) to zh.streakDaysValue(7),
+            zh.pendingProofsButton(1) to zh.pendingProofsButton(7),
+            zh.unmasteredMistakesNote(1) to zh.unmasteredMistakesNote(7),
+            zh.syncOverdueTitle(1) to zh.syncOverdueTitle(7),
+        ).forEach { (one, other) ->
+            assertEquals(one.replace("1", "7"), other, "中文侧必须只换数字、不能出现单复数分支")
+        }
+    }
+
+    /**
+     * 数据看板 6 个函数型字段的逐字双语期望串（Ruling 20-b）。
+     *
+     * **内容透传的正面证据**：[ParentDashboardStrings.childPerformanceLine] 的第一个实参 `grade`
+     * 来自跨文件的 `ui/common/LearningScoreCalculator`（本任务不迁、不改数据源），
+     * 所以英文期望串里**故意留着 "优秀"**——这条断言同时做了两件事：证明迁移只搬句式没换数据源，
+     * 以及把"英文态这一格仍会读出中文等级名"这条已知上限写死在测试里（进 Task 12 人工清单）。
+     * [ParentDashboardStrings.scoreValue] 的单位实参来自同表 [ParentDashboardStrings.scoreUnit]，
+     * [ParentDashboardStrings.focusMinutesValue] 的单位实参来自 [CommonStrings.minuteLabel]：
+     * 两处都是"单位进实参位"的已披露拆分（见 ParentDashboardStrings 类注释与 DISCLOSED_RESIDUALS）。
+     */
+    @Test
+    fun parentDashboardInterpolatedCopyPinsBothLanguages() {
+        val zh = AppStringsZh.parentDashboard
+        val en = AppStringsEn.parentDashboard
+
+        assertEquals("优秀 · 打卡3/5 · 专注40分 · 复习2道", zh.childPerformanceLine("优秀", 3, 5, 40, 2))
+        assertEquals("优秀 · Check-in 3/5 · Focus 40 min · Reviewed 2", en.childPerformanceLine("优秀", 3, 5, 40, 2))
+        assertEquals("待开始 · 打卡0/5 · 专注0分 · 复习0道", zh.childPerformanceLine("待开始", 0, 5, 0, 0))
+        assertEquals("数学 · Check-in 1/1 · Focus 60 min · Reviewed 3", en.childPerformanceLine("数学", 1, 1, 60, 3))
+
+        assertEquals("87分", zh.scoreValue(87, zh.scoreUnit))
+        assertEquals("0分", zh.scoreValue(0, zh.scoreUnit))
+        assertEquals("87 pts", en.scoreValue(87, en.scoreUnit))
+
+        assertEquals("45分", zh.focusMinutesValue(45, AppStringsZh.common.minuteLabel))
+        assertEquals("45 min", en.focusMinutesValue(45, AppStringsEn.common.minuteLabel))
+
+        assertEquals("3道", zh.mistakesReviewedValue(3))
+        assertEquals("3", en.mistakesReviewedValue(3))
+
+        assertEquals("📚 错题掌握率较低 (4/20)，建议加强复习", zh.weakAreaMistakesNote(4, 20))
+        assertEquals("📚 Only 4 of 20 mistakes are mastered — review them more often",
+            en.weakAreaMistakesNote(4, 20))
+
+        assertEquals("🍅 专注时长不足 (30分钟)，建议使用番茄钟", zh.weakAreaFocusNote(30))
+        assertEquals("🍅 Only 30 min of focus time — try the Pomodoro timer", en.weakAreaFocusNote(30))
+        // 时长侧的英文绝不出现积分词：同一屏里 `分`/`分钟` 与"积分"只差一个字，混译就串账
+        assertFalse(
+            en.weakAreaFocusNote(30).contains("point", ignoreCase = true) ||
+                en.focusMinutesValue(30, AppStringsEn.common.minuteLabel).contains("point", ignoreCase = true) ||
+                en.childPerformanceLine("优秀", 3, 5, 40, 2).contains("point", ignoreCase = true),
+            "时长侧混进了积分词：专注的 `分` 是分钟，不是 Points",
+        )
+    }
+
+    /**
+     * 同形异义 `分` 在数据看板一屏之内有三种语义，逐槽用字面量钉死
+     * （`assertDiffers` 对"两个同值字段的英文互换"是瞎的，见 CommonStrings 类注释）。
+     * 与 [childHomeScoreUnitIsNotPoints] 同一条理由：0–100 的评分与积分是两本账
+     * （`LearningScoreCalculator.total` 从不入账，`adjustPoints` 写的才是 point_records）。
+     */
+    @Test
+    fun parentDashboardScoreUnitIsNotPoints() {
+        assertEquals("分", AppStringsZh.parentDashboard.scoreUnit)
+        assertEquals("pts", AppStringsEn.parentDashboard.scoreUnit)
+        assertEquals("分", AppStringsZh.common.minuteLabel)
+        assertEquals("min", AppStringsEn.common.minuteLabel)
+        assertEquals("分", AppStringsZh.common.pointsUnit)
+        assertEquals("points", AppStringsEn.common.pointsUnit)
+        assertNotEquals(AppStringsEn.parentDashboard.scoreUnit, AppStringsEn.common.minuteLabel)
+        assertNotEquals(AppStringsEn.parentDashboard.scoreUnit, AppStringsEn.common.pointsUnit)
+        assertNotEquals(AppStringsEn.common.minuteLabel, AppStringsEn.common.pointsUnit)
+        // 两张表各存一份同一个术语（刻意不跨表引用），一致性由断言而不是由引用保证
+        assertEquals(AppStringsZh.childHome.scoreUnit, AppStringsZh.parentDashboard.scoreUnit)
+        assertEquals(AppStringsEn.childHome.scoreUnit, AppStringsEn.parentDashboard.scoreUnit)
+    }
+
+    /**
+     * `:171` 传给 `ParentCompareRow(…, unit)` 的分钟单位**复用** [CommonStrings.minuteLabel]：
+     * 本任务清单 36 条里的这一条没有落成本表字段（理由见 ParentDashboardStrings 类注释）。
+     * 复用是刻意的——同一个中文值若在本表再开一个分钟槽就有了第二处出处，而漏译守卫抓不到互换，
+     * 所以这里既用字面量钉住出处，也用穷举证明本表只有一个 `分` 槽（评分单位 scoreUnit）。
+     * 形态与 [durationChipReusesTheCommonMinuteLabel] 一致。
+     */
+    @Test
+    fun parentDashboardDurationUnitComesFromCommon() {
+        assertEquals("分", AppStringsZh.common.minuteLabel)
+        assertEquals("min", AppStringsEn.common.minuteLabel)
+        val dashZhStatics = staticCopyValues(AppStringsZh.parentDashboard).toMap()
+        assertEquals(
+            setOf("scoreUnit"),
+            dashZhStatics.filterValues { it == "分" }.keys,
+            "本表出现第二个 `分` 槽就说明分钟那条被从 CommonStrings 挪了过来，复用与残差登记要一起改",
+        )
+        assertEquals("45分", AppStringsZh.parentDashboard.focusMinutesValue(45, AppStringsZh.common.minuteLabel))
+        assertEquals("45 min", AppStringsEn.parentDashboard.focusMinutesValue(45, AppStringsEn.common.minuteLabel))
+    }
+
+    /**
+     * `道` 是中文量词、英文没有对应词：值槽退化成纯数字，增减单位是**空串**。
+     * 空串不是漏译，是 Ruling 20 披露的形态差异（ChildHome 的"今日有 3 道错题待复习" →
+     * "3 mistakes to review today" 走的是同一条路：量词整词删掉）。两侧都写死，
+     * 这样"顺手把英文填成 道"或"填成 points"都会被点名。
+     */
+    @Test
+    fun parentDashboardEnglishDropsTheMeasureWord() {
+        assertEquals("道", AppStringsZh.parentDashboard.reviewCountUnit)
+        assertEquals("", AppStringsEn.parentDashboard.reviewCountUnit)
+        assertEquals("5道", AppStringsZh.parentDashboard.mistakesReviewedValue(5))
+        assertEquals("5", AppStringsEn.parentDashboard.mistakesReviewedValue(5))
+        assertNotEquals(AppStringsEn.parentDashboard.reviewCountUnit, AppStringsEn.common.minuteLabel)
+        assertNotEquals(AppStringsZh.parentDashboard.reviewCountUnit, AppStringsZh.common.minuteLabel)
+    }
+
+    /**
+     * §11 的"基础 / 提升 / 习惯 = Basic / Advanced / Habits"在两页必须同词形：
+     * 仪表盘是图表行标签、任务列表是筛选芯片，字段各自独立（各带一枚 emoji）但术语必须一致，
+     * 否则同一个 `TaskCategory` 在两个页面念成两个名字。
+     */
+    @Test
+    fun categoryWordsMatchTheTaskListFilters() {
+        assertEquals(AppStringsEn.taskList.filterBasic, AppStringsEn.parentDashboard.categoryBasicLabel.substringAfter(' '))
+        assertEquals(AppStringsEn.taskList.filterEnhancement, AppStringsEn.parentDashboard.categoryEnhanceLabel.substringAfter(' '))
+        assertEquals(AppStringsEn.taskList.filterHabits, AppStringsEn.parentDashboard.categoryHabitLabel.substringAfter(' '))
+        assertEquals("基础", AppStringsZh.parentDashboard.categoryBasicLabel.substringAfter(' '))
+        assertEquals("提升", AppStringsZh.parentDashboard.categoryEnhanceLabel.substringAfter(' '))
+        assertEquals("习惯", AppStringsZh.parentDashboard.categoryHabitLabel.substringAfter(' '))
+    }
+
+    /**
+     * 两页的 emoji 都留在表内（Ruling 17）：页面不得再拼 `"🍅 ${strings.x}"`。
+     * 两页只有一种形态——行首 emoji + 空格 + 正文，所以统一用 `substringBefore(' ')` 比较
+     * （代理对与 U+FE0F 变体选择符整体取，不截半；`➡️` / `⚠️` 这类带 VS16 的也在这一条里）。
+     *
+     * 刻意**留在页面**的三处不在本断言范围：`ParentHomeScreen` 的 `Text("⏰")`、`Text("🚀")` 与
+     * `SetupRow` 的 `if (ok) "✅" else "⚠️"`，它们是纯状态/装饰位，不含汉字、不随语言变，
+     * `i18n_inventory.py` 也不把它们计为可迁移文案（迁移后该页残留计数仍为 0 就是这件事的证据）。
+     */
+    @Test
+    fun emojiStaysInsideTheParentTables() {
+        val homeZh = AppStringsZh.parentHome
+        val homeEn = AppStringsEn.parentHome
+        listOf(
+            homeZh.pageTitle to homeEn.pageTitle,
+            homeZh.childTodayOverviewTitle to homeEn.childTodayOverviewTitle,
+            homeZh.todayAllDoneBanner to homeEn.todayAllDoneBanner,
+            homeZh.presetRewardsLoadedMessage to homeEn.presetRewardsLoadedMessage,
+            homeZh.setupAllDoneNote to homeEn.setupAllDoneNote,
+            homeZh.pendingProofsButton(3) to homeEn.pendingProofsButton(3),
+            homeZh.unmasteredMistakesNote(6) to homeEn.unmasteredMistakesNote(6),
+        ).forEach { (chinese, english) ->
+            assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "家长首页行首 emoji 应两表一致")
+        }
+        val dashZh = AppStringsZh.parentDashboard
+        val dashEn = AppStringsEn.parentDashboard
+        listOf(
+            dashZh.pageTitle to dashEn.pageTitle,
+            dashZh.verdictNewStart to dashEn.verdictNewStart,
+            dashZh.verdictImproved to dashEn.verdictImproved,
+            dashZh.verdictLevel to dashEn.verdictLevel,
+            dashZh.verdictDeclined to dashEn.verdictDeclined,
+            dashZh.weekCompareTitle to dashEn.weekCompareTitle,
+            dashZh.compareFocusLabel to dashEn.compareFocusLabel,
+            dashZh.compareReviewLabel to dashEn.compareReviewLabel,
+            dashZh.comparePointsLabel to dashEn.comparePointsLabel,
+            dashZh.trendTitle to dashEn.trendTitle,
+            dashZh.categoryTitle to dashEn.categoryTitle,
+            dashZh.categoryBasicLabel to dashEn.categoryBasicLabel,
+            dashZh.categoryEnhanceLabel to dashEn.categoryEnhanceLabel,
+            dashZh.categoryHabitLabel to dashEn.categoryHabitLabel,
+            dashZh.weakAreasTitle to dashEn.weakAreasTitle,
+            dashZh.weakAreaNoTasksNote to dashEn.weakAreaNoTasksNote,
+            dashZh.goodStatusTitle to dashEn.goodStatusTitle,
+            dashZh.weakAreaMistakesNote(4, 20) to dashEn.weakAreaMistakesNote(4, 20),
+            dashZh.weakAreaFocusNote(30) to dashEn.weakAreaFocusNote(30),
+        ).forEach { (chinese, english) ->
+            assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "数据看板行首 emoji 应两表一致")
         }
     }
 }
