@@ -104,21 +104,26 @@ object MigrationSafetyHelper {
         logInfo("post-migration verify: dbVersion=$dbVersion, rowCounts=$counts")
 
         // v12 专属校验：point_approvals 必须含新增列 taskId/bizKey/awardedRecordId/date
-        val expectedNewCols = listOf("taskId", "bizKey", "awardedRecordId", "date")
-        val missing = mutableListOf<String>()
-        for (col in expectedNewCols) {
-            val ok = runCatching {
-                val statement = connection.prepare("SELECT `$col` FROM `point_approvals` LIMIT 1")
-                try { statement.step() } finally { statement.close() }
-            }.getOrDefault(false)
-            if (!ok) missing += col
-        }
+        val missing = pointApprovalMissingColumns(connection)
         if (missing.isNotEmpty()) {
             logError("post-migration verify: point_approvals missing columns $missing")
         } else {
             logInfo("post-migration verify: point_approvals schema OK (v12 columns present)")
         }
     }
+}
+
+// 用 PRAGMA table_info 而非 SELECT 探针：空表上 step() 恒 false，会把存在的列误判为缺失
+internal fun pointApprovalMissingColumns(connection: SQLiteConnection): List<String> {
+    val expectedNewCols = listOf("taskId", "bizKey", "awardedRecordId", "date")
+    val existing = mutableSetOf<String>()
+    val statement = connection.prepare("PRAGMA table_info(`point_approvals`)")
+    try {
+        while (statement.step()) existing += statement.getText(1)
+    } finally {
+        statement.close()
+    }
+    return expectedNewCols.filter { it !in existing }
 }
 
 /**
