@@ -100,11 +100,16 @@ jobs:
           fi
           sleep "$OBSERVE"
           [ -n "${LIVE_PID:-}" ] && { wait "$LIVE_PID" 2>/dev/null || true; }
-          wait "$CONSOLE_JOB" 2>/dev/null || true
+          # 关键：--console-pty 会一直附着到 App 退出；修复生效后 App 常驻不退出，直接 wait 会死锁。
+          # 故先快照"此刻是否存活"，再主动 terminate 结束 console-pty，最后才读 console。
+          APP_ALIVE=0
+          if [ "$APP_LAUNCHED" = "1" ] && ps -p "$PID" >/dev/null 2>&1; then APP_ALIVE=1; fi
           echo "=== liveness (host ps) ==="
           cat liveness.log
           xcrun simctl io "$UDID" screenshot smoke.png
           ls -la smoke.png
+          xcrun simctl terminate "$UDID" com.hstudy.app.ios 2>/dev/null || echo "SMOKE: terminate skipped (already gone)"
+          sleep 2; kill "$CONSOLE_JOB" 2>/dev/null || true; wait "$CONSOLE_JOB" 2>/dev/null || true
           # 定向抓终止原因：旧版宽 grep+tail 被 nsurlsessiond 噪声淹没，这里改用 bundle id / SpringBoard 谓词
           {
             echo "=== predicate: eventMessage CONTAINS bundle id ==="
@@ -132,7 +137,6 @@ jobs:
           head -200 crashreport_content.txt || true
           echo "=== app console (head 300) ==="
           head -300 app_console.log || true
-          if [ -n "${LIVE_PID:-}" ]; then echo "=== liveness (host ps) ==="; cat liveness.log; fi
           # 硬断言：只有"确实启动过"才判定成败；未启动 = 模拟器基础设施抖动，SKIP 不红。
           SMOKE_FAIL=0
           [ "$PLIST_OK" = "1" ] || SMOKE_FAIL=1
@@ -140,7 +144,7 @@ jobs:
             if grep -q "Uncaught Kotlin exception" app_console.log; then
               echo "SMOKE_FAIL: uncaught Kotlin exception present in app console"; SMOKE_FAIL=1
             fi
-            if ps -p "$PID" >/dev/null 2>&1; then
+            if [ "$APP_ALIVE" = "1" ]; then
               echo "SMOKE_CHECK: app still ALIVE after ${OBSERVE}s"
             else
               echo "SMOKE_FAIL: app died within ${OBSERVE}s"; SMOKE_FAIL=1
@@ -148,7 +152,6 @@ jobs:
           else
             echo "SMOKE_SKIP: app did not launch — treating as infra, not failing"
           fi
-          xcrun simctl terminate "$UDID" com.hstudy.app.ios || echo "SMOKE: terminate skipped (process already gone)"
           xcrun simctl shutdown "$UDID" || true
           if [ "$SMOKE_FAIL" = "1" ]; then echo "SMOKE_RESULT=FAIL"; exit 1; else echo "SMOKE_RESULT=PASS"; fi
       - uses: actions/upload-artifact@v4
