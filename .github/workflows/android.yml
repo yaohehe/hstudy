@@ -44,8 +44,10 @@ jobs:
       # 改动得对不上迁移前的原文。它钉的每一个 rev 都在本分支历史里（终审逐条
       # `git cat-file -e <rev>^{commit}` + `git merge-base --is-ancestor <rev> HEAD` 核对过），
       # 复现命令见 docs/i18n-stage1-verification.md §6。
+      # 默认组只覆盖窄组页面；--branch 扩到全部已迁页面 × 全部十张表（BRANCH_PAGES/BRANCH_TABLES），
+      # 本地实测退出 0（393/393 模板），宽组下 L-19 遮蔽登记为双边命中。
       - name: i18n template byte-equivalence (Ruling 20, blocking)
-        run: python3 scripts/i18n_template_diff.py
+        run: python3 scripts/i18n_template_diff.py --branch
       - name: Build debug APK
         run: ./gradlew :composeApp:assembleDebug --no-daemon
       - name: Run unit tests
