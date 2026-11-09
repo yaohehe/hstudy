@@ -44,39 +44,47 @@ jobs:
         with:
           name: HStudy-ios-simulator-app
           path: build/ios/Build/Products/Debug-iphonesimulator/*.app
-      - name: Smoke test on simulator (install + launch + screenshot)
-        # 冒烟验证：证明 .app 在模拟器里真的能装能起，而不是只完成链接。
-        # 模拟器启动有偶发失败，故不阻塞发布闸门，只留证据与截图工件。
-        continue-on-error: true
+      - name: Smoke test on simulator (install + launch + liveness/exception gate)
+        # 回归闸门（task 46）：证明 .app 能装能起，且启动后不因未捕获异常崩溃。
+        # 本轮修复：Info.plist 缺 CADisableMinimumFrameDurationOnPhone → Compose PlistSanityCheck
+        # 抛未捕获 Kotlin 异常 → SIGABRT（约启动后 60s，延迟自检触发）；这里同时断言之。
+        # 语义：模拟器基础设施抖动（无设备/装不上）判 SKIP、不红；App 真崩了才红。
         run: |
           set -e
           # 直接用 runner 上已存在的可用模拟器：devicetypes/runtimes 的 JSON 形状随 Xcode 版本变化，
           # 解析键名不可靠，这里退化为文本列表里第一个 iPhone 设备的 UDID。
           UDID=$(xcrun simctl list devices available | grep -m1 iPhone | grep -Eo '[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}')
-          test -n "$UDID"
+          if [ -z "$UDID" ]; then echo "SMOKE_RESULT=SKIP (no simulator device)"; exit 0; fi
           echo "simulator=$UDID"
           xcrun simctl boot "$UDID" 2>/dev/null || echo "SMOKE: boot returned non-zero (device may already be booted)"
           APP=$(find build/ios/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
-          xcrun simctl install "$UDID" "$APP"
-          # 诊断版 v2（iOS SIGABRT 崩溃排查，systematic-debugging Phase 1）：只采证据，不改 App、不改阻塞性。
-          # 上一版已证实退出是 SIGABRT(6)（进程自 abort，非 watchdog），但只上传了崩溃报告路径、丢了 backtrace。
-          # 这一版补两件：(a) --console-pty 捕获 App 自身 stdout/stderr——Kotlin/Native 未捕获异常会先打印
-          # "Uncaught Kotlin exception:" + 栈到 stderr 再 abort；(b) 把 .ips 崩溃报告内容 cat 进 artifact。
-          # 模拟器 App 是 macOS 宿主进程，host ps 才权威（launchctl list 已被证明会留陈旧条目）。
+          if ! xcrun simctl install "$UDID" "$APP"; then echo "SMOKE_RESULT=SKIP (install failed: infra)"; exit 0; fi
+          # 断言打包进 .app 的 Info.plist 带修复键（防止 plist 未参与构建或被覆盖）
+          plutil -p "$APP/Info.plist" > app_infoplist.txt 2>&1 || true
+          PLIST_OK=1
+          if grep -q 'CADisableMinimumFrameDurationOnPhone' app_infoplist.txt; then
+            echo "SMOKE_CHECK: plist key present"
+          else
+            echo "SMOKE_FAIL: built Info.plist missing CADisableMinimumFrameDurationOnPhone"; PLIST_OK=0
+          fi
+          OBSERVE=95
+          # --console-pty 捕获 App 自身 stderr（Kotlin/Native 未捕获异常先打印栈再 abort）
           ( xcrun simctl launch --console-pty "$UDID" com.hstudy.app.ios > app_console.log 2>&1 ) &
           CONSOLE_JOB=$!
-          # 等 launch 打印出 "com.hstudy.app.ios: <pid>" 行再取宿主 PID
+          # PID 走宿主进程名：--console-pty 会把 simctl 自己的 "bundleid: pid" 行缓冲到末尾，解析 app_console.log 不可靠。
           PID=""
-          for _try in 1 2 3 4 5 6 7 8; do
-            PID=$(awk '/com\.hstudy\.app\.ios:/ {print $2; exit}' app_console.log 2>/dev/null)
+          for _try in $(seq 1 20); do
+            PID=$(pgrep -x iosApp | head -1 || true)
             [ -n "$PID" ] && break
             sleep 1
           done
-          echo "host_pid=$PID"
-          # 逐秒记录存活/死亡与最后进程状态，定位精确死亡秒
-          if [ -n "$PID" ]; then
+          APP_LAUNCHED=0
+          [ -n "$PID" ] && APP_LAUNCHED=1
+          echo "host_pid=$PID launched=$APP_LAUNCHED"
+          # 逐秒记录存活/死亡（宿主 ps 才权威；launchctl list 会留陈旧条目）
+          if [ "$APP_LAUNCHED" = "1" ]; then
             (
-              for i in $(seq 1 45); do
+              for i in $(seq 1 "$OBSERVE"); do
                 if ps -p "$PID" >/dev/null 2>&1; then
                   echo "t=${i}s ALIVE $(ps -p "$PID" -o stat=,etime= | tr -s ' ')"
                 else
@@ -88,9 +96,9 @@ jobs:
             ) > liveness.log 2>&1 &
             LIVE_PID=$!
           else
-            echo "PID empty; --console-pty launch may have failed" > liveness.log
+            echo "PID empty; app did not launch" > liveness.log
           fi
-          sleep 45
+          sleep "$OBSERVE"
           [ -n "${LIVE_PID:-}" ] && { wait "$LIVE_PID" 2>/dev/null || true; }
           wait "$CONSOLE_JOB" 2>/dev/null || true
           echo "=== liveness (host ps) ==="
@@ -122,10 +130,27 @@ jobs:
           done < crashlist.txt
           echo "=== crash report content (head 200) ==="
           head -200 crashreport_content.txt || true
-          echo "=== app console (head 200) ==="
-          head -200 app_console.log || true
+          echo "=== app console (head 300) ==="
+          head -300 app_console.log || true
+          if [ -n "${LIVE_PID:-}" ]; then echo "=== liveness (host ps) ==="; cat liveness.log; fi
+          # 硬断言：只有"确实启动过"才判定成败；未启动 = 模拟器基础设施抖动，SKIP 不红。
+          SMOKE_FAIL=0
+          [ "$PLIST_OK" = "1" ] || SMOKE_FAIL=1
+          if [ "$APP_LAUNCHED" = "1" ]; then
+            if grep -q "Uncaught Kotlin exception" app_console.log; then
+              echo "SMOKE_FAIL: uncaught Kotlin exception present in app console"; SMOKE_FAIL=1
+            fi
+            if ps -p "$PID" >/dev/null 2>&1; then
+              echo "SMOKE_CHECK: app still ALIVE after ${OBSERVE}s"
+            else
+              echo "SMOKE_FAIL: app died within ${OBSERVE}s"; SMOKE_FAIL=1
+            fi
+          else
+            echo "SMOKE_SKIP: app did not launch — treating as infra, not failing"
+          fi
           xcrun simctl terminate "$UDID" com.hstudy.app.ios || echo "SMOKE: terminate skipped (process already gone)"
           xcrun simctl shutdown "$UDID" || true
+          if [ "$SMOKE_FAIL" = "1" ]; then echo "SMOKE_RESULT=FAIL"; exit 1; else echo "SMOKE_RESULT=PASS"; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -133,6 +158,7 @@ jobs:
           path: |
             smoke.png
             app_console.log
+            app_infoplist.txt
             liveness.log
             app_unified.log
             crashlist.txt
