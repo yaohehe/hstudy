@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeEntity
-import com.hstudy.app.ui.mistake.ReviewReminderReceiver
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.currentDisplayLanguage
+import com.hstudy.app.i18n.stringsFor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -14,15 +16,20 @@ import kotlinx.coroutines.launch
 /**
  * 错题复习每日提醒接收器：智能查询实际到期错题数，有到期才推送并显示数量。
  * 行为与原 ui.mistake.ReviewReminderReceiver 一致（通知 id=2001）。
+ * 标题：ZH 态沿用渠道既有中文标题「HStudy 错题复习提醒」（与 v3.1.0 逐字节一致，不覆盖）；
+ * 只有 EN 态才用本地化标题覆盖（正文两种语言都按当前语言现取）。
  */
 class ReviewReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
+            val lang = runCatching { currentDisplayLanguage() }.getOrDefault(DisplayLanguage.ZH)
+            val copy = stringsFor(lang).reviewReminder
+            // ZH 态不覆盖标题：沿用渠道既有中文标题（与 v3.1.0 中文态逐字节一致）；EN 态用本地化标题。
+            val titleOverride = if (lang == DisplayLanguage.EN) copy.title else null
             try {
                 AppGraph.init()
-                val copy = ReviewReminderReceiver.localizedCopy()
                 val mistakes = AppGraph.mistakeRepository.getAllMistakes().first()
                 val dueCount = mistakes.count { isDueForReview(it) }
                 if (dueCount > 0) {
@@ -30,18 +37,16 @@ class ReviewReminderReceiver : BroadcastReceiver() {
                         context, ReminderKind.REVIEW,
                         copy.dueBody(dueCount),
                         AndroidNotificationScheduler.REVIEW_NOTIFICATION_ID,
-                        titleOverride = copy.title
+                        titleOverride = titleOverride
                     )
                 }
             } catch (e: Exception) {
-                // 兜底：查询失败时仍推送通用提醒（文案同样按当前语言取；取词再失败则静默跳过）
                 runCatching {
-                    val copy = ReviewReminderReceiver.localizedCopy()
                     AndroidNotificationScheduler.showNotification(
                         context, ReminderKind.REVIEW,
                         copy.fallbackBody,
                         AndroidNotificationScheduler.REVIEW_NOTIFICATION_ID,
-                        titleOverride = copy.title
+                        titleOverride = titleOverride
                     )
                 }
             } finally {

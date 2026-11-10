@@ -15,7 +15,7 @@ package com.hstudy.app.i18n
  *
  * 熟练度/下次复习 8 条由 [com.hstudy.app.ui.mistake.SpacedRepetition] 消费：
  * 间隔算法留在 SpacedRepetition（纯域逻辑），文案在这里（测试可独立钉死两种语言）。
- * 英文用 timesWord/daysWord 做 one/other；中文无单复数，直接插数值。
+ * 英文用 timesWord 做 one/other（本表不用 daysWord；`nextReviewInDays` 是固定复数句式）；中文无单复数，直接插数值。
  * 术语：错题 = Mistake(s)（§13）、复习 = Review、掌握 = Mastered。
  */
 data class MistakeStrings(

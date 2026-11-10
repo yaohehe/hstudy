@@ -134,9 +134,11 @@ W1 的漏译/跨表守卫另在 `MistakeCopyTest`（11 条，含 `crossTableShar
 - [ ] **V-16 系统通知栏文案（仅限番茄钟常驻通知这一条）**：`PomodoroTimer.kt:104-106` 在
   `LaunchedEffect` 协程里用 `currentStrings`（`rememberUpdatedState`，`:49`）现取 title/text，
   词源仍是 `LocalStrings`，表值由 `StringsCopyTest.runningNotificationCopyIsPinnedInBothLanguages` 钉住；
-  渲染由系统完成，本机看不到内容。**注意覆盖面**：定时提醒类通知（错题复习/周报/日程）的文案
-  在**组合期之外**构造，`LocalStrings` 按构造到不了它们，英文态仍是中文——这是设计边界而非漏译，见 **L-16**，
-  本条**不**替你确认那一路。
+  渲染由系统完成，本机看不到内容。**注意覆盖面**：定时提醒类通知在**组合期之外**触发，W1 的错题复习提醒现状是——
+  Android 在**触发时**重新按当前语言取词与正文（ZH 态标题沿用渠道默认 `HStudy 错题复习提醒`，与 v3.1.0 逐字节一致；
+  EN 态标题/正文均为英文）；iOS 消费**排程时**冻结的本地化文案，但 `AppGraph.bootstrap()` 每次冷启动都用硬编码中文
+  重注册提醒 9001，本地化文案只存活到下次重启前（W9 残留，spec §12）；周报/日程提醒与启动补挂仍是中文，见 **L-16**，
+  本条**不**替你确认那几路。
 - [ ] **V-17 中文态零位移回归**：以上每一页在**中文态**下应与迁移前逐字、逐位一致
   （`i18n_template_diff.py` 证明字节相同，但"字节相同"不等于"排版没动"——
   字段拆分可能改变组合期布局输入，需人眼确认徽章行、chip 行没有回流）。
@@ -235,18 +237,26 @@ W1 的漏译/跨表守卫另在 `MistakeCopyTest`（11 条，含 `crossTableShar
   `NSLocale.currentLocale.localeIdentifier` 取子标签，真实返回值形状（`en-US-POSIX`、`zh-Hans-CN` 等）
   从未在本机观测过，V-01 因此可能只在 Android 上成立；② iOS 改系统语言通常需要重启 App，
   "跟随系统"在 iOS 上的生效时机与 Android 不同。
-- [ ] **V-33 iOS 文件分享与推送文案**：阶段一没动平台分享器与通知桥接，
-  但 `LocalStrings` 现在会喂英文串给分享路径与番茄钟常驻通知（V-16；后者的词源是组合期的
-  `currentStrings`，定时提醒类通知不在其列，见 L-16），iOS 侧的实际呈现（尤其 V-29 的"无标题行"）需目视一次。
+- [ ] **V-33 iOS 文件分享与推送文案**：阶段一没动平台分享器；`LocalStrings` 会喂英文串给分享路径与番茄钟常驻通知
+  （V-16；后者的词源是组合期的 `currentStrings`）。**W1 起**错题复习提醒的 iOS 定时通知改在**排程时**拿到本地化文案
+  （切换语言后关闭再开启「每日复习提醒」即重新排程），但冷启动 `AppGraph.bootstrap()` 会用硬编码中文重注册提醒 9001
+  （W9 残留，见 L-16），故英文态只存活到重启前；周报/日程与启动补挂仍是中文。iOS 侧的实际呈现
+  （尤其 V-29 的"无标题行"）需目视一次。
 
 ### 阶段 2 W1（错题域）追加项
 
 - [ ] **V-34** 英文态进入错题列表：标题/状态卡/筛选栏/空状态全英文（用户错题标题/错因/解法为自建内容，按原样）
 - [ ] **V-35** 英文态错题详情：主动回忆三阶段按钮、举一反三 15 条引导问题、复习记录格式全英文；落库原文（账本描述）按数据原样
-- [ ] **V-36** 英文态添加错题：科目芯片（含 emoji）、错误类型 canonical chip、保存校验 snackbar 全英文
+- [ ] **V-36** 英文态添加错题：科目芯片（含 emoji）、保存校验 snackbar 全英文；**错误类型 chip 刻意保持 canonical 中文**（值参与落库，W9 才接线映射），不要按"漏译"记缺陷
 - [ ] **V-37** 英文态家长错题分析：概览/科目分布/最近错题全英文
-- [ ] **V-38** 切换语言后关闭再开启「每日复习提醒」：到点弹通知的标题/正文为当前语言（已排程旧通知不追更，属 spec §8 既定语义）
+- [ ] **V-38** 切换语言后关闭再开启「每日复习提醒」：
+  **Android**——到点弹的通知按**触发时**语言渲染（ZH 标题 `HStudy 错题复习提醒`，EN 标题 `Mistake review reminder`；正文同为当前语言），语言切换从下一次触发生效，已排程旧通知不追更（spec §8）；
+  **iOS**——本地化只在**排程时**冻结（关闭再开启后重新排程即英文），但冷启动 `AppGraph.bootstrap()` 会用硬编码中文重注册 9001（W9），英文文案只存活到下次重启。
 - [ ] **V-39** 中文态回归：以上四页与通知与 v3.1.0 文案逐字节一致
+
+> **W9 残留（本轮已知、不修）**：`AppGraph.bootstrap()` 每次冷启动都用硬编码中文重注册提醒 9001（`AppGraph.kt:126-129`）
+> 与周报 9002（`:134-138`）；iOS 端会因此覆盖排程时冻结的本地化文案，故英文态复习提醒"只到下一次重启为止"。
+> spec §12 的 W9 行（"AppGraph 通知接线"）把这两处改为按生效语言取词后消解；日程（W5）与周报（W6）的本地化各自归其波次。
 
 ## 3. 已知限制
 
@@ -356,7 +366,7 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-13 | 清单脚本的两个已知口径问题：`i18n_inventory.py` 只剥 `//` 行注释，块注释里的中文会被算成"残留字面量"（`ChildFocusTrainingScreen.kt:23` 就是这种假阳性）；`i18n_coverage_audit.py` 用"文件名是否出现在 plan 文本里"判定覆盖 | `scripts/i18n_inventory.py:30`、`scripts/i18n_coverage_audit.py:35` |
 | L-14 | 双语视觉效果无法由 CI 验证；iOS 在本工作机上连链接都没发生过 | spec §9；§1、§2.5 |
 | L-15 | 阶段一是 v3.1.0 的**前半段**（Analytics 子项目未实施），版本号仍为 3.0.0/30000 | `docs/VERSIONING.md`；`composeApp/build.gradle.kts:89-90`；V-00b |
-| L-16 | **定时提醒类通知文案不进本地化范围（设计边界，不是漏译）**：错题复习提醒、每周学习周报、日程提醒与启动补挂提醒的 title/body 全部在**任何组合期之外**构造——`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们，英文态这些通知仍是中文。番茄钟常驻通知不在此列（它在计时协程里现取 `currentStrings`，见 V-16）。阶段二若要本地化这一路，得把文案传给调度/触发侧或按平台字符串资源处理，属于结构改动而非等价替换 | `AppGraph.kt:128`、`:136`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里；终审 Minor 3 把 `startupLanguage` 换成 `StateFlow` 后该文件 KDoc 变长，这两个坐标从 `:112`/`:120` 顺移到 `:128`/`:136`，本行按当前树复算）、`ui/mistake/ReviewReminderReceiver.kt:25`/`:55`/`:60`/`:61`、`ui/parent/WeeklyReportReceiver.kt:28-29`、`ui/schedule/ScheduleAlarmHelper.kt:64-65`（文案规则见该文件 `:18` KDoc）；Android 触发器侧另有自己的裸字面量（`androidMain/…/platform/ReviewReminderReceiver.kt:29`/`:37`、`androidMain/…/platform/WeeklyReportReceiver.kt:41-42`/`:53`，平台文件本阶段禁改） |
+| L-16 | **定时提醒类通知的本地化现状（设计边界，不是漏译）**：W1 只接通了错题复习提醒——Android 在**触发时**重新按当前语言取词（ZH 态标题沿用渠道默认 `HStudy 错题复习提醒`，与 v3.1.0 逐字节一致；EN 态标题/正文为英文）；iOS 在**排程时**冻结本地化文案，但 `AppGraph.bootstrap()` 冷启动会用硬编码中文重注册提醒 9001，英文文案只存活到重启前（**W9 残留**，spec §12）。周报、日程提醒与启动补挂的 title/body 仍在**任何组合期之外**构造（`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们），英文态仍是中文，归 W5（日程）/W6（周报）/W9（AppGraph 接线）。番茄钟常驻通知不在此列（计时协程里现取 `currentStrings`，见 V-16）。 | `AppGraph.kt:128`、`:136`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里；终审 Minor 3 把 `startupLanguage` 换成 `StateFlow` 后这两个坐标从 `:112`/`:120` 顺移而来，本行按当前树复算）、`ui/parent/WeeklyReportReceiver.kt:28-29`、`ui/schedule/ScheduleAlarmHelper.kt:64-65`（文案规则见该文件 `:18` KDoc）；`ui/mistake/ReviewReminderReceiver.kt:34-35` 已改为取 `localizedCopy()`（不再有裸字面量）。Android 周报触发器仍是自己的裸字面量（`androidMain/…/platform/WeeklyReportReceiver.kt:41-42`/`:53`）。**平台文件口径**：用户 2026-11-10 明确授权的平台改动只有两个 androidMain 通知文件（`platform/ReviewReminderReceiver.kt`、`platform/AndroidNotificationScheduler.kt` 的 `titleOverride` 可选参数），其余平台文件零改动；`AndroidFileSharer.kt:27` 的分享标题仍属 W9（L-08） |
 | L-17 | 设备名兜底在 `data/**` 里各存了一份**表外副本**：家长控制导出包的 `家长设备`（`FamilySyncHelper.kt:107`，落进孩子设备存储，不在设置页出现）与进度包的 `孩子设备`（`:190` 与 DTO 默认值 `:82`）。它们不引用 `CanonicalParentSettingsText`/文案表，本阶段禁改 `data/**`，属阶段二与规范值常量对账的项（另见 spec §11"家长设备"行） | `grep -n "家长设备\|孩子设备" composeApp/src/commonMain/kotlin/com/hstudy/app/data/sync/FamilySyncHelper.kt`（3 处命中：`:82`/`:107`/`:190`） |
 | L-18 | `App.kt:60` 的 `.catch { emit(null) }` 是"降级不崩根"的例外：DataStore 读一旦抛错，上游以一次 `null` 完成、订阅就此终止，**本次会话语言被钉死在系统语言**，设置页切换不再生效，直到组合树重建（Android 配置变更 / iOS 重启）。代码注释写明了代价（`App.kt:54-59`），本清单此前未列 | `composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt:52-62` |
 | L-19 | **等价性登记表的"共享词遮蔽"**（终审 D-A 第 4 条裁决为记录、不修）：`i18n_template_diff.py` 的 `DISCLOSED_RESIDUALS`（现 27 条）里有**六条两侧同形**的通用词登记——`取消` / `确定` / `确认` / `删除` / `分` / `+⟨$⟩分`——而 `apply_disclosures()` 是在三层比对**之前**按**值**（不按字段）把它们从两侧集合里 `pop` 掉的。后果：在**默认组（窄组）**里新写或改出一条与这六个词**逐字节相同**的中文表值，会被无声摘掉，既不参与 `[strict]` 也不参与 `[A]/[B]`，等价性检查看不见它。边界要说清三条，别把它读成"闸门失效"：① 只有整串相同才遮蔽——`累计专注` 改成 `累计专注。` 这种真实漂移照旧报 `invented` 并退 1（本波次在当前树复做正对照实测：默认组 `[A] NO (1 missing, 1 invented)`、exit 1）；② 遮蔽的是**这条值**，不是这个字段，同字段其他值仍被比；③ `--branch` 整枝组里这六条是双边命中，摘掉等于"披露成立"，风险只在没带供值那张表的窄组。同一机制的第二个实例：表里第 19 条（`ParentDashboardStrings.scoreUnit` 的表侧单边 `分`）被第 13 条双边 `分`/`分` 先 pop，因而在整枝组恒报"（未用到）"——这就是 §6 那句"26 命中 / 1 未用到"里那 1 条的来历，不是登记过期。阶段二的收口形状：给登记加**字段名**限定（如 `table_field="CommonStrings.cancelButton"`）而不是继续按值 pop | 脚本头「已知边界」最后一条 + `scripts/i18n_template_diff.py` 的 [DISCLOSED_RESIDUALS] 注释；复跑：`python scripts/i18n_template_diff.py`（0）与"把一个 ZH 值改一个中文字"的 mutation（1） |

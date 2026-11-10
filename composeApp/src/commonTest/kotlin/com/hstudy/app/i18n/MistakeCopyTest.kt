@@ -273,8 +273,8 @@ class MistakeCopyTest {
         assertEquals("其他", AppStringsZh.mistake.subjectOther)
         assertEquals("Other", AppStringsEn.mistake.subjectOther)
         assertEquals("Other", localizedPresetText("其他", DisplayLanguage.EN))
-        // 里程碑名与成就注册表命名一致（克星/大师）
-        assertEquals("Mistake Buster", AppStringsEn.mistakeList.milestoneName50)
-        assertEquals("Mistake Master", AppStringsEn.mistakeList.milestoneName100)
+        // 里程碑名与成就注册表命名一致（克星/大师）——从注册表取值，改词时两侧不会漂移
+        assertEquals(achievementCopy[DisplayLanguage.EN]!!["mistake_50"]!!.title, AppStringsEn.mistakeList.milestoneName50)
+        assertEquals(achievementCopy[DisplayLanguage.EN]!!["mistake_100"]!!.title, AppStringsEn.mistakeList.milestoneName100)
     }
 }

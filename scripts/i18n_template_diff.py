@@ -313,7 +313,7 @@ DISCLOSED_RESIDUALS = [
     {"page": "主动回忆-做对", "table": None,
      "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:259 reviewMistake(note) 落库，不本地化"},
     {"page": "主动回忆-没记住", "table": None,
-     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:276 reviewMistake(note) 落库，不本地化"},
+     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:272 reviewMistake(note) 落库，不本地化"},
     {"page": "错题复习做对: %s" % VALUE, "table": None,
      "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:260 submitApproval description 落库"},
     {"page": "错题复习: %s" % VALUE, "table": None,

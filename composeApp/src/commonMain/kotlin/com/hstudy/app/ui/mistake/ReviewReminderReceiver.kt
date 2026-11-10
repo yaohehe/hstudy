@@ -9,8 +9,13 @@ import com.hstudy.app.platform.ScheduledReminder
 
 /**
  * 错题复习每日提醒（跨平台版）：注册/取消交给 [Platform.notifications]；
- * 文案在**发出时**按生效语言取（spec §8）——已排程通知不追更，下个每日重建周期生效。
- * 平台侧（androidMain ReviewReminderReceiver / iOS UNUserNotificationCenter）消费同一份本地化文案。
+ * 文案按生效语言取词（spec §8），但两个平台的取词时机不同：
+ * - iOS 在**排程时**把 title/body 冻结进本地通知请求，之后不再追更；
+ * - Android 在**触发时**由 androidMain ReviewReminderReceiver 重新按当前语言取词
+ *   （ZH 态标题沿用渠道默认，见该文件 KDoc）。
+ *
+ * 已知残留（W9）：`AppGraph.bootstrap()` 每次冷启动都会用硬编码中文重注册提醒 9001，
+ * 在 iOS 上会覆盖排程时的本地化快照——本地化文案只存活到下一次冷启动之前。
  */
 object ReviewReminderReceiver {
 

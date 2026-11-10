@@ -3,8 +3,9 @@ package com.hstudy.app.i18n
 /**
  * 错题复习通知（ui/mistake/ReviewReminderReceiver.kt）文案表（阶段 2 W1）。
  *
- * 取词时机 = **发出时**（spec §8）：common 侧 `ReviewReminderReceiver.localizedCopy()` 用
- * `stringsFor(currentDisplayLanguage())` 现取；已排程通知不追更，切换语言最迟下一个每日重建周期生效。
+ * 取词时机按平台不同（spec §8）：
+ * - Android 在**每次触发时**现取（`stringsFor(currentDisplayLanguage())`），切语言从下一次触发生效；
+ * - iOS 在**排程时**冻结一份快照，没有每日重建周期，文案只在重新排程（或冷启动 bootstrap 重注册）后更新。
  * 三条正文分别对应迁移前 :55（有到期 N 条）、:60（默认）、:61（查询失败兜底）三处字面量；
  * 标题对应 :25。
  */
