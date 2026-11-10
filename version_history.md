@@ -1,15 +1,11 @@
 # HStudy 版本更新记录
 
-## v3.1.0（未发布 · 双语第一阶段在分支 `feature/i18n-stage1` 上完成）
-
+## v3.1.0 (2026-11-10)
 **中英双语第一阶段（界面文案层）：13 个 UI 文件双语化，切换即时生效**
 
-> **版本号未升级**：本条记录的是**分支内已完成、尚未发布**的工作。
-> `composeApp/build.gradle.kts` 仍是 `versionName "3.0.0" / versionCode 30000`，
-> `iosApp/Info.plist` 与 `project.pbxproj` 同步保持 3.0.0/30000，没有 `v3.1.0` tag。
-> 按 `docs/VERSIONING.md`，版本号只在 CI 全绿的发布提交上一次性抬高。
-> 双语第一阶段只是 planned v3.1.0 的**前半段**——同一规划里的 Analytics（数据统计）子项目尚未实施，
-> 所以本分支不构成一个可发布版本。
+> **发布状态**：2026-11-10 发布（tag `v3.1.0`；Release 工作流产出未签名 APK 与 iOS 模拟器 .app 压缩包）。
+> 原规划里与本条并列的 Analytics（数据统计）子项目**未包含在本版本**，顺延至后续版本；
+> 本版只含双语第一阶段、阶段 2 W0 基础设施（用户不可见）及其间全部修复（iOS 启动崩溃、迁移校验误报、CI 闸门强化）。
 
 ### 范围
 - 真正双语的 UI 文件（13 个 = 11 个页面 + 2 个共享组件）：
@@ -36,6 +32,13 @@
 - 不使用 Compose Multiplatform 的 resources / `LocalConfiguration`（1.7.3 的 commonMain 无该 API，已用编译探针证实）
 - 英文术语统一引用设计文档 §11 术语表：`docs/superpowers/specs/2026-11-07-hstudy-bilingual-stage1-design.md` §11
 
+### 阶段 2 基础设施（W0，用户不可见）
+- 新增显示注册表 `i18n/PresetRegistry.kt`：202 个 canonical key 的 (zh, en) 全量译文 + 成就 13 组 + 宠物场景 7 条；
+  本版**尚未接线到页面**，无可见变化，供阶段 2 后续波次使用
+  （设计：`docs/superpowers/specs/2026-11-09-hstudy-bilingual-stage2-design.md`）
+- 新增 `currentDisplayLanguage()`（通知/分享等非 Compose 场景的生效语言解析，本版未接线）
+- 存储边界闸门扩展第 5 支：注册表文案形态进入写库调用即报红（自测 12 红 + 5 绿 fixture）
+
 ### 限制（详见 docs/i18n-stage1-verification.md §3）
 - 英文态中英混排是既定代价：未迁移页面、家长审批列表与效率报表、等级评语/鼓励语/成就名仍是中文
 - 存储边界：文案不进写库调用（`scripts/i18n_storage_boundary.py` 作退出码闸门）。
@@ -48,12 +51,12 @@
   需要人工在 Android Studio 与 iOS 模拟器各走一遍启动 → 首页 → 打卡 → 设置，清单 36 项（V-01…V-33 + 三条 V-00 准备项）在同文件 §2
 
 ### 技术信息
-- 版本号：未变（versionCode=30000, versionName="3.0.0"）；数据库 schema 不变（v12），无迁移
-- 提交序列：`27760d4`（Task 1）起至 `e87cbcb`（Task 11 修复轮）+ 本任务文档提交，全部在
-  `feature/i18n-stage1` 本地分支，**未 push**
-- 自动闸门：`:composeApp:testDebugUnitTest`（113 tests，其中 i18n 包 71 条）、
-  `:composeApp:compileCommonMainKotlinMetadata`、`:composeApp:assembleDebug`、
-  `scripts/i18n_template_diff.py`（中文态逐字节等价）、`scripts/i18n_storage_boundary.py`（+ 自测）
+- 版本号：versionCode=30100，versionName="3.1.0"；数据库 schema 不变（v12），无迁移
+- 提交：`feature/i18n-stage1` 已并入 main；本版本含自 `v3.0.0` 以来的全部提交
+  （双语第一阶段、阶段 2 W0、iOS 启动崩溃修复 `4c16f74`、迁移校验误报修复 `bd55eea`、CI 闸门强化）
+- 自动闸门（发布提交实测）：`:composeApp:testDebugUnitTest`（134 tests，0 failures）、`:composeApp:assembleDebug`、
+  `scripts/i18n_template_diff.py --branch`（中文态逐字节等价）、`scripts/i18n_storage_boundary.py`（+ 自测 195 断言）；
+  CI：Android Build + iOS Build 在发布提交全绿
 
 ---
 
