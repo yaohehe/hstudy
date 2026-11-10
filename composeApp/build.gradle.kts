@@ -95,7 +95,8 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
-            setProperty("archivesBaseName", "HStudy-v3.0.0")
+            // setProperty 是项目级属性，release 变体同样生效；跟随 versionName 避免版本漂移
+            setProperty("archivesBaseName", "HStudy-v${defaultConfig.versionName}")
         }
     }
     compileOptions {
