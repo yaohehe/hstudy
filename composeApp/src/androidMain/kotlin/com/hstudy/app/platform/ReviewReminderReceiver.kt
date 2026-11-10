@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeEntity
+import com.hstudy.app.ui.mistake.ReviewReminderReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -21,22 +22,28 @@ class ReviewReminderReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 AppGraph.init()
+                val copy = ReviewReminderReceiver.localizedCopy()
                 val mistakes = AppGraph.mistakeRepository.getAllMistakes().first()
                 val dueCount = mistakes.count { isDueForReview(it) }
                 if (dueCount > 0) {
                     AndroidNotificationScheduler.showNotification(
                         context, ReminderKind.REVIEW,
-                        "📚 今日有 $dueCount 道错题待复习，趁热打铁及时复习，记得更牢～",
-                        AndroidNotificationScheduler.REVIEW_NOTIFICATION_ID
+                        copy.dueBody(dueCount),
+                        AndroidNotificationScheduler.REVIEW_NOTIFICATION_ID,
+                        titleOverride = copy.title
                     )
                 }
             } catch (e: Exception) {
-                // 兜底：查询失败时仍推送通用提醒
-                AndroidNotificationScheduler.showNotification(
-                    context, ReminderKind.REVIEW,
-                    "📚 该复习错题啦！及时复习，记得更牢～",
-                    AndroidNotificationScheduler.REVIEW_NOTIFICATION_ID
-                )
+                // 兜底：查询失败时仍推送通用提醒（文案同样按当前语言取；取词再失败则静默跳过）
+                runCatching {
+                    val copy = ReviewReminderReceiver.localizedCopy()
+                    AndroidNotificationScheduler.showNotification(
+                        context, ReminderKind.REVIEW,
+                        copy.fallbackBody,
+                        AndroidNotificationScheduler.REVIEW_NOTIFICATION_ID,
+                        titleOverride = copy.title
+                    )
+                }
             } finally {
                 AndroidNotificationScheduler.rescheduleNextFromReceiver(context, intent)
                 pendingResult.finish()

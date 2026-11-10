@@ -1,6 +1,8 @@
 package com.hstudy.app.ui.mistake
 
 import com.hstudy.app.data.local.entity.MistakeEntity
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.stringsFor
 
 /**
  * 艾宾浩斯间隔复习调度器
@@ -33,20 +35,24 @@ object SpacedRepetition {
         return now >= nextReviewAt(mistake)
     }
 
-    /** 复习熟练度描述（复习次数越多越熟练） */
-    fun proficiencyLabel(reviewCount: Int): String = when {
-        reviewCount == 0 -> "未复习"
-        reviewCount < 3 -> "复习${reviewCount}次"
-        reviewCount < 5 -> "较熟练"
-        else -> "已巩固"
+    /** 复习熟练度描述（复习次数越多越熟练）；文案来自共享表，随生效语言。 */
+    fun proficiencyLabel(reviewCount: Int, lang: DisplayLanguage): String {
+        val strings = stringsFor(lang).mistake
+        return when {
+            reviewCount == 0 -> strings.proficiencyNone
+            reviewCount < 3 -> strings.proficiencyTimes(reviewCount)
+            reviewCount < 5 -> strings.proficiencyFair
+            else -> strings.proficiencyStrong
+        }
     }
 
-    /** 下次复习的友好描述（如“今天复习”/“明天复习”/“3天后复习”，让间隔复习计划透明可见） */
-    fun nextReviewLabel(mistake: MistakeEntity, now: Long = com.hstudy.app.ui.dt.nowMillis()): String {
-        if (mistake.isMastered) return "已掌握"
+    /** 下次复习的友好描述（如“今天复习”/“明天复习”/“3天后复习”，让间隔复习计划透明可见）。 */
+    fun nextReviewLabel(mistake: MistakeEntity, lang: DisplayLanguage, now: Long = com.hstudy.app.ui.dt.nowMillis()): String {
+        val strings = stringsFor(lang).mistake
+        if (mistake.isMastered) return strings.nextReviewMastered
         val nextAt = nextReviewAt(mistake)
-        if (now >= nextAt) return "今天复习"
+        if (now >= nextAt) return strings.nextReviewToday
         val daysUntil = kotlin.math.ceil((nextAt - now).toDouble() / DAY_MS).toInt()
-        return if (daysUntil <= 1) "明天复习" else "${daysUntil}天后复习"
+        return if (daysUntil <= 1) strings.nextReviewTomorrow else strings.nextReviewInDays(daysUntil)
     }
 }

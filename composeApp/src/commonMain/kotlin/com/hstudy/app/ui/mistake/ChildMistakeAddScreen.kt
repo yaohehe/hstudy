@@ -16,6 +16,7 @@ import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
 import com.hstudy.app.data.local.entity.mistakeErrorTypes
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -28,6 +29,8 @@ import com.hstudy.app.ui.dt.*
 fun ChildMistakeAddScreen(
     onNavigateBack: () -> Unit
 ) {
+    val strings = LocalStrings.current.mistakeAdd
+    val shared = LocalStrings.current.mistake
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -49,7 +52,7 @@ fun ChildMistakeAddScreen(
 
     Scaffold(
         topBar = {
-            HStudyTopBar(title = "➕ 添加错题", onNavigateBack = onNavigateBack)
+            HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack)
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -58,15 +61,15 @@ fun ChildMistakeAddScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // 科目选择
-            Text("科目", style = MaterialTheme.typography.titleSmall)
+            Text(strings.subjectLabel, style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MistakeSubject.entries.forEach { s ->
                     val label = when (s) {
-                        MistakeSubject.MATH -> "🔢 数学"
-                        MistakeSubject.CHINESE -> "📝 语文"
-                        MistakeSubject.ENGLISH -> "🔤 英语"
-                        MistakeSubject.SCIENCE -> "🔬 科学"
-                        MistakeSubject.OTHER -> "📋 其他"
+                        MistakeSubject.MATH -> shared.subjectMathChip
+                        MistakeSubject.CHINESE -> shared.subjectChineseChip
+                        MistakeSubject.ENGLISH -> shared.subjectEnglishChip
+                        MistakeSubject.SCIENCE -> shared.subjectScienceChip
+                        MistakeSubject.OTHER -> shared.subjectOtherChip
                     }
                     FilterChip(selected = subject == s, onClick = { subject = s; subjectName = s.name }, label = { Text(label) })
                 }
@@ -75,7 +78,7 @@ fun ChildMistakeAddScreen(
             // 题目摘要
             OutlinedTextField(
                 value = title, onValueChange = { title = it },
-                label = { Text("题目摘要") },
+                label = { Text(strings.titleLabel) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -83,19 +86,19 @@ fun ChildMistakeAddScreen(
             // 题目详情
             OutlinedTextField(
                 value = content, onValueChange = { content = it },
-                label = { Text("题目详细描述") },
+                label = { Text(strings.contentLabel) },
                 modifier = Modifier.fillMaxWidth().height(100.dp)
             )
 
             // 错误原因
             OutlinedTextField(
                 value = wrongReason, onValueChange = { wrongReason = it },
-                label = { Text("❌ 错误原因分析") },
+                label = { Text(strings.wrongReasonLabel) },
                 modifier = Modifier.fillMaxWidth().height(80.dp)
             )
 
             // 错误类型（用于错因分析，针对性改进）
-            Text("错误类型（可选，用于错因分析）", style = MaterialTheme.typography.titleSmall)
+            Text(strings.errorTypeHint, style = MaterialTheme.typography.titleSmall)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 mistakeErrorTypes.forEach { type ->
                     FilterChip(
@@ -109,7 +112,7 @@ fun ChildMistakeAddScreen(
             // 正确解法
             OutlinedTextField(
                 value = correctMethod, onValueChange = { correctMethod = it },
-                label = { Text("✅ 正确解法") },
+                label = { Text(strings.correctMethodLabel) },
                 modifier = Modifier.fillMaxWidth().height(80.dp)
             )
 
@@ -120,11 +123,11 @@ Button(onClick = {
                 }) {
                     Icon(Icons.Filled.CameraAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("拍照记录")
+                    Text(strings.takePhotoButton)
                 }
                 if (photoPath.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("📷 已拍照", color = MaterialTheme.colorScheme.secondary)
+                    Text(strings.photoTaken, color = MaterialTheme.colorScheme.secondary)
                 }
             }
 
@@ -133,7 +136,7 @@ Button(onClick = {
                 Card(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                     AsyncImage(
                         model = photoPath,
-                        contentDescription = "错题照片",
+                        contentDescription = shared.photoContentDescription,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -145,7 +148,7 @@ Button(onClick = {
             Button(
                 onClick = {
                     if (title.isBlank()) {
-                        scope.launch { snackbarHostState.showSnackbar("请输入题目摘要") }
+                        scope.launch { snackbarHostState.showSnackbar(strings.missingTitleMessage) }
                         return@Button
                     }
                     isSaving = true
@@ -172,7 +175,7 @@ Button(onClick = {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text("保存错题")
+                Text(strings.saveButton)
             }
 
             Spacer(modifier = Modifier.height(16.dp))

@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -33,6 +35,8 @@ fun ChildMistakeListScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.mistakeList
+    val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
@@ -133,8 +137,8 @@ fun ChildMistakeListScreen(
             app.userPreferences.boostPetMood(2)
             com.hstudy.app.ui.common.AchievementManager.evaluate(app)
             val updated = app.mistakeRepository.getMistakeById(mistake.id)
-            val nextLabel = updated?.let { SpacedRepetition.nextReviewLabel(it) } ?: ""
-            snackbarHostState.showSnackbar("📖 复习完成！+3分已提交家长审核 $nextLabel")
+            val nextLabel = updated?.let { SpacedRepetition.nextReviewLabel(it, displayLanguage) } ?: ""
+            snackbarHostState.showSnackbar(strings.reviewSuccessMessage(nextLabel))
         }
     }
 
@@ -143,10 +147,10 @@ fun ChildMistakeListScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "📚 错题本",
+                title = strings.title,
                 onNavigateBack = onNavigateBack,
                 actions = {
-                    Text("已掌握 ${masteredCount}", style = MaterialTheme.typography.labelMedium,
+                    Text(strings.masteredBadge(masteredCount), style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(end = 8.dp))
                 }
@@ -155,7 +159,7 @@ fun ChildMistakeListScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddMistake) {
-                Icon(Icons.Filled.Add, contentDescription = "添加错题")
+                Icon(Icons.Filled.Add, contentDescription = strings.addContentDescription)
             }
         }
     ) { padding ->
@@ -241,6 +245,8 @@ private fun StatusCardsPanel(
     onWeakSubjectClick: (MistakeSubject) -> Unit,
     onDueClick: () -> Unit
 ) {
+    val strings = LocalStrings.current.mistakeList
+    val shared = LocalStrings.current.mistake
     // ===== 连续复习 streak（强化每日复习习惯）=====
     if (allMistakes.isNotEmpty()) {
                 Card(
@@ -252,14 +258,14 @@ private fun StatusCardsPanel(
                             Text("🔥", style = MaterialTheme.typography.titleLarge)
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("连续复习 $reviewStreak 天", style = MaterialTheme.typography.titleSmall,
+                                Text(strings.streakTitle(reviewStreak), style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                                 Text(
                                     when {
-                                        reviewStreak >= 7 -> "太棒了！坚持复习一周以上，记忆超牢固！"
-                                        reviewStreak >= 3 -> "坚持得不错！每天复习，遗忘远离你！"
-                                        reviewStreak > 0 -> "好的开始！今天也来复习巩固一下吧！"
-                                        else -> "今天复习错题，开启连续复习 streak 吧！"
+                                        reviewStreak >= 7 -> strings.streakEncouragementHigh
+                                        reviewStreak >= 3 -> strings.streakEncouragementMid
+                                        reviewStreak > 0 -> strings.streakEncouragementStart
+                                        else -> strings.streakEncouragementNone
                                     },
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
@@ -274,11 +280,11 @@ private fun StatusCardsPanel(
                                         app.pointRepository.adjustPoints(bonus, "连续复习${days}天里程碑奖励")
                                         app.userPreferences.addReviewStreakMilestoneClaimed(days)
                                         com.hstudy.app.ui.common.AchievementManager.evaluate(app)
-                                        snackbarHostState.showSnackbar("🎉 连续复习${days}天达成！奖励 +${bonus} 分！")
+                                        snackbarHostState.showSnackbar(strings.milestoneClaimedMessage(days, bonus))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("🎁 领取连续复习${days}天奖励 +${bonus}分") }
+                            ) { Text(strings.milestoneClaimButton(days, bonus)) }
                         }
                     }
                 }
@@ -293,9 +299,9 @@ private fun StatusCardsPanel(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("📅 复习打卡日历", style = MaterialTheme.typography.titleSmall,
+                            Text(strings.calendarTitle, style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            Text("近28天复习 $reviewedDays 天", style = MaterialTheme.typography.labelSmall,
+                            Text(strings.calendarSummary(reviewedDays), style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -317,7 +323,7 @@ private fun StatusCardsPanel(
                                 }
                             }
                         }
-                        Text("坚持每天复习，让格子都亮起来！", style = MaterialTheme.typography.labelSmall,
+                        Text(strings.calendarHint, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -325,7 +331,7 @@ private fun StatusCardsPanel(
 
             // ===== 错题清零进度 + 掌握里程碑激励 =====
             if (allMistakes.isNotEmpty()) {
-                val masteryMilestones = listOf(5 to "错题新手", 15 to "错题进阶", 30 to "错题熟练", 50 to "错题克星", 100 to "错题大师")
+                val masteryMilestones = listOf(5 to strings.milestoneName5, 15 to strings.milestoneName15, 30 to strings.milestoneName30, 50 to strings.milestoneName50, 100 to strings.milestoneName100)
                 val total = allMistakes.size
                 val progress = masteredCount.toFloat() / total
                 val nextMilestone = masteryMilestones.firstOrNull { it.first > masteredCount }
@@ -336,7 +342,7 @@ private fun StatusCardsPanel(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🏆 错题清零进度", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                            Text(strings.masteryProgressTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f))
                             Text("$masteredCount/$total", style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -348,10 +354,10 @@ private fun StatusCardsPanel(
                         )
                         if (nextMilestone != null) {
                             val need = nextMilestone.first - masteredCount
-                            Text("再掌握 $need 道，即可解锁「${nextMilestone.second}」里程碑！",
+                            Text(strings.masteryNextHint(need, nextMilestone.second),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         } else {
-                            Text("🎉 已解锁全部里程碑，你是真正的错题大师！",
+                            Text(strings.masteryAllUnlocked,
                                 style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
@@ -361,13 +367,13 @@ private fun StatusCardsPanel(
 
             // ===== 未来7天复习计划预览（提前看见复习节奏）=====
             if (allMistakes.isNotEmpty() && reviewForecast.sum() > 0) {
-                val forecastLabels = listOf("今天", "明天", "后天", "3天后", "4天后", "5天后", "6天后")
+                val forecastLabels = strings.forecastLabels
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("📆 未来7天复习计划", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(strings.forecastTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             reviewForecast.forEachIndexed { index, count ->
                                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -392,8 +398,8 @@ private fun StatusCardsPanel(
             // 薄弱科目快速复习（把掌握度分析转化为行动）
             if (weakestSubject != null) {
                 val weakName = when (weakestSubject) {
-                    MistakeSubject.MATH -> "数学"; MistakeSubject.CHINESE -> "语文"
-                    MistakeSubject.ENGLISH -> "英语"; MistakeSubject.SCIENCE -> "科学"; else -> "其他"
+                    MistakeSubject.MATH -> shared.subjectMath; MistakeSubject.CHINESE -> shared.subjectChinese
+                    MistakeSubject.ENGLISH -> shared.subjectEnglish; MistakeSubject.SCIENCE -> shared.subjectScience; else -> shared.subjectOther
                 }
                 Card(
                     onClick = { onWeakSubjectClick(weakestSubject) },
@@ -404,9 +410,9 @@ private fun StatusCardsPanel(
                         Text("🎯", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("重点攻克薄弱科目：$weakName", style = MaterialTheme.typography.titleSmall,
+                            Text(strings.weakSubjectTitle(weakName), style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                            Text("点击筛选${weakName}未掌握错题，针对性突破", style = MaterialTheme.typography.bodySmall,
+                            Text(strings.weakSubjectHint(weakName), style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
@@ -427,8 +433,8 @@ private fun StatusCardsPanel(
                         Text("🔔", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("今日有 ${dueForReview.size} 道错题待复习", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Text("按遗忘曲线及时复习，记忆更牢固，点击查看", style = MaterialTheme.typography.bodySmall,
+                            Text(strings.dueBannerTitle(dueForReview.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.dueBannerHint, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer)
                         }
                         Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
@@ -446,8 +452,8 @@ private fun StatusCardsPanel(
                         Text("⏰", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("每日复习提醒", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Text("每天定时提醒你复习错题，不忘复习", style = MaterialTheme.typography.bodySmall,
+                            Text(strings.reminderTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.reminderHint, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(
@@ -457,17 +463,17 @@ private fun StatusCardsPanel(
                                     app.userPreferences.setReviewReminder(enabled, reviewReminderHour)
                                     if (enabled) {
                                         ReviewReminderReceiver.schedule(reviewReminderHour)
-                                        snackbarHostState.showSnackbar("✅ 已开启每日${reviewReminderHour}点复习提醒")
+                                        snackbarHostState.showSnackbar(strings.reminderOnMessage(reviewReminderHour))
                                     } else {
                                         ReviewReminderReceiver.cancel()
-                                        snackbarHostState.showSnackbar("已关闭复习提醒")
+                                        snackbarHostState.showSnackbar(strings.reminderOffMessage)
                                     }
                                 }
                             }
                         )
                     }
                     if (reviewReminderEnabled) {
-                        Text("提醒时间", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(strings.reminderTimeLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf(17, 18, 19, 20, 21).forEach { h ->
                                 FilterChip(
@@ -478,7 +484,7 @@ private fun StatusCardsPanel(
                                             ReviewReminderReceiver.schedule(h)
                                         }
                                     },
-                                    label = { Text("${h}点") }
+                                    label = { Text(strings.reminderHourChip(h)) }
                                 )
                             }
                         }
@@ -500,16 +506,18 @@ private fun FilterBar(
     onToggleDue: () -> Unit,
     dueCount: Int
 ) {
+    val strings = LocalStrings.current.mistakeList
+    val shared = LocalStrings.current.mistake
     OutlinedTextField(
         value = searchQuery,
         onValueChange = onSearchChange,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder = { Text("搜索错题（题目/错因/解法）") },
+        placeholder = { Text(strings.searchPlaceholder) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {
             if (searchQuery.isNotEmpty()) {
                 IconButton(onClick = { onSearchChange("") }) {
-                    Icon(Icons.Filled.Clear, contentDescription = "清空")
+                    Icon(Icons.Filled.Clear, contentDescription = strings.clearSearchContentDescription)
                 }
             }
         },
@@ -519,23 +527,23 @@ private fun FilterBar(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        FilterChip(selected = selectedSubject == null, onClick = { onSelectSubject(null) }, label = { Text("全部") })
-        FilterChip(selected = selectedSubject == MistakeSubject.MATH, onClick = { onSelectSubject(if (selectedSubject == MistakeSubject.MATH) null else MistakeSubject.MATH) }, label = { Text("数学") })
-        FilterChip(selected = selectedSubject == MistakeSubject.CHINESE, onClick = { onSelectSubject(if (selectedSubject == MistakeSubject.CHINESE) null else MistakeSubject.CHINESE) }, label = { Text("语文") })
-        FilterChip(selected = selectedSubject == MistakeSubject.ENGLISH, onClick = { onSelectSubject(if (selectedSubject == MistakeSubject.ENGLISH) null else MistakeSubject.ENGLISH) }, label = { Text("英语") })
+        FilterChip(selected = selectedSubject == null, onClick = { onSelectSubject(null) }, label = { Text(strings.filterAll) })
+        FilterChip(selected = selectedSubject == MistakeSubject.MATH, onClick = { onSelectSubject(if (selectedSubject == MistakeSubject.MATH) null else MistakeSubject.MATH) }, label = { Text(shared.subjectMath) })
+        FilterChip(selected = selectedSubject == MistakeSubject.CHINESE, onClick = { onSelectSubject(if (selectedSubject == MistakeSubject.CHINESE) null else MistakeSubject.CHINESE) }, label = { Text(shared.subjectChinese) })
+        FilterChip(selected = selectedSubject == MistakeSubject.ENGLISH, onClick = { onSelectSubject(if (selectedSubject == MistakeSubject.ENGLISH) null else MistakeSubject.ENGLISH) }, label = { Text(shared.subjectEnglish) })
     }
     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         FilterChip(
             selected = showOnlyUnmastered,
             onClick = onToggleUnmastered,
-            label = { Text("仅未掌握") },
+            label = { Text(strings.filterUnmasteredOnly) },
             leadingIcon = if (showOnlyUnmastered) {{ Icon(Icons.Filled.FilterAlt, contentDescription = null, modifier = Modifier.size(16.dp)) }} else null
         )
         Spacer(modifier = Modifier.width(6.dp))
         FilterChip(
             selected = showOnlyDue,
             onClick = onToggleDue,
-            label = { Text("今日待复习${if (dueCount > 0) " $dueCount" else ""}") }
+            label = { Text(strings.filterDue(dueCount)) }
         )
     }
 }
@@ -549,12 +557,13 @@ private fun MistakeListContent(
     onToggleMastered: (MistakeEntity) -> Unit,
     onReview: (MistakeEntity) -> Unit
 ) {
+    val strings = LocalStrings.current.mistakeList
     if (filtered.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(40.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("📖", style = MaterialTheme.typography.displayLarge)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("还没有错题记录，点击下方 + 添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(strings.emptyState, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     } else {
@@ -582,6 +591,9 @@ private fun MistakeCard(
     onToggleMastered: () -> Unit,
     onReview: () -> Unit
 ) {
+    val strings = LocalStrings.current.mistakeList
+    val shared = LocalStrings.current.mistake
+    val displayLanguage = LocalDisplayLanguage.current
     val isDue = SpacedRepetition.isDueForReview(mistake)
     val bgColor by animateColorAsState(
         when {
@@ -599,11 +611,11 @@ private fun MistakeCard(
         MistakeSubject.OTHER -> "📋"
     }
     val subjectName = when (mistake.subject) {
-        MistakeSubject.MATH -> "数学"
-        MistakeSubject.CHINESE -> "语文"
-        MistakeSubject.ENGLISH -> "英语"
-        MistakeSubject.SCIENCE -> "科学"
-        MistakeSubject.OTHER -> "其他"
+        MistakeSubject.MATH -> shared.subjectMath
+        MistakeSubject.CHINESE -> shared.subjectChinese
+        MistakeSubject.ENGLISH -> shared.subjectEnglish
+        MistakeSubject.SCIENCE -> shared.subjectScience
+        MistakeSubject.OTHER -> shared.subjectOther
     }
 
     Card(
@@ -626,19 +638,19 @@ private fun MistakeCard(
                     }
                     if (isDue) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("🔔待复习", style = MaterialTheme.typography.labelSmall,
+                        Text(strings.dueBadge, style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(subjectName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(SpacedRepetition.proficiencyLabel(mistake.reviewCount),
+                    Text(SpacedRepetition.proficiencyLabel(mistake.reviewCount, displayLanguage),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // 下次复习时间（让间隔复习计划透明可见）
                     if (!mistake.isMastered) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("📅 ${SpacedRepetition.nextReviewLabel(mistake)}",
+                        Text("📅 ${SpacedRepetition.nextReviewLabel(mistake, displayLanguage)}",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
@@ -658,7 +670,7 @@ private fun MistakeCard(
                 FilledTonalButton(
                     onClick = onReview,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) { Text("复习+3", style = MaterialTheme.typography.labelMedium) }
+                ) { Text(strings.reviewButton, style = MaterialTheme.typography.labelMedium) }
                 Spacer(modifier = Modifier.width(4.dp))
             }
             // 掌握切换按钮
@@ -666,7 +678,7 @@ private fun MistakeCard(
                 if (mistake.isMastered) {
                     Text("✅", style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Icon(Icons.Filled.RadioButtonUnchecked, contentDescription = "标记掌握",
+                    Icon(Icons.Filled.RadioButtonUnchecked, contentDescription = strings.markMasteredContentDescription,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

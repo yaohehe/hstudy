@@ -88,6 +88,12 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "settings.weeklyReportNote",              // "…check-ins, focus, review and points — no need to open the app."
     "settings.backupNote",                    // "Back up your child's study data — points, mistakes, …"
     "settings.progressPointsLabel",           // "⭐ Total points"（§11 积分 = Points）
+    // ---- W1 Task 3 错题详情页新增 5 条（英文原文逐条留在行尾注释里）。
+    "mistakeDetail.gotItMessage",            // "🎉 Right! +3 points submitted for parent approval"
+    "mistakeDetail.missedMessage",           // "💪 +1 point submitted for approval — …"
+    "mistakeDetail.variationPromptsEnglish", // "What grammar or vocabulary point …?" / "… a sentence with this point?"
+    "mistakeDetail.variationDoneMessage",    // "💡 Variation complete — +3 points submitted for parent approval"
+    "mistakeDetail.variationButton",         // "💡 Complete variation thinking (+3 points)"
 )
 
 /**

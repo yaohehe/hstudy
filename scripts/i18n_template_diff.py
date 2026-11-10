@@ -4,7 +4,7 @@
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
-    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部十张表
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部十六张表
     python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
         --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
@@ -21,11 +21,12 @@
   的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
   里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
   带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
-* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部十张**表"可用**。限制不来自表侧读取本身，而来自
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部十六张**表"可用**。限制不来自表侧读取本身，而来自
   [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
-  [BRANCH_TABLES] 十张全读一遍。实测（终审当日，当前树）：
-      --tables-rev HEAD      -> 0        （十张齐全）
-      --tables-rev c3bd94a   -> 0        （Ruling 41 才新建 ParentGateStrings.kt，这是可用的最早 rev）
+  [BRANCH_TABLES] 十六张全读一遍。阶段 2 W1 那六张错题表是 W1 提交才落进历史的，所以**可用的最早
+  rev 就是 W1 提交本身**，在那之前（含 ece9b51 / c3bd94a）一律 `git show …失败`。实测：
+      --tables-rev HEAD      -> 0        （W1 提交之后十六张齐全；W1 之前 HEAD 缺 MistakeStrings.kt，退 1）
+      --tables-rev c3bd94a   -> **1**    `git show c3bd94a:…/MistakeStrings.kt 失败`（W1 之后最早 rev 前移）
       --tables-rev 41c3d39   -> **1**    `git show 41c3d39:…/ParentGateStrings.kt 失败`
       --tables-rev ceaf0f5   -> **1**    `git show ceaf0f5:…/ChildHomeStrings.kt 失败`
   旧版这段的示例就是最后那条，`d4d441b`（终审第 9 条，引入整枝范围）之后它恒退 1，所以**已删**。
@@ -141,6 +142,7 @@ TASK9_REV = "20bc060"      # Task 9（孩子首页）迁移前
 TASK10_HOME_REV = "0c34b79"   # Task 10 家长首页迁移前
 TASK10_DASH_REV = "c77f91c"   # Task 10 数据看板迁移前（家长首页那一次已经把它迁走之前）
 TASK11_REV = "ad6aa93"     # Task 11（设置页其余 64 条）迁移前
+W1_REV = "4d28c8e"        # 阶段 2 W1（错题域）迁移前 = v3.1.0 发布提交
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -166,9 +168,9 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（终审 Minor 2 复算，改登记时必须同时改这里）：表里现在 **19 条**
-# （7 条两侧同形 + 5 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **13** 条默认组用不到；`--branch` 组碰到 **18** 条、只剩 **1** 条报
+# 登记表的当前实况读数（W1 Task 6 复算，改登记时必须同时改这里）：表里现在 **27 条**
+# （7 条两侧同形 + 13 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **21** 条默认组用不到；`--branch` 组碰到 **26** 条、只剩 **1** 条报
 # "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
 # 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
 #
@@ -191,12 +193,21 @@ BRANCH_PAGES = DEFAULT_PAGES + [
     (TASK10_HOME_REV, "com/hstudy/app/ui/parent/ParentHomeScreen.kt"),
     (TASK10_DASH_REV, "com/hstudy/app/ui/parent/ParentDashboardScreen.kt"),
     (BRANCH_GATE_REV, "com/hstudy/app/ui/navigation/AppNavGraph.kt"),
+    # ---- 阶段 2 W1（错题域，W1_REV）----
+    (W1_REV, "com/hstudy/app/ui/mistake/ChildMistakeListScreen.kt"),
+    (W1_REV, "com/hstudy/app/ui/mistake/ChildMistakeDetailScreen.kt"),
+    (W1_REV, "com/hstudy/app/ui/mistake/ChildMistakeAddScreen.kt"),
+    (W1_REV, "com/hstudy/app/ui/mistake/ParentMistakeReviewScreen.kt"),
+    (W1_REV, "com/hstudy/app/ui/mistake/SpacedRepetition.kt"),
+    (W1_REV, "com/hstudy/app/ui/mistake/ReviewReminderReceiver.kt"),
 ]
 BRANCH_TABLES = [
     ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
         "RoleStrings", "SettingsStrings", "CommonStrings", "TaskListStrings",
         "PomodoroStrings", "FocusStrings", "ChildHomeStrings",
         "ParentHomeStrings", "ParentDashboardStrings", "ParentGateStrings",
+        "MistakeStrings", "MistakeListStrings", "MistakeDetailStrings",
+        "MistakeAddStrings", "ParentMistakeReviewStrings", "ReviewReminderStrings",
     )
 ]
 
@@ -298,6 +309,23 @@ DISCLOSED_RESIDUALS = [
      "reason": "Task 5 新写文案（同上）：SettingsStringsZh.languageNote"},
     {"page": None, "table": "部分页面仍在适配英文，会暂时保持中文显示。",
      "reason": "Task 5 新写文案（同上，且只在英文态渲染，spec §7）：SettingsStringsZh.partialTranslationNote"},
+    # ---- 阶段 2 W1：Ruling 25 落库原文（页面单边；值不进表）----
+    {"page": "主动回忆-做对", "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:259 reviewMistake(note) 落库，不本地化"},
+    {"page": "主动回忆-没记住", "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:276 reviewMistake(note) 落库，不本地化"},
+    {"page": "错题复习做对: %s" % VALUE, "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:260 submitApproval description 落库"},
+    {"page": "错题复习: %s" % VALUE, "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:273 submitApproval description 落库"},
+    {"page": "举一反三思考: %s" % VALUE, "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:339 submitApproval description 落库"},
+    {"page": "间隔复习", "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeListScreen.kt:131 reviewMistake(note) 落库"},
+    {"page": "复习错题：%s" % VALUE, "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeListScreen.kt:132 submitApproval description 落库"},
+    {"page": "连续复习%s天里程碑奖励" % VALUE, "table": None,
+     "reason": "W1 Ruling 25：ChildMistakeListScreen.kt:274 adjustPoints note 落库"},
 ]
 
 
@@ -513,9 +541,9 @@ def main():
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE,
-                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部十张表的 rev 可用**"
-                         "（本分支上 c3bd94a 起，含 HEAD）：[_global_sets] 会按这个 rev 读满"
-                         " BRANCH_TABLES 十张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部十六张表的 rev 可用**"
+                         "（本分支上阶段 2 W1 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 十六张，早于它的 rev 直接 `git show … 失败` 退 1。"
                          "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)

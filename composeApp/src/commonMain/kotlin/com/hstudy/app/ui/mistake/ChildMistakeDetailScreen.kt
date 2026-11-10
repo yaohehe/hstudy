@@ -16,6 +16,7 @@ import coil3.compose.AsyncImage
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeSubject
 import com.hstudy.app.data.local.entity.mistakeErrorTypes
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.dt.fileExists
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
@@ -26,6 +27,9 @@ fun ChildMistakeDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.mistakeDetail
+    val shared = LocalStrings.current.mistake
+    val common = LocalStrings.current.common
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -67,7 +71,7 @@ fun ChildMistakeDetailScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "$subjectEmoji 错题详情",
+                title = strings.screenTitle(subjectEmoji),
                 onNavigateBack = onNavigateBack,
                 actions = {
                     // 编辑按钮
@@ -82,7 +86,7 @@ fun ChildMistakeDetailScreen(
                             isEditing = true
                         }
                     }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "编辑")
+                        Icon(Icons.Filled.Edit, contentDescription = strings.editContentDescription)
                     }
                     IconButton(onClick = {
                         scope.launch {
@@ -94,7 +98,7 @@ fun ChildMistakeDetailScreen(
                     }
                     // 删除按钮
                     IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription, tint = MaterialTheme.colorScheme.error)
                     }
                 }
             )
@@ -107,28 +111,28 @@ fun ChildMistakeDetailScreen(
         ) {
             if (isEditing) {
                 // ===== 编辑模式 =====
-                Text("✏️ 编辑错题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(strings.editHeading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 // 科目选择
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MistakeSubject.entries.forEach { s ->
                         val label = when (s) {
-                            MistakeSubject.MATH -> "数学"; MistakeSubject.CHINESE -> "语文"
-                            MistakeSubject.ENGLISH -> "英语"; MistakeSubject.SCIENCE -> "科学"
-                            MistakeSubject.OTHER -> "其他"
+                            MistakeSubject.MATH -> shared.subjectMath; MistakeSubject.CHINESE -> shared.subjectChinese
+                            MistakeSubject.ENGLISH -> shared.subjectEnglish; MistakeSubject.SCIENCE -> shared.subjectScience
+                            MistakeSubject.OTHER -> shared.subjectOther
                         }
                         FilterChip(selected = editSubject == s, onClick = { editSubject = s }, label = { Text(label) })
                     }
                 }
                 OutlinedTextField(value = editTitle, onValueChange = { editTitle = it },
-                    label = { Text("标题") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    label = { Text(strings.titleLabel) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 OutlinedTextField(value = editContent, onValueChange = { editContent = it },
-                    label = { Text("题目内容") }, modifier = Modifier.fillMaxWidth().height(100.dp))
+                    label = { Text(strings.contentLabel) }, modifier = Modifier.fillMaxWidth().height(100.dp))
                 OutlinedTextField(value = editWrongReason, onValueChange = { editWrongReason = it },
-                    label = { Text("错误原因") }, modifier = Modifier.fillMaxWidth().height(80.dp))
+                    label = { Text(strings.wrongReasonLabel) }, modifier = Modifier.fillMaxWidth().height(80.dp))
                 OutlinedTextField(value = editCorrectMethod, onValueChange = { editCorrectMethod = it },
-                    label = { Text("正确解法") }, modifier = Modifier.fillMaxWidth().height(80.dp))
+                    label = { Text(strings.correctMethodLabel) }, modifier = Modifier.fillMaxWidth().height(80.dp))
                 // 错误类型
-                Text("错误类型", style = MaterialTheme.typography.titleSmall)
+                Text(strings.errorTypeLabel, style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                     mistakeErrorTypes.forEach { et ->
                         FilterChip(selected = editErrorType == et, onClick = { editErrorType = if (editErrorType == et) "" else et },
@@ -146,10 +150,10 @@ fun ChildMistakeDetailScreen(
                             app.mistakeRepository.updateMistake(updated)
                             mistake = updated
                             isEditing = false
-                            snackbarHostState.showSnackbar("✅ 错题已更新")
+                            snackbarHostState.showSnackbar(strings.updatedMessage)
                         }
-                    }) { Text("保存修改") }
-                    OutlinedButton(onClick = { isEditing = false }) { Text("取消") }
+                    }) { Text(strings.saveButton) }
+                    OutlinedButton(onClick = { isEditing = false }) { Text(common.cancelButton) }
                 }
             } else {
             // ===== 正常显示模式 =====
@@ -160,18 +164,18 @@ fun ChildMistakeDetailScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AssistChip(
                     onClick = {},
-                    label = { Text(if (m.isMastered) "✅ 已掌握" else "⏳ 未掌握") },
+                    label = { Text(if (m.isMastered) shared.masteredStatus else shared.unmasteredStatus) },
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 val dateStr = com.hstudy.app.ui.dt.SimpleDateFormat("yyyy-MM-dd", com.hstudy.app.ui.dt.Locale.getDefault()).format(com.hstudy.app.ui.dt.Date(m.createdAt))
-                Text("添加于 $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(strings.addedOn(dateStr), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             // 题目内容
             if (m.content.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("📋 题目描述", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(strings.contentHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(m.content, style = MaterialTheme.typography.bodyMedium)
                     }
@@ -187,8 +191,8 @@ fun ChildMistakeDetailScreen(
                     Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("🤔", style = MaterialTheme.typography.headlineMedium)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("先自己回想一下这道题怎么做", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text("主动回忆比直接看答案记得更牢！想好了再点击下方按钮核对。",
+                        Text(strings.recallHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(strings.recallHint,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
                     }
                 }
@@ -198,7 +202,7 @@ fun ChildMistakeDetailScreen(
             if ((answerRevealed || m.isMastered) && m.wrongReason.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("❌ 错误原因", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text(strings.wrongReasonHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(m.wrongReason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
@@ -209,7 +213,7 @@ fun ChildMistakeDetailScreen(
             if ((answerRevealed || m.isMastered) && m.correctMethod.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("✅ 正确解法", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(strings.correctMethodHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(m.correctMethod, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
@@ -218,11 +222,11 @@ fun ChildMistakeDetailScreen(
 
             // 照片
             if (m.photoPath.isNotEmpty() && fileExists(m.photoPath)) {
-                Text("📷 题目照片", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(strings.photoHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Card(modifier = Modifier.fillMaxWidth().height(250.dp)) {
                     AsyncImage(
                         model = m.photoPath,
-                        contentDescription = "错题照片",
+                        contentDescription = shared.photoContentDescription,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -238,7 +242,7 @@ fun ChildMistakeDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                     ) {
-                        Text("✅ 这道题已掌握，真棒！偶尔回顾一下保持记忆。",
+                        Text(strings.masteredCard,
                             style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp))
                     }
                 }
@@ -247,11 +251,11 @@ fun ChildMistakeDetailScreen(
                     Button(
                         onClick = { answerRevealed = true },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("👀 我想好了，显示答案核对") }
+                    ) { Text(strings.revealButton) }
                 }
                 // 第二步：已显示答案但未自评 → 自评做对/没记住
                 !reviewDone -> {
-                    Text("📝 对照答案，你这次做对了吗？", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(strings.selfCheckPrompt, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(
                             onClick = {
@@ -261,22 +265,22 @@ fun ChildMistakeDetailScreen(
                                     app.userPreferences.boostPetMood(2) // 复习让宠物开心
                                     com.hstudy.app.ui.common.AchievementManager.evaluate(app)
                                     reviewDone = true
-                                    snackbarHostState.showSnackbar("🎉 做对了！+3分已提交家长审核")
+                                    snackbarHostState.showSnackbar(strings.gotItMessage)
                                 }
                             },
                             modifier = Modifier.weight(1f)
-                        ) { Text("✅ 做对了 (+5)") }
+                        ) { Text(strings.gotItButton) }
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
                                     app.mistakeRepository.reviewMistake(mistakeId, points = 0, note = "主动回忆-没记住")
                                     app.pointApprovalRepository.submitApproval("MISTAKE_REVIEW", "错题复习: ${m.title}", 1)
                                     reviewDone = true
-                                    snackbarHostState.showSnackbar("💪 +1分已提交审核，多复习几次就记住了")
+                                    snackbarHostState.showSnackbar(strings.missedMessage)
                                 }
                             },
                             modifier = Modifier.weight(1f)
-                        ) { Text("❌ 没记住 (+2)") }
+                        ) { Text(strings.missedButton) }
                     }
                 }
                 // 第三步：自评完成
@@ -285,7 +289,7 @@ fun ChildMistakeDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        Text("✅ 本次复习完成！系统会按遗忘曲线自动安排下次复习时间。",
+                        Text(strings.reviewDoneCard,
                             style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp))
                     }
                 }
@@ -301,27 +305,27 @@ fun ChildMistakeDetailScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("💡 举一反三", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(strings.variationTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         if (m.hasVariation) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("✅ 已完成", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(strings.variationDone, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                     // 学科引导思考问题
                     val prompts = when (m.subject) {
-                        MistakeSubject.MATH -> listOf("这道题考查的是什么知识点？", "改变数字或条件，你还会解吗？", "你能自己编一道类似的题吗？")
-                        MistakeSubject.CHINESE -> listOf("这道题涉及哪些字词/知识点？", "换个语境你还能用对吗？", "你能造一个类似的句子吗？")
-                        MistakeSubject.ENGLISH -> listOf("这道题的语法/单词重点是什么？", "换个时态/句型你还会吗？", "你能用这个知识点造个句吗？")
-                        MistakeSubject.SCIENCE -> listOf("这道题背后的科学原理是什么？", "改变实验条件会怎样？", "生活中还有哪些类似现象？")
-                        MistakeSubject.OTHER -> listOf("这道题的核心要点是什么？", "换个角度你会怎么思考？", "你能举一个类似的例子吗？")
+                        MistakeSubject.MATH -> strings.variationPromptsMath
+                        MistakeSubject.CHINESE -> strings.variationPromptsChinese
+                        MistakeSubject.ENGLISH -> strings.variationPromptsEnglish
+                        MistakeSubject.SCIENCE -> strings.variationPromptsScience
+                        MistakeSubject.OTHER -> strings.variationPromptsOther
                     }
-                    Text("🤔 试着想一想：", style = MaterialTheme.typography.labelMedium)
+                    Text(strings.variationThink, style = MaterialTheme.typography.labelMedium)
                     prompts.forEach { p -> Text("• $p", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
                     if (m.hasVariation) {
                         // 已举一反三：展示笔记
                         if (m.variationNote.isNotEmpty()) {
-                            Text("📝 我的举一反三笔记：", style = MaterialTheme.typography.labelMedium)
+                            Text(strings.variationNotesHeading, style = MaterialTheme.typography.labelMedium)
                             Text(m.variationNote, style = MaterialTheme.typography.bodySmall)
                         }
                     } else {
@@ -329,7 +333,7 @@ fun ChildMistakeDetailScreen(
                         OutlinedTextField(
                             value = variationInput,
                             onValueChange = { variationInput = it },
-                            label = { Text("写下你的思考/变式题（可选）") },
+                            label = { Text(strings.variationInputLabel) },
                             modifier = Modifier.fillMaxWidth().height(80.dp)
                         )
                         Button(
@@ -338,18 +342,18 @@ fun ChildMistakeDetailScreen(
                                     app.mistakeRepository.saveVariation(m, variationInput)
                                     app.pointApprovalRepository.submitApproval("VARIATION", "举一反三思考: ${m.title}", 3)
                                     mistake = app.mistakeRepository.getMistakeById(mistakeId)
-                                    snackbarHostState.showSnackbar("💡 举一反三完成 +3分已提交家长审核")
+                                    snackbarHostState.showSnackbar(strings.variationDoneMessage)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("💡 完成举一反三思考 (+3分)") }
+                        ) { Text(strings.variationButton) }
                     }
                 }
             }
 
             // 复习记录
             if (reviews.isNotEmpty()) {
-                Text("复习记录 (${reviews.size})", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(strings.reviewHistoryTitle(reviews.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 reviews.take(5).forEach { review ->
                     val dateStr = com.hstudy.app.ui.dt.SimpleDateFormat("MM-dd HH:mm", com.hstudy.app.ui.dt.Locale.getDefault()).format(com.hstudy.app.ui.dt.Date(review.reviewedAt))
                     Row(
@@ -358,7 +362,7 @@ fun ChildMistakeDetailScreen(
                     ) {
                         Text("📖", style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("$dateStr +${review.earnedPoints}分", style = MaterialTheme.typography.bodySmall)
+                        Text(strings.reviewHistoryLine(dateStr, review.earnedPoints), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -372,8 +376,8 @@ fun ChildMistakeDetailScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("删除错题") },
-            text = { Text("确定要删除「${m.title}」吗？删除后不可恢复。") },
+            title = { Text(strings.deleteDialogTitle) },
+            text = { Text(strings.deleteDialogText(m.title)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -384,9 +388,9 @@ fun ChildMistakeDetailScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("删除") }
+                ) { Text(common.deleteContentDescription) }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") } }
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text(common.cancelButton) } }
         )
     }
 }

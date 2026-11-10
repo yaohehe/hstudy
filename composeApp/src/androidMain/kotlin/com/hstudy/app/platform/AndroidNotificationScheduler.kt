@@ -105,8 +105,16 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
             scheduleAlarm(context, reminder)
         }
 
-        /** 弹出本地通知（渠道/标题/图标与原实现一致），点击打开 MainActivity */
-        fun showNotification(context: Context, kind: ReminderKind, message: String, notificationId: Int) {
+        /** 弹出本地通知（渠道/标题/图标与原实现一致），点击打开 MainActivity。
+         *  [titleOverride] 供需要本地化标题的调用方使用；缺省 null 时用与渠道固定的原中文标题
+         *  （周报/日程仍走缺省，待各自波次接线）。 */
+        fun showNotification(
+            context: Context,
+            kind: ReminderKind,
+            message: String,
+            notificationId: Int,
+            titleOverride: String? = null,
+        ) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
             ensureChannel(context, nm, kind)
 
@@ -133,7 +141,7 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
 
             val notification = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(smallIcon)
-                .setContentTitle(title)
+                .setContentTitle(titleOverride ?: title)
                 .setContentText(message)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(message))
                 .setPriority(priority)

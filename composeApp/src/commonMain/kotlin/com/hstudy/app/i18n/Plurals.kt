@@ -21,3 +21,16 @@ package com.hstudy.app.i18n
  * 术语表 §11：积分 = Points（依据：代码 `points` / `adjustPoints` / `ParentPointsScreen`）。
  */
 internal fun pointsWord(points: Int): String = if (points == 1) "point" else "points"
+
+/**
+ * 英文 one/other 窄函数（同 [pointsWord] 模式，spec §1：「后续页面遇到别的名词时在本文件再加
+ * 一个同样窄的函数，不要写成泛化模板」）：
+ * - [timesWord]：复习次数（Reviewed 1 time / 2 times）；
+ * - [daysWord]：天（1 day / 2 days）；
+ * - [mistakesWord]：错题（1 mistake / 2 mistakes）。
+ */
+internal fun timesWord(times: Int): String = if (times == 1) "time" else "times"
+
+internal fun daysWord(days: Int): String = if (days == 1) "day" else "days"
+
+internal fun mistakesWord(mistakes: Int): String = if (mistakes == 1) "mistake" else "mistakes"

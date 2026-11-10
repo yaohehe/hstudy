@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeSubject
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 
 @Composable
@@ -19,6 +20,8 @@ fun ParentMistakeReviewScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.parentMistakeReview
+    val shared = LocalStrings.current.mistake
     val app = AppGraph
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val masteredCount by app.mistakeRepository.getMasteredCount().collectAsState(initial = 0)
@@ -34,7 +37,7 @@ fun ParentMistakeReviewScreen(
 
     Scaffold(
         topBar = {
-            HStudyTopBar(title = "📊 错题分析", onNavigateBack = onNavigateBack)
+            HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack)
         }
     ) { padding ->
         ResponsiveContent(
@@ -53,12 +56,12 @@ fun ParentMistakeReviewScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            Text("错题概览", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(strings.overviewTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(12.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                                StatItem("总计", "$totalCount", MaterialTheme.colorScheme.primary)
-                                StatItem("未掌握", "$unmasteredCount", MaterialTheme.colorScheme.error)
-                                StatItem("已掌握", "$masteredCount", MaterialTheme.colorScheme.secondary)
+                                StatItem(strings.statTotal, "$totalCount", MaterialTheme.colorScheme.primary)
+                                StatItem(strings.statUnmastered, "$unmasteredCount", MaterialTheme.colorScheme.error)
+                                StatItem(strings.statMastered, "$masteredCount", MaterialTheme.colorScheme.secondary)
                             }
                         }
                     }
@@ -68,7 +71,7 @@ fun ParentMistakeReviewScreen(
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            Text("科目分布", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(strings.subjectDistribution, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(12.dp))
                             subjectStats.forEach { (subject, count) ->
                                 if (count > 0) {
@@ -80,11 +83,11 @@ fun ParentMistakeReviewScreen(
                                         MistakeSubject.OTHER -> "📋"
                                     }
                                     val subjectName = when (subject) {
-                                        MistakeSubject.MATH -> "数学"
-                                        MistakeSubject.CHINESE -> "语文"
-                                        MistakeSubject.ENGLISH -> "英语"
-                                        MistakeSubject.SCIENCE -> "科学"
-                                        MistakeSubject.OTHER -> "其他"
+                                        MistakeSubject.MATH -> shared.subjectMath
+                                        MistakeSubject.CHINESE -> shared.subjectChinese
+                                        MistakeSubject.ENGLISH -> shared.subjectEnglish
+                                        MistakeSubject.SCIENCE -> shared.subjectScience
+                                        MistakeSubject.OTHER -> shared.subjectOther
                                     }
                                     val ratio = if (totalCount > 0) count.toFloat() / totalCount else 0f
                                     Row(
@@ -108,7 +111,7 @@ fun ParentMistakeReviewScreen(
 
                 // 最近错题
                 item {
-                    Text("最近错题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                    Text(strings.recentMistakes, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = 8.dp))
                 }
 
@@ -129,7 +132,7 @@ fun ParentMistakeReviewScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(mistake.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                Text(if (mistake.isMastered) "✅ 已掌握" else "⏳ 未掌握",
+                                Text(if (mistake.isMastered) shared.masteredStatus else shared.unmasteredStatus,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (mistake.isMastered) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error)
                             }

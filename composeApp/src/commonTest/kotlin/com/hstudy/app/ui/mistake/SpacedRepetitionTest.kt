@@ -2,6 +2,7 @@ package com.hstudy.app.ui.mistake
 
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
+import com.hstudy.app.i18n.DisplayLanguage
 import kotlinx.datetime.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -87,13 +88,13 @@ class SpacedRepetitionTest {
 
     @Test
     fun proficiencyLabel_returns_correct_labels() {
-        assertEquals("未复习", SpacedRepetition.proficiencyLabel(0))
-        assertEquals("复习1次", SpacedRepetition.proficiencyLabel(1))
-        assertEquals("复习2次", SpacedRepetition.proficiencyLabel(2))
-        assertEquals("较熟练", SpacedRepetition.proficiencyLabel(3))
-        assertEquals("较熟练", SpacedRepetition.proficiencyLabel(4))
-        assertEquals("已巩固", SpacedRepetition.proficiencyLabel(5))
-        assertEquals("已巩固", SpacedRepetition.proficiencyLabel(100))
+        assertEquals("未复习", SpacedRepetition.proficiencyLabel(0, DisplayLanguage.ZH))
+        assertEquals("复习1次", SpacedRepetition.proficiencyLabel(1, DisplayLanguage.ZH))
+        assertEquals("复习2次", SpacedRepetition.proficiencyLabel(2, DisplayLanguage.ZH))
+        assertEquals("较熟练", SpacedRepetition.proficiencyLabel(3, DisplayLanguage.ZH))
+        assertEquals("较熟练", SpacedRepetition.proficiencyLabel(4, DisplayLanguage.ZH))
+        assertEquals("已巩固", SpacedRepetition.proficiencyLabel(5, DisplayLanguage.ZH))
+        assertEquals("已巩固", SpacedRepetition.proficiencyLabel(100, DisplayLanguage.ZH))
     }
 
     // ---- nextReviewLabel ----
@@ -101,14 +102,14 @@ class SpacedRepetitionTest {
     @Test
     fun nextReviewLabel_returns_mastered_when_mastered() {
         val mistake = makeMistake(isMastered = true)
-        assertEquals("已掌握", SpacedRepetition.nextReviewLabel(mistake))
+        assertEquals("已掌握", SpacedRepetition.nextReviewLabel(mistake, DisplayLanguage.ZH))
     }
 
     @Test
     fun nextReviewLabel_returns_today_when_due() {
         val mistake = makeMistake(reviewCount = 0, createdAt = 0L, lastReviewAt = 0L)
         // nextReviewAt = 86400000, now >= that
-        assertEquals("今天复习", SpacedRepetition.nextReviewLabel(mistake, now = 86400000L + 1))
+        assertEquals("今天复习", SpacedRepetition.nextReviewLabel(mistake, DisplayLanguage.ZH, now = 86400000L + 1))
     }
 
     @Test
@@ -117,7 +118,7 @@ class SpacedRepetitionTest {
         // nextReviewAt = 0 + 2 days = 172800000
         // now = 172800000 - 1 => ceil(1/86400000.0) = 1 => "明天复习"
         val now = 172800000L - 1L
-        assertEquals("明天复习", SpacedRepetition.nextReviewLabel(mistake, now = now))
+        assertEquals("明天复习", SpacedRepetition.nextReviewLabel(mistake, DisplayLanguage.ZH, now = now))
     }
 
     @Test
@@ -125,6 +126,18 @@ class SpacedRepetitionTest {
         val mistake = makeMistake(reviewCount = 2, createdAt = 0L, lastReviewAt = 0L)
         // nextReviewAt = 0 + 4 days = 345600000
         // now = 0 => daysUntil = ceil(345600000/86400000) = 4
-        assertEquals("4天后复习", SpacedRepetition.nextReviewLabel(mistake, now = 0L))
+        assertEquals("4天后复习", SpacedRepetition.nextReviewLabel(mistake, DisplayLanguage.ZH, now = 0L))
+    }
+
+    // ---- 阶段 2 W1：标签随语言 ----
+
+    @Test
+    fun labelsSwitchWithLanguage() {
+        val mistake = makeMistake(reviewCount = 2, createdAt = 0L, lastReviewAt = 0L)
+        assertEquals("较熟练", SpacedRepetition.proficiencyLabel(3, DisplayLanguage.ZH))
+        assertEquals("Familiar", SpacedRepetition.proficiencyLabel(3, DisplayLanguage.EN))
+        // nextReviewAt = 4 天；now = 0 → daysUntil = 4
+        assertEquals("4天后复习", SpacedRepetition.nextReviewLabel(mistake, DisplayLanguage.ZH, now = 0L))
+        assertEquals("Review in 4 days", SpacedRepetition.nextReviewLabel(mistake, DisplayLanguage.EN, now = 0L))
     }
 }
