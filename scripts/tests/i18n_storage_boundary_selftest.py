@@ -374,9 +374,9 @@ def main():
           gate.copy_ref_for(handles).search("val common = LocalStrings.current.common") is None,
           "被误判成文案")
     check("反向对照：不登记句柄时 common.deleteContentDescription 不算文案"
-          "（证明第 5 支是新通道，不是既有规则的副产物）",
+          "（证明形状句柄支是新通道：基础支 + W0 注册表支都不匹配）",
           gate.copy_ref_for(set()).search("common.deleteContentDescription") is None,
-          "基础四支就已经匹配了")
+          "基础支 + W0 注册表支就已经匹配了")
     check("取组句柄只登记为句柄、不进污点集（Important 3 不误报的一侧）",
           gate.collect_taint(handle_src + "val n = 3\n")[0] == set(),
           "实际污点集 %s" % sorted(gate.collect_taint(handle_src + "val n = 3\n")[0]))

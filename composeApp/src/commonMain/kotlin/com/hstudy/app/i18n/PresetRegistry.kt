@@ -10,8 +10,10 @@ private fun preset(canonical: String, en: String): Pair<String, PresetCopy> =
  * 预设内容显示注册表（方案 A，spec §4）：DB 保持 canonical 中文，本表**只**在渲染点使用。
  * 任何值不得进入 DB 写入 / bizKey / 幂等比较（Ruling 25；i18n_storage_boundary.py 第 5 支覆盖）。
  * 未命中 = 原样返回：用户自建内容、家长改过的预设、历史账本描述全走这条路。
- * key 集合与种子 canonical 由 PresetRegistryTest 互为子集钉死——改种子名会打破测试，
- * 而不是静默显示未翻译文本。ZH 值手打（不 import ui/data 种子，i18n 自包含），测试负责跨层对账。
+ * key 集合与**可程序化读取的**种子 canonical 由 PresetRegistryTest 互为子集钉死——改这类种子名
+ * 会打破测试，而不是静默显示未翻译文本；10 条手钉在 FamilySyncHelper/BackupHelper 里的
+ * 设备/诊断字面量无法活体交叉校验（漂移守卫的上限见 PresetRegistryTest 的 KDoc）。ZH 值手打
+ * （不 import ui/data 种子，i18n 自包含），测试负责跨层对账。
  */
 val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     // ===== 预设任务标题（55 条去重；TaskRepository.getPresets() + getSingleTaskSuggestions()）=====

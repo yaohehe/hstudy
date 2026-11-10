@@ -46,6 +46,10 @@
       · 字段赋值：`task.note = strings.x` 之后 `updateTask(task)`（污点集只记**变量名**，不记属性）；
       · 无关键字的重新赋值：`note = strings.x`（`note` 之前已声明，本轮不加 `var/val`），
         C 通道要求 `var|val` 前缀，因此这一形不进污点集；
+    W0 注册表名（`localizedPresetText` / `presetTextRegistry` / `achievementCopy` / `petSceneCopy`）
+    按**标识符**匹配，因此 `import com.hstudy.app.i18n.localizedPresetText as lpt` 之后
+    `sink(lpt(...))`、或把 `::localizedPresetText` 当函数引用传出再调用，都会绕过注册表支
+    ——与上面的别名/函数返回值逃逸同类。
   - 变量名按整词匹配，同名变量在别处复用会被算进同一条污点（宁多报不漏报）；
   - **句柄认的是形状，不是名字**（9b 审查 Important 3）：`val <任意名> = X.current.<组>` 绑定出来的
     变量一律算文案句柄，`<任意名>.<字段>` 就是文案——旧规则只认"变量名以 Strings 结尾"，于是仓库
@@ -212,9 +216,9 @@ CALL_HEAD = re.compile(
     + r")\s*\("
 )
 
-# 文案来源的四种写法（局部变量 strings.X、全表实例 AppStringsZh.x、别名句柄 XyzStrings.y、
+# 文案来源的四种基础写法（局部变量 strings.X、全表实例 AppStringsZh.x、别名句柄 XyzStrings.y、
 # 高阶链式 LocalStrings.current.<组>.<字段>），外加 9b 审查 Important 3 补的**形状句柄**一支
-# （copy_source_for() / HANDLE_BIND，见下）。
+# （copy_source_for() / HANDLE_BIND，见下）与阶段 2 W0 的**注册表支**（COPY_SOURCE_INNER 第 5 个备选）。
 #
 # 外层必须是非捕获分组：Task 9 修 matcher 时发现原先没有这层括号，而 `|` 的优先级最低，
 # 于是拼进 TAINT_DELEGATE 时整条模式被**从中间劈成三个备选支**——第 2、3 支变成"在文件任何位置
