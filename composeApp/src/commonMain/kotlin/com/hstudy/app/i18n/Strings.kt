@@ -3,7 +3,13 @@ package com.hstudy.app.i18n
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
 
-/** 跨页面文案聚合根：每页一个子表，后续任务按页扩展。 */
+/**
+ * 跨页面文案聚合根：每页一个子表，后续任务按页扩展。
+ *
+ * 阶段 2 扩展点（W0 确认，无需结构改动）：新域 = 新建 XxxStrings data class + Zh/En 两份表，
+ * 本 data class 加一个字段、AppStringsZh/AppStringsEn 各加一行，stringsFor 的穷举 when 自动覆盖。
+ * 预设内容（种子任务/奖励/成就/场景等）不走本聚合根，走 PresetRegistry.kt 的显示注册表（方案 A）。
+ */
 data class AppStrings(
     val role: RoleStrings,
     val settings: SettingsStrings,

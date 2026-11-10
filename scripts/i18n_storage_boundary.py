@@ -17,7 +17,9 @@
   A 直接引用    —— sink 实参里出现文案表引用（`strings.X` / `XyzStrings.y` / `AppStringsZh.y` /
                     别名句柄 `taskListStrings.y`、`currentStrings.y` / 三级以上的
                     `LocalStrings.current.<组>.<字段>` / **由 `X.current.<组>` 赋值出来的任何句柄**
-                    `.y`，与变量名无关，见 HANDLE_BIND / 已知边界第 3 条）
+                    `.y`，与变量名无关，见 HANDLE_BIND / 已知边界第 3 条 /
+                    阶段 2 显示注册表形态 `localizedPresetText(...)`、`presetTextRegistry`、
+                    `achievementCopy`、`petSceneCopy`（W0，见 fixtures/storage_boundary/PresetCopyToSink.kt））
   B 跨行调用    —— 定位 `sink(` 的左括号后用括号配对取实参，行号按原文件计（Ruling 28 的修复）
   C 赋值污点    —— `val x = <含文案的表达式>`，允许类型注解与具名实参内联文案；值表达式**最多桥接
                     一个换行**（`=` 之后换行仍算同一条赋值，见 TAINT_ASSIGN 一节），多行**普通**串
@@ -32,8 +34,8 @@
                     且由自测反向对账"真实树里确有此声明"（自测第 3 节）。
                     **RESERVED_STEMS 走的是相反的那条规则、不在"确有声明"的对账里**：
                     它们是"预留、非现实"的词根，自测要求的是"真实树里**必须还没有**此声明"
-                    （selftest:306-307），一旦被真实代码用上就必须搬回 SINK_STEMS
-                    （selftest:26 与 :94-96 的注释就是这条规则本来的表述）。
+                    （selftest:313-314），一旦被真实代码用上就必须搬回 SINK_STEMS
+                    （selftest:26 的注释就是这条规则本来的表述）。
   G 插值文案    —— 字符串字面量里的 `${strings.x}` / `$taintedVar` **算文案**（9b 审查 Critical 1：
                     双语迁移最常产出的复合说明就长这样；空白化时必须保留插值区，见
                     blank_string_contents）；fixture InterpolationCopy.kt / InterpolationNoFp.kt
@@ -234,15 +236,20 @@ CALL_HEAD = re.compile(
 # LocalStrings.current.common` 就至少 4 处（ChildDailyPlanScreen.kt:123/172、
 # ChildMemoryTrainingScreen.kt:26、ChildPomodoroScreen.kt:28），审查探针
 # `adjustPoints(1, common.deleteContentDescription)` 当时 exit 0。现在**按表达式形状**登记句柄名
-# （HANDLE_BIND），`copy_source_for(handles)` 把 `<句柄名>.<字段>` 追加成第 5 支；名字仍以
+# （HANDLE_BIND），`copy_source_for(handles)` 把 `<句柄名>.<字段>` 追加成**形状句柄支（逐文件追加）**；名字仍以
 # Strings 结尾的走第 3 支，两条并存、互不冲突。
 # Canonical*Text.* 不以 `Strings` 结尾，天然不匹配 → 规范值豁免保留，由自测的
 # CanonicalCompliant.kt 钉住，不得改成文案。
+# W0 第 5 支：阶段 2 显示注册表的四种文案形态。localizedPresetText( 是渲染 helper，
+# 三个表名是直查形态；与 strings.* 一样只许进渲染面，进 sink 即违规（stage2 spec §5）。
+# 正反 fixture：PresetCopyToSink.kt（必红）/ PresetCopyRenderNoFp.kt（必绿）。
+# Canonical*Text.* 仍天然豁免（名字不匹配任何一支）。
 COPY_SOURCE_INNER = (
     r"\bstrings\.[A-Za-z]\w*"
     r"|\bAppStrings(?:Zh|En)\.\w+"
     r"|\b(?!LocalStrings\b)[A-Za-z]\w*Strings(?:Zh|En)?\.\w+"
     r"|\bLocalStrings\.current(?:\.\w+){2,}"
+    r"|\b(?:localizedPresetText\s*\(|presetTextRegistry\b|achievementCopy\b|petSceneCopy\b)"
 )
 COPY_SOURCE = r"(?:" + COPY_SOURCE_INNER + r")"
 COPY_REF = re.compile(COPY_SOURCE)
@@ -567,9 +574,9 @@ TAINT_DELEGATE = re.compile(
     + COPY_SOURCE + r"[^}]*\}"
 )
 
-# COPY_SOURCE 的**变体**：TAINT_ASSIGN / TAINT_DELEGATE 这两个模块级常量只带基础四支，
-# 真实扫描走下面这组按文件编译的模式（第 5 支"形状句柄"的名字集合是每个文件各自的，
-# 见 collect_copy_handles）。自测第 6 节的正则级断言可以继续用上面两个常量。
+# COPY_SOURCE 的**变体**：TAINT_ASSIGN / TAINT_DELEGATE 这两个模块级常量只带
+# **基础四支 + W0 注册表支**，真实扫描走下面这组按文件编译的模式（形状句柄那支仍是逐文件追加，
+# 名字集合每个文件一份，见 collect_copy_handles）。自测第 6 节的正则级断言可以继续用上面两个常量。
 #
 # 第三个模式是多行原始串形态：`val x = """…${文案}…"""`。审查 Critical 1 之后插值会被保留，
 # 于是"值跨多行"这一形在三引号串里只可能因为 TAINT_ASSIGN 的一行上限而漏抓。这里**只**对
@@ -641,8 +648,8 @@ def scan(path):
     stripped = strip_comments(raw)
     code = blank_string_contents(stripped)
     tainted, _rounds = collect_taint(code)
-    # 直接引用检测用**本文件**的文案来源模式（形状句柄名是逐文件的，COPY_REF 那份全局常量只是
-    # 基础四支，供自测的正则级断言使用）
+    # 直接引用检测用**本文件**的文案来源模式（形状句柄名是逐文件的，COPY_REF 那份全局常量是
+    # 基础四支 + W0 注册表支，供自测的正则级断言使用）
     copy_ref = copy_ref_for(collect_copy_handles(code))
     hits = []
     for match in CALL_HEAD.finditer(code):

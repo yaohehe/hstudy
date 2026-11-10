@@ -9,16 +9,17 @@
 退出码：0 = 全部通过；1 = 有断言失败（逐条打印期望/实际）。
 
 覆盖清单（EXPECTED_CASES，缺一即失败；fixture 目录里出现未登记的 .kt 也算失败）：
-  必红（11）：直接引用 / 跨行调用（含嵌套 lambda）/ 委托污点 / 赋值污点 / 污点链(长度 2 与 4) /
+  必红（12）：直接引用 / 跨行调用（含嵌套 lambda）/ 委托污点 / 赋值污点 / 污点链(长度 2 与 4) /
         sink 名单逐词根逐名字 / 别名句柄（taskListStrings・currentStrings・AppStringsZh・
         LocalStrings.current.<组>.<字段>）/ 字符串里带括号仍要抓 /
         **插值文案 `${…}`・`$name`（9b 审查 Critical 1）** /
         **add·set 大写后缀写库家族（9b 审查 Critical 2）** /
-        **形状句柄 `X.current.<组>` 绑出来的任意名（9b 审查 Important 3）**
-  必绿（4）：字符串字面量里的 sink 名（缺陷 6 的反向）/ 今天真实存在的合规形态
+        **形状句柄 `X.current.<组>` 绑出来的任意名（9b 审查 Important 3）** /
+        **注册表文案四形态（W0）**
+  必绿（5）：字符串字面量里的 sink 名（缺陷 6 的反向）/ 今天真实存在的合规形态
         （Canonical*Text、app 作 lambda 参数、取组句柄、用户输入进 sink、buildList 的 add）/
         **插值保留的副作用（InterpolationNoFp）** /
-        **注释里的 sink 调用（CommentedSinkNoFp，strip_comments 的专职样本）**
+        **注释里的 sink 调用（CommentedSinkNoFp，strip_comments 的专职样本）** / 注册表文案只进渲染面（PresetCopyRenderNoFp，W0）
   退出码：真实树 exit 0 且扫描文件数 > 100；空目录 exit 2；不存在的目录 exit 2
   行号断言：每条必红通道的 [(行号区间, sink 名)] 有序列表逐条比对（9b 审查 Minor：
         原先只有"span 里有没有 '-'"这种格式检查，行号漂移没人看守）
@@ -127,11 +128,17 @@ EXPECTED_CASES = [
       "plan.focusTargetLabel", "alias.petFeedTitle"],
      [("24", "adjustPoints"), ("28", "submitApproval"), ("31", "recordFocusSession"),
       ("34", "spendPoints"), ("37", "updateTask")]),
-    # ---- 必须报绿的四条 ----
+    # ---- W0 新增：阶段 2 显示注册表文案形态（COPY_SOURCE 第 5 支）----
+    ("PresetCopyToSink.kt", 1, 4,
+     {"addTask", "addReward", "tryUnlockAchievement", "setDeviceName"},
+     [DIRECT],
+     [("20", "addTask"), ("22", "addReward"), ("24", "tryUnlockAchievement"), ("26", "setDeviceName")]),
+    # ---- 必须报绿的五条 ----
     ("StringLiteralNoFp.kt", 0, 0, set(), [], []),
     ("CanonicalCompliant.kt", 0, 0, set(), [], []),
     ("InterpolationNoFp.kt", 0, 0, set(), [], []),
     ("CommentedSinkNoFp.kt", 0, 0, set(), [], []),
+    ("PresetCopyRenderNoFp.kt", 0, 0, set(), [], []),
 ]
 
 HIT_LINE = re.compile(r"^\s+\S+\.kt:(\S+)\s+(\S+)\(\.\.\.\)\s+\[(.+?)\]$")
@@ -550,7 +557,7 @@ def main():
             print("  FAIL: %s" % f)
         print("存储边界闸门自测**未通过** —— 闸门不可信时不得继续派发 Task 10/11（Ruling 29）。")
         return 1
-    print("存储边界闸门自测通过：11 条必红通道 + 4 条必绿通道 + 行号钉死 + sink 双向对账 + "
+    print("存储边界闸门自测通过：12 条必红通道 + 5 条必绿通道 + 行号钉死 + sink 双向对账 + "
           "空过防护 + 正则级机理断言全部符合预期。")
     return 0
 
@@ -559,7 +566,7 @@ def _force_utf8_streams():
     """stdout/stderr 钉 UTF-8（终审 D-B）。原先的护栏写在 `main()` 里、只管 stdout；这里两条流一起管，
     并且搬到模块执行期——`main()` 之前若有打印也在 UTF-8 之下。完整理由见
     `scripts/i18n_template_diff.py` 的同名函数。
-    放文件末尾是刻意的：闸门 docstring 按坐标引用本文件的 `selftest:306-307`、`selftest:26`、`:94-96`，
+    放文件末尾是刻意的：闸门 docstring 按坐标引用本文件的 `selftest:313-314`、`selftest:26`，
     护栏插到那些行之前会把引用推成假引用；这里只在 `if __name__` 之前追加，不移动任何既有行。
     """
     for stream in (sys.stdout, sys.stderr):
