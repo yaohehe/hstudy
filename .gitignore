@@ -12,6 +12,10 @@
 # Local configuration
 local.properties
 
+# Signing material
+*.jks
+*.keystore
+
 # Build outputs
 *.apk
 *.aab

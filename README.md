@@ -42,6 +42,19 @@ legacy/android-v2.88/  重构前的纯 Android 工程，仅作对照与回退参
 ```
 需要 JDK 17 与 Android SDK（`local.properties` 指向 SDK 目录）。
 
+### Android 签名与分发
+Release 包由 CI 自动签名（keystore 与口令存于仓库 Actions secrets：`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`），发布资产为 `HStudy-<tag>-signed.apk`，可直接侧载安装（需在系统中允许"未知来源"）。若设备上装过调试版或其他签名的版本，需先卸载再安装。
+
+本地签名构建（keystore 不入库、不提交，请自行保管并多处备份；丢失后已安装用户无法覆盖升级）：
+```bash
+export RELEASE_KEYSTORE_PATH=/path/to/hstudy-release.jks
+export RELEASE_KEYSTORE_PASSWORD=***
+export RELEASE_KEY_ALIAS=hstudy
+export RELEASE_KEY_PASSWORD=***
+./gradlew :composeApp:assembleRelease
+```
+未设置上述环境变量时 release 变体仍可构建，但产出未签名 APK（不可安装）。iOS 包为模拟器构建（无 Apple 开发者证书）；真机分发需 Apple Developer Program 会员后另行签名。
+
 ### iOS（仅 macOS + Xcode 15+）
 ```bash
 open iosApp/iosApp.xcodeproj   # 选择模拟器运行，Xcode 会自动调用 Gradle 生成 framework
