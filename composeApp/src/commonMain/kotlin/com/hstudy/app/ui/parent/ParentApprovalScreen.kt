@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.ApprovalStatus
 import com.hstudy.app.data.local.entity.PointApprovalEntity
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.ParentApprovalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -40,10 +42,12 @@ fun ParentApprovalScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    val strings = LocalStrings.current.parentApproval
+
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "📋 积分审核",
+                title = strings.title,
                 onNavigateBack = onNavigateBack,
                 actions = {
                     if (pendingApprovals.isNotEmpty()) {
@@ -51,9 +55,9 @@ fun ParentApprovalScreen(
                             scope.launch {
                                 // 批量通过：逐条走幂等发放，同一业务只会真正计分一次
                                 val awarded = app.pointRepository.approveAllAndAward()
-                                snackbarHostState.showSnackbar("✅ 已全部通过，共发放 $awarded 分")
+                                snackbarHostState.showSnackbar(strings.approveAllMessage(awarded))
                             }
-                        }) { Text("全部通过") }
+                        }) { Text(strings.approveAllButton) }
                     }
                 }
             )
@@ -64,9 +68,9 @@ fun ParentApprovalScreen(
             // 选项卡
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 },
-                    text = { Text("待审核${if (pendingApprovals.isNotEmpty()) " ${pendingApprovals.size}" else ""}") })
+                    text = { Text(strings.pendingTab(pendingApprovals.size)) })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 },
-                    text = { Text("历史记录") })
+                    text = { Text(strings.historyTab) })
             }
 
             if (selectedTab == 0) {
@@ -75,8 +79,8 @@ fun ParentApprovalScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("🎉", style = MaterialTheme.typography.displaySmall)
-                            Text("暂无待审核的积分申请", style = MaterialTheme.typography.bodyLarge)
-                            Text("孩子完成学习行为后会在这里提交积分申请", style = MaterialTheme.typography.bodySmall,
+                            Text(strings.emptyPendingTitle, style = MaterialTheme.typography.bodyLarge)
+                            Text(strings.emptyPendingNote, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -94,15 +98,15 @@ fun ParentApprovalScreen(
                                         // 幂等发放：仅 PENDING 可计分，重复通过不会重复加分
                                         val awarded = app.pointRepository.approveAndAward(approval.id)
                                         snackbarHostState.showSnackbar(
-                                            if (awarded > 0) "✅ 已通过：+${awarded}分"
-                                            else "该申请已处理，未重复加分"
+                                            if (awarded > 0) strings.approvedMessage(awarded)
+                                            else strings.alreadyProcessedMessage
                                         )
                                     }
                                 },
                                 onReject = {
                                     scope.launch {
                                         app.pointRepository.rejectApproval(approval.id)
-                                        snackbarHostState.showSnackbar("已拒绝该申请")
+                                        snackbarHostState.showSnackbar(strings.rejectedMessage)
                                     }
                                 }
                             )
@@ -113,7 +117,7 @@ fun ParentApprovalScreen(
                 // 历史记录
                 if (historyApprovals.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("暂无审核记录", style = MaterialTheme.typography.bodyLarge)
+                        Text(strings.emptyHistory, style = MaterialTheme.typography.bodyLarge)
                     }
                 } else {
                     LazyColumn(
@@ -135,7 +139,7 @@ fun ParentApprovalScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(approval.description, style = MaterialTheme.typography.bodyMedium)
                                         Text(
-                                        "${formatTime(approval.requestedAt)} · ${statusLabel(approval.status)}",
+                                        "${formatTime(approval.requestedAt)} · ${statusLabel(approval.status, strings)}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -163,6 +167,9 @@ private fun ApprovalCard(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
+    val strings = LocalStrings.current.parentApproval
+    val taskList = LocalStrings.current.taskList
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
@@ -183,7 +190,7 @@ private fun ApprovalCard(
                     Text(formatTime(approval.requestedAt), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
-                Text("+${approval.requestedPoints}分", style = MaterialTheme.typography.titleSmall,
+                Text(taskList.pointsEarnedLabel(approval.requestedPoints), style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -193,7 +200,7 @@ private fun ApprovalCard(
                 ) {
                     Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("通过")
+                    Text(strings.approveButton)
                 }
                 OutlinedButton(
                     onClick = onReject,
@@ -201,7 +208,7 @@ private fun ApprovalCard(
                 ) {
                     Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("拒绝")
+                    Text(strings.rejectButton)
                 }
             }
         }
@@ -209,12 +216,12 @@ private fun ApprovalCard(
 }
 
 /** 审核状态文案（含撤销/作废，保证生命周期展示一致） */
-private fun statusLabel(status: ApprovalStatus): String = when (status) {
-    ApprovalStatus.PENDING -> "待审核"
-    ApprovalStatus.APPROVED -> "已通过"
-    ApprovalStatus.REJECTED -> "已拒绝"
-    ApprovalStatus.CANCELLED -> "已取消打卡（未计分）"
-    ApprovalStatus.REVOKED -> "已撤销（积分已扣回）"
+private fun statusLabel(status: ApprovalStatus, strings: ParentApprovalStrings): String = when (status) {
+    ApprovalStatus.PENDING -> strings.statusPending
+    ApprovalStatus.APPROVED -> strings.statusApproved
+    ApprovalStatus.REJECTED -> strings.statusRejected
+    ApprovalStatus.CANCELLED -> strings.statusCancelled
+    ApprovalStatus.REVOKED -> strings.statusRevoked
 }
 
 private fun formatTime(millis: Long): String {

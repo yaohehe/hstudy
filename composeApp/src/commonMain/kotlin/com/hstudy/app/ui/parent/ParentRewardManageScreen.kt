@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.RewardEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -30,12 +33,15 @@ fun ParentRewardManageScreen(
     val rewards by app.rewardRepository.getAllActiveRewards().collectAsState(initial = emptyList())
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val strings = LocalStrings.current.parentRewardManage
+    val parentHome = LocalStrings.current.parentHome
+
     Scaffold(
-        topBar = { HStudyTopBar(title = "奖励商店管理", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { onEditReward(0L) }) {
-                Icon(Icons.Filled.Add, contentDescription = "添加奖励")
+                Icon(Icons.Filled.Add, contentDescription = strings.addContentDescription)
             }
         }
     ) { padding ->
@@ -61,17 +67,17 @@ fun ParentRewardManageScreen(
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Text("🎁", style = MaterialTheme.typography.displaySmall)
-                                    Text("奖励商店还是空的", style = MaterialTheme.typography.titleMedium)
-                                    Text("点击下方按钮一键载入 27 个常见奖励（看电影、零食、玩耍、满足心愿等），之后再逐个调整积分即可。",
+                                    Text(parentHome.setupRewardsMissing, style = MaterialTheme.typography.titleMedium)
+                                    Text(strings.emptyHint,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Button(onClick = {
                                         scope.launch {
                                             app.rewardRepository.initDefaultRewards()
-                                            snackbarHostState.showSnackbar("✅ 已载入预设奖励")
+                                            snackbarHostState.showSnackbar(parentHome.presetRewardsLoadedMessage)
                                         }
-                                    }) { Text("✨ 一键载入预设奖励") }
-                                    Text("或点击右下角 + 自行添加", style = MaterialTheme.typography.labelSmall,
+                                    }) { Text(strings.loadPresetsButton) }
+                                    Text(strings.addOwnHint, style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
@@ -90,6 +96,10 @@ private fun RewardManageCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = LocalStrings.current.parentRewardManage
+    val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -99,21 +109,21 @@ private fun RewardManageCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(reward.name, style = MaterialTheme.typography.titleMedium)
+                    Text(localizedPresetText(reward.name, displayLanguage), style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.width(6.dp))
                     AssistChip(
                         onClick = {},
-                        label = { Text(reward.category, style = MaterialTheme.typography.labelSmall) },
+                        label = { Text(localizedPresetText(reward.category, displayLanguage), style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.height(24.dp)
                     )
                 }
                 if (reward.description.isNotEmpty()) {
-                    Text(reward.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(localizedPresetText(reward.description, displayLanguage), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("${reward.pointsCost} 积分", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(strings.costValue(reward.pointsCost), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
-            IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "编辑") }
-            IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
+            IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = strings.editContentDescription) }
+            IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription, tint = MaterialTheme.colorScheme.error) }
         }
     }
 }

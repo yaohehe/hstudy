@@ -17,6 +17,9 @@ import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.PointRecordEntity
 import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.effectivePoints
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -43,17 +46,22 @@ fun ParentPointsScreen(
     var adjustPoints by remember { mutableStateOf("") }
     var adjustNote by remember { mutableStateOf("") }
 
+    val strings = LocalStrings.current.parentPoints
+    val common = LocalStrings.current.common
+    val parentHome = LocalStrings.current.parentHome
+    val displayLanguage = LocalDisplayLanguage.current
+
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "积分管理",
+                title = parentHome.menuPointsTitle,
                 onNavigateBack = onNavigateBack,
                 actions = { PointsBadge(points = totalPoints) }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAdjustDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "调整积分")
+                Icon(Icons.Filled.Add, contentDescription = strings.adjustContentDescription)
             }
         }
     ) { padding ->
@@ -66,7 +74,7 @@ fun ParentPointsScreen(
                     item {
                         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("📅 每日得分统计（近7天）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(strings.dailyStatsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 val dayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                                 val shortFmt = SimpleDateFormat("MM/dd", Locale.getDefault())
                                 val last7 = (6 downTo 0).map { d ->
@@ -85,7 +93,7 @@ fun ParentPointsScreen(
                                         Text("+${earned}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
                                         if (spent > 0) Text("-${spent}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
                                         else Spacer(modifier = Modifier.weight(1f))
-                                        Text("净${earned - spent}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.width(50.dp))
+                                        Text(strings.netValue(earned - spent), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.width(50.dp))
                                     }
                                 }
                             }
@@ -97,7 +105,7 @@ fun ParentPointsScreen(
                         val taskMap = recentCompletions.groupBy { it.taskId }
                         val taskRanking = taskMap.map { (taskId, comps) ->
                             val task = tasks.find { it.id == taskId }
-                            val title = task?.title ?: "任务#${taskId}"
+                            val title = task?.let { localizedPresetText(it.title, displayLanguage) } ?: strings.taskFallbackTitle(taskId)
                             val count = comps.size
                             // 使用任务实际积分（审核制下 pointsEarned 可能为 0，用任务定义积分更准确）
                             val ptsPerTime = task?.effectivePoints() ?: 0
@@ -108,12 +116,12 @@ fun ParentPointsScreen(
                         if (taskRanking.isNotEmpty()) {
                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("📋 任务积分排行（近7天）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Text(strings.taskRankingTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     taskRanking.forEachIndexed { idx, (title, count, pts) ->
                                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("${idx + 1}.", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, modifier = Modifier.width(20.dp))
                                             Text(title, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), maxLines = 1)
-                                            Text("${count}次", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(36.dp))
+                                            Text(strings.timesCount(count), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(36.dp))
                                             Text("+${pts}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(40.dp))
                                         }
                                     }
@@ -122,14 +130,14 @@ fun ParentPointsScreen(
                         }
                     }
 
-                    item { Text("全部积分记录", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
+                    item { Text(strings.allRecordsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
                     items(records) { record ->
                         PointRecordCard(record = record)
                     }
                     if (records.isEmpty()) {
                         item {
                             Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                                Text("暂无积分记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(strings.emptyRecords, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -143,20 +151,20 @@ fun ParentPointsScreen(
     if (showAdjustDialog) {
         AlertDialog(
             onDismissRequest = { showAdjustDialog = false },
-            title = { Text("手动调整积分") },
+            title = { Text(strings.adjustDialogTitle) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = adjustPoints,
                         onValueChange = { adjustPoints = it.filter { c -> c.isDigit() || c == '-' } },
-                        label = { Text("积分数（正=加分，负=扣分）") },
+                        label = { Text(strings.adjustPointsLabel) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = adjustNote,
                         onValueChange = { adjustNote = it },
-                        label = { Text("备注说明") },
+                        label = { Text(strings.adjustNoteLabel) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -170,10 +178,10 @@ fun ParentPointsScreen(
                         adjustPoints = ""
                         adjustNote = ""
                     }
-                }) { Text("确认") }
+                }) { Text(common.confirmButton) }
             },
             dismissButton = {
-                TextButton(onClick = { showAdjustDialog = false }) { Text("取消") }
+                TextButton(onClick = { showAdjustDialog = false }) { Text(common.cancelButton) }
             }
         )
     }
@@ -181,12 +189,13 @@ fun ParentPointsScreen(
 
 @Composable
 private fun PointRecordCard(record: PointRecordEntity) {
+    val strings = LocalStrings.current.parentPoints
     val typeLabel = when (record.type) {
-        PointRecordType.TASK_COMPLETE -> "✅ 任务完成"
-        PointRecordType.BONUS -> "🎁 学习奖励"
-        PointRecordType.ADJUSTMENT -> "✏️ 手动调整"
-        PointRecordType.REWARD_EXCHANGE -> "🛒 兑换消耗"
-        PointRecordType.REVERSAL -> "↩️ 撤销扣回"
+        PointRecordType.TASK_COMPLETE -> strings.typeTaskComplete
+        PointRecordType.BONUS -> strings.typeBonus
+        PointRecordType.ADJUSTMENT -> strings.typeAdjustment
+        PointRecordType.REWARD_EXCHANGE -> strings.typeRewardExchange
+        PointRecordType.REVERSAL -> strings.typeReversal
     }
     val isPositive = record.points >= 0
     val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())

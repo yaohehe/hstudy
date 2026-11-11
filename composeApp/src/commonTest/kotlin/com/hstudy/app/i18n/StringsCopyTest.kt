@@ -104,6 +104,24 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "parentAssignTask.pointsLabel",           // "Points"
     // ---- W2 Task 4 积分模板页新增 1 条（英文原文逐条留在行尾注释里）。
     "parentTaskTemplate.title",               // "📋 Point templates"（§11 积分 = Points）
+    // ---- W3 Task 1 积分管理页新增 6 条（英文原文逐条留在行尾注释里）。
+    "parentPoints.adjustContentDescription",  // "Adjust points"
+    "parentPoints.taskRankingTitle",          // "📋 Task points ranking (last 7 days)"
+    "parentPoints.allRecordsTitle",           // "All point records"
+    "parentPoints.emptyRecords",              // "No point records yet"
+    "parentPoints.adjustDialogTitle",         // "Adjust points manually"
+    "parentPoints.adjustPointsLabel",         // "Points (positive = add, negative = deduct)"
+    // ---- W3 Task 2 积分审核页新增 5 条（英文原文逐条留在行尾注释里）。
+    "parentApproval.title",                   // "📋 Point approvals"
+    "parentApproval.emptyPendingTitle",       // "No point requests to review"
+    "parentApproval.emptyPendingNote",        // "Point requests appear here after your child completes study activities"
+    "parentApproval.alreadyProcessedMessage", // "Already handled — points were not added again"
+    "parentApproval.statusRevoked",           // "Revoked (points removed)"
+    // ---- W3 Task 3 奖励编辑页新增 2 条（英文原文逐条留在行尾注释里）。
+    "parentRewardEdit.presetHint",            // "… adjust their point costs there …"
+    "parentRewardEdit.costLabel",             // "Points required"
+    // ---- W3 Task 4 奖励商店管理页新增 1 条（英文原文逐条留在行尾注释里）。
+    "parentRewardManage.emptyHint",           // "… adjust their point costs one by one."
 )
 
 /**

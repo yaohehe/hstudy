@@ -31,6 +31,10 @@ data class AppStrings(
     val parentTaskEdit: ParentTaskEditStrings,
     val parentAssignTask: ParentAssignTaskStrings,
     val parentTaskTemplate: ParentTaskTemplateStrings,
+    val parentPoints: ParentPointsStrings,
+    val parentApproval: ParentApprovalStrings,
+    val parentRewardEdit: ParentRewardEditStrings,
+    val parentRewardManage: ParentRewardManageStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -54,6 +58,10 @@ val AppStringsZh = AppStrings(
     parentTaskEdit = ParentTaskEditStringsZh,
     parentAssignTask = ParentAssignTaskStringsZh,
     parentTaskTemplate = ParentTaskTemplateStringsZh,
+    parentPoints = ParentPointsStringsZh,
+    parentApproval = ParentApprovalStringsZh,
+    parentRewardEdit = ParentRewardEditStringsZh,
+    parentRewardManage = ParentRewardManageStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -76,6 +84,10 @@ val AppStringsEn = AppStrings(
     parentTaskEdit = ParentTaskEditStringsEn,
     parentAssignTask = ParentAssignTaskStringsEn,
     parentTaskTemplate = ParentTaskTemplateStringsEn,
+    parentPoints = ParentPointsStringsEn,
+    parentApproval = ParentApprovalStringsEn,
+    parentRewardEdit = ParentRewardEditStringsEn,
+    parentRewardManage = ParentRewardManageStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {
