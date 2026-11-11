@@ -2,8 +2,11 @@ package com.hstudy.app.i18n
 
 /**
  * 家长布置任务页（ui/parent/ParentAssignTaskScreen.kt）文案表（阶段 2 W2）。
- * 建议芯片 label 的任务标题是 canonical（getSingleTaskSuggestions），渲染包 [localizedPresetText]；
- * onClick 写 state 用原值（Ruling 25）。已布置任务的 a.title/a.parentNote 是用户/落库数据，原样显示。
+ *
+ * 任务标题的两种来源都走注册表：建议芯片 label 与已布置列表里的 a.title 都是 canonical
+ * （芯片来自 getSingleTaskSuggestions，列表里的标题若是从模板快选写入的预设，未改过就还是 canonical），
+ * 渲染点一律包 [localizedPresetText]——预设标题译出，家长手输的标题未收录、原样通过。
+ * onClick 写 state 用原值（Ruling 25），a.parentNote 与编辑框里的用户输入原样显示。
  * 「删除」contentDescription 复用 [CommonStrings.deleteContentDescription]。
  */
 data class ParentAssignTaskStrings(

@@ -27,6 +27,8 @@ class ParentTaskCopyTest {
         assertEquals("Base 3 points · Bonus +2 points", en.pointsLine(3, 2))
         assertEquals("基础 1分", zh.pointsLine(1, 0))
         assertEquals("Base 1 point", en.pointsLine(1, 0))
+        // 只有奖励位为 1 时才会走到「Bonus +1 point」；与 base 位分开钉，防两个 pointsWord 调用互换
+        assertEquals("Base 3 points · Bonus +1 point", en.pointsLine(3, 1))
     }
 
     @Test
@@ -63,6 +65,17 @@ class ParentTaskCopyTest {
             zh.bonusPointsLabel to en.bonusPointsLabel,
             zh.deleteButton to en.deleteButton,
         )
+        // 高风险 EN 同族词按字面量钉死：把 categoryBasic/Enhancement/Habit、freq*、save/delete
+        // 这些兄弟字段互换时，上面的 ZH≠EN 仍然成立、ZH-only 闸门也不报，只有逐字断言抓得住。
+        assertEquals("Basic learning", en.categoryBasic)
+        assertEquals("Advanced learning", en.categoryEnhancement)
+        assertEquals("Habits & attitude", en.categoryHabit)
+        assertEquals("Daily", en.freqDaily)
+        assertEquals("Weekly", en.freqWeekly)
+        assertEquals("Monthly", en.freqMonthly)
+        assertEquals("One-time", en.freqOnce)
+        assertEquals("Save", en.saveButton)
+        assertEquals("Delete this task", en.deleteButton)
     }
 
     @Test
@@ -133,14 +146,22 @@ class ParentTaskCopyTest {
         val en = AppStringsEn.parentTaskTemplate
         assertEquals("当前共有 14 个任务", zh.currentTaskCount(14))
         assertEquals("You currently have 14 tasks", en.currentTaskCount(14))
+        // 任务计数单复数：tasks.size == 1 可达，英文必须走 tasksWord（1 task / 2 tasks），中文无分支
+        assertEquals("当前共有 1 个任务", zh.currentTaskCount(1))
+        assertEquals("You currently have 1 task", en.currentTaskCount(1))
+        assertEquals("You currently have 2 tasks", en.currentTaskCount(2))
         assertEquals("🌱 应用「小学低年级」模板？", zh.applyDialogTitle("🌱", "小学低年级"))
         assertEquals("🌱 Apply the “Lower primary” template?", en.applyDialogTitle("🌱", "Lower primary"))
         assertEquals("将替换当前所有任务为模板预设的 14 个任务。", zh.replaceHint(14))
         assertEquals("This replaces all current tasks with the template's 14 tasks.", en.replaceHint(14))
+        assertEquals("This replaces all current tasks with the template's 1 task.", en.replaceHint(1))
         assertEquals("📝 完成当天作业 (+3分)", zh.previewLine("📝", "完成当天作业", 3))
         assertEquals("📝 Finish today's homework (+3 points)", en.previewLine("📝", "Finish today's homework", 3))
+        assertEquals("📝 x (+1分)", zh.previewLine("📝", "x", 1))
+        assertEquals("📝 x (+1 point)", en.previewLine("📝", "x", 1))
         assertEquals("...还有9个任务", zh.moreTasks(9))
         assertEquals("...and 9 more tasks", en.moreTasks(9))
+        assertEquals("...and 1 more task", en.moreTasks(1))
         assertEquals("✅ 已应用「小学低年级」模板", zh.appliedMessage("小学低年级"))
         assertEquals("✅ Applied the “Lower primary” template", en.appliedMessage("Lower primary"))
         assertEquals("📝 基础×5", zh.basicCount(5))

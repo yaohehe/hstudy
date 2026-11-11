@@ -140,7 +140,7 @@ fun ParentAssignTaskScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(a.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                                                Text(localizedPresetText(a.title, displayLanguage), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(strings.pointsBadge(a.points), style = MaterialTheme.typography.labelMedium,
                                                     color = MaterialTheme.colorScheme.primary)

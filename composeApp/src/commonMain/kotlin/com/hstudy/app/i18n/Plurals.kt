@@ -34,3 +34,6 @@ internal fun timesWord(times: Int): String = if (times == 1) "time" else "times"
 internal fun daysWord(days: Int): String = if (days == 1) "day" else "days"
 
 internal fun mistakesWord(mistakes: Int): String = if (mistakes == 1) "mistake" else "mistakes"
+
+/** 英文 one/other 窄函数：任务个数（1 task / 2 tasks）。任务计数文案专用，不泛化。 */
+internal fun tasksWord(tasks: Int): String = if (tasks == 1) "task" else "tasks"

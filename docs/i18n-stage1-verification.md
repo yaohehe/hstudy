@@ -31,8 +31,8 @@
 python scripts/i18n_storage_boundary.py                          # 文案不进写库调用
 python scripts/tests/i18n_storage_boundary_selftest.py            # 上一条每条检测通道都有必红 fixture
 python scripts/i18n_template_diff.py                              # 中文态逐字节等价（默认组：distinct 118/118，其中 [strict] 整串逐字节相同 117 条 + 1 条已披露的格式串拆分位点）
-python scripts/i18n_template_diff.py --branch                      # 同一命题的**整枝组**（本分支全部已迁页面 × 全部 16 张表）：distinct 552/545，披露后 532/532，[strict] 531 条整串相同 + 1 条拆分
-./gradlew :composeApp:testDebugUnitTest                            # 146 tests / 0 failures（含阶段 2 W1 的 12 条；i18n 包另见 §1 末段）
+python scripts/i18n_template_diff.py --branch                      # 同一命题的**整枝组**（25 条页面组条目 / 24 个文件 × 全部 20 张表）：distinct 614/607，披露后 594/594，[strict] 593 条整串相同 + 1 条拆分
+./gradlew :composeApp:testDebugUnitTest                            # 155 tests / 0 failures（含阶段 2 W1 的 12 条与 W2 的 9 条；i18n 包另见 §1 末段）
 ./gradlew :composeApp:compileCommonMainKotlinMetadata              # commonMain 元数据 + 平台纯净度
 grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMain | wc -l   # 0
 ```
@@ -46,15 +46,17 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
 单测能证明的是**表值**（漏译、one/other、emoji 位置、规范值漂移），证明不了**页面是否读到表**，
 也证明不了排版。`AppLanguageResolveTest`（6 条）覆盖解析纯函数、`LanguagePreferenceTest`（2 条：
 `languagePersistsAcrossReads`、`languageRewriteReplacesPreviousChoiceAndLocksWireFormat`）
-覆盖偏好读写与线格式；`StringsCopyTest`（**63** 条）覆盖**十六张表**的文案——十六张是聚合根
+覆盖偏好读写与线格式；`StringsCopyTest`（**63** 条）覆盖**二十张表**的文案——二十张是聚合根
 `AppStrings` 的字段数（`role / settings / common / taskList / pomodoro / focus / childHome / parentHome /
 parentDashboard` 九张 + 终审 Ruling 41 新加的 `parentGate` + 阶段 2 W1 的 `mistake / mistakeList /
-mistakeDetail / mistakeAdd / parentMistakeReview / reviewReminder` 六张），复核：
-`grep -c "^    val " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt` → 16。
+mistakeDetail / mistakeAdd / parentMistakeReview / reviewReminder` 六张 + W2 的 `parentTaskManage /
+parentTaskEdit / parentAssignTask / parentTaskTemplate` 四张），复核：
+`grep -c "^    val " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt` → 20。
 原文写的是"六张表 / 59 条"，那是 Task 10 之前的读数（终审第 7 条点出，本波次复算后按当前树改正；
 `StringsCopyTest` 的 4 条新增 = `parentGateCopyDiffers`、`parentGateButtonsComeFromTheirOwnTables`、
 `totalFocusLabelIsTheSameTwoWordsInBothTables`、`englishTableUsesOneEllipsisForm`）。
-W1 的漏译/跨表守卫另在 `MistakeCopyTest`（11 条，含 `crossTableSharedLabelsPinned`）。
+W1 的漏译/跨表守卫另在 `MistakeCopyTest`（11 条，含 `crossTableSharedLabelsPinned`），
+W2 的另在 `ParentTaskCopyTest`（9 条，含 `crossTableVocabularyPinned` 与英文 one/other 逐字钉死）。
 
 ## 2. 人工验证清单
 
@@ -260,9 +262,11 @@ W1 的漏译/跨表守卫另在 `MistakeCopyTest`（11 条，含 `crossTableShar
 
 ### 阶段 2 W2（家长任务管理）追加项
 
-- [ ] V-40 英文态任务管理页：标题/分类筛选/积分行/空态全英文；任务标题与描述为预设时显示英文（注册表），家长自建内容原样
-- [ ] V-41 英文态任务编辑页：分类/频率/难度芯片与说明、必填扣分提示、保存/删除全英文；建议芯片标题预设英文、点击后写入仍为 canonical 中文（落库不变）
-- [ ] V-42 英文态布置任务页：表单/建议芯片/已布置列表/完成状态全英文；已布置任务标题为家长输入，原样
+- [ ] V-40 英文态任务管理页：标题/分类筛选/积分行全英文；任务标题与描述为预设时显示英文（注册表），家长自建内容原样（本页**没有空状态文案**：列表为空时直接不渲染行，别去找"英文空态"）
+- [ ] V-41 英文态任务编辑页：分类/频率/难度芯片与说明、必填扣分提示、保存/删除全英文；建议芯片标题预设英文、点击后写入仍为 canonical 中文（落库不变）。
+  **点过建议芯片后，可编辑的标题/描述输入框里就是 canonical 中文——设计如此，不是漏译**：这两个值原样进落库调用（编辑框喂 DB 写入），本地化只发生在渲染期的列表/芯片（走注册表），编辑框不回填译文
+- [ ] V-42 英文态布置任务页：表单/建议芯片/已布置列表/完成状态全英文；已布置列表标题走注册表（`ParentAssignTaskScreen.kt:143` 的 `localizedPresetText(a.title, displayLanguage)`）——预设标题译出、家长手输标题原样，`a.parentNote` 原样。
+  另看「只有 1 条已布置任务」：积分徽标为 `+1 point`（不是 `+1 points`）、标题行 `Assigned today (1)`；再放到 2 条对比 `+2 points`（任务计数的英文单复数）
 - [ ] V-43 英文态积分模板页：模板名/年龄段/描述/预览任务标题显示英文（注册表），分类计数与确认对话框全英文；应用后落库任务仍为 canonical 中文
 
 ## 3. 已知限制
@@ -425,9 +429,9 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
   注意"118 条"是**披露后的模板集合大小**，"117 条"才是**整串相同**的条数，两个数字不是一回事，
   旧文档把 118/118 写成"条整串"是假陈述，本波次已按工具当日输出改正）。
 - **整枝组（终审第 9 条新发布的长期复验命令，`d4d441b` 起脚本自带 `--branch`）**：
-  `python scripts/i18n_template_diff.py --branch`（阶段 2 W1 登记后实测 **exit 0**；distinct 552/545 →
-  披露后 532/532，`[strict]` 531 条整串相同 + 同一条拆分位点。它把本分支全部已迁页面（含 W1 的六页）×
-  全部 16 张表放进同一命题，`DISCLOSED_RESIDUALS` 登记表（现 27 条）整张受它复验
+  `python scripts/i18n_template_diff.py --branch`（阶段 2 W2 登记后实测 **exit 0**；distinct 614/607 →
+  披露后 594/594，`[strict]` 593 条整串相同 + 同一条拆分位点。它把本分支全部已迁页面（25 条页面组条目 /
+  24 个文件，含 W1 的六页与 W2 的四页）× 全部 20 张表放进同一命题，`DISCLOSED_RESIDUALS` 登记表（现 27 条）整张受它复验
   （实跑 26 条命中打印、第 19 条与其同形条共用一次命中），
   默认组只碰到其中 6 条（实跑打印 3 条"已披露"双边/单边命中 + 3 条"单边在范围"），其余 21 条默认组用不到。
 - **`SettingsStrings` 这张表必须带两个页面 rev 才退 0**（表由 Task 5 与 Task 11 两批页面共同填写，
