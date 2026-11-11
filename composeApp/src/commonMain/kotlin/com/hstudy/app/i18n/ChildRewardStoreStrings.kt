@@ -10,6 +10,7 @@ package com.hstudy.app.i18n
  * 家长自建内容未命中原样。分类分组键 categoryOrder/categoryEmoji 是落库值（Ruling 25），留在页面。
  * **落库字面量**：`spendPoints(cost, "兑换：${reward.name}")` 的 note 是账本数据，保持 canonical
  * 中文原样、不进本表（等价闸门 Task 5 登记披露"兑换：⟨$⟩"）。
+ * 兑换记录行渲染的 exchange.note 是兑换时冻结的 canonical 奖励名（动态数据），同样不本地化。
  * [bannerAffordable] 的英文 reward/rewards 用行内条件（无既有复数 helper，不新增）；
  * 其余数量词一律 [pointsWord]。
  */
