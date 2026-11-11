@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.delay
@@ -29,6 +30,7 @@ fun ChildLuckyDrawScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.childLuckyDraw
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -60,7 +62,7 @@ fun ChildLuckyDrawScreen(
     val rewardPool = listOf(1, 1, 1, 1, 2, 2, 2, 3, 3, 5)
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🎰 每日幸运抽奖", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -69,8 +71,8 @@ fun ChildLuckyDrawScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Text("试试你的手气！", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Text("每天可抽奖一次，随机获得奖励积分", style = MaterialTheme.typography.bodyMedium,
+                    Text(strings.headline, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.subtitle, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     // 抽奖转盘/礼盒
@@ -83,7 +85,7 @@ fun ChildLuckyDrawScreen(
                         } else if (resultPoints >= 0) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.scale(pulse)) {
                                 Text("🎉", fontSize = 72.sp)
-                                Text("+$resultPoints 分", style = MaterialTheme.typography.displaySmall,
+                                Text(strings.pointsWonValue(resultPoints), style = MaterialTheme.typography.displaySmall,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                         } else {
@@ -93,10 +95,10 @@ fun ChildLuckyDrawScreen(
 
                     // 结果提示
                     when {
-                        resultPoints >= 0 -> Text("恭喜获得 $resultPoints 积分奖励！",
+                        resultPoints >= 0 -> Text(strings.winMessage(resultPoints),
                             style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold)
-                        !canDraw -> Text("今天已经抽过奖啦，明天再来吧～",
+                        !canDraw -> Text(strings.alreadyDrawn,
                             style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
@@ -114,14 +116,14 @@ fun ChildLuckyDrawScreen(
                                 canDraw = false
                                 app.pointRepository.adjustPoints(won, "每日幸运抽奖")
                                 app.userPreferences.setLastLuckyDraw(today)
-                                snackbarHostState.showSnackbar("🎉 抽中 $won 积分！")
+                                snackbarHostState.showSnackbar(strings.drawSnackbar(won))
                             }
                         },
                         enabled = canDraw && !isDrawing,
                         modifier = Modifier.fillMaxWidth(0.7f).height(56.dp)
                     ) {
                         Text(
-                            if (isDrawing) "抽奖中…" else if (canDraw) "🎲 立即抽奖" else "明日再来",
+                            if (isDrawing) strings.drawing else if (canDraw) strings.drawButton else strings.comeTomorrow,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -132,10 +134,10 @@ fun ChildLuckyDrawScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("💡 奖励说明", style = MaterialTheme.typography.titleSmall)
-                            Text("奖池包含 1~5 积分，小奖励更容易抽中，大奖凭运气！",
+                            Text(strings.infoTitle, style = MaterialTheme.typography.titleSmall)
+                            Text(strings.infoPool,
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("坚持每天打卡后再来抽奖，养成好习惯～",
+                            Text(strings.infoStreak,
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }

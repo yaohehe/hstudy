@@ -122,6 +122,15 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "parentRewardEdit.costLabel",             // "Points required"
     // ---- W3 Task 4 奖励商店管理页新增 1 条（英文原文逐条留在行尾注释里）。
     "parentRewardManage.emptyHint",           // "… adjust their point costs one by one."
+    // ---- W4 Task 1 奖励商店页新增 1 条（英文原文逐条留在行尾注释里）。
+    "childRewardStore.insufficientPoints",    // "Not enough points yet — keep going! 💪"
+    // ---- W4 Task 2 每日幸运抽奖页新增 2 条（英文原文逐条留在行尾注释里）。
+    "childLuckyDraw.subtitle",                // "One draw per day — win bonus points at random"
+    "childLuckyDraw.infoPool",                // "The prize pool holds 1–5 points — small prizes are more likely, and big wins are pure luck!"
+    // ---- W4 Task 3 积分明细页新增 3 条（英文原文逐条留在行尾注释里）。
+    "childPoints.balanceTitle",               // "Total points balance"
+    "childPoints.recordsTitle",               // "Point history"
+    "childPoints.emptyRecords",               // "No point records yet — go check in!"
 )
 
 /**

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.PointRecordEntity
 import com.hstudy.app.data.local.entity.PointRecordType
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -23,6 +24,8 @@ fun ChildPointsScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.childPoints
+    val childHome = LocalStrings.current.childHome
     val app = AppGraph
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     // 待家长审批的积分：尚未计入余额，单独展示，避免与可用余额混淆
@@ -31,7 +34,7 @@ fun ChildPointsScreen(
 
     Scaffold(
         topBar = {
-            HStudyTopBar(title = "积分明细", onNavigateBack = onNavigateBack, actions = { PointsBadge(points = totalPoints) })
+            HStudyTopBar(title = childHome.entryPointsDetailTitle, onNavigateBack = onNavigateBack, actions = { PointsBadge(points = totalPoints) })
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -46,13 +49,13 @@ fun ChildPointsScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                         ) {
                             Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("总积分余额", style = MaterialTheme.typography.titleSmall)
-                                Text("⭐ $totalPoints 分", style = MaterialTheme.typography.headlineLarge)
+                                Text(strings.balanceTitle, style = MaterialTheme.typography.titleSmall)
+                                Text(strings.balanceValue(totalPoints), style = MaterialTheme.typography.headlineLarge)
                                 // 待审批积分不参与余额，单独列示
                                 if (pendingPoints > 0) {
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        "⏳ 待家长审核 +$pendingPoints 分（通过后计入余额）",
+                                        strings.pendingNote(pendingPoints),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
@@ -62,7 +65,7 @@ fun ChildPointsScreen(
                     }
 
                     item { Spacer(modifier = Modifier.height(8.dp)) }
-                    item { Text("积分变动记录", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp)) }
+                    item { Text(strings.recordsTitle, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp)) }
 
                     items(records) { record ->
                         PointHistoryItem(record = record)
@@ -71,7 +74,7 @@ fun ChildPointsScreen(
                     if (records.isEmpty()) {
                         item {
                             Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                                Text("还没有积分记录哦，快去打卡吧！", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(strings.emptyRecords, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -84,6 +87,7 @@ fun ChildPointsScreen(
 
 @Composable
 private fun PointHistoryItem(record: PointRecordEntity) {
+    val strings = LocalStrings.current.childPoints
     val icon = when (record.type) {
         PointRecordType.TASK_COMPLETE -> "✅"
         PointRecordType.BONUS -> "🎁"
@@ -102,11 +106,11 @@ private fun PointHistoryItem(record: PointRecordEntity) {
                 Text(
                     record.note.ifEmpty {
                         when (record.type) {
-                            PointRecordType.TASK_COMPLETE -> "完成任务"
-                            PointRecordType.BONUS -> "获得奖励"
-                            PointRecordType.ADJUSTMENT -> "家长调整"
-                            PointRecordType.REWARD_EXCHANGE -> "兑换奖励"
-                            PointRecordType.REVERSAL -> "撤销扣回"
+                            PointRecordType.TASK_COMPLETE -> strings.typeTaskComplete
+                            PointRecordType.BONUS -> strings.typeBonus
+                            PointRecordType.ADJUSTMENT -> strings.typeAdjustment
+                            PointRecordType.REWARD_EXCHANGE -> strings.typeRewardExchange
+                            PointRecordType.REVERSAL -> strings.typeReversal
                         }
                     },
                     style = MaterialTheme.typography.bodyMedium

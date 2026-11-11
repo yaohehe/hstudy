@@ -35,6 +35,10 @@ data class AppStrings(
     val parentApproval: ParentApprovalStrings,
     val parentRewardEdit: ParentRewardEditStrings,
     val parentRewardManage: ParentRewardManageStrings,
+    val childRewardStore: ChildRewardStoreStrings,
+    val childLuckyDraw: ChildLuckyDrawStrings,
+    val childPoints: ChildPointsStrings,
+    val childAchievements: ChildAchievementsStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -62,6 +66,10 @@ val AppStringsZh = AppStrings(
     parentApproval = ParentApprovalStringsZh,
     parentRewardEdit = ParentRewardEditStringsZh,
     parentRewardManage = ParentRewardManageStringsZh,
+    childRewardStore = ChildRewardStoreStringsZh,
+    childLuckyDraw = ChildLuckyDrawStringsZh,
+    childPoints = ChildPointsStringsZh,
+    childAchievements = ChildAchievementsStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -88,6 +96,10 @@ val AppStringsEn = AppStrings(
     parentApproval = ParentApprovalStringsEn,
     parentRewardEdit = ParentRewardEditStringsEn,
     parentRewardManage = ParentRewardManageStringsEn,
+    childRewardStore = ChildRewardStoreStringsEn,
+    childLuckyDraw = ChildLuckyDrawStringsEn,
+    childPoints = ChildPointsStringsEn,
+    childAchievements = ChildAchievementsStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

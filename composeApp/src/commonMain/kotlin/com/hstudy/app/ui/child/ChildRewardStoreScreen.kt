@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.RewardEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 
@@ -33,6 +36,12 @@ fun ChildRewardStoreScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
+    val strings = LocalStrings.current.childRewardStore
+    val parentHome = LocalStrings.current.parentHome
+    val common = LocalStrings.current.common
+    val childHome = LocalStrings.current.childHome
+    val displayLanguage = LocalDisplayLanguage.current
+
     // ===== 庆祝动画状态 =====
     var showConfetti by remember { mutableStateOf(false) }
     var celebrationMsg by remember { mutableStateOf("") }
@@ -40,7 +49,7 @@ fun ChildRewardStoreScreen(
 
     Scaffold(
         topBar = {
-            HStudyTopBar(title = "奖励商店", onNavigateBack = onNavigateBack, actions = { PointsBadge(points = totalPoints) })
+            HStudyTopBar(title = childHome.entryRewardStoreTitle, onNavigateBack = onNavigateBack, actions = { PointsBadge(points = totalPoints) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -65,13 +74,13 @@ fun ChildRewardStoreScreen(
                             ) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(
-                                        if (affordableCount > 0) "🎉 你有 $totalPoints 分，现在可以兑换 $affordableCount 个奖励啦！"
-                                        else "💪 你有 $totalPoints 分，完成任务赚积分来兑换吧！",
+                                        if (affordableCount > 0) strings.bannerAffordable(totalPoints, affordableCount)
+                                        else strings.bannerKeepEarning(totalPoints),
                                         style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold
                                     )
                                     if (nextGoal != null) {
                                         val need = nextGoal.pointsCost - totalPoints
-                                        Text("再攒 $need 分就能兑换「${nextGoal.iconEmoji} ${nextGoal.name}」啦～",
+                                        Text(strings.nextGoalMessage(need, nextGoal.iconEmoji, localizedPresetText(nextGoal.name, displayLanguage)),
                                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         val progress = (totalPoints.toFloat() / nextGoal.pointsCost).coerceIn(0f, 1f)
                                         LinearProgressIndicator(
@@ -104,7 +113,7 @@ fun ChildRewardStoreScreen(
                                 ) {
                                     Text(categoryEmoji[cat] ?: "✨", style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("${cat}奖励", style = MaterialTheme.typography.titleMedium,
+                                    Text(strings.categoryTitle(localizedPresetText(cat, displayLanguage)), style = MaterialTheme.typography.titleMedium,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("(${catRewards.size})", style = MaterialTheme.typography.labelMedium,
@@ -154,7 +163,7 @@ fun ChildRewardStoreScreen(
                     if (exchanges.isNotEmpty()) {
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("我的兑换记录", style = MaterialTheme.typography.titleMedium)
+                            Text(strings.historyTitle, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         items(exchanges.take(10)) { exchange ->
@@ -163,8 +172,8 @@ fun ChildRewardStoreScreen(
                                     Text("🎁", style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(exchange.note.ifEmpty { "已兑换" }, style = MaterialTheme.typography.bodyMedium)
-                                        Text("-${exchange.pointsSpent}分", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                        Text(exchange.note.ifEmpty { strings.exchangedFallback }, style = MaterialTheme.typography.bodyMedium)
+                                        Text(strings.spentValue(exchange.pointsSpent), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                                     }
                                 }
                             }
@@ -183,8 +192,8 @@ fun ChildRewardStoreScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text("🎁", fontSize = 48.sp)
-                                    Text("奖励商店还是空的", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text("请爸爸妈妈到「奖励商店管理」里点一下“一键载入预设奖励”，就能出现好多奖品啦！",
+                                    Text(parentHome.setupRewardsMissing, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(strings.emptyHint,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -201,16 +210,16 @@ fun ChildRewardStoreScreen(
     showExchangeDialog?.let { reward ->
         AlertDialog(
             onDismissRequest = { showExchangeDialog = null },
-            title = { Text("确认兑换") },
+            title = { Text(strings.confirmExchange) },
             text = {
                 Column {
-                    Text("${reward.iconEmoji} ${reward.name}", style = MaterialTheme.typography.titleLarge)
+                    Text("${reward.iconEmoji} ${localizedPresetText(reward.name, displayLanguage)}", style = MaterialTheme.typography.titleLarge)
                     if (reward.description.isNotEmpty()) {
-                        Text(reward.description, style = MaterialTheme.typography.bodyMedium)
+                        Text(localizedPresetText(reward.description, displayLanguage), style = MaterialTheme.typography.bodyMedium)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("需要 ${reward.pointsCost} 积分", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    Text("当前余额：$totalPoints 积分", style = MaterialTheme.typography.bodyMedium)
+                    Text(strings.costNeeded(reward.pointsCost), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(strings.currentBalance(totalPoints), style = MaterialTheme.typography.bodyMedium)
                 }
             },
             confirmButton = {
@@ -222,20 +231,20 @@ fun ChildRewardStoreScreen(
                                 app.pointRepository.spendPoints(reward.pointsCost, "兑换：${reward.name}")
                                 // 触发庆祝动画
                                 showConfetti = true
-                                celebrationMsg = "🎉 ${reward.iconEmoji} ${reward.name}"
+                                celebrationMsg = "🎉 ${reward.iconEmoji} ${localizedPresetText(reward.name, displayLanguage)}"
                                 showCelebration = true
-                                snackbarHostState.showSnackbar("🎉 兑换成功！${reward.name}")
+                                snackbarHostState.showSnackbar(strings.redeemSuccess(localizedPresetText(reward.name, displayLanguage)))
                             }
                         } else {
-                            scope.launch { snackbarHostState.showSnackbar("积分不足哦，继续加油！💪") }
+                            scope.launch { snackbarHostState.showSnackbar(strings.insufficientPoints) }
                         }
                         showExchangeDialog = null
                     },
                     enabled = totalPoints >= reward.pointsCost
-                ) { Text("确认兑换") }
+                ) { Text(strings.confirmExchange) }
             },
             dismissButton = {
-                TextButton(onClick = { showExchangeDialog = null }) { Text("取消") }
+                TextButton(onClick = { showExchangeDialog = null }) { Text(common.cancelButton) }
             }
         )
     }
@@ -259,6 +268,9 @@ private fun RewardStoreCard(
     onExchange: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalStrings.current.childRewardStore
+    val displayLanguage = LocalDisplayLanguage.current
+
     val canAfford = currentPoints >= reward.pointsCost
 
     Card(
@@ -284,15 +296,15 @@ private fun RewardStoreCard(
                 Text(reward.iconEmoji, fontSize = 32.sp)
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Text(reward.name, style = MaterialTheme.typography.titleSmall,
+            Text(localizedPresetText(reward.name, displayLanguage), style = MaterialTheme.typography.titleSmall,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 maxLines = 1)
             if (reward.description.isNotEmpty()) {
-                Text(reward.description, style = MaterialTheme.typography.bodySmall,
+                Text(localizedPresetText(reward.description, displayLanguage), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text("⭐ ${reward.pointsCost} 积分", style = MaterialTheme.typography.labelLarge,
+            Text(strings.priceLabel(reward.pointsCost), style = MaterialTheme.typography.labelLarge,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 color = if (canAfford) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
@@ -301,7 +313,7 @@ private fun RewardStoreCard(
                 enabled = canAfford,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (canAfford) "兑换" else "还差 ${reward.pointsCost - currentPoints} 分")
+                Text(if (canAfford) strings.redeemButton else strings.shortBy(reward.pointsCost - currentPoints))
             }
         }
     }

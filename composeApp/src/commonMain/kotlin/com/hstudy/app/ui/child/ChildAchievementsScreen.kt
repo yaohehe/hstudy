@@ -11,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.achievementCopy
 import com.hstudy.app.ui.common.AchievementManager
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -24,6 +27,8 @@ fun ChildAchievementsScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.childAchievements
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val unlocked by app.habitRepository.getAllAchievements().collectAsState(initial = emptyList())
     val allDefs = AchievementManager.allAchievements
@@ -38,7 +43,7 @@ fun ChildAchievementsScreen(
     val unlockedCount = allDefs.count { it.type in unlockedTypes }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🏅 成就中心", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             ResponsiveContent(
@@ -53,7 +58,7 @@ fun ChildAchievementsScreen(
                     ) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("🏅 我的成就", style = MaterialTheme.typography.titleMedium,
+                                Text(strings.myAchievements, style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                                 Text("$unlockedCount/${allDefs.size}", style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -64,8 +69,8 @@ fun ChildAchievementsScreen(
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                             Text(
-                                if (unlockedCount == allDefs.size) "🎉 太厉害了！已解锁全部成就！"
-                                else "继续加油，解锁更多成就勋章！",
+                                if (unlockedCount == allDefs.size) strings.allUnlocked
+                                else strings.keepGoing,
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
@@ -86,10 +91,16 @@ fun ChildAchievementsScreen(
                                 Text(def.emoji, style = MaterialTheme.typography.headlineSmall)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(def.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Text(def.description, style = MaterialTheme.typography.bodySmall,
+                                    Text(
+                                        achievementCopy[displayLanguage]?.get(def.type)?.title ?: def.title,
+                                        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        achievementCopy[displayLanguage]?.get(def.type)?.description ?: def.description,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = if (isUnlocked) MaterialTheme.colorScheme.onTertiaryContainer
-                                            else MaterialTheme.colorScheme.onSurfaceVariant)
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     if (!isUnlocked) {
                                         LinearProgressIndicator(
                                             progress = if (target > 0) (cur.toFloat() / target).coerceIn(0f, 1f) else 0f,
