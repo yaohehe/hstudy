@@ -94,6 +94,16 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "mistakeDetail.variationPromptsEnglish", // "What grammar or vocabulary point …?" / "… a sentence with this point?"
     "mistakeDetail.variationDoneMessage",    // "💡 Variation complete — +3 points submitted for parent approval"
     "mistakeDetail.variationButton",         // "💡 Complete variation thinking (+3 points)"
+    // ---- W2 Task 2 任务编辑页新增 5 条（英文原文逐条留在行尾注释里）。
+    "parentTaskEdit.basePointsLabel",         // "Base points"
+    "parentTaskEdit.bonusPointsLabel",        // "Bonus points"
+    "parentTaskEdit.difficultyNoteAdvanced",  // "Advanced tasks earn ×1.2 points"
+    "parentTaskEdit.difficultyNoteChallenge", // "Challenge tasks earn ×1.5 points — …"
+    "parentTaskEdit.difficultyNoteNormal",    // "Normal difficulty, scored at base points"
+    // ---- W2 Task 3 布置任务页新增 1 条（英文原文逐条留在行尾注释里）。
+    "parentAssignTask.pointsLabel",           // "Points"
+    // ---- W2 Task 4 积分模板页新增 1 条（英文原文逐条留在行尾注释里）。
+    "parentTaskTemplate.title",               // "📋 Point templates"（§11 积分 = Points）
 )
 
 /**

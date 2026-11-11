@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -31,13 +34,17 @@ fun ParentTaskManageScreen(
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     var selectedCategory by remember { mutableStateOf<TaskCategory?>(null) }
 
+    val strings = LocalStrings.current.parentTaskManage
+    val taskList = LocalStrings.current.taskList
+    val parentHome = LocalStrings.current.parentHome
+
     val filteredTasks = if (selectedCategory == null) tasks else tasks.filter { it.category == selectedCategory }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "任务管理", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = parentHome.menuTaskManageTitle, onNavigateBack = onNavigateBack) },
         floatingActionButton = {
             FloatingActionButton(onClick = { onEditTask(0L) }) {
-                Icon(Icons.Filled.Add, contentDescription = "添加任务")
+                Icon(Icons.Filled.Add, contentDescription = strings.addContentDescription)
             }
         }
     ) { padding ->
@@ -50,22 +57,22 @@ fun ParentTaskManageScreen(
                 FilterChip(
                     selected = selectedCategory == null,
                     onClick = { selectedCategory = null },
-                    label = { Text("全部") }
+                    label = { Text(taskList.filterAll) }
                 )
                 FilterChip(
                     selected = selectedCategory == TaskCategory.BASIC,
                     onClick = { selectedCategory = if (selectedCategory == TaskCategory.BASIC) null else TaskCategory.BASIC },
-                    label = { Text("基础") }
+                    label = { Text(taskList.filterBasic) }
                 )
                 FilterChip(
                     selected = selectedCategory == TaskCategory.ENHANCEMENT,
                     onClick = { selectedCategory = if (selectedCategory == TaskCategory.ENHANCEMENT) null else TaskCategory.ENHANCEMENT },
-                    label = { Text("提升") }
+                    label = { Text(taskList.filterEnhancement) }
                 )
                 FilterChip(
                     selected = selectedCategory == TaskCategory.HABIT,
                     onClick = { selectedCategory = if (selectedCategory == TaskCategory.HABIT) null else TaskCategory.HABIT },
-                    label = { Text("习惯") }
+                    label = { Text(taskList.filterHabits) }
                 )
             }
 
@@ -93,10 +100,15 @@ private fun TaskManageCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = LocalStrings.current.parentTaskManage
+    val taskList = LocalStrings.current.taskList
+    val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
+
     val categoryLabel = when (task.category) {
-        TaskCategory.BASIC -> "基础"
-        TaskCategory.ENHANCEMENT -> "提升"
-        TaskCategory.HABIT -> "习惯"
+        TaskCategory.BASIC -> taskList.filterBasic
+        TaskCategory.ENHANCEMENT -> taskList.filterEnhancement
+        TaskCategory.HABIT -> taskList.filterHabits
     }
     val categoryColor = when (task.category) {
         TaskCategory.BASIC -> MaterialTheme.colorScheme.primary
@@ -114,7 +126,7 @@ private fun TaskManageCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(task.title, style = MaterialTheme.typography.titleMedium)
+                    Text(localizedPresetText(task.title, displayLanguage), style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.width(8.dp))
                     SuggestionChip(
                         onClick = {},
@@ -123,13 +135,13 @@ private fun TaskManageCard(
                     )
                 }
                 if (task.description.isNotEmpty()) {
-                    Text(task.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(localizedPresetText(task.description, displayLanguage), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("基础 ${task.points}分${if (task.bonusPoints > 0) " · 奖励 +${task.bonusPoints}分" else ""}",
+                Text(strings.pointsLine(task.points, task.bonusPoints),
                     style = MaterialTheme.typography.labelMedium, color = categoryColor)
             }
-            IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "编辑") }
-            IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
+            IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = strings.editContentDescription) }
+            IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription, tint = MaterialTheme.colorScheme.error) }
         }
     }
 }

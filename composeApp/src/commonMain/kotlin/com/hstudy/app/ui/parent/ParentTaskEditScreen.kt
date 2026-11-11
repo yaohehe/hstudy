@@ -14,6 +14,9 @@ import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskEntity
 import com.hstudy.app.data.local.entity.TaskFrequency
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -36,6 +39,9 @@ fun ParentTaskEditScreen(
     var difficulty by remember { mutableIntStateOf(1) }
     var isMandatory by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+
+    val strings = LocalStrings.current.parentTaskEdit
+    val displayLanguage = LocalDisplayLanguage.current
 
     // 单任务模板库
     val suggestions = remember { app.taskRepository.getSingleTaskSuggestions() }
@@ -62,7 +68,7 @@ fun ParentTaskEditScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = if (taskId == 0L) "新建任务" else "编辑任务",
+                title = if (taskId == 0L) strings.newTitle else strings.editTitle,
                 onNavigateBack = onNavigateBack,
                 actions = {
                     TextButton(onClick = {
@@ -84,7 +90,7 @@ fun ParentTaskEditScreen(
                             onNavigateBack()
                         }
                     }) {
-                        Text("保存", style = MaterialTheme.typography.titleMedium)
+                        Text(strings.saveButton, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             )
@@ -100,14 +106,14 @@ fun ParentTaskEditScreen(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("任务名称") },
-                    placeholder = { Text("如：完成当天作业") },
+                    label = { Text(strings.titleLabel) },
+                    placeholder = { Text(strings.titlePlaceholder) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // 从模板快速选择
-                Text("💡 从模板快速选择", style = MaterialTheme.typography.titleSmall)
+                Text(strings.suggestionsHeading, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -127,7 +133,7 @@ fun ParentTaskEditScreen(
                                 points = s.points.toString()
                                 bonusPoints = s.bonusPoints.toString()
                             },
-                            label = { Text("$catEmoji ${s.title} +${s.points}") }
+                            label = { Text(strings.suggestionChip(catEmoji, localizedPresetText(s.title, displayLanguage), s.points)) }
                         )
                     }
                 }
@@ -136,22 +142,22 @@ fun ParentTaskEditScreen(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("任务描述") },
-                    placeholder = { Text("补充说明（选填）") },
+                    label = { Text(strings.descriptionLabel) },
+                    placeholder = { Text(strings.descriptionPlaceholder) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 分类选择
-                Text("任务分类", style = MaterialTheme.typography.titleSmall)
+                Text(strings.categoryHeading, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TaskCategory.entries.forEach { cat ->
                         val label = when (cat) {
-                            TaskCategory.BASIC -> "基础学习"
-                            TaskCategory.ENHANCEMENT -> "提升学习"
-                            TaskCategory.HABIT -> "习惯态度"
+                            TaskCategory.BASIC -> strings.categoryBasic
+                            TaskCategory.ENHANCEMENT -> strings.categoryEnhancement
+                            TaskCategory.HABIT -> strings.categoryHabit
                         }
                         FilterChip(
                             selected = category == cat,
@@ -163,15 +169,15 @@ fun ParentTaskEditScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 任务频率
-                Text("任务频率", style = MaterialTheme.typography.titleSmall)
+                Text(strings.frequencyHeading, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TaskFrequency.entries.forEach { freq ->
                         val label = when (freq) {
-                            TaskFrequency.DAILY -> "每日"
-                            TaskFrequency.WEEKLY -> "每周"
-                            TaskFrequency.MONTHLY -> "每月"
-                            TaskFrequency.ONCE -> "一次性"
+                            TaskFrequency.DAILY -> strings.freqDaily
+                            TaskFrequency.WEEKLY -> strings.freqWeekly
+                            TaskFrequency.MONTHLY -> strings.freqMonthly
+                            TaskFrequency.ONCE -> strings.freqOnce
                         }
                         FilterChip(
                             selected = frequency == freq,
@@ -193,8 +199,8 @@ fun ParentTaskEditScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("⚠️ 每日必须完成", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text("若当天未完成此任务，将自动扣减 ${points.toIntOrNull() ?: 5} 分", 
+                                Text(strings.mandatoryTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(strings.mandatoryHint(points.toIntOrNull() ?: 5), 
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Switch(
@@ -207,10 +213,10 @@ fun ParentTaskEditScreen(
                 }
 
                 // 难度等级
-                Text("难度等级", style = MaterialTheme.typography.titleSmall)
+                Text(strings.difficultyHeading, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(1 to "普通⭐", 2 to "进阶⭐⭐", 3 to "挑战⭐⭐⭐").forEach { (level, label) ->
+                    listOf(1 to strings.difficultyNormal, 2 to strings.difficultyAdvanced, 3 to strings.difficultyChallenge).forEach { (level, label) ->
                         FilterChip(
                             selected = difficulty == level,
                             onClick = { difficulty = level },
@@ -220,9 +226,9 @@ fun ParentTaskEditScreen(
                 }
                 Text(
                     when (difficulty) {
-                        2 -> "进阶任务积分×1.2倍"
-                        3 -> "挑战任务积分×1.5倍，鼓励孩子挑战高难度！"
-                        else -> "普通难度，按基础积分计算"
+                        2 -> strings.difficultyNoteAdvanced
+                        3 -> strings.difficultyNoteChallenge
+                        else -> strings.difficultyNoteNormal
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -234,14 +240,14 @@ fun ParentTaskEditScreen(
                     OutlinedTextField(
                         value = points,
                         onValueChange = { points = it.filter { c -> c.isDigit() } },
-                        label = { Text("基础积分") },
+                        label = { Text(strings.basePointsLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = bonusPoints,
                         onValueChange = { bonusPoints = it.filter { c -> c.isDigit() } },
-                        label = { Text("奖励积分") },
+                        label = { Text(strings.bonusPointsLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -260,7 +266,7 @@ fun ParentTaskEditScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("删除此任务")
+                        Text(strings.deleteButton)
                     }
                 }
             }

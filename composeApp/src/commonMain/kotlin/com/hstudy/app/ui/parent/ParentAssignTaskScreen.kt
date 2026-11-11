@@ -13,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -34,8 +37,12 @@ fun ParentAssignTaskScreen(
     var points by remember { mutableStateOf("5") }
     var parentNote by remember { mutableStateOf("") }
 
+    val strings = LocalStrings.current.parentAssignTask
+    val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
+
     Scaffold(
-        topBar = { HStudyTopBar(title = "📣 布置今日任务", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -48,10 +55,10 @@ fun ParentAssignTaskScreen(
                     // ===== 快速布置表单 =====
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("✍️ 布置新任务", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(strings.formHeading, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
                             // 从模板快选
-                            Text("从模板快速选择：", style = MaterialTheme.typography.labelMedium,
+                            Text(strings.templateQuickSelect, style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 taskTemplates.take(8).forEach { t ->
@@ -61,32 +68,32 @@ fun ParentAssignTaskScreen(
                                             description = t.description
                                             points = t.points.toString()
                                         },
-                                        label = { Text("${t.title} +${t.points}") }
+                                        label = { Text(strings.suggestionChip(localizedPresetText(t.title, displayLanguage), t.points)) }
                                     )
                                 }
                             }
 
                             OutlinedTextField(
                                 value = title, onValueChange = { title = it },
-                                label = { Text("任务标题") },
-                                placeholder = { Text("如：今天帮妈妈洗碗") },
+                                label = { Text(strings.titleLabel) },
+                                placeholder = { Text(strings.titlePlaceholder) },
                                 modifier = Modifier.fillMaxWidth(), singleLine = true
                             )
                             OutlinedTextField(
                                 value = description, onValueChange = { description = it },
-                                label = { Text("任务描述（选填）") },
+                                label = { Text(strings.descriptionLabel) },
                                 modifier = Modifier.fillMaxWidth(), minLines = 2
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedTextField(
                                     value = points, onValueChange = { points = it.filter { c -> c.isDigit() } },
-                                    label = { Text("积分值") },
+                                    label = { Text(strings.pointsLabel) },
                                     modifier = Modifier.weight(1f), singleLine = true
                                 )
                                 OutlinedTextField(
                                     value = parentNote, onValueChange = { parentNote = it },
-                                    label = { Text("鼓励语（选填）") },
-                                    placeholder = { Text("如：相信你一定能做到！") },
+                                    label = { Text(strings.noteLabel) },
+                                    placeholder = { Text(strings.notePlaceholder) },
                                     modifier = Modifier.weight(2f), singleLine = true
                                 )
                             }
@@ -102,26 +109,26 @@ fun ParentAssignTaskScreen(
                                             parentNote = parentNote
                                         )
                                         title = ""; description = ""; points = "5"; parentNote = ""
-                                        snackbarHostState.showSnackbar("✅ 任务已布置给孩子！")
+                                        snackbarHostState.showSnackbar(strings.assignedMessage)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = title.isNotBlank()
                             ) {
-                                Text("📤 布置给孩子")
+                                Text(strings.assignButton)
                             }
                         }
                     }
 
                     // ===== 今日已布置任务列表 =====
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("📋 今日已布置 (${todayAssignments.size})",
+                        Text(strings.todayHeading(todayAssignments.size),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
                         if (todayAssignments.isEmpty()) {
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                    Text("今天还没有布置任务", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(strings.emptyState, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         } else {
@@ -135,7 +142,7 @@ fun ParentAssignTaskScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(a.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                                                 Spacer(modifier = Modifier.width(8.dp))
-                                                Text("+${a.points}分", style = MaterialTheme.typography.labelMedium,
+                                                Text(strings.pointsBadge(a.points), style = MaterialTheme.typography.labelMedium,
                                                     color = MaterialTheme.colorScheme.primary)
                                             }
                                             if (a.parentNote.isNotEmpty()) {
@@ -143,7 +150,7 @@ fun ParentAssignTaskScreen(
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                             Text(
-                                                if (a.isCompleted) "✅ 孩子已完成" else "⏳ 待完成",
+                                                if (a.isCompleted) strings.completedStatus else strings.pendingStatus,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = if (a.isCompleted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary
                                             )
@@ -151,10 +158,10 @@ fun ParentAssignTaskScreen(
                                         IconButton(onClick = {
                                             scope.launch {
                                                 app.assignmentRepository.deleteAssignment(a.id)
-                                                snackbarHostState.showSnackbar("已删除任务")
+                                                snackbarHostState.showSnackbar(strings.deletedMessage)
                                             }
                                         }) {
-                                            Icon(Icons.Filled.Delete, contentDescription = "删除",
+                                            Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription,
                                                 tint = MaterialTheme.colorScheme.error)
                                         }
                                     }

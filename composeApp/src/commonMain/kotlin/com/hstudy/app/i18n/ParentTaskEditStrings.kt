@@ -1,0 +1,111 @@
+package com.hstudy.app.i18n
+
+/**
+ * 家长任务编辑页（ui/parent/ParentTaskEditScreen.kt）文案表（阶段 2 W2）。
+ *
+ * 分类芯片「基础学习/提升学习/习惯态度」与频率「每日/每周/每月/一次性」是 UI 文案（when 映射），入表；
+ * 难度芯片带星数（"普通⭐"…）也是 UI 文案，英文与 W0 注册表难度译名对齐（Normal/Advanced/Challenge + 星）。
+ * 建议芯片 label 里的任务标题是 canonical（getSingleTaskSuggestions），渲染点包 [localizedPresetText]；
+ * onClick 写入 state 的仍是原值（Ruling 25）。[suggestionChip] 收已本地化的标题与 emoji/积分。
+ * 「保存」无既有共享字段，本表新建；「删除此任务」是按钮文案（非 contentDescription），本表新建。
+ */
+data class ParentTaskEditStrings(
+    val newTitle: String,
+    val editTitle: String,
+    val saveButton: String,
+    val titleLabel: String,
+    val titlePlaceholder: String,
+    val suggestionsHeading: String,
+    val suggestionChip: (emoji: String, title: String, points: Int) -> String,
+    val descriptionLabel: String,
+    val descriptionPlaceholder: String,
+    val categoryHeading: String,
+    val categoryBasic: String,
+    val categoryEnhancement: String,
+    val categoryHabit: String,
+    val frequencyHeading: String,
+    val freqDaily: String,
+    val freqWeekly: String,
+    val freqMonthly: String,
+    val freqOnce: String,
+    val mandatoryTitle: String,
+    val mandatoryHint: (points: Int) -> String,
+    val difficultyHeading: String,
+    val difficultyNormal: String,
+    val difficultyAdvanced: String,
+    val difficultyChallenge: String,
+    val difficultyNoteAdvanced: String,
+    val difficultyNoteChallenge: String,
+    val difficultyNoteNormal: String,
+    val basePointsLabel: String,
+    val bonusPointsLabel: String,
+    val deleteButton: String,
+)
+
+val ParentTaskEditStringsZh = ParentTaskEditStrings(
+    newTitle = "新建任务",
+    editTitle = "编辑任务",
+    saveButton = "保存",
+    titleLabel = "任务名称",
+    titlePlaceholder = "如：完成当天作业",
+    suggestionsHeading = "💡 从模板快速选择",
+    suggestionChip = { emoji, title, points -> "$emoji $title +$points" },
+    descriptionLabel = "任务描述",
+    descriptionPlaceholder = "补充说明（选填）",
+    categoryHeading = "任务分类",
+    categoryBasic = "基础学习",
+    categoryEnhancement = "提升学习",
+    categoryHabit = "习惯态度",
+    frequencyHeading = "任务频率",
+    freqDaily = "每日",
+    freqWeekly = "每周",
+    freqMonthly = "每月",
+    freqOnce = "一次性",
+    mandatoryTitle = "⚠️ 每日必须完成",
+    mandatoryHint = { points -> "若当天未完成此任务，将自动扣减 $points 分" },
+    difficultyHeading = "难度等级",
+    difficultyNormal = "普通⭐",
+    difficultyAdvanced = "进阶⭐⭐",
+    difficultyChallenge = "挑战⭐⭐⭐",
+    difficultyNoteAdvanced = "进阶任务积分×1.2倍",
+    difficultyNoteChallenge = "挑战任务积分×1.5倍，鼓励孩子挑战高难度！",
+    difficultyNoteNormal = "普通难度，按基础积分计算",
+    basePointsLabel = "基础积分",
+    bonusPointsLabel = "奖励积分",
+    deleteButton = "删除此任务",
+)
+
+val ParentTaskEditStringsEn = ParentTaskEditStrings(
+    newTitle = "New task",
+    editTitle = "Edit task",
+    saveButton = "Save",
+    titleLabel = "Task name",
+    titlePlaceholder = "e.g. Finish today's homework",
+    suggestionsHeading = "💡 Quick pick from templates",
+    suggestionChip = { emoji, title, points -> "$emoji $title +$points" },
+    descriptionLabel = "Description",
+    descriptionPlaceholder = "Extra details (optional)",
+    categoryHeading = "Category",
+    categoryBasic = "Basic learning",
+    categoryEnhancement = "Advanced learning",
+    categoryHabit = "Habits & attitude",
+    frequencyHeading = "Frequency",
+    freqDaily = "Daily",
+    freqWeekly = "Weekly",
+    freqMonthly = "Monthly",
+    freqOnce = "One-time",
+    mandatoryTitle = "⚠️ Must-do daily",
+    mandatoryHint = { points ->
+        "If not completed that day, $points ${pointsWord(points)} will be deducted automatically"
+    },
+    difficultyHeading = "Difficulty",
+    difficultyNormal = "Normal ⭐",
+    difficultyAdvanced = "Advanced ⭐⭐",
+    difficultyChallenge = "Challenge ⭐⭐⭐",
+    difficultyNoteAdvanced = "Advanced tasks earn ×1.2 points",
+    difficultyNoteChallenge = "Challenge tasks earn ×1.5 points — encourage your child to take on hard tasks!",
+    difficultyNoteNormal = "Normal difficulty, scored at base points",
+    basePointsLabel = "Base points",
+    bonusPointsLabel = "Bonus points",
+    deleteButton = "Delete this task",
+)

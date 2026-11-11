@@ -4,7 +4,7 @@
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
-    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部十六张表
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部二十张表
     python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
         --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
@@ -21,11 +21,13 @@
   的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
   里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
   带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
-* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部十六张**表"可用**。限制不来自表侧读取本身，而来自
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部二十张**表"可用**。限制不来自表侧读取本身，而来自
   [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
-  [BRANCH_TABLES] 十六张全读一遍。阶段 2 W1 那六张错题表是 W1 提交才落进历史的，所以**可用的最早
-  rev 就是 W1 提交本身**，在那之前（含 ece9b51 / c3bd94a）一律 `git show …失败`。实测：
-      --tables-rev HEAD      -> 0        （W1 提交之后十六张齐全；W1 之前 HEAD 缺 MistakeStrings.kt，退 1）
+  [BRANCH_TABLES] 二十张全读一遍。阶段 2 W2 那四张家长任务表是 W2 提交才落进历史的，所以**可用的最早
+  rev 就是 W2 提交本身**；在它之前（W2 之前的 HEAD 与 W1 收口 5deed68、4d28c8e、c3bd94a）一律
+  `git show …失败`。实测（W2 提交之前的工作树）：
+      --tables-rev HEAD      -> **1**    `git show HEAD:…/ParentTaskManageStrings.kt 失败`（W2 四张表尚未进历史）
+      --tables-rev 4d28c8e   -> **1**    `git show 4d28c8e:…/MistakeStrings.kt 失败`（W1 之前没有错题表）
       --tables-rev c3bd94a   -> **1**    `git show c3bd94a:…/MistakeStrings.kt 失败`（W1 之后最早 rev 前移）
       --tables-rev 41c3d39   -> **1**    `git show 41c3d39:…/ParentGateStrings.kt 失败`
       --tables-rev ceaf0f5   -> **1**    `git show ceaf0f5:…/ChildHomeStrings.kt 失败`
@@ -143,6 +145,7 @@ TASK10_HOME_REV = "0c34b79"   # Task 10 家长首页迁移前
 TASK10_DASH_REV = "c77f91c"   # Task 10 数据看板迁移前（家长首页那一次已经把它迁走之前）
 TASK11_REV = "ad6aa93"     # Task 11（设置页其余 64 条）迁移前
 W1_REV = "4d28c8e"        # 阶段 2 W1（错题域）迁移前 = v3.1.0 发布提交
+W2_REV = "5deed68"        # 阶段 2 W2（家长任务管理）迁移前 = W1 收口提交
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -200,6 +203,11 @@ BRANCH_PAGES = DEFAULT_PAGES + [
     (W1_REV, "com/hstudy/app/ui/mistake/ParentMistakeReviewScreen.kt"),
     (W1_REV, "com/hstudy/app/ui/mistake/SpacedRepetition.kt"),
     (W1_REV, "com/hstudy/app/ui/mistake/ReviewReminderReceiver.kt"),
+    # ---- 阶段 2 W2（家长任务管理，W2_REV）----
+    (W2_REV, "com/hstudy/app/ui/parent/ParentTaskManageScreen.kt"),
+    (W2_REV, "com/hstudy/app/ui/parent/ParentTaskEditScreen.kt"),
+    (W2_REV, "com/hstudy/app/ui/parent/ParentAssignTaskScreen.kt"),
+    (W2_REV, "com/hstudy/app/ui/parent/ParentTaskTemplateScreen.kt"),
 ]
 BRANCH_TABLES = [
     ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
@@ -208,6 +216,8 @@ BRANCH_TABLES = [
         "ParentHomeStrings", "ParentDashboardStrings", "ParentGateStrings",
         "MistakeStrings", "MistakeListStrings", "MistakeDetailStrings",
         "MistakeAddStrings", "ParentMistakeReviewStrings", "ReviewReminderStrings",
+        "ParentTaskManageStrings", "ParentTaskEditStrings",
+        "ParentAssignTaskStrings", "ParentTaskTemplateStrings",
     )
 ]
 
@@ -541,9 +551,9 @@ def main():
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE,
-                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部十六张表的 rev 可用**"
-                         "（本分支上阶段 2 W1 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
-                         " BRANCH_TABLES 十六张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部二十张表的 rev 可用**"
+                         "（本分支上阶段 2 W2 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 二十张，早于它的 rev 直接 `git show … 失败` 退 1。"
                          "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)
