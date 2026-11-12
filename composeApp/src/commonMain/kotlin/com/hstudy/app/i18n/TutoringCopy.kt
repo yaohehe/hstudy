@@ -11,7 +11,8 @@ import com.hstudy.app.data.local.entity.MistakeSubject
  * 语言只决定"取哪份译文"，不参与任何写库/幂等比较（Ruling 25）。
  *
  * ZH 值逐字节等于迁移前引擎字面量（W8 T4 程序化比对 50/50，一次性核对，非闸门——这些值以页面单边
- * 披露登记）；两语由 `W8CopyTest.tutoringCopyPinsBothLanguages` 钉死。
+ * 披露登记）；两语由 `W8CopyTest.tutoringCopyPinsBothLanguages` 逐条钉死，32 条 ZH 文案（25 条非类别
+ * + 7 个类别名）无遗漏。
  */
 object TutoringCopy {
 

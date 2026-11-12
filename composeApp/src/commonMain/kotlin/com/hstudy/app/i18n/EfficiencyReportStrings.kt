@@ -17,7 +17,8 @@ package com.hstudy.app.i18n
  * data class 的 `toString()` 看不见 lambda 返回值，整表扫描对它们无效）。
  * 单位同形异义：[focusUnit]（分钟）与 [scoreUnit]（评分 pts）在中文都是「分」，英文必须分开。
  * 四个 `*Unit` 只喂周/月对比行的**增减槽**（`WeekCompareRow` 的 `↑3${unit}`），英文以领先空格开头
- * （`↑3 min` / `↑2 times`），值槽的完整单位在 `*Value` 里；不要把 `*Unit` 挪去值槽。
+ * （`↑3 min` / `↑2 times`），值槽的单位在 `*Value` 里（例外：英文 `reviewValue` 是裸数字，单位 `mistakes`
+ * 只落在增减槽的 [reviewUnit]）；不要把 `*Unit` 挪去值槽。
  */
 data class EfficiencyReportStrings(
     val title: String,

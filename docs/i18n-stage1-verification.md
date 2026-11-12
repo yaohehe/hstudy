@@ -65,7 +65,7 @@ W6 的八源守卫另在 WishCopyTest（17 条，含 `crossTableVocabularyPinned
 W7 的宠物三源守卫另在 PetCopyTest（4 条，含 `crossTableVocabularyPinned`、`petStringsCopyDiffers` 与函数型字段两语整串钉死）。
 W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinned`、三引擎两语整串 pin、等级称号/树阶段名键控表覆盖、效率报表 55 静态 + 13 函数型两语钉死与辅导建议页两字段守卫）。
 注册表实跑 **228** 键（W8 +4 学科名：数学/语文/英语/科学；"其他"复用奖励分类组），另有独立键控表 `levelTitleCopy`（10×2）/`treeStageCopy`（6×2）与 `petStageCopy`（W7，8×2）。
-引擎 copy 常量（`TutoringCopy` / `GoalRecommendationCopy` / `LearningScoreCopy`）不是表，`StringsCopyTest` 的整表扫描看不到它们，覆盖全靠 W8CopyTest 的逐字 pin（Ruling 1（W8）；W8 终审补齐 Tutoring 漏钉的 13 条，代表性输出已两语钉死）。
+引擎 copy 常量（`TutoringCopy` / `GoalRecommendationCopy` / `LearningScoreCopy`）不是表，`StringsCopyTest` 的整表扫描看不到它们，覆盖全靠 W8CopyTest 的逐字 pin（Ruling 1（W8）；W8 终审两轮补齐 Tutoring 漏钉的 13 条，32 条文案已两语全量钉死）。
 
 ## 2. 人工验证清单
 
@@ -323,7 +323,7 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
 
 ### 阶段 2 W8（效率报表/辅导建议/成就区/等级与树/智能推荐）追加项
 
-- [ ] V-68 英文态效率报表页（标题/三统计卡 + 四对比指标行/周月对比语/学科与错因分析/学习建议/趋势与洞察全英文；学科名与错因名走注册表——Math/…、Careless mistakes/…；平均评分 `87 pts`、7日平均、日期与图表数字格式不变）
+- [ ] V-68 英文态效率报表页（标题/三统计卡 + 四对比指标行（另含专注洞察三卡与月度三行对比）/周月对比语/学科与错因分析/学习建议/趋势与洞察全英文；学科名与错因名走注册表——Math/…、Careless mistakes/…；平均评分 `87 pts`、7日平均、日期与图表数字格式不变）
 - [ ] V-69 英文态家长辅导建议页（标题与说明卡英文；引擎建议随语言生成：薄弱科目方法/错因建议/错题复习督促/专注/习惯/心态全部英文；错因名与学科名注册表译出，家长自建数据下建议条目与真实错题/专注一致）
 - [ ] V-70 英文态成就徽章区（区标题/空态/待解锁标题英文；成就名（徽章区）走 achievementCopy 注册表；进度 `N/M` 数字不变，未命中实体历史标题原样回退）
 - [ ] V-71 英文态等级徽章/学习树/首页动画条（等级称号与树阶段名按索引查键控注册表；升级提示 "N points to level up" 与连续打卡 "N days" 随语言；中文态逐字不变）

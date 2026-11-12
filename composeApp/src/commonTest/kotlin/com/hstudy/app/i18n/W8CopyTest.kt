@@ -196,13 +196,15 @@ class W8CopyTest {
     }
 
     /**
-     * [TutoringCopy] 代表性 20 条两语逐字 + 7 个类别名全集（T2，W8 终审补齐 13 条漏钉）。
+     * [TutoringCopy] 全部 25 条非类别文案两语逐字 + 7 个类别名全集（T2；终审两轮补齐漏钉）。
      *
-     * 20 条覆盖五个学科方法、六个错因分支（五个具名 + 兜底）、六条标题模板、三条详情模板；
-     * W8 终审补钉的是 T4 改写后此前未钉的 habitBuildDetail、方法不会/审题错误/计算错误三个分支，
-     * 以及 unmasteredTitle/lowFocusTitle/goodFocusTitle/streakTitle 四条标题（MATH 的 T4 改动已有 pin）。
+     * 25 条覆盖五个学科方法、六个错因分支（五个具名 + 兜底）、八条标题模板、六条详情模板；
+     * W8 终审首轮补钉 habitBuildDetail、方法不会/审题错误/计算错误三个分支、
+     * unmasteredTitle/lowFocusTitle/goodFocusTitle/streakTitle 四条标题（MATH 的 T4 改动已有 pin）；
+     * round 2 补钉 habitBuildTitle/partnerTitle 两条标题与 focusLowDetail/focusGoodDetail/streakDetail
+     * 三条详情——至此 `TutoringCopy` 的 32 条 ZH 文案（25 条非类别 + 7 个类别名）两语全部有 pin。
      * 类别清单按 ZH/EN 两份精确列表断言，既证明"7 个类别两语齐全"，也钉住每个类别的英文
-     * （`assertDiffers` 式的只比不等对交叉错位是瞎的）。38 条文案全部在
+     * （`assertDiffers` 式的只比不等对交叉错位是瞎的）。32 条文案全部在
      * `TutoringAdviceEngine` 的消费路径里由本对象取词，整表 CJK 扫描看不见它们。
      */
     @Test
@@ -299,7 +301,7 @@ class W8CopyTest {
             TutoringCopy.errorAdvice("未知类型", DisplayLanguage.EN),
         )
 
-        // 六条标题模板（学科名/错因名由调用方先包注册表再传入）
+        // 八条标题模板（学科名/错因名由调用方先包注册表再传入）
         assertEquals("数学是薄弱科目（掌握率40%）", TutoringCopy.weakSubjectTitle("数学", 40, DisplayLanguage.ZH))
         assertEquals("Math is a weak subject (mastery 40%)", TutoringCopy.weakSubjectTitle("Math", 40, DisplayLanguage.EN))
         assertEquals("孩子最常因「粗心马虎」出错（3次）", TutoringCopy.errorTitle("粗心马虎", 3, DisplayLanguage.ZH))
@@ -318,8 +320,13 @@ class W8CopyTest {
         assertEquals("Your child is focusing well (30 min recently)", TutoringCopy.goodFocusTitle(30, DisplayLanguage.EN))
         assertEquals("孩子已连续打卡5天", TutoringCopy.streakTitle(5, DisplayLanguage.ZH))
         assertEquals("Your child has checked in 5 days in a row", TutoringCopy.streakTitle(5, DisplayLanguage.EN))
+        // W8 round 2 补钉：习惯养成/辅导心态两条无参标题（此前只有类别名与详情有 pin）
+        assertEquals("帮助孩子建立学习规律", TutoringCopy.habitBuildTitle(DisplayLanguage.ZH))
+        assertEquals("Help your child build a study routine", TutoringCopy.habitBuildTitle(DisplayLanguage.EN))
+        assertEquals("做孩子的'学习合伙人'而非'监工'", TutoringCopy.partnerTitle(DisplayLanguage.ZH))
+        assertEquals("Be your child's study partner, not supervisor", TutoringCopy.partnerTitle(DisplayLanguage.EN))
 
-        // 三条详情模板
+        // 六条详情模板
         assertEquals(
             "建议每天固定15分钟陪孩子复习错题，用'遮住答案先回想'的方式效果最好。错题是提分最快的突破口，坚持清零进步明显。",
             TutoringCopy.unmasteredDetail(DisplayLanguage.ZH),
@@ -327,6 +334,31 @@ class W8CopyTest {
         assertEquals(
             "Set aside 15 minutes daily to review mistakes together — covering the answer and recalling first works best. Mistakes are the fastest lever for improvement; keep clearing them and progress will show.",
             TutoringCopy.unmasteredDetail(DisplayLanguage.EN),
+        )
+        // W8 round 2 补钉：专注偏少/专注良好/连续打卡三条详情（此前只有标题有 pin）
+        assertEquals(
+            "建议用番茄钟（25分钟专注+5分钟休息）帮助孩子进入专注状态；学习时段收走手机等干扰物，营造安静环境；专注后给予肯定，逐步延长专注时间。",
+            TutoringCopy.focusLowDetail(DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "Use the Pomodoro (25 min focus + 5 min break) to help your child get into focus; remove phones and distractions during study and keep the environment quiet; praise after focus sessions and gradually extend the time.",
+            TutoringCopy.focusLowDetail(DisplayLanguage.EN),
+        )
+        assertEquals(
+            "继续保持！可以在孩子黄金专注时段安排较难的学习任务，效率更高。专注时尽量不打扰孩子。",
+            TutoringCopy.focusGoodDetail(DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "Keep it up! Schedule harder tasks during your child's golden focus hours for higher efficiency. Try not to interrupt during focus time.",
+            TutoringCopy.focusGoodDetail(DisplayLanguage.EN),
+        )
+        assertEquals(
+            "好习惯正在养成中！及时肯定孩子的坚持（口头表扬比物质奖励更有效），帮助孩子把'坚持'内化为习惯，避免中断。",
+            TutoringCopy.streakDetail(DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "A good habit is forming! Acknowledge persistence promptly (verbal praise works better than material rewards) and help internalize it as a habit — avoid breaking the streak.",
+            TutoringCopy.streakDetail(DisplayLanguage.EN),
         )
         assertEquals(
             "多关注努力过程而非只看分数；孩子遇到困难时先共情再引导；每天留一点时间听孩子讲讲今天学了什么，'输出'是最好的'输入'。",
