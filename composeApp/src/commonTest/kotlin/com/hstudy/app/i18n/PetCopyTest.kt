@@ -87,6 +87,15 @@ class PetCopyTest {
         assertEquals("Lv.3 · 600 points earned in total", en.levelLine(3, 600))
         assertEquals("200 积分", zh.scenePrice(200))
         assertEquals("200 points", en.scenePrice(200))
+        // 英文 one/other 词形（pointsWord/tasksWord）：单数端逐字钉死，复数端由上面的实参覆盖
+        assertEquals("💪 1 task done — keep going!", en.statusProgress(1))
+        assertEquals("💪 1 task done — keep going, I'm with you!", en.moodProgress(1))
+        assertEquals("Lv.1 · 1 point earned in total", en.levelLine(1, 1))
+        assertEquals("Earn 1 more point to evolve into 🐣 Just Hatched!", en.nextStage(1, "🐣", "Just Hatched"))
+        assertEquals("Unlocks at 1 point", en.stageUnlock(1))
+        assertEquals("1 point", en.scenePrice(1))
+        assertEquals("🍎 Feed (1 point)", en.feedButton(1))
+        assertEquals("🎾 Play (1 point)", en.playButton(1))
         // 场景名由调用方传入已本地化的名字（petSceneCopy），表只负责句式
         assertEquals("🎉 购买成功，已装扮阳光海滩！", zh.purchaseSuccess("阳光海滩"))
         assertEquals("🎉 Purchased and equipped: Sunny Beach!", en.purchaseSuccess("Sunny Beach"))

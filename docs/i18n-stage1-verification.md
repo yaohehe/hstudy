@@ -61,7 +61,7 @@ W2 的另在 `ParentTaskCopyTest`（9 条，含 `crossTableVocabularyPinned` 与
 W3 的漏译/跨表守卫另在 `ParentPointsCopyTest`（9 条，含 `crossTableVocabularyPinned`、`rewardCategoryOptionsAreAllRegistered` 与英文 one/other 逐字钉死）。
 W4 的孩子端四页守卫另在 ChildRewardStoreCopyTest（8 条，含 crossTableVocabularyPinned 与英文 one/other 逐字钉死）。
 W5 的六源守卫另在 ChildScheduleCopyTest（13 条，含通知正文双语钉死与跨表 pin）。
-W6 的八源守卫另在 WishCopyTest（17 条，含 `crossTableVocabularyPinned`、周报通知正文两语整串钉死与宠物阶段名仍为中文的回归保护）。
+W6 的八源守卫另在 WishCopyTest（17 条，含 `crossTableVocabularyPinned`、周报通知正文两语整串钉死与 `reportText` 模板对传入宠物阶段名原样透传的回归保护——W7 起阶段名已本地化，该守卫保护的是模板不擅自改写调用方取好的名字，不代表当前页面行为）。
 W7 的宠物三源守卫另在 PetCopyTest（4 条，含 `crossTableVocabularyPinned`、`petStringsCopyDiffers` 与函数型字段两语整串钉死）。
 
 ## 2. 人工验证清单

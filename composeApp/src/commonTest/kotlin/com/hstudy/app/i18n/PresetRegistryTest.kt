@@ -211,6 +211,12 @@ class PresetRegistryTest {
         }
         // 越界回落 canonical 索引 0
         assertEquals(petStageCopy[DisplayLanguage.EN]!![0], localizedPetStageName(99, DisplayLanguage.EN))
+        // 漏译死角：assertNotEquals(canonical, EN) 只证明"两语不同"，写错的中英混排/漏改仍能通过；
+        // 整表 CJK 扫描（同上方 petSceneEnglishCopyIsTranslated）+ EN 全量列表 pin 一起兜住。
+        assertTrue(petStageCopy[DisplayLanguage.EN]!!.flatMap { it.toList() }.none { it in '一'..'鿿' }, "英文阶段名残留汉字")
+        val expectedEn = listOf("Pet Egg", "Just Hatched", "Little Chick", "Little Cat", "Little Fox", "Little Lion", "Unicorn", "Little Dragon")
+        assertEquals(expectedEn, petStageCopy[DisplayLanguage.EN]!!)
+        assertEquals(petStageCopy[DisplayLanguage.EN]!!.size, petStageCopy[DisplayLanguage.EN]!!.toSet().size, "EN 阶段名重复")
     }
 
     @Test
