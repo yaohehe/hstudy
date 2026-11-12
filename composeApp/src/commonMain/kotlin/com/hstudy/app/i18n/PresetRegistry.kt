@@ -16,6 +16,8 @@ private fun preset(canonical: String, en: String): Pair<String, PresetCopy> =
  * （不 import ui/data 种子，i18n 自包含），测试负责跨层对账。
  * W5 起另有 16 条页面内预设手工收录（见「W5 页面内预设目录」组，守卫见
  * PresetRegistryTest.w5PageLocalPresetsResolvePerLanguage）。
+ * W6 另有 6 条示例心愿 canonical（见「W6 页面内预设目录」组，守卫见
+ * PresetRegistryTest.w6WishSamplesResolvePerLanguage）。
  */
 val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     // ===== 预设任务标题（55 条去重；TaskRepository.getPresets() + getSingleTaskSuggestions()）=====
@@ -251,6 +253,15 @@ val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     preset("开始写作业", "Homework time"),
     preset("阅读时间", "Reading time"),
     preset("准备睡觉", "Getting ready for bed"),
+    // ===== W6 页面内预设目录（示例心愿 3 条：name + description 共 6 值）=====
+    // 这些 canonical 会被 addGoal 原样落库（ParentWishGoalManageScreen 的一键示例），
+    // 渲染时包 localizedPresetText；家长自建未命中原样（Ruling 25）。
+    preset("一个小玩具", "A small toy"),
+    preset("存够积分换一个喜欢的小玩具", "Save up for a small toy you like"),
+    preset("一本新书", "A new book"),
+    preset("去书店选一本喜欢的书", "Pick a favorite book at the bookstore"),
+    preset("一台新平板", "A new tablet"),
+    preset("存很久的大目标，加油！", "A big long-term goal — keep going!"),
 )
 
 /**

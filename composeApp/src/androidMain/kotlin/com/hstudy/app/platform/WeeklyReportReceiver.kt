@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.PointRecordType
+import com.hstudy.app.i18n.currentDisplayLanguage
+import com.hstudy.app.i18n.stringsFor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -13,7 +15,7 @@ import java.util.Calendar
 
 /**
  * 家长每周学习周报接收器：每周定时汇总孩子本周学习数据并推送通知。
- * 统计口径/文案/通知 id(2002) 与原 ui.parent.WeeklyReportReceiver 一致。
+ * 统计口径/通知 id(2002) 与原 ui.parent.WeeklyReportReceiver 一致；正文按生效语言在触发时取词（文案表 WeeklyReportStrings）。
  */
 class WeeklyReportReceiver : BroadcastReceiver() {
 
@@ -37,20 +39,22 @@ class WeeklyReportReceiver : BroadcastReceiver() {
                 val checkins = weekRecords.count { it.type == PointRecordType.TASK_COMPLETE }
                 val earned = weekRecords.filter { it.points > 0 }.sumOf { it.points }
 
-                val message = buildString {
-                    append("📊 孩子本周学习周报：")
-                    append("打卡${checkins}次 · 专注${focusMin}分钟 · 复习${reviewCount}道错题 · 获得${earned}积分")
-                    if (focusMin == 0 && reviewCount == 0 && checkins == 0) append("。本周学习较少，多鼓励孩子加油！")
-                    else append("。继续保持，稳步进步！")
-                }
+                val lang = currentDisplayLanguage()
+                val strings = stringsFor(lang).weeklyReport
+                val message = strings.summary(checkins, focusMin, reviewCount, earned) +
+                    if (focusMin == 0 && reviewCount == 0 && checkins == 0) strings.encourageLow
+                    else strings.encourageGood
                 AndroidNotificationScheduler.showNotification(
                     context, ReminderKind.WEEKLY_REPORT, message,
                     AndroidNotificationScheduler.WEEKLY_NOTIFICATION_ID
                 )
             } catch (e: Exception) {
+                // 紧急兜底：init/取词失败时也要能发通知（旧实现的中文兜底文案，不回退为崩溃）
+                val fallback = runCatching {
+                    stringsFor(currentDisplayLanguage()).weeklyReport.fallback
+                }.getOrDefault("📊 孩子本周学习周报已生成，打开 App 查看详细报告。")
                 AndroidNotificationScheduler.showNotification(
-                    context, ReminderKind.WEEKLY_REPORT,
-                    "📊 孩子本周学习周报已生成，打开 App 查看详细报告。",
+                    context, ReminderKind.WEEKLY_REPORT, fallback,
                     AndroidNotificationScheduler.WEEKLY_NOTIFICATION_ID
                 )
             } finally {

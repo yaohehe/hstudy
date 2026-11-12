@@ -16,6 +16,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.hstudy.app.ui.dt.fileExists
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 
 @Composable
@@ -24,6 +25,7 @@ fun PhotoViewerScreen(
     onNavigateBack: () -> Unit
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
+    val strings = LocalStrings.current.photoViewer
 
     Box(
         modifier = Modifier
@@ -38,7 +40,7 @@ fun PhotoViewerScreen(
         if (photoPath.isNotEmpty() && fileExists(photoPath)) {
             AsyncImage(
                 model = photoPath,
-                contentDescription = "查看照片",
+                contentDescription = strings.photoContentDescription,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
@@ -53,12 +55,12 @@ fun PhotoViewerScreen(
             onClick = onNavigateBack,
             modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
         ) {
-            Icon(Icons.Filled.Close, contentDescription = "关闭", tint = Color.White, modifier = Modifier.size(32.dp))
+            Icon(Icons.Filled.Close, contentDescription = strings.closeContentDescription, tint = Color.White, modifier = Modifier.size(32.dp))
         }
 
         // 缩放提示
         Text(
-            "双指缩放查看",
+            strings.zoomHint,
             style = MaterialTheme.typography.bodySmall,
             color = Color.White.copy(alpha = 0.6f),
             modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)

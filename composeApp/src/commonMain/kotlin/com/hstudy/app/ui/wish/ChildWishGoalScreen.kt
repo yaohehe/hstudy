@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.WishGoalEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 
@@ -30,6 +33,8 @@ fun ChildWishGoalScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.childWishGoal
+    val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
@@ -51,7 +56,7 @@ fun ChildWishGoalScreen(
 
     Scaffold(
         topBar = {
-            HStudyTopBar(title = "🐷 心愿存钱罐", onNavigateBack = onNavigateBack, actions = { PointsBadge(points = totalPoints) })
+            HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack, actions = { PointsBadge(points = totalPoints) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -68,9 +73,9 @@ fun ChildWishGoalScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("💡 什么是心愿存钱罐？", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.introTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("设定一个大目标，把积分一点点存进去，攒够就能兑换啦！学会耐心等待，收获更大的惊喜～",
+                            Text(strings.introBody,
                                 style = MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -84,8 +89,8 @@ fun ChildWishGoalScreen(
                             ) {
                                 Text("🐷", fontSize = 56.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("还没有心愿目标", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("请爸爸妈妈帮你设定一个心愿吧！", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.emptyTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(strings.emptyHint, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -104,7 +109,7 @@ fun ChildWishGoalScreen(
 
                     // 已达成的心愿
                     if (completedGoals.isNotEmpty()) {
-                        Text("🎉 已达成的心愿", style = MaterialTheme.typography.titleSmall,
+                        Text(strings.completedSection, style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
                         completedGoals.forEach { goal ->
                             CompletedGoalCard(goal)
@@ -129,14 +134,14 @@ fun ChildWishGoalScreen(
                         // 检查是否达成
                         val updated = app.wishGoalRepository.getGoalById(goal.id)
                         if (updated != null && !updated.isActive) {
-                            celebrationMsg = "🎉 心愿达成！\n${goal.name}"
+                            celebrationMsg = strings.celebrate(localizedPresetText(goal.name, displayLanguage))
                             showConfetti = true
                             showCelebration = true
                         } else {
-                            snackbarHostState.showSnackbar("✅ 已存入 $amount 积分到「${goal.name}」")
+                            snackbarHostState.showSnackbar(strings.depositSuccess(amount, localizedPresetText(goal.name, displayLanguage)))
                         }
                     } else {
-                        snackbarHostState.showSnackbar("积分不足，无法存入")
+                        snackbarHostState.showSnackbar(strings.insufficient)
                     }
                 }
             }
@@ -160,6 +165,8 @@ private fun WishGoalCard(
     dailyAvg: Double,
     onDeposit: () -> Unit
 ) {
+    val strings = LocalStrings.current.childWishGoal
+    val displayLanguage = LocalDisplayLanguage.current
     val progress = (goal.savedPoints.toFloat() / goal.targetPoints).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue = progress, animationSpec = tween(800), label = "wishProgress"
@@ -187,15 +194,15 @@ private fun WishGoalCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(goal.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(localizedPresetText(goal.name, displayLanguage), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         if (isPrimary) {
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("👑主目标", style = MaterialTheme.typography.labelSmall,
+                            Text(strings.primaryBadge, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                     if (goal.description.isNotEmpty()) {
-                        Text(goal.description, style = MaterialTheme.typography.bodySmall,
+                        Text(localizedPresetText(goal.description, displayLanguage), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                 }
@@ -222,19 +229,19 @@ private fun WishGoalCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("${goal.savedPoints} / ${goal.targetPoints} 分", style = MaterialTheme.typography.labelMedium)
+                Text(strings.progressValue(goal.savedPoints, goal.targetPoints), style = MaterialTheme.typography.labelMedium)
                 Text("$percent%", style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
-            Text("还差 $remaining 分达成心愿", style = MaterialTheme.typography.bodySmall,
+            Text(strings.remaining(remaining), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             // 里程碑激励（阶段性鼓励，让攒积分过程更有达成感）
             val milestoneMsg = when {
-                percent >= 75 -> "🔥 已完成75%，胜利在望，冲刺！"
-                percent >= 50 -> "🌟 已经过半啦！继续保持，心愿越来越近！"
-                percent >= 25 -> "💪 已完成25%，好的开始是成功的一半！"
-                percent > 0 -> "🌱 已迈出第一步，加油攒积分！"
+                percent >= 75 -> strings.milestone75
+                percent >= 50 -> strings.milestone50
+                percent >= 25 -> strings.milestone25
+                percent > 0 -> strings.milestoneStart
                 else -> ""
             }
             if (milestoneMsg.isNotEmpty() && remaining > 0) {
@@ -245,11 +252,11 @@ private fun WishGoalCard(
             // 预计达成天数（根据最近日均收入估算，让目标更具体可期）
             if (remaining > 0 && dailyAvg > 0) {
                 val estDays = kotlin.math.ceil(remaining / dailyAvg).toInt()
-                Text("📅 照最近的速度，大约再攒 $estDays 天就能实现啦！",
+                Text(strings.estDays(estDays),
                     style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.tertiary)
             } else if (remaining > 0) {
-                Text("📅 开始赚积分后，这里会告诉你大概几天能实现～",
+                Text(strings.estPending,
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -259,7 +266,7 @@ private fun WishGoalCard(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = currentPoints > 0
             ) {
-                Text("💰 存入积分（当前可用 $currentPoints 分）")
+                Text(strings.depositButton(currentPoints))
             }
         }
     }
@@ -267,6 +274,8 @@ private fun WishGoalCard(
 
 @Composable
 private fun CompletedGoalCard(goal: WishGoalEntity) {
+    val strings = LocalStrings.current.childWishGoal
+    val displayLanguage = LocalDisplayLanguage.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
@@ -278,8 +287,8 @@ private fun CompletedGoalCard(goal: WishGoalEntity) {
             Text(goal.iconEmoji, fontSize = 28.sp)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(goal.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-                Text("已达成 · 共存入 ${goal.savedPoints} 分", style = MaterialTheme.typography.bodySmall,
+                Text(localizedPresetText(goal.name, displayLanguage), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                Text(strings.completedLine(goal.savedPoints), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text("🎊", fontSize = 24.sp)
@@ -294,6 +303,9 @@ private fun DepositDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
+    val strings = LocalStrings.current.childWishGoal
+    val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     var amountText by remember { mutableStateOf("") }
     val remaining = (goal.targetPoints - goal.savedPoints).coerceAtLeast(0)
     val amount = amountText.toIntOrNull() ?: 0
@@ -301,15 +313,15 @@ private fun DepositDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("💰 存入积分到「${goal.name}」") },
+        title = { Text(strings.depositDialogTitle(localizedPresetText(goal.name, displayLanguage))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("当前可用积分：$currentPoints 分\n还差 $remaining 分达成心愿",
+                Text(strings.depositDialogInfo(currentPoints, remaining),
                     style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it.filter { c -> c.isDigit() } },
-                    label = { Text("存入积分数量") },
+                    label = { Text(strings.amountLabel) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -321,20 +333,20 @@ private fun DepositDialog(
                             FilterChip(
                                 selected = amountText == capped.toString(),
                                 onClick = { amountText = capped.toString() },
-                                label = { Text(if (quick == remaining) "全部差额" else "$capped") }
+                                label = { Text(if (quick == remaining) strings.allRemaining else "$capped") }
                             )
                         }
                     }
                 }
                 if (amountText.isNotEmpty() && !valid) {
-                    Text("积分不足或数量无效", color = MaterialTheme.colorScheme.error,
+                    Text(strings.invalidAmount, color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { if (valid) onConfirm(amount) }, enabled = valid) { Text("存入") }
+            Button(onClick = { if (valid) onConfirm(amount) }, enabled = valid) { Text(strings.confirmDeposit) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(common.cancelButton) } }
     )
 }

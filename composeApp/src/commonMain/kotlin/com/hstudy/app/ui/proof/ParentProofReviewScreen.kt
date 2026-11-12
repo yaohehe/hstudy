@@ -19,6 +19,9 @@ import coil3.compose.AsyncImage
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.CompletionProofEntity
 import com.hstudy.app.data.local.entity.ProofStatus
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -33,6 +36,8 @@ fun ParentProofReviewScreen(
 ) {
     val app = AppGraph
     val scope = rememberCoroutineScope()
+    val strings = LocalStrings.current.parentProofReview
+    val displayLanguage = LocalDisplayLanguage.current
     val pendingProofs by app.habitRepository.getPendingProofs().collectAsState(initial = emptyList())
     val allProofs by app.habitRepository.getAllProofs().collectAsState(initial = emptyList())
     val snackbarHostState = remember { SnackbarHostState() }
@@ -50,7 +55,7 @@ fun ParentProofReviewScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = "🔍 完成证明审核",
+                title = strings.title,
                 onNavigateBack = onNavigateBack,
                 actions = {
                     if (pendingProofs.isNotEmpty()) {
@@ -66,9 +71,9 @@ fun ParentProofReviewScreen(
         Column(modifier = Modifier.padding(padding)) {
             // 筛选
             Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                FilterChip(selected = showOnlyPending, onClick = { showOnlyPending = true }, label = { Text("待审核 (${pendingProofs.size})") })
+                FilterChip(selected = showOnlyPending, onClick = { showOnlyPending = true }, label = { Text(strings.filterPending(pendingProofs.size)) })
                 Spacer(modifier = Modifier.width(8.dp))
-                FilterChip(selected = !showOnlyPending, onClick = { showOnlyPending = false }, label = { Text("全部") })
+                FilterChip(selected = !showOnlyPending, onClick = { showOnlyPending = false }, label = { Text(strings.filterAll) })
             }
 
             if (displayProofs.isEmpty()) {
@@ -76,7 +81,7 @@ fun ParentProofReviewScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("✅", style = MaterialTheme.typography.displayLarge)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(if (showOnlyPending) "没有待审核的证明" else "还没有完成证明",
+                        Text(if (showOnlyPending) strings.emptyPending else strings.emptyAll,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -88,20 +93,23 @@ fun ParentProofReviewScreen(
                     items(displayProofs, key = { it.id }) { proof ->
                         ProofReviewCard(
                             proof = proof,
-                            taskName = taskNames[proof.taskId] ?: "任务#${proof.taskId}",
+                            taskName = localizedPresetText(
+                                taskNames[proof.taskId] ?: strings.taskFallback(proof.taskId),
+                                displayLanguage,
+                            ),
                             onViewPhoto = { onViewPhoto(proof.photoPath) },
                             onApprove = {
                                 scope.launch {
                                     // 规则调整：审核完成证明不再直接发放积分（积分由任务打卡的审批流程发放），
                                     // 审核仅更新证明状态，作为完成情况的留痕。
                                     app.habitRepository.approveProof(proof.id, 0)
-                                    snackbarHostState.showSnackbar("✅ 已通过（积分请通过任务打卡审批发放）")
+                                    snackbarHostState.showSnackbar(strings.approvedMessage)
                                 }
                             },
                             onReject = {
                                 scope.launch {
                                     app.habitRepository.rejectProof(proof.id)
-                                    snackbarHostState.showSnackbar("❌ 已拒绝")
+                                    snackbarHostState.showSnackbar(strings.rejectedMessage)
                                 }
                             }
                         )
@@ -120,15 +128,16 @@ private fun ProofReviewCard(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
+    val strings = LocalStrings.current.parentProofReview
     val statusColor = when (proof.status) {
         ProofStatus.PENDING -> MaterialTheme.colorScheme.tertiary
         ProofStatus.APPROVED -> MaterialTheme.colorScheme.secondary
         ProofStatus.REJECTED -> MaterialTheme.colorScheme.error
     }
     val statusText = when (proof.status) {
-        ProofStatus.PENDING -> "⏳ 待审核"
-        ProofStatus.APPROVED -> "✅ 已通过"
-        ProofStatus.REJECTED -> "❌ 已拒绝"
+        ProofStatus.PENDING -> strings.statusPending
+        ProofStatus.APPROVED -> strings.statusApproved
+        ProofStatus.REJECTED -> strings.statusRejected
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -152,7 +161,7 @@ private fun ProofReviewCard(
                 ) {
                     AsyncImage(
                         model = proof.photoPath,
-                        contentDescription = "证明照片",
+                        contentDescription = strings.photoContentDescription,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -161,7 +170,7 @@ private fun ProofReviewCard(
             // 备注
             if (proof.note.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("备注: ${proof.note}", style = MaterialTheme.typography.bodySmall)
+                Text(strings.noteLine(proof.note), style = MaterialTheme.typography.bodySmall)
             }
 
             // 操作按钮 (仅待审核时显示)
@@ -175,7 +184,7 @@ private fun ProofReviewCard(
                     ) {
                         Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("拒绝")
+                        Text(strings.rejectButton)
                     }
                     Button(
                         onClick = onApprove,
@@ -183,7 +192,7 @@ private fun ProofReviewCard(
                     ) {
                         Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("通过 (+5分)")
+                        Text(strings.approveButton)
                     }
                 }
             }

@@ -13,6 +13,9 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.CompletionProofEntity
 import com.hstudy.app.data.local.entity.ProofStatus
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -29,13 +32,15 @@ fun ChildProofCaptureScreen(
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val strings = LocalStrings.current.childProofCapture
+    val displayLanguage = LocalDisplayLanguage.current
 
     var photoPath by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "📷 提交完成证明", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -48,8 +53,8 @@ fun ChildProofCaptureScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("📋 关联任务", style = MaterialTheme.typography.labelMedium)
-                    Text(taskTitle, style = MaterialTheme.typography.titleMedium)
+                    Text(strings.taskLabel, style = MaterialTheme.typography.labelMedium)
+                    Text(localizedPresetText(taskTitle, displayLanguage), style = MaterialTheme.typography.titleMedium)
                 }
             }
 
@@ -62,7 +67,7 @@ fun ChildProofCaptureScreen(
             ) {
                 Icon(Icons.Filled.CameraAlt, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("拍照")
+                Text(strings.takePhotoButton)
             }
 
             // 照片预览
@@ -70,7 +75,7 @@ fun ChildProofCaptureScreen(
                 Card(modifier = Modifier.fillMaxWidth().height(280.dp)) {
                     AsyncImage(
                         model = photoPath,
-                        contentDescription = "证明照片",
+                        contentDescription = strings.photoContentDescription,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -84,7 +89,7 @@ fun ChildProofCaptureScreen(
                             Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null,
                                 modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("点击拍照或选择照片", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.emptyPhotoHint, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -93,7 +98,7 @@ fun ChildProofCaptureScreen(
             // 备注
             OutlinedTextField(
                 value = note, onValueChange = { note = it },
-                label = { Text("备注说明（可选）") },
+                label = { Text(strings.noteLabel) },
                 modifier = Modifier.fillMaxWidth().height(80.dp)
             )
 
@@ -101,7 +106,7 @@ fun ChildProofCaptureScreen(
             Button(
                 onClick = {
                     if (photoPath.isEmpty()) {
-                        scope.launch { snackbarHostState.showSnackbar("请先拍照或选择照片") }
+                        scope.launch { snackbarHostState.showSnackbar(strings.needPhotoMessage) }
                         return@Button
                     }
                     isSubmitting = true
@@ -116,7 +121,7 @@ fun ChildProofCaptureScreen(
                             )
                         )
                         isSubmitting = false
-                        snackbarHostState.showSnackbar("✅ 证明已提交，等待父母审核")
+                        snackbarHostState.showSnackbar(strings.submittedMessage)
                         onNavigateBack()
                     }
                 },
@@ -124,7 +129,7 @@ fun ChildProofCaptureScreen(
                 enabled = !isSubmitting
             ) {
                 if (isSubmitting) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Text("📤 提交完成证明")
+                else Text(strings.submitButton)
             }
 
             // 提示
@@ -133,8 +138,8 @@ fun ChildProofCaptureScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text("💡 温馨提示", style = MaterialTheme.typography.labelMedium)
-                    Text("提交后父母会审核。证明用于留痕，积分请在完成打卡后等待家长审批到账。", style = MaterialTheme.typography.bodySmall)
+                    Text(strings.tipsTitle, style = MaterialTheme.typography.labelMedium)
+                    Text(strings.tipsBody, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

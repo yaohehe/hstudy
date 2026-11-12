@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -38,6 +39,7 @@ fun GrowthReportScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.growthReport
     val app = AppGraph
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -55,20 +57,8 @@ fun GrowthReportScreen(
     val achievedWishes = goals.count { !it.isActive }
     val petStage = petStageName(lifetimePoints)
 
-    // 生成分享文案
-    val reportText = buildString {
-        appendLine("📚 【HStudy 学习成长报告】")
-        appendLine("🌟 累计获得积分：$lifetimePoints 分")
-        appendLine("🔥 当前连续打卡：$streak 天")
-        appendLine("🐾 学习宠物：$petStage")
-        appendLine("✅ 今日完成任务：${completedIds.size}/${tasks.size} 个")
-        appendLine("🎁 已兑换奖励：${exchanges.size} 次")
-        appendLine("🐷 已达成心愿：$achievedWishes 个")
-        appendLine("—— 每一份坚持都值得被看见 ❤️")
-    }
-
     Scaffold(
-        topBar = { HStudyTopBar(title = "📊 成长报告", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -81,8 +71,8 @@ fun GrowthReportScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // 标题
-                    Text("🌱 孩子的成长足迹", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("每一份坚持，都值得被看见", style = MaterialTheme.typography.bodySmall,
+                    Text(strings.heading, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(strings.subtitle, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Spacer(modifier = Modifier.height(20.dp))
@@ -93,12 +83,27 @@ fun GrowthReportScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            ReportStat("🌟", "累计获得积分", "$lifetimePoints 分", "当前余额 $totalPoints 分")
-                            ReportStat("🔥", "当前连续打卡", "$streak 天", if (streak > 0) "坚持就是胜利！" else "今天开始打卡吧")
-                            ReportStat("🐾", "学习宠物", petStage, "累计积分越多，宠物越强大")
-                            ReportStat("✅", "今日完成任务", "${completedIds.size}/${tasks.size} 个", if (completedIds.size == tasks.size && tasks.isNotEmpty()) "今天全部完成，太棒了！" else "继续加油")
-                            ReportStat("🎁", "已兑换奖励", "${exchanges.size} 次", "用努力换来的奖励最甜")
-                            ReportStat("🐷", "已达成心愿", "$achievedWishes 个", "攒钱实现大梦想")
+                            ReportStat(
+                                "🌟", strings.lifetimeLabel,
+                                strings.lifetimeValue(lifetimePoints), strings.balanceSub(totalPoints)
+                            )
+                            ReportStat(
+                                "🔥", strings.streakLabel, strings.streakValue(streak),
+                                if (streak > 0) strings.streakSubPositive else strings.streakSubZero
+                            )
+                            ReportStat("🐾", strings.petLabel, petStage, strings.petSub)
+                            ReportStat(
+                                "✅", strings.todayTasksLabel, strings.todayValue(completedIds.size, tasks.size),
+                                if (completedIds.size == tasks.size && tasks.isNotEmpty()) strings.todaySubAll else strings.todaySubMore
+                            )
+                            ReportStat(
+                                "🎁", strings.exchangesLabel,
+                                strings.exchangesValue(exchanges.size), strings.exchangesSub
+                            )
+                            ReportStat(
+                                "🐷", strings.wishesLabel,
+                                strings.wishesValue(achievedWishes), strings.wishesSub
+                            )
                         }
                     }
 
@@ -110,15 +115,23 @@ fun GrowthReportScreen(
                             // 跨平台分享：Intent.ACTION_SEND -> Platform.fileSharer 文本分享面板
                             Platform.fileSharer.shareTextFile(
                                 fileName = "hstudy_growth_report.txt",
-                                content = reportText,
+                                content = strings.reportText(
+                                    lifetimePoints,
+                                    streak,
+                                    petStage,
+                                    completedIds.size,
+                                    tasks.size,
+                                    exchanges.size,
+                                    achievedWishes,
+                                ),
                                 mimeType = "text/plain"
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("📤 分享成长报告到家族群", modifier = Modifier.padding(vertical = 6.dp))
+                        Text(strings.shareButton, modifier = Modifier.padding(vertical = 6.dp))
                     }
-                    Text("把孩子的进步分享给家人，一起见证成长～", style = MaterialTheme.typography.labelSmall,
+                    Text(strings.shareHint, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth())
 

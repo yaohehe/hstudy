@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.WishGoalEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -30,6 +33,8 @@ fun ParentWishGoalManageScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.parentWishGoal
+    val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val goals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
@@ -38,11 +43,11 @@ fun ParentWishGoalManageScreen(
     var editingGoalId by remember { mutableStateOf<Long?>(null) }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🐷 心愿目标管理", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { editingGoalId = 0L }) {
-                Icon(Icons.Filled.Add, contentDescription = "新建心愿")
+                Icon(Icons.Filled.Add, contentDescription = strings.newWishContentDescription)
             }
         }
     ) { padding ->
@@ -56,7 +61,7 @@ fun ParentWishGoalManageScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                     ) {
-                        Text("💡 为孩子设定一个大目标（如一台新平板、一次旅行），孩子用积分逐步存入，攒够即可兑换，培养延迟满足能力。",
+                        Text(strings.hint,
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp))
                     }
 
@@ -71,8 +76,8 @@ fun ParentWishGoalManageScreen(
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Text("🐷", fontSize = 48.sp)
-                                Text("还没有心愿目标", style = MaterialTheme.typography.titleMedium)
-                                Text("点击下方按钮一键设置示例心愿（小玩具/新平板/迪士尼之旅），给孩子一个存积分的目标，再按需调整。",
+                                Text(strings.emptyTitle, style = MaterialTheme.typography.titleMedium)
+                                Text(strings.emptyHint,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Button(onClick = {
@@ -83,10 +88,10 @@ fun ParentWishGoalManageScreen(
                                             com.hstudy.app.data.local.entity.WishGoalEntity(name = "一台新平板", description = "存很久的大目标，加油！", targetPoints = 5000, iconEmoji = "📱")
                                         )
                                         samples.forEach { app.wishGoalRepository.addGoal(it) }
-                                        snackbarHostState.showSnackbar("✅ 已设置示例心愿")
+                                        snackbarHostState.showSnackbar(strings.samplesLoaded)
                                     }
-                                }) { Text("✨ 一键设置示例心愿") }
-                                Text("或点击右下角 + 自行创建", style = MaterialTheme.typography.labelSmall,
+                                }) { Text(strings.loadSamplesButton) }
+                                Text(strings.addOwnHint, style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -99,7 +104,7 @@ fun ParentWishGoalManageScreen(
                             onDelete = {
                                 scope.launch {
                                     app.wishGoalRepository.deleteGoal(goal.id)
-                                    snackbarHostState.showSnackbar("已删除「${goal.name}」")
+                                    snackbarHostState.showSnackbar(strings.removedMessage(localizedPresetText(goal.name, displayLanguage)))
                                 }
                             }
                         )
@@ -116,7 +121,7 @@ fun ParentWishGoalManageScreen(
             onDismiss = { editingGoalId = null },
             onSaved = {
                 editingGoalId = null
-                scope.launch { snackbarHostState.showSnackbar("✅ 已保存") }
+                scope.launch { snackbarHostState.showSnackbar(strings.savedMessage) }
             }
         )
     }
@@ -128,6 +133,9 @@ private fun GoalManageCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = LocalStrings.current.parentWishGoal
+    val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     val progress = (goal.savedPoints.toFloat() / goal.targetPoints).coerceIn(0f, 1f)
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -135,17 +143,17 @@ private fun GoalManageCard(
                 Text(goal.iconEmoji, fontSize = 28.sp)
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(goal.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(localizedPresetText(goal.name, displayLanguage), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        if (goal.isActive) "进行中 · ${goal.savedPoints}/${goal.targetPoints}分"
-                        else "🎊 已达成",
+                        if (goal.isActive) strings.activeLine(goal.savedPoints, goal.targetPoints)
+                        else strings.achievedBadge,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = onEdit) { Text("✏️") }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription, tint = MaterialTheme.colorScheme.error)
                 }
             }
             if (goal.isActive) {
@@ -167,6 +175,9 @@ private fun GoalEditDialog(
     onSaved: () -> Unit
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.parentWishGoal
+    val common = LocalStrings.current.common
+    val taskEdit = LocalStrings.current.parentTaskEdit
     val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf("") }
@@ -189,16 +200,16 @@ private fun GoalEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (goalId == 0L) "新建心愿目标" else "编辑心愿目标") },
+        title = { Text(if (goalId == 0L) strings.dialogTitleNew else strings.dialogTitleEdit) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it },
-                    label = { Text("心愿名称（如：一台新平板）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    label = { Text(strings.nameLabel) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = description, onValueChange = { description = it },
-                    label = { Text("描述（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    label = { Text(strings.descLabel) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = targetPoints, onValueChange = { targetPoints = it.filter { c -> c.isDigit() } },
-                    label = { Text("目标积分") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Text("选择图标", style = MaterialTheme.typography.labelMedium)
+                    label = { Text(strings.targetPointsLabel) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Text(strings.iconPickerLabel, style = MaterialTheme.typography.labelMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     emojiOptions.forEach { emoji ->
                         FilterChip(selected = iconEmoji == emoji, onClick = { iconEmoji = emoji },
@@ -226,8 +237,8 @@ private fun GoalEditDialog(
                     }
                     onSaved()
                 }
-            }) { Text("保存") }
+            }) { Text(taskEdit.saveButton) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(common.cancelButton) } }
     )
 }

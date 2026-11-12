@@ -45,6 +45,14 @@ data class AppStrings(
     val childHabitChallenge: ChildHabitChallengeStrings,
     val childGoalTracker: ChildGoalTrackerStrings,
     val childScheduleTimeline: ChildScheduleTimelineStrings,
+    val childWishGoal: ChildWishGoalStrings,
+    val parentWishGoal: ParentWishGoalStrings,
+    val weeklyTracker: WeeklyTrackerStrings,
+    val growthReport: GrowthReportStrings,
+    val parentProofReview: ParentProofReviewStrings,
+    val childProofCapture: ChildProofCaptureStrings,
+    val photoViewer: PhotoViewerStrings,
+    val weeklyReport: WeeklyReportStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -82,6 +90,14 @@ val AppStringsZh = AppStrings(
     childHabitChallenge = ChildHabitChallengeStringsZh,
     childGoalTracker = ChildGoalTrackerStringsZh,
     childScheduleTimeline = ChildScheduleTimelineStringsZh,
+    childWishGoal = ChildWishGoalStringsZh,
+    parentWishGoal = ParentWishGoalStringsZh,
+    weeklyTracker = WeeklyTrackerStringsZh,
+    growthReport = GrowthReportStringsZh,
+    parentProofReview = ParentProofReviewStringsZh,
+    childProofCapture = ChildProofCaptureStringsZh,
+    photoViewer = PhotoViewerStringsZh,
+    weeklyReport = WeeklyReportStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -118,6 +134,14 @@ val AppStringsEn = AppStrings(
     childHabitChallenge = ChildHabitChallengeStringsEn,
     childGoalTracker = ChildGoalTrackerStringsEn,
     childScheduleTimeline = ChildScheduleTimelineStringsEn,
+    childWishGoal = ChildWishGoalStringsEn,
+    parentWishGoal = ParentWishGoalStringsEn,
+    weeklyTracker = WeeklyTrackerStringsEn,
+    growthReport = GrowthReportStringsEn,
+    parentProofReview = ParentProofReviewStringsEn,
+    childProofCapture = ChildProofCaptureStringsEn,
+    photoViewer = PhotoViewerStringsEn,
+    weeklyReport = WeeklyReportStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

@@ -133,6 +133,37 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "childPoints.emptyRecords",               // "No point records yet — go check in!"
     // ---- W5 Task 2 每日目标页新增 1 条（英文原文逐条留在行尾注释里）。
     "childDailyTarget.allDoneBonus",          // "🎉 All goals achieved! Bonus +10 points (awaiting approval)"
+    // ---- W6 Task 2 心愿两页新增 7 条（英文原文逐条留在行尾注释里）。
+    // 简短说明与 brief 的笔误：brief 只列了 insufficient / targetPointsLabel 两条，
+    // 但闭集是从整表静态英文**算出来**的（见上），这七条都含 `point(s)`，少登记一条都会红。
+    "childWishGoal.introBody",                // "Set a big goal and save your points into it bit by bit …"
+    "childWishGoal.milestoneStart",           // "🌱 First step taken — keep saving points!"
+    "childWishGoal.estPending",               // "📅 Once you start earning points, …"
+    "childWishGoal.insufficient",             // "Not enough points to save"
+    "childWishGoal.invalidAmount",            // "Not enough points or invalid amount"
+    "parentWishGoal.hint",                    // "… Your child saves points into it step by step …"
+    "parentWishGoal.targetPointsLabel",       // "Target points"
+    // ---- W6 Task 3 周报总览 + 成长报告新增 6 条（英文原文逐条留在行尾注释里）。
+    // brief 只列了 4 条（weeklyPointsLabel / totalBalanceLabel / pointsRowLabel / lifetimeLabel），
+    // 漏掉 dailySummaryTitle 与 petSub——闭集是从整表静态英文**算出来**的（见上），
+    // 少登记一条都会红（与 T2 的 7 条同型）。两表其余静态英文都不提积分；`weekdayNames` 是
+    // List 字段（toString 里的 `[Mon, …]` 不含 point），六个数值子模板与 reportText 是函数型
+    // 字段，按 Ruling 20-b 由 WishCopyTest 逐字钉住。
+    "weeklyTracker.weeklyPointsLabel",        // "Points earned this week"
+    "weeklyTracker.totalBalanceLabel",        // "Total points balance"
+    "weeklyTracker.dailySummaryTitle",        // "📊 Daily points summary"
+    "weeklyTracker.pointsRowLabel",           // "💰 Points"
+    "growthReport.lifetimeLabel",             // "Total points earned"
+    "growthReport.petSub",                    // "The more points you earn, the stronger the pet"
+    // ---- W6 Task 4 证明审核 + 证明提交 + 照片查看新增 3 条（英文原文逐条留在行尾注释里）。
+    // brief 只列了 parentProofReview 的两条，漏掉 childProofCapture.tipsBody（"… points arrive after
+    // your check-in is approved …"）——闭集是从整表静态英文**算出来**的（见上），少登记一条都会红
+    // （与 T2 的 7 条、T3 的 6 条同型）。照片查看表三条都是无积分词的短句（View photo / Close /
+    // Pinch to zoom）；证明审核的三条函数型字段（filterPending / taskFallback / noteLine）与证明提交
+    // 整表其余静态英文都不提积分，前者按 Ruling 20-b 由 WishCopyTest 逐字钉住。
+    "parentProofReview.approvedMessage",      // "✅ Approved (points are issued via task check-in approval)"
+    "parentProofReview.approveButton",        // "Approve (+5 points)"（迁移前「通过 (+5分)」照录）
+    "childProofCapture.tipsBody",             // "… Proofs are kept for the record; points arrive after …"
 )
 
 /**

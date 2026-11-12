@@ -83,8 +83,14 @@ class PresetRegistryTest {
             "今天很专注", "完成了难题", "复习了错题", "有点分心", "时间不够用", "明天会更好",
             "起床啦", "吃早餐", "开始写作业", "阅读时间", "准备睡觉",
         )
+        val w6WishSamples = setOf( // PresetRegistry.kt「W6 页面内预设目录」组（示例心愿 3 条 × name+description）
+            "一个小玩具", "存够积分换一个喜欢的小玩具",
+            "一本新书", "去书店选一本喜欢的书",
+            "一台新平板", "存很久的大目标，加油！",
+        )
         val expected = taskSeedCanonicals() + rewardTexts + rewardCategories + defaultCategory +
-            mistakeErrorTypes.toSet() + difficultyLabels + deviceFallbacks + diagnostics + w5PageLocalPresets
+            mistakeErrorTypes.toSet() + difficultyLabels + deviceFallbacks + diagnostics + w5PageLocalPresets +
+            w6WishSamples // W5 组见上方 w5PageLocalPresets；W6 组来自 PresetRegistry.kt「W6 页面内预设目录」
         val missing = expected - presetTextRegistry.keys
         val extra = presetTextRegistry.keys - expected
         assertTrue(
@@ -223,6 +229,23 @@ class PresetRegistryTest {
         )
         assertEquals(19, presets.size + sharedWithTaskTitles.size, "W5 页面内预设 canonical 共 19 条（16 新增 + 3 共享）")
         for ((zh, en) in sharedWithTaskTitles + presets) {
+            assertEquals(zh, localizedPresetText(zh, DisplayLanguage.ZH), "ZH 必须恒等：$zh")
+            assertEquals(en, localizedPresetText(zh, DisplayLanguage.EN), "EN 译文漂移：$zh")
+        }
+    }
+
+    @Test
+    fun w6WishSamplesResolvePerLanguage() {
+        // W6：3 个示例心愿的 name+description 是 canonical 落库值（addGoal 原样写入）
+        val samples = mapOf(
+            "一个小玩具" to "A small toy",
+            "存够积分换一个喜欢的小玩具" to "Save up for a small toy you like",
+            "一本新书" to "A new book",
+            "去书店选一本喜欢的书" to "Pick a favorite book at the bookstore",
+            "一台新平板" to "A new tablet",
+            "存很久的大目标，加油！" to "A big long-term goal — keep going!",
+        )
+        for ((zh, en) in samples) {
             assertEquals(zh, localizedPresetText(zh, DisplayLanguage.ZH), "ZH 必须恒等：$zh")
             assertEquals(en, localizedPresetText(zh, DisplayLanguage.EN), "EN 译文漂移：$zh")
         }

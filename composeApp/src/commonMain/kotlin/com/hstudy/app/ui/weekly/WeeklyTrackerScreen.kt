@@ -18,12 +18,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.TaskCategory
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
 
-private val dayNames = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
 private val dayIcons = listOf("❤️", "⭐", "🖊️", "🖍️", "📐", "📖", "✈️")
 
 @Composable
@@ -32,6 +34,7 @@ fun WeeklyTrackerScreen(
     isParentView: Boolean,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.weeklyTracker
     val app = AppGraph
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
@@ -70,7 +73,7 @@ fun WeeklyTrackerScreen(
     Scaffold(
         topBar = {
             HStudyTopBar(
-                title = if (isParentView) "周报总览" else "本周打卡",
+                title = if (isParentView) strings.titleParent else strings.titleChild,
                 onNavigateBack = onNavigateBack
             )
         }
@@ -92,12 +95,12 @@ fun WeeklyTrackerScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("本周获得积分", style = MaterialTheme.typography.labelMedium)
+                            Text(strings.weeklyPointsLabel, style = MaterialTheme.typography.labelMedium)
                             Text("+$weeklyPoints", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         }
                         Divider(modifier = Modifier.height(48.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("总积分余额", style = MaterialTheme.typography.labelMedium)
+                            Text(strings.totalBalanceLabel, style = MaterialTheme.typography.labelMedium)
                             Text("⭐ $totalPoints", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -107,7 +110,7 @@ fun WeeklyTrackerScreen(
 
                 // ====== 基础学习任务表格 ======
                 SectionTable(
-                    title = "📝 基础学习任务",
+                    title = strings.basicsTitle,
                     tasks = basicTasks,
                     weekDates = weekDates,
                     dailyCompletions = dailyCompletions,
@@ -120,7 +123,7 @@ fun WeeklyTrackerScreen(
 
                 // ====== 提升学习任务表格 ======
                 SectionTable(
-                    title = "📈 提升学习任务",
+                    title = strings.enhanceTitle,
                     tasks = enhanceTasks,
                     weekDates = weekDates,
                     dailyCompletions = dailyCompletions,
@@ -133,7 +136,7 @@ fun WeeklyTrackerScreen(
 
                 // ====== 习惯与态度奖励表格 ======
                 SectionTable(
-                    title = "🏆 习惯与态度奖励",
+                    title = strings.habitTitle,
                     tasks = habitTasks,
                     weekDates = weekDates,
                     dailyCompletions = dailyCompletions,
@@ -169,6 +172,8 @@ private fun SectionTable(
     labelWidth: androidx.compose.ui.unit.Dp,
     isTablet: Boolean
 ) {
+    val strings = LocalStrings.current.weeklyTracker
+    val displayLanguage = LocalDisplayLanguage.current
     Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
 
     val scrollState = rememberScrollState()
@@ -180,7 +185,7 @@ private fun SectionTable(
                 // 空角落
                 Box(modifier = Modifier.width(labelWidth).height(36.dp), contentAlignment = Alignment.Center) {}
                 // 星期标题
-                dayNames.forEachIndexed { index, day ->
+                strings.weekdayNames.forEachIndexed { index, day ->
                     Box(
                         modifier = Modifier.width(cellWidth).height(36.dp),
                         contentAlignment = Alignment.Center
@@ -203,7 +208,11 @@ private fun SectionTable(
                         modifier = Modifier.width(labelWidth).height(40.dp).padding(end = 4.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        Text(task.title, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                        Text(
+                            localizedPresetText(task.title, displayLanguage),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2
+                        )
                     }
                     // 每天的打卡状态
                     dailyCompletions.forEach { (_, completedIds) ->
@@ -230,7 +239,7 @@ private fun SectionTable(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("暂无任务", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.noTasks, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -245,7 +254,8 @@ private fun DailyPointsSummary(
     cellWidth: androidx.compose.ui.unit.Dp,
     labelWidth: androidx.compose.ui.unit.Dp
 ) {
-    Text("📊 每日积分汇总", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+    val strings = LocalStrings.current.weeklyTracker
+    Text(strings.dailySummaryTitle, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
 
     val taskMap = tasks.associateBy { it.id }
 
@@ -257,7 +267,7 @@ private fun DailyPointsSummary(
             // 表头
             Row {
                 Box(modifier = Modifier.width(labelWidth).height(36.dp), contentAlignment = Alignment.Center) {}
-                dayNames.forEach { day ->
+                strings.weekdayNames.forEach { day ->
                     Box(modifier = Modifier.width(cellWidth).height(36.dp), contentAlignment = Alignment.Center) {
                         Text(day, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
@@ -270,7 +280,7 @@ private fun DailyPointsSummary(
                     modifier = Modifier.width(labelWidth).height(40.dp).padding(end = 4.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text("💰 积分", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(strings.pointsRowLabel, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 dailyCompletions.forEach { (_, completedIds) ->
                     val dayPoints = completedIds.sumOf { taskMap[it]?.points ?: 0 }

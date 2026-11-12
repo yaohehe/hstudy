@@ -4,7 +4,7 @@
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
-    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部三十四张表
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部四十二张表
     python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
         --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
@@ -21,10 +21,10 @@
   的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
   里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
   带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
-* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部三十四张**表"可用**。限制不来自表侧读取本身，而来自
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部四十二张**表"可用**。限制不来自表侧读取本身，而来自
   [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
-  [BRANCH_TABLES] 三十四张全读一遍。阶段 2 W5 那六张表是 W5 提交才落进历史的，所以**可用的最早
-  rev 就是 W5 提交本身**；在它之前（W4 收口 5d65128、W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
+  [BRANCH_TABLES] 四十二张全读一遍。阶段 2 W6 那八张表是 W6 提交才落进历史的，所以**可用的最早
+  rev 就是 W6 提交本身**；在它之前（W5 收口 1e1e382、W4 收口 5d65128、W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
   `git show …失败`。实测（W2 提交之前的工作树）：
       --tables-rev HEAD      -> **1**    `git show HEAD:…/ParentTaskManageStrings.kt 失败`（W2 四张表尚未进历史）
       --tables-rev 4d28c8e   -> **1**    `git show 4d28c8e:…/MistakeStrings.kt 失败`（W1 之前没有错题表）
@@ -149,6 +149,7 @@ W2_REV = "5deed68"        # 阶段 2 W2（家长任务管理）迁移前 = W1 �
 W3_REV = "aae364e"        # 阶段 2 W3（家长积分/审批/奖励）迁移前 = W2 收口提交
 W4_REV = "14c4d82"        # 阶段 2 W4（孩子商店/积分/抽奖/成就）迁移前 = W3 收口提交
 W5_REV = "5d65128"        # 阶段 2 W5（习惯/目标/日程）迁移前 = W4 收口提交
+W6_REV = "1e1e382"        # 阶段 2 W6（心愿/证明/报告/周报）迁移前 = W5 收口提交
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -174,11 +175,13 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（W5 Task 7 复算，改登记时必须同时改这里）：表里现在 **56 条**
-# （7 条两侧同形 + 42 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **50** 条默认组用不到；`--branch` 组碰到 **55** 条、只剩 **1** 条报
+# 登记表的当前实况读数（W6 Task 6 复算，改登记时必须同时改这里）：表里现在 **74 条**
+# （7 条两侧同形 + 60 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **68** 条默认组用不到；`--branch` 组碰到 **73** 条、只剩 **1** 条报
 # "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
 # 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
+# W6 那批 18 条 = 示例心愿 6 + 宠物阶段名 8（都只看页面）+ 周报通知正文 4（**只看表侧**：原文只在
+# androidMain，闸门不读平台文件，理由逐条写在条目里）。
 #
 # 每个页面取**自己那批任务迁移前**的 rev（`git log --format=%h -1 <迁走它的那次提交>^`），
 # 同一页面被两批任务先后迁移的（ParentSettingsScreen）就带两个 rev，各取所需的一半原文。
@@ -228,6 +231,19 @@ BRANCH_PAGES = DEFAULT_PAGES + [
     (W5_REV, "com/hstudy/app/ui/habit/ChildHabitChallengeScreen.kt"),
     (W5_REV, "com/hstudy/app/ui/habit/ChildGoalTrackerScreen.kt"),
     (W5_REV, "com/hstudy/app/ui/schedule/ChildScheduleTimelineScreen.kt"),
+    # ---- 阶段 2 W6（心愿/证明/报告/周报，W6_REV）----
+    # 7 个页面 + 1 个 commonMain 接收器。接收器沿用 W1 先例登记（ReviewReminderReceiver.kt 同样在
+    # ui/ 下且只取词不渲染）；androidMain 的 platform/WeeklyReportReceiver.kt **不登记**：
+    # 闸门只读 commonMain，平台文件里的正文四段（summary/encourage*/fallback）因此只能在
+    # DISCLOSED_RESIDUALS 里按"表侧单边"披露，见下面 W6 那组登记条目。
+    (W6_REV, "com/hstudy/app/ui/wish/ChildWishGoalScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/wish/ParentWishGoalManageScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/weekly/WeeklyTrackerScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/report/GrowthReportScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/proof/ParentProofReviewScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/proof/ChildProofCaptureScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/proof/PhotoViewerScreen.kt"),
+    (W6_REV, "com/hstudy/app/ui/parent/WeeklyReportReceiver.kt"),
 ]
 BRANCH_TABLES = [
     ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
@@ -244,6 +260,11 @@ BRANCH_TABLES = [
         "ChildPointsStrings", "ChildAchievementsStrings",
         "ChildDailyTargetStrings", "ParentScheduleStrings", "ScheduleAlarmStrings",
         "ChildHabitChallengeStrings", "ChildGoalTrackerStrings", "ChildScheduleTimelineStrings",
+        # ---- 阶段 2 W6（W6_REV）----
+        "ChildWishGoalStrings", "ParentWishGoalStrings",
+        "WeeklyTrackerStrings", "GrowthReportStrings",
+        "ParentProofReviewStrings", "ChildProofCaptureStrings",
+        "PhotoViewerStrings", "WeeklyReportStrings",
     )
 ]
 
@@ -254,7 +275,8 @@ BRANCH_TABLES = [
 # 所以表侧 `"$minutes$unit"`（塌成 `⟨$⟩⟨$⟩`，一个汉字都没有）根本不会出现在表侧集合里——
 # 那种位点只能登记页面侧那一条（单位来自另一张表），而"页面 `${if …}` 内部被子表达式吃掉的"
 # 那一条只能登记表侧。两边都登记的那条若只剩一边，就是登记过期，退 1。
-# 行号口径：W5 那批 reason 里的行号用迁移前 W5_REV（5d65128）坐标，W1–W4 与更早的用写入时工作树坐标。
+# 行号口径：W5 那批 reason 里的行号用迁移前 W5_REV（5d65128）坐标，W6 那批用 W6_REV（1e1e382）坐标
+# （同样是"迁移前"坐标，所以与 W5 同一套读法）；W1–W4 与更早的用写入时工作树坐标。
 DISCLOSED_RESIDUALS = [
     {
         "page": "%s分" % VALUE, "table": None,
@@ -414,6 +436,67 @@ DISCLOSED_RESIDUALS = [
     # 成就解锁 canonical（tryUnlockAchievement 写库参数）
     {"page": "习惯达人", "table": None, "reason": "W5 Ruling 25：ChildHabitChallengeScreen.kt:94 tryUnlockAchievement 写库参数（achievementCopy canonical）"},
     {"page": "完成一个21天挑战", "table": None, "reason": "W5 Ruling 25：同上（成就描述）"},
+    # ---- 阶段 2 W6：示例心愿 canonical（页面单边；值不进表，渲染走注册表）----
+    # ParentWishGoalManageScreen 的「一键载入示例」把 3 条示例心愿**原样**交给 addGoal（name + description
+    # 直接落库，Ruling 25），所以这 6 个值是 canonical、不进文案表；W6 Task 1 已把它们收进
+    # PresetRegistry（W6 组 6 条），渲染时包 localizedPresetText —— 与 W3 奖励分类、W5 日程示例同一形态。
+    # 登记成页面单边：表侧 ParentWishGoalStrings 只有 hint / nameLabel 里**整句**提到「一台新平板」，
+    # 与这 6 个**整串**值不同形，所以表侧没有对应模板可配平（也不想为它造一条同值槽）。
+    {"page": "一个小玩具", "table": None,
+     "reason": "W6 Ruling 25：ParentWishGoalManageScreen 示例心愿落库值（T2 注册表已收录）"},
+    {"page": "存够积分换一个喜欢的小玩具", "table": None,
+     "reason": "W6 Ruling 25：ParentWishGoalManageScreen 示例心愿落库值（T2 注册表已收录）"},
+    {"page": "一本新书", "table": None,
+     "reason": "W6 Ruling 25：ParentWishGoalManageScreen 示例心愿落库值（T2 注册表已收录）"},
+    {"page": "去书店选一本喜欢的书", "table": None,
+     "reason": "W6 Ruling 25：ParentWishGoalManageScreen 示例心愿落库值（T2 注册表已收录）"},
+    {"page": "一台新平板", "table": None,
+     "reason": "W6 Ruling 25：ParentWishGoalManageScreen 示例心愿落库值（T2 注册表已收录）"},
+    {"page": "存很久的大目标，加油！", "table": None,
+     "reason": "W6 Ruling 25：ParentWishGoalManageScreen 示例心愿落库值（T2 注册表已收录）"},
+    # ---- 阶段 2 W6：成长报告的宠物阶段名（页面单边；W7 归属，本波原样）----
+    # GrowthReportScreen.petStageName 按累计积分在 8 个阶段名里分支，页面侧与分享文本都用它们；
+    # 表侧 GrowthReportStrings 只有 reportText 的「🐾 学习宠物：」前缀（阶段名作为实参传入），
+    # 所以这 8 条只有页面侧。W7 给出英文阶段名的同时要把它们从这里摘掉（白名单会过期）。
+    {"page": "宠物蛋", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "刚破壳", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "小黄鸡", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "小猫咪", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "小狐狸", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "小狮子", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "独角兽", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    {"page": "小神龙", "table": None,
+     "reason": "W6 Ruling 3：GrowthReportScreen.petStageName 阶段名归 W7，本波原样（V-61）"},
+    # ---- 阶段 2 W6：周报通知正文（**表侧单边**；原文在 androidMain，闸门读不到）----
+    # 这四条是整张登记表里第二类"表侧唯一"：WeeklyReportStringsZh 的四个值在迁移前只存在于
+    # androidMain/platform/WeeklyReportReceiver.kt（通知正文在**组合期之外**拼，见该表 KDoc:20-24），
+    # 而本脚本的页面侧只读 commonMain（SRC_ROOT），平台文件按 plan Task 6「androidMain 不登记」不进来。
+    # 于是一个"门"在这四条上是结构性的：commonMain 的 ui/parent/WeeklyReportReceiver.kt 只留下
+    # title/body 两个常量（那两条与表侧逐字节相同、正常配对），正文四段没有任何 commonMain 原文可比。
+    # 它们不是"新写文案"而是**逐字节搬运**：独立的三条（encourageLow/Good、fallback）与原文同一字节；
+    # summary 在原文里是 buildString 两次 append 的拼接（:41-42），表里是一条整串——**拼接结果**逐字节
+    # 相同，但模板形状不同（抽取器把两次 append 算两条），所以即使把平台文件登记成页面也对不上。
+    # 登记形态沿用 Task 5 那五条"迁移前无页面原文可比"的表侧单边先例；验证落点是 WishCopyTest
+    # 的两语整串钉死（weeklyReportSummaryPinsBothLanguages）+ 该表 KDoc 的逐行出处。
+    {"page": None,
+     "table": "📊 孩子本周学习周报：打卡⟨$⟩次 · 专注⟨$⟩分钟 · 复习⟨$⟩道错题 · 获得⟨$⟩积分",
+     "reason": "W6 T5：正文主体原文在 androidMain/platform/WeeklyReportReceiver.kt:41-42（buildString 两次 "
+               "append 的拼接），闸门只读 commonMain、平台文件不登记，故只在表侧可见；"
+               "拼接结果逐字节相同，验证由 WishCopyTest.weeklyReportSummaryPinsBothLanguages 钉死"},
+    {"page": None, "table": "。本周学习较少，多鼓励孩子加油！",
+     "reason": "W6 T5：空周分支原文 androidMain/platform/WeeklyReportReceiver.kt:43（逐字节搬入），"
+               "闸门读不到平台文件，故只在表侧可见"},
+    {"page": None, "table": "。继续保持，稳步进步！",
+     "reason": "W6 T5：非空周分支原文 androidMain/platform/WeeklyReportReceiver.kt:44（逐字节搬入），同上"},
+    {"page": None, "table": "📊 孩子本周学习周报已生成，打开 App 查看详细报告。",
+     "reason": "W6 T5：catch 兜底原文 androidMain/platform/WeeklyReportReceiver.kt:53（逐字节搬入），同上"},
 ]
 
 
@@ -629,9 +712,9 @@ def main():
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE,
-                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部三十四张表的 rev 可用**"
-                         "（本分支上阶段 2 W5 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
-                         " BRANCH_TABLES 三十四张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部四十二张表的 rev 可用**"
+                         "（本分支上阶段 2 W6 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 四十二张，早于它的 rev 直接 `git show … 失败` 退 1。"
                          "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)
