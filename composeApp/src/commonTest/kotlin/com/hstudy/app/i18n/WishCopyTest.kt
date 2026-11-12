@@ -402,7 +402,7 @@ class WishCopyTest {
     }
 
     /**
-     * 跨表 pin（T6）：W6 七页复用的三个共享词逐字双语钉死。
+     * 跨表 pin（T6）：W6 两页（心愿存钱罐/心愿管理）复用的三个共享词逐字双语钉死。
      *
      * 这三对分别属于别的波次（W2 的 `parentTaskEdit.saveButton`、更早的
      * `common.cancelButton` / `common.deleteContentDescription`），W6 的页面只是**消费方**，
