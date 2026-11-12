@@ -10,6 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.PetStrings
+import com.hstudy.app.i18n.localizedPetStageName
 
 /**
  * 学习宠物成长阶段：随累计获得积分逐步进化，给孩子长期的情感寄托与进化动力
@@ -63,14 +67,23 @@ fun petCondition(fullness: Int, mood: Int): PetCondition = when {
     else -> PetCondition.HEALTHY
 }
 
-/** 根据宠物状态与今日任务完成度生成宠物想说的话 */
-fun petStatusMessage(fullness: Int, mood: Int, todayCompleted: Int, todayTotal: Int): String = when {
-    fullness <= 0 || mood <= 0 -> "😵 我快支撑不住了…快用积分救救我（喂养/陪玩）！"
-    fullness < 30 -> "🥺 我好饿…快用积分喂喂我吧！"
-    mood < 30 -> "😔 我好无聊…花点积分陪我玩一会儿吧！"
-    todayTotal > 0 && todayCompleted == todayTotal -> "🎉 今天任务全部完成啦，我为你骄傲！"
-    todayCompleted > 0 -> "💪 已经完成 $todayCompleted 个任务了，继续加油！"
-    else -> "🌞 新的一天开始啦，快去完成任务吧！"
+/**
+ * 根据宠物状态与今日任务完成度生成宠物想说的话（首页预览卡）。
+ * 文案随语言（W7 起由调用方传入 [strings]，签名为 5 参；唯一调用点是 [PetPreviewCard]）。
+ */
+fun petStatusMessage(
+    fullness: Int,
+    mood: Int,
+    todayCompleted: Int,
+    todayTotal: Int,
+    strings: PetStrings,
+): String = when {
+    fullness <= 0 || mood <= 0 -> strings.statusCritical
+    fullness < 30 -> strings.statusHungry
+    mood < 30 -> strings.statusBored
+    todayTotal > 0 && todayCompleted == todayTotal -> strings.statusAllDone
+    todayCompleted > 0 -> strings.statusProgress(todayCompleted)
+    else -> strings.statusNewDay
 }
 
 /**
@@ -83,6 +96,8 @@ fun PetPreviewCard(
     modifier: Modifier = Modifier
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.pet
+    val displayLanguage = LocalDisplayLanguage.current
     val lifetimePoints by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
     val storedFullness by app.userPreferences.petFullness.collectAsState(initial = 80)
     val storedMood by app.userPreferences.petMood.collectAsState(initial = 80)
@@ -94,8 +109,9 @@ fun PetPreviewCard(
     val (fullness, mood) = remember(storedFullness, storedMood, lastCare, today) {
         computePetState(storedFullness, storedMood, lastCare, today)
     }
-    val stage = petStages[getStageIndex(lifetimePoints)]
-    val message = petStatusMessage(fullness, mood, completedIds.size, tasks.size)
+    val stageIndex = getStageIndex(lifetimePoints)
+    val stage = petStages[stageIndex]
+    val message = petStatusMessage(fullness, mood, completedIds.size, tasks.size, strings)
 
     Card(
         onClick = onNavigateToPet,
@@ -109,17 +125,17 @@ fun PetPreviewCard(
             Text(stage.emoji, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("我的学习宠物 · ${stage.name}", style = MaterialTheme.typography.titleSmall,
+                Text(strings.previewTitle(localizedPetStageName(stageIndex, displayLanguage)), style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(message, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("🍖 饱食 $fullness", style = MaterialTheme.typography.labelSmall,
+                    Text(strings.fullnessShort(fullness), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer)
-                    Text("😊 心情 $mood", style = MaterialTheme.typography.labelSmall,
+                    Text(strings.moodShort(mood), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
-                Text("💡 复习错题、专注学习能让小宠物心情变好哦～", style = MaterialTheme.typography.labelSmall,
+                Text(strings.previewTip, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
             Icon(Icons.Filled.ChevronRight, contentDescription = null,

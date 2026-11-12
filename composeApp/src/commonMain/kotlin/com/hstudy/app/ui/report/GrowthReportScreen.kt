@@ -13,22 +13,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPetStageName
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.ui.pet.getStageIndex
+import com.hstudy.app.ui.pet.petStages
 
-/** 宠物阶段（与学习宠物页保持一致） */
-private val reportPetStages = listOf(
-    "🥚" to 0, "🐣" to 100, "🐤" to 300, "🐱" to 600,
-    "🦊" to 1000, "🦁" to 2000, "🦄" to 4000, "🐉" to 8000
-)
-
-private fun petStageName(lifetime: Int): String {
-    val names = listOf("宠物蛋", "刚破壳", "小黄鸡", "小猫咪", "小狐狸", "小狮子", "独角兽", "小神龙")
-    var idx = 0
-    reportPetStages.forEachIndexed { i, (_, req) -> if (lifetime >= req) idx = i }
-    return "${reportPetStages[idx].first} ${names[idx]}"
+/** 宠物阶段名：与学习宠物页共用 [petStages] 目录与 [localizedPetStageName] 注册表 */
+private fun petStageName(lifetime: Int, lang: DisplayLanguage): String {
+    val index = getStageIndex(lifetime)
+    return "${petStages[index].emoji} ${localizedPetStageName(index, lang)}"
 }
 
 /**
@@ -40,6 +38,7 @@ fun GrowthReportScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val strings = LocalStrings.current.growthReport
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -55,7 +54,7 @@ fun GrowthReportScreen(
     LaunchedEffect(Unit) { streak = app.pointRepository.getCurrentStreak() }
 
     val achievedWishes = goals.count { !it.isActive }
-    val petStage = petStageName(lifetimePoints)
+    val petStage = petStageName(lifetimePoints, displayLanguage)
 
     Scaffold(
         topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },

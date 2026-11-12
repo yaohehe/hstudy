@@ -31,8 +31,8 @@
 python scripts/i18n_storage_boundary.py                          # 文案不进写库调用
 python scripts/tests/i18n_storage_boundary_selftest.py            # 上一条每条检测通道都有必红 fixture
 python scripts/i18n_template_diff.py                              # 中文态逐字节等价（默认组：distinct 118/118，其中 [strict] 整串逐字节相同 117 条 + 1 条已披露的格式串拆分位点）
-python scripts/i18n_template_diff.py --branch                      # 同一命题的**整枝组**（47 条页面组条目 / 46 个文件 × 全部 42 张表）：distinct 958/912，披露后 895/895，[strict] 894 条整串相同 + 1 条拆分
-./gradlew :composeApp:testDebugUnitTest                            # 204 tests / 0 failures（含阶段 2 W1 的 12 条、W2 的 9 条、W3 的 9 条、W4 的 8 条、W5 的 14 条与 W6 的 18 条；i18n 包另见 §1 末段）
+python scripts/i18n_template_diff.py --branch                      # 同一命题的**整枝组**（50 条页面组条目 / 48 个文件 × 全部 43 张表）：distinct 1003/954，披露后 933/933，[strict] 932 条整串相同 + 1 条拆分
+./gradlew :composeApp:testDebugUnitTest                            # 209 tests / 0 failures（含阶段 2 W1 的 12 条、W2 的 9 条、W3 的 9 条、W4 的 8 条、W5 的 14 条、W6 的 18 条与 W7 的 5 条；i18n 包另见 §1 末段）
 ./gradlew :composeApp:compileCommonMainKotlinMetadata              # commonMain 元数据 + 平台纯净度
 grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMain | wc -l   # 0
 ```
@@ -46,13 +46,13 @@ grep -rl --include=*.kt -E "^import (android\.|java\.)" composeApp/src/commonMai
 单测能证明的是**表值**（漏译、one/other、emoji 位置、规范值漂移），证明不了**页面是否读到表**，
 也证明不了排版。`AppLanguageResolveTest`（6 条）覆盖解析纯函数、`LanguagePreferenceTest`（2 条：
 `languagePersistsAcrossReads`、`languageRewriteReplacesPreviousChoiceAndLocksWireFormat`）
-覆盖偏好读写与线格式；`StringsCopyTest`（**63** 条）覆盖**四十二张表**的文案——四十二张是聚合根
+覆盖偏好读写与线格式；`StringsCopyTest`（**63** 条）覆盖**四十三张表**的文案——四十三张是聚合根
 `AppStrings` 的字段数（`role / settings / common / taskList / pomodoro / focus / childHome / parentHome /
 parentDashboard` 九张 + 终审 Ruling 41 新加的 `parentGate` + 阶段 2 W1 的 `mistake / mistakeList /
 mistakeDetail / mistakeAdd / parentMistakeReview / reviewReminder` 六张 + W2 的 `parentTaskManage /
 parentTaskEdit / parentAssignTask / parentTaskTemplate` 四张 + W3 的 `parentPoints / parentApproval /
-parentRewardEdit / parentRewardManage` 四张 + W4 的 childRewardStore / childLuckyDraw / childPoints / childAchievements 四张 + W5 的 childDailyTarget / parentSchedule / scheduleAlarm / childHabitChallenge / childGoalTracker / childScheduleTimeline 六张 + W6 的 childWishGoal / parentWishGoal / weeklyTracker / growthReport / parentProofReview / childProofCapture / photoViewer / weeklyReport 八张），复核：
-`grep -c "^    val " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt` → 42。
+parentRewardEdit / parentRewardManage` 四张 + W4 的 childRewardStore / childLuckyDraw / childPoints / childAchievements 四张 + W5 的 childDailyTarget / parentSchedule / scheduleAlarm / childHabitChallenge / childGoalTracker / childScheduleTimeline 六张 + W6 的 childWishGoal / parentWishGoal / weeklyTracker / growthReport / parentProofReview / childProofCapture / photoViewer / weeklyReport 八张 + W7 的 pet 一张），复核：
+`grep -c "^    val " composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/Strings.kt` → 43。
 原文写的是"六张表 / 59 条"，那是 Task 10 之前的读数（终审第 7 条点出，本波次复算后按当前树改正；
 `StringsCopyTest` 的 4 条新增 = `parentGateCopyDiffers`、`parentGateButtonsComeFromTheirOwnTables`、
 `totalFocusLabelIsTheSameTwoWordsInBothTables`、`englishTableUsesOneEllipsisForm`）。
@@ -62,6 +62,7 @@ W3 的漏译/跨表守卫另在 `ParentPointsCopyTest`（9 条，含 `crossTable
 W4 的孩子端四页守卫另在 ChildRewardStoreCopyTest（8 条，含 crossTableVocabularyPinned 与英文 one/other 逐字钉死）。
 W5 的六源守卫另在 ChildScheduleCopyTest（13 条，含通知正文双语钉死与跨表 pin）。
 W6 的八源守卫另在 WishCopyTest（17 条，含 `crossTableVocabularyPinned`、周报通知正文两语整串钉死与宠物阶段名仍为中文的回归保护）。
+W7 的宠物三源守卫另在 PetCopyTest（4 条，含 `crossTableVocabularyPinned`、`petStringsCopyDiffers` 与函数型字段两语整串钉死）。
 
 ## 2. 人工验证清单
 
@@ -304,10 +305,16 @@ W6 的八源守卫另在 WishCopyTest（17 条，含 `crossTableVocabularyPinned
 - [ ] V-58 心愿存钱罐（目标卡/里程碑/预估天数/存入对话框/庆祝与 snackbar 全英文；示例心愿英文、自建原样；落库仍 canonical）
 - [ ] V-59 家长心愿管理（提示/空态/示例载入/编辑对话框/删除与保存 snackbar 全英文；示例 3 条显示英文、自建原样；保存仍 canonical）；编辑对话框回填 canonical 存储值（写库来源，不本地化，同 V-53）
 - [ ] V-60 周报总览（双视图标题/周积分卡/三类任务表/每日汇总/星期行 Mon…Sun 全英文；任务名为预设时英文）
-- [ ] V-61 成长报告（标题/六项统计/分享文案全英文；宠物阶段名（宠物蛋…小神龙）仍为中文——W7 归属，spec §12；分享文件内容为英文模板）
+- [ ] V-61 成长报告（标题/六项统计/分享文案全英文；宠物阶段名（宠物蛋…小神龙）在 W6 时仍为中文——当时归 W7，spec §12；W7 已回接，见 V-67；分享文件内容为英文模板）
 - [ ] V-62 证明审核（筛选/状态/空态/备注行/按钮/snackbar 全英文；备注 note 与照片为用户内容；任务名预设译出）
 - [ ] V-63 证明提交 + 照片查看（全英文；关联任务标题预设译出；相机与提交逻辑不变）
 - [ ] V-64 周报通知（Android 触发时按生效语言生成摘要——切语言无需重新开启或等待重排、触发即跟随生效语言，**Android 通知标题仍为中文渠道默认**，且启动/开机重注册 9002 仍写 canonical——见 L-16 / W9；iOS 排程时冻结快照，切语言需重新开启周报开关重新排程，且英文正文只存活到下次冷启动/开机；Android 接收器的失败路径保留刻意写死的中文兜底字面量，文件内已注明）
+
+### 阶段 2 W7（宠物）追加项
+
+- [ ] V-65 英文态学习宠物页（阶段名/场景名/照料区/进化进度/成长之路/装饰商店全英文；场景按 id 查注册表、阶段按索引查；喂养/陪玩/购买三条账本 note 仍中文 canonical；场景 id 落库不变）
+- [ ] V-66 英文态首页宠物预览卡（阶段名/状态语/饱食与心情标签英文；阶段名与宠物页同一译名；状态语与宠物页两套文案并存）
+- [ ] V-67 英文态成长报告阶段名（显示英文阶段名，与宠物页/预览卡同源注册表；分享文案随语言）
 
 ## 3. 已知限制
 
@@ -420,7 +427,7 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-16 | **定时提醒类通知的本地化现状（设计边界，不是漏译）**：W1 只接通了错题复习提醒——Android 在**触发时**重新按当前语言取词（ZH 态标题沿用渠道默认 `HStudy 错题复习提醒`，与 v3.1.0 逐字节一致；EN 态标题/正文为英文）；iOS 在**排程时**冻结本地化文案，但 `AppGraph.bootstrap()` 冷启动会用硬编码中文重注册提醒 9001，英文文案只存活到重启前（**W9 残留**，spec §12）。周报提醒与启动补挂的 title/body 仍在**任何组合期之外**构造（`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们）；**W6 起周报正文改在发出点取词**（Android 触发时取 `WeeklyReportStrings.summary/encourage*/fallback`，iOS 排程时冻结 `title/body`），但 Android 通知**标题**仍是 per-kind 渠道默认中文「HStudy 每周学习周报」、且 `AppGraph.bootstrap()` 与 `AndroidReminderBootstrap` 冷启动/开机重注册 9002 仍写 canonical 中文；正文存活期按平台区分——**Android 接收器在触发时重拼正文**，切语言无需任何操作、触发即跟随生效语言（仅 init/取词失败的紧急兜底路径保留刻意写死的中文兜底字面量，该文件 `:52` 已注明），**iOS 的英文正文快照只存活到下次冷启动/开机**（冻结快照被 `AppGraph.bootstrap()` 的 canonical 重注册盖掉，与 W1 复习提醒同型）；启动补挂仍是中文——两处都归 W9（AppGraph 接线）。**日程提醒（W5 已交付部分的残留，不是"已完成"）**：管理页保存/启停时按当前语言注册正文（关联任务句带语言分隔符，ZH 空串 / EN 空格），但 Android 通知**标题**恒为 per-kind 渠道默认中文（`platform/ScheduleAlarmReceiver.kt` 调 showNotification 不带 `titleOverride`），且每次启动/开机 `AndroidReminderBootstrap` 重注册硬编码 canonical 中文正文，EN 副本只存活到下次启动/开机；`ScheduleAlarmHelper.rescheduleAll()` 无生产调用点；切语言须在管理页重新保存/启停日程才刷新（iOS 同样没有启动重注册来治好）。收口归 W9：`ScheduleAlarmReceiver` 传 `EXTRA_TITLE` + bootstrap 走本地化辅助（均需平台文件授权）。番茄钟常驻通知不在此列（计时协程里现取 `currentStrings`，见 V-16）。 | `AppGraph.kt:128`、`:136`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里；终审 Minor 3 把 `startupLanguage` 换成 `StateFlow` 后这两个坐标从 `:112`/`:120` 顺移而来，本行按当前树复算）、`ui/parent/WeeklyReportReceiver.kt`（W6 起 `schedule()` 在排程时取 `WeeklyReportStrings.title/body`，原 `TITLE`/`BODY` 常量已删）、`ui/schedule/ScheduleAlarmHelper.kt:94-100`（正文拼接；文案规则与存活期见该文件 `:27-38` KDoc）；`ui/mistake/ReviewReminderReceiver.kt:34-35` 已改为取 `localizedCopy()`（不再有裸字面量）。Android 周报触发器 W6 起也走 `WeeklyReportStrings`（`androidMain/…/platform/WeeklyReportReceiver.kt` 只保留统计与调度，正文取表函数）。**平台文件口径**：用户明确授权的平台改动共三处：2026-11-10 两个 androidMain 通知文件（`platform/ReviewReminderReceiver.kt`、`platform/AndroidNotificationScheduler.kt`，W1 通知本地化），以及 2026-11-12 的 `platform/WeeklyReportReceiver.kt`（W6 周报正文发出时取词，仅消息拼装 + 兜底）；其余平台文件零改动；`AndroidFileSharer.kt:27` 的分享标题仍属 W9（L-08） |
 | L-17 | 设备名兜底在 `data/**` 里各存了一份**表外副本**：家长控制导出包的 `家长设备`（`FamilySyncHelper.kt:107`，落进孩子设备存储，不在设置页出现）与进度包的 `孩子设备`（`:190` 与 DTO 默认值 `:82`）。它们不引用 `CanonicalParentSettingsText`/文案表，本阶段禁改 `data/**`，属阶段二与规范值常量对账的项（另见 spec §11"家长设备"行） | `grep -n "家长设备\|孩子设备" composeApp/src/commonMain/kotlin/com/hstudy/app/data/sync/FamilySyncHelper.kt`（3 处命中：`:82`/`:107`/`:190`） |
 | L-18 | `App.kt:60` 的 `.catch { emit(null) }` 是"降级不崩根"的例外：DataStore 读一旦抛错，上游以一次 `null` 完成、订阅就此终止，**本次会话语言被钉死在系统语言**，设置页切换不再生效，直到组合树重建（Android 配置变更 / iOS 重启）。代码注释写明了代价（`App.kt:54-59`），本清单此前未列 | `composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt:52-62` |
-| L-19 | **等价性登记表的"共享词遮蔽"**（终审 D-A 第 4 条裁决为记录、不修）：`i18n_template_diff.py` 的 `DISCLOSED_RESIDUALS`（现 74 条）里有**六条两侧同形**的通用词登记——`取消` / `确定` / `确认` / `删除` / `分` / `+⟨$⟩分`——而 `apply_disclosures()` 是在三层比对**之前**按**值**（不按字段）把它们从两侧集合里 `pop` 掉的。后果：在**默认组（窄组）**里新写或改出一条与这六个词**逐字节相同**的中文表值，会被无声摘掉，既不参与 `[strict]` 也不参与 `[A]/[B]`，等价性检查看不见它。边界要说清三条，别把它读成"闸门失效"：① 只有整串相同才遮蔽——`累计专注` 改成 `累计专注。` 这种真实漂移照旧报 `invented` 并退 1（本波次在当前树复做正对照实测：默认组 `[A] NO (1 missing, 1 invented)`、exit 1）；② 遮蔽的是**这条值**，不是这个字段，同字段其他值仍被比；③ `--branch` 整枝组里这六条是双边命中，摘掉等于"披露成立"，风险只在没带供值那张表的窄组。同一机制的第二个实例：表里第 14 条（`ParentDashboardStrings.scoreUnit` 的表侧单边 `分`）被第 13 条双边 `分`/`分` 先 pop，因而在整枝组恒报"（未用到）"——这就是 §6 那句"73 命中 / 1 未用到"里那 1 条的来历，不是登记过期。阶段二的收口形状：给登记加**字段名**限定（如 `table_field="CommonStrings.cancelButton"`）而不是继续按值 pop | 脚本头「已知边界」最后一条 + `scripts/i18n_template_diff.py` 的 [DISCLOSED_RESIDUALS] 注释；复跑：`python scripts/i18n_template_diff.py`（0）与"把一个 ZH 值改一个中文字"的 mutation（1） |
+| L-19 | **等价性登记表的"共享词遮蔽"**（终审 D-A 第 4 条裁决为记录、不修）：`i18n_template_diff.py` 的 `DISCLOSED_RESIDUALS`（现 83 条）里有**六条两侧同形**的通用词登记——`取消` / `确定` / `确认` / `删除` / `分` / `+⟨$⟩分`——而 `apply_disclosures()` 是在三层比对**之前**按**值**（不按字段）把它们从两侧集合里 `pop` 掉的。后果：在**默认组（窄组）**里新写或改出一条与这六个词**逐字节相同**的中文表值，会被无声摘掉，既不参与 `[strict]` 也不参与 `[A]/[B]`，等价性检查看不见它。边界要说清三条，别把它读成"闸门失效"：① 只有整串相同才遮蔽——`累计专注` 改成 `累计专注。` 这种真实漂移照旧报 `invented` 并退 1（本波次在当前树复做正对照实测：默认组 `[A] NO (1 missing, 1 invented)`、exit 1）；② 遮蔽的是**这条值**，不是这个字段，同字段其他值仍被比；③ `--branch` 整枝组里这六条是双边命中，摘掉等于"披露成立"，风险只在没带供值那张表的窄组。同一机制的第二个实例：表里第 14 条（`ParentDashboardStrings.scoreUnit` 的表侧单边 `分`）被第 13 条双边 `分`/`分` 先 pop，因而在整枝组恒报"（未用到）"——这就是 §6 那句"82 命中 / 1 未用到"里那 1 条的来历，不是登记过期。阶段二的收口形状：给登记加**字段名**限定（如 `table_field="CommonStrings.cancelButton"`）而不是继续按值 pop | 脚本头「已知边界」最后一条 + `scripts/i18n_template_diff.py` 的 [DISCLOSED_RESIDUALS] 注释；复跑：`python scripts/i18n_template_diff.py`（0）与"把一个 ZH 值改一个中文字"的 mutation（1） |
 
 ## 4. 英文措辞：一处已裁决关闭（Ruling 45），一处仍待裁决
 
@@ -469,13 +476,15 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
   注意"118 条"是**披露后的模板集合大小**，"117 条"才是**整串相同**的条数，两个数字不是一回事，
   旧文档把 118/118 写成"条整串"是假陈述，本波次已按工具当日输出改正）。
 - **整枝组（终审第 9 条新发布的长期复验命令，`d4d441b` 起脚本自带 `--branch`）**：
-  `python scripts/i18n_template_diff.py --branch`（阶段 2 W6 登记后实测 **exit 0**；distinct 958/912 →
-  披露后 895/895，`[strict]` 894 条整串相同 + 同一条拆分位点，`[A] 0 missing / 0 invented`、`[B] 0 difference`。它把本分支全部已迁页面（47 条页面组条目 /
-  46 个文件，含 W1 的六页、W2 的四页、W3 的四页、W4 的四页、W5 的六页与 W6 的七页 + 一个 commonMain 接收器）× 全部 42 张表放进同一命题，`DISCLOSED_RESIDUALS` 登记表（现 74 条）整张受它复验
-  （实跑 73 条命中打印、第 19 条与其同形条共用一次命中），
-  默认组只碰到其中 6 条（实跑打印 3 条"已披露"双边/单边命中 + 3 条"单边在范围"），其余 68 条默认组用不到。
+  `python scripts/i18n_template_diff.py --branch`（阶段 2 W7 登记后实测 **exit 0**；distinct 1003/954 →
+  披露后 933/933，`[strict]` 932 条整串相同 + 同一条拆分位点，`[A] 0 missing / 0 invented`、`[B] 0 difference`。它把本分支全部已迁页面（50 条页面组条目 /
+  48 个文件，含 W1 的六页、W2 的四页、W3 的四页、W4 的四页、W5 的六页、W6 的七页 + 一个 commonMain 接收器与 W7 的三页）× 全部 43 张表放进同一命题，`DISCLOSED_RESIDUALS` 登记表（现 83 条）整张受它复验
+  （实跑 82 条命中打印、第 19 条与其同形条共用一次命中），
+  默认组只碰到其中 6 条（实跑打印 3 条"已披露"双边/单边命中 + 3 条"单边在范围"），其余 77 条默认组用不到。
   W6 新增的 18 条 = 示例心愿 6 + 宠物阶段名 8（页面单边）+ 周报通知正文 4（**表侧单边**：原文只在
   `androidMain/platform/WeeklyReportReceiver.kt`，闸门只读 commonMain，见脚本登记条目的理由）。
+  W7 新增的 9 条 = 账本 note 3（页面单边）+ 定值字面量 4（`积分不足，需要 10/5 分` 页面单边 2 +
+  `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel）。
 - **`SettingsStrings` 这张表必须带两个页面 rev 才退 0**（表由 Task 5 与 Task 11 两批页面共同填写，
   其中语言分区那 5 条是 Task 5 为新功能新写、没有迁移前原文）：
   ```bash

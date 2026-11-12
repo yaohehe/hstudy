@@ -164,6 +164,15 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "parentProofReview.approvedMessage",      // "✅ Approved (points are issued via task check-in approval)"
     "parentProofReview.approveButton",        // "Approve (+5 points)"（迁移前「通过 (+5分)」照录）
     "childProofCapture.tipsBody",             // "… Proofs are kept for the record; points arrive after …"
+    // ---- W7 Task 2 宠物页 + 预览卡新增 4 条（英文原文逐条留在行尾注释里）。
+    // brief 猜了 statusHungry / moodHungry / careTip，但实际三条都不含 `point`
+    // （"… please feed me!" / "Tip: … visit often!"）；闭集是从整表静态英文**算出来**的
+    // （见上），最终命中 4 条。notEnoughPoints 与 feedButton/playButton/stageUnlock/scenePrice
+    // 等是函数型字段（Ruling 20-b），不在本清单。
+    "pet.shopHint",                           // "Spend points to give your pet a beautiful home!"
+    "pet.statusCritical",                     // "😵 I can't hold on… please save me with points (feed/play)!"
+    "pet.statusBored",                        // "😔 I'm so bored… spend some points playing with me!"
+    "pet.moodBored",                          // "😔 I'm so bored… spend some points playing with me!"
 )
 
 /**

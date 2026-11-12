@@ -12,6 +12,7 @@ import com.hstudy.app.data.repository.RewardRepository
 import com.hstudy.app.data.repository.TaskRepository
 import com.hstudy.app.ui.common.AchievementManager
 import com.hstudy.app.ui.pet.petScenes
+import com.hstudy.app.ui.pet.petStages
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -197,6 +198,19 @@ class PresetRegistryTest {
         }
         assertTrue(en.values.flatMap { it.toList() }.none { it in '一'..'鿿' }, "英文场景名残留汉字")
         assertEquals("My Little Home", en["home"])
+    }
+
+    @Test
+    fun petStageCopyCoversAndTranslatesAllStages() {
+        assertEquals(petStages.size, petStageCopy[DisplayLanguage.ZH]!!.size)
+        assertEquals(petStages.size, petStageCopy[DisplayLanguage.EN]!!.size)
+        petStages.forEachIndexed { i, stage ->
+            assertEquals(stage.name, petStageCopy[DisplayLanguage.ZH]!![i], "ZH 阶段名漂移：$i")
+            assertEquals(stage.name, localizedPetStageName(i, DisplayLanguage.ZH))
+            assertNotEquals(stage.name, localizedPetStageName(i, DisplayLanguage.EN), "疑似漏译：$i")
+        }
+        // 越界回落 canonical 索引 0
+        assertEquals(petStageCopy[DisplayLanguage.EN]!![0], localizedPetStageName(99, DisplayLanguage.EN))
     }
 
     @Test

@@ -331,3 +331,16 @@ val petSceneCopy: Map<DisplayLanguage, Map<String, String>> = mapOf(
         "rainbow" to "Rainbow Paradise",
     ),
 )
+
+/**
+ * 宠物成长阶段名（键控表，索引对齐 ui.pet.petStages）：petStages 保持 canonical 目录不动
+ * （显示目录、不入库）；渲染点用 [localizedPetStageName]。覆盖性由 PresetRegistryTest 钉住。
+ */
+val petStageCopy: Map<DisplayLanguage, List<String>> = mapOf(
+    DisplayLanguage.ZH to listOf("宠物蛋", "刚破壳", "小黄鸡", "小猫咪", "小狐狸", "小狮子", "独角兽", "小神龙"),
+    DisplayLanguage.EN to listOf("Pet Egg", "Just Hatched", "Little Chick", "Little Cat", "Little Fox", "Little Lion", "Unicorn", "Little Dragon"),
+)
+
+/** 阶段名按索引取词；越界回落索引 0（与 petStages 的默认阶段一致） */
+fun localizedPetStageName(index: Int, lang: DisplayLanguage): String =
+    petStageCopy[lang]?.getOrNull(index) ?: petStageCopy[lang]?.firstOrNull() ?: ""

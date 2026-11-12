@@ -4,7 +4,7 @@
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
-    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部四十二张表
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部四十三张表
     python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
         --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
@@ -21,10 +21,10 @@
   的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
   里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
   带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
-* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部四十二张**表"可用**。限制不来自表侧读取本身，而来自
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部四十三张**表"可用**。限制不来自表侧读取本身，而来自
   [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
-  [BRANCH_TABLES] 四十二张全读一遍。阶段 2 W6 那八张表是 W6 提交才落进历史的，所以**可用的最早
-  rev 就是 W6 提交本身**；在它之前（W5 收口 1e1e382、W4 收口 5d65128、W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
+  [BRANCH_TABLES] 四十三张全读一遍。阶段 2 W7 的 `PetStrings` 是 W7 提交才落进历史的，所以**可用的最早
+  rev 就是 W7 提交本身**；在它之前（W6 收口 a5cd674、W5 收口 1e1e382、W4 收口 5d65128、W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
   `git show …失败`。实测（W2 提交之前的工作树）：
       --tables-rev HEAD      -> **1**    `git show HEAD:…/ParentTaskManageStrings.kt 失败`（W2 四张表尚未进历史）
       --tables-rev 4d28c8e   -> **1**    `git show 4d28c8e:…/MistakeStrings.kt 失败`（W1 之前没有错题表）
@@ -69,7 +69,7 @@
   风险只在窄组：窄组没有供值的那张表，页面侧那一条本来就会被摘掉，表侧再冒出一条同形的就一并消失。
   同一机制的第二个实例：登记表里 `分` 有两条（Task 10 的双边 `分`/`分` 与只看表侧的 scoreUnit
   `None`/`分`），前者先 pop 掉表侧的 `分` 之后，后者在 `--branch` 组里恒报"（未用到）"——
-  它不是过期，是被前一条遮蔽（这就是整枝组"18 用到 / 1 未用到"里那 1 条的来历）。
+  它不是过期，是被前一条遮蔽（这就是整枝组"82 用到 / 1 未用到"里那 1 条的来历）。
   阶段二若要收掉这个口子，形状是给登记加"字段名"限定（`table_field="CommonStrings.cancelButton"`）
   而不是继续按值 pop。
 
@@ -150,6 +150,7 @@ W3_REV = "aae364e"        # 阶段 2 W3（家长积分/审批/奖励）迁移前
 W4_REV = "14c4d82"        # 阶段 2 W4（孩子商店/积分/抽奖/成就）迁移前 = W3 收口提交
 W5_REV = "5d65128"        # 阶段 2 W5（习惯/目标/日程）迁移前 = W4 收口提交
 W6_REV = "1e1e382"        # 阶段 2 W6（心愿/证明/报告/周报）迁移前 = W5 收口提交
+W7_REV = "a5cd674"        # 阶段 2 W7（宠物页/预览卡/成长报告阶段名）迁移前 = W6 收口提交
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -175,13 +176,15 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（W6 Task 6 复算，改登记时必须同时改这里）：表里现在 **74 条**
-# （7 条两侧同形 + 56 条只看页面 + 11 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **68** 条默认组用不到；`--branch` 组碰到 **73** 条、只剩 **1** 条报
+# 登记表的当前实况读数（W7 Task 4 复算，改登记时必须同时改这里）：表里现在 **83 条**
+# （9 条双侧成对 + 61 条只看页面 + 13 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **77** 条默认组用不到；`--branch` 组碰到 **82** 条、只剩 **1** 条报
 # "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
 # 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
 # W6 那批 18 条 = 示例心愿 6 + 宠物阶段名 8（都只看页面）+ 周报通知正文 4（**只看表侧**：原文只在
 # androidMain，闸门不读平台文件，理由逐条写在条目里）。
+# W7 那批 9 条 = 账本 note 3（页面单边）+ 定值字面量 4（`积分不足，需要 10/5 分` 页面单边 2 +
+# `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel）。
 #
 # 每个页面取**自己那批任务迁移前**的 rev（`git log --format=%h -1 <迁走它的那次提交>^`），
 # 同一页面被两批任务先后迁移的（ParentSettingsScreen）就带两个 rev，各取所需的一半原文。
@@ -244,6 +247,13 @@ BRANCH_PAGES = DEFAULT_PAGES + [
     (W6_REV, "com/hstudy/app/ui/proof/ChildProofCaptureScreen.kt"),
     (W6_REV, "com/hstudy/app/ui/proof/PhotoViewerScreen.kt"),
     (W6_REV, "com/hstudy/app/ui/parent/WeeklyReportReceiver.kt"),
+    # ---- 阶段 2 W7（宠物页/预览卡/成长报告阶段名，W7_REV）----
+    # PetScenes.kt **不登记**：它是数据目录（场景名/价格/emoji 的 canonical 源），页内不渲染
+    # 其中的字面量——场景名渲染走 petSceneCopy 注册表、由 PresetRegistryTest 钉覆盖。
+    # GrowthReportScreen 已有 W6 条目（上面），再追加 W7 条目取它回接阶段名前的原文。
+    (W7_REV, "com/hstudy/app/ui/pet/ChildPetScreen.kt"),
+    (W7_REV, "com/hstudy/app/ui/pet/PetState.kt"),
+    (W7_REV, "com/hstudy/app/ui/report/GrowthReportScreen.kt"),
 ]
 BRANCH_TABLES = [
     ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
@@ -265,6 +275,8 @@ BRANCH_TABLES = [
         "WeeklyTrackerStrings", "GrowthReportStrings",
         "ParentProofReviewStrings", "ChildProofCaptureStrings",
         "PhotoViewerStrings", "WeeklyReportStrings",
+        # ---- 阶段 2 W7（W7_REV）----
+        "PetStrings",
     )
 ]
 
@@ -275,8 +287,9 @@ BRANCH_TABLES = [
 # 所以表侧 `"$minutes$unit"`（塌成 `⟨$⟩⟨$⟩`，一个汉字都没有）根本不会出现在表侧集合里——
 # 那种位点只能登记页面侧那一条（单位来自另一张表），而"页面 `${if …}` 内部被子表达式吃掉的"
 # 那一条只能登记表侧。两边都登记的那条若只剩一边，就是登记过期，退 1。
-# 行号口径：W5 那批 reason 里的行号用迁移前 W5_REV（5d65128）坐标，W6 那批用 W6_REV（1e1e382）坐标
-# （同样是"迁移前"坐标，所以与 W5 同一套读法）；W1–W4 与更早的用写入时工作树坐标。
+# 行号口径：W5 那批 reason 里的行号用迁移前 W5_REV（5d65128）坐标，W6 那批用 W6_REV（1e1e382）坐标，
+# W7 那批用 W7_REV（a5cd674）坐标（同样是"迁移前"坐标，所以与 W5 同一套读法）；
+# W1–W4 与更早的用写入时工作树坐标。
 DISCLOSED_RESIDUALS = [
     {
         "page": "%s分" % VALUE, "table": None,
@@ -497,6 +510,37 @@ DISCLOSED_RESIDUALS = [
      "reason": "W6 T5：非空周分支原文 androidMain/platform/WeeklyReportReceiver.kt:44（逐字节搬入），同上"},
     {"page": None, "table": "📊 孩子本周学习周报已生成，打开 App 查看详细报告。",
      "reason": "W6 T5：catch 兜底原文 androidMain/platform/WeeklyReportReceiver.kt:53（逐字节搬入），同上"},
+    # ---- 阶段 2 W7：宠物页账本 note 与未参与模板塌缩的页面字面量 ----
+    # Ruling 25：三条 spendPoints 账本 note 保持 canonical 中文原样、不进 PetStrings（V-65）。
+    # 另四条是页面上的"定值数字"字面量（10/5 分、10分/5分按钮）：它们逐字节不进表，
+    # 表侧对应的是带 ⟨$⟩ 数值位的函数型模板，strict 层塌缩不了 10/5 这类裸数字，
+    # 所以只能在披露表里按"页面定值 → 表侧模板"或页面单边登记（同 W5「目标标题」的形态）。
+    # reason 里的行号用迁移前 W7_REV（a5cd674）坐标。
+    {"page": "喂养宠物", "table": None,
+     "reason": "W7 Ruling 25：ChildPetScreen.kt:210 spendPoints(10, \"喂养宠物\") 账本 note，值留在 Canonical 层"},
+    {"page": "陪宠物玩耍", "table": None,
+     "reason": "W7 Ruling 25：ChildPetScreen.kt:225 spendPoints(5, \"陪宠物玩耍\") 账本 note，值留在 Canonical 层"},
+    {"page": "购买宠物场景：⟨$⟩", "table": None,
+     "reason": "W7 Ruling 25：ChildPetScreen.kt:361 spendPoints(scene.price, \"购买宠物场景：${scene.name}\") "
+               "账本 note，内嵌 canonical 场景名，值留在 Canonical 层"},
+    # 两条 snackbar 定值：表侧 notEnoughPoints 的 ⟨$⟩ 数值位与场景购买处（:358 的
+    # "${scene.price}"）正常配对，所以这里只登记页面侧的两个定值，不能把表侧模板也摘掉。
+    {"page": "积分不足，需要 10 分", "table": None,
+     "reason": "W7：ChildPetScreen.kt:207 的定值字面量，迁移后走 PetStrings.notEnoughPoints(10)；"
+               "strict 层不塌裸数字 10，故与带 ⟨$⟩ 位的表模板不同形（表侧模板由 :358 的动态版本配对）"},
+    {"page": "积分不足，需要 5 分", "table": None,
+     "reason": "W7：ChildPetScreen.kt:222 的定值字面量，迁移后走 PetStrings.notEnoughPoints(5)，同上"},
+    {"page": "🍎 喂养 (10分)", "table": "🍎 喂养 (⟨$⟩分)",
+     "reason": "W7：ChildPetScreen.kt:218 的定值按钮字面量 → PetStrings.feedButton(cost)；"
+               "10 是裸数字、不被格式串塌缩，登记成页面定值与表侧模板成对"},
+    {"page": "🎾 陪玩 (5分)", "table": "🎾 陪玩 (⟨$⟩分)",
+     "reason": "W7：ChildPetScreen.kt:233 的定值按钮字面量 → PetStrings.playButton(cost)，同上"},
+    # 两条表侧单边：裸动词槽没有被任何页面字面量渲染（按钮走带价格的 feedButton/playButton，
+    # 见 PetStrings KDoc），页面侧没有同形原文，只能在表侧登记。
+    {"page": None, "table": "喂养",
+     "reason": "W7：PetStringsZh.feedLabel 裸动词槽（页面按钮走 feedButton，页内无同形原文），表侧单边"},
+    {"page": None, "table": "陪玩",
+     "reason": "W7：PetStringsZh.playLabel 裸动词槽（页面按钮走 playButton，页内无同形原文），表侧单边"},
 ]
 
 
@@ -712,9 +756,9 @@ def main():
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE,
-                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部四十二张表的 rev 可用**"
-                         "（本分支上阶段 2 W6 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
-                         " BRANCH_TABLES 四十二张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部四十三张表的 rev 可用**"
+                         "（本分支上阶段 2 W7 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 四十三张，早于它的 rev 直接 `git show … 失败` 退 1。"
                          "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)

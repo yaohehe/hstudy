@@ -6,10 +6,12 @@ package com.hstudy.app.i18n
  * 六个统计项 = 标签 + 数值 + 副标题；数值格式走本表函数（[lifetimeValue] / [balanceSub] /
  * [streakValue] / [todayValue] / [exchangesValue] / [wishesValue]），英文单复数用
  * [pointsWord] / [timesWord] 与行内 day/days（W5/W6 同型）。
- * [reportText] 是分享到家族群的整段文本（7 参）。`petStage` 实参来自页面 `petStageName(lifetime)`，
- * 其 8 个阶段名（宠物蛋 / 刚破壳 / 小黄鸡 / 小猫咪 / 小狐狸 / 小狮子 / 独角兽 / 小神龙）
- * **属 W7 的迁移范围**：本波 `petStageName()` 与阶段名列表原样不动，分享文本原样嵌入，
- * 因此英文分享文本里仍会出现中文阶段名（计划 Ruling 3，W6 披露项）。
+ * [reportText] 是分享到家族群的整段文本（7 参）。`petStage` 实参来自页面
+ * `petStageName(lifetime, displayLanguage)`：W7 起阶段名改由注册表 [localizedPetStageName]
+ * （键控表 [petStageCopy]）解析，`reportText` 原样嵌入**已本地化**的阶段名——中文态仍是
+ * 「宠物蛋 / 刚破壳 / 小黄鸡 / 小猫咪 / 小狐狸 / 小狮子 / 独角兽 / 小神龙」逐字节不变，
+ * 英文态分享文本里出现的是「Pet Egg / Just Hatched / … / Little Dragon」。W6 期间
+ * 「阶段名归 W7、英文分享文本里仍出现中文」的临时状态已由 W7 回接收口（V-67）。
  * 中文八行照录迁移前页面的 `buildString`（`appendLine` 逐行换行，末行也带 `"\n"`，
  * 中文态分享文本逐字节不变——等价闸门按行钉回页面原文）；英文按新文案单串给出（无尾随换行）。
  * 行尾注释里的 `:行号` 是迁移前 GrowthReportScreen.kt 的坐标。

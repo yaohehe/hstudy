@@ -17,6 +17,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPetStageName
+import com.hstudy.app.i18n.petSceneCopy
 import com.hstudy.app.ui.common.AmbientBackground
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -31,6 +35,8 @@ fun ChildPetScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.pet
+    val displayLanguage = LocalDisplayLanguage.current
     val lifetimePoints by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -88,12 +94,12 @@ fun ChildPetScreen(
     val todayTotal = tasks.size
     val condition = petCondition(fullness, mood)
     val moodMessage = when {
-        condition == PetCondition.CRITICAL -> "😵 我快支撑不住了…快用积分喂养/陪玩救救我！"
-        condition == PetCondition.HUNGRY && fullness < 30 -> "🥺 我好饿…快用积分喂喂我吧！"
-        condition == PetCondition.HUNGRY -> "😔 我好无聊…花点积分陪我玩一会儿吧！"
-        todayTotal > 0 && todayCompleted == todayTotal -> "🎉 今天任务全部完成啦，我为你骄傲！"
-        todayCompleted > 0 -> "💪 已经完成 $todayCompleted 个任务了，继续加油，我陪着你！"
-        else -> "🌞 新的一天开始啦，快去完成任务，让我开心一下吧！"
+        condition == PetCondition.CRITICAL -> strings.moodCritical
+        condition == PetCondition.HUNGRY && fullness < 30 -> strings.moodHungry
+        condition == PetCondition.HUNGRY -> strings.moodBored
+        todayTotal > 0 && todayCompleted == todayTotal -> strings.moodAllDone
+        todayCompleted > 0 -> strings.moodProgress(todayCompleted)
+        else -> strings.moodNewDay
     }
 
     // 宠物浮动 + 呼吸动画
@@ -110,7 +116,7 @@ fun ChildPetScreen(
     )
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🐾 我的学习宠物", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -146,14 +152,14 @@ fun ChildPetScreen(
                             Text(currentStage.emoji, fontSize = 110.sp)
                         }
                     }
-                    Text("${equippedScene.emoji} ${equippedScene.name}", style = MaterialTheme.typography.labelSmall,
+                    Text("${equippedScene.emoji} ${petSceneCopy[displayLanguage]?.get(equippedScene.id) ?: equippedScene.name}", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // 阶段名称
-                    Text(currentStage.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Lv.${stageIndex + 1} · 累计获得 $lifetimePoints 分", style = MaterialTheme.typography.bodySmall,
+                    Text(localizedPetStageName(stageIndex, displayLanguage), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(strings.levelLine(stageIndex + 1, lifetimePoints), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -168,9 +174,9 @@ fun ChildPetScreen(
                                 Text("⚠️", style = MaterialTheme.typography.titleLarge)
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    if (fullness <= 0 && mood <= 0) "宠物又饿又无聊，快要昏迷了！快用积分喂养和陪玩救它！"
-                                    else if (fullness <= 0) "宠物饿坏了！快用积分喂养它！"
-                                    else "宠物非常无聊！快用积分陪它玩！",
+                                    if (fullness <= 0 && mood <= 0) strings.criticalAll
+                                    else if (fullness <= 0) strings.criticalHungry
+                                    else strings.criticalBored,
                                     style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onErrorContainer
                                 )
@@ -193,46 +199,46 @@ fun ChildPetScreen(
                     // 照料区：饱食度/心情状态 + 喂养/陪玩按钮
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("❤️ 照顾宠物", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.careTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
                             // 饱食度
-                            CareStatBar(label = "🍎 饱食度", value = fullness, color = MaterialTheme.colorScheme.primary)
+                            CareStatBar(label = strings.fullnessLabel, value = fullness, color = MaterialTheme.colorScheme.primary)
                             // 心情
-                            CareStatBar(label = "😊 心情", value = mood, color = MaterialTheme.colorScheme.tertiary)
+                            CareStatBar(label = strings.moodLabel, value = mood, color = MaterialTheme.colorScheme.tertiary)
 
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Button(
                                     onClick = {
                                         if (totalPoints < 10) {
-                                            scope.launch { snackbarHostState.showSnackbar("积分不足，需要 10 分") }
+                                            scope.launch { snackbarHostState.showSnackbar(strings.notEnoughPoints(10)) }
                                         } else {
                                             scope.launch {
                                                 app.pointRepository.spendPoints(10, "喂养宠物")
                                                 fullness = (fullness + 25).coerceAtMost(100)
                                                 app.userPreferences.setPetCare(fullness, mood, today)
-                                                snackbarHostState.showSnackbar("🍎 宠物吃得很开心！")
+                                                snackbarHostState.showSnackbar(strings.fedMessage)
                                             }
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
-                                ) { Text("🍎 喂养 (10分)") }
+                                ) { Text(strings.feedButton(10)) }
                                 Button(
                                     onClick = {
                                         if (totalPoints < 5) {
-                                            scope.launch { snackbarHostState.showSnackbar("积分不足，需要 5 分") }
+                                            scope.launch { snackbarHostState.showSnackbar(strings.notEnoughPoints(5)) }
                                         } else {
                                             scope.launch {
                                                 app.pointRepository.spendPoints(5, "陪宠物玩耍")
                                                 mood = (mood + 25).coerceAtMost(100)
                                                 app.userPreferences.setPetCare(fullness, mood, today)
-                                                snackbarHostState.showSnackbar("🎾 宠物玩得很开心！")
+                                                snackbarHostState.showSnackbar(strings.playedMessage)
                                             }
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
-                                ) { Text("🎾 陪玩 (5分)") }
+                                ) { Text(strings.playButton(5)) }
                             }
-                            Text("提示：宠物每天没人照顾会饿、会无聊哦，记得常来看看它～",
+                            Text(strings.careTip,
                                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -243,7 +249,7 @@ fun ChildPetScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (isMaxLevel) {
-                                Text("👑 已满级！你是最棒的学习小主人！", style = MaterialTheme.typography.titleSmall,
+                                Text(strings.maxLevel, style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             } else {
                                 Row(
@@ -251,7 +257,7 @@ fun ChildPetScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("进化进度", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Text(strings.progressTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 }
@@ -260,7 +266,7 @@ fun ChildPetScreen(
                                     modifier = Modifier.fillMaxWidth().height(12.dp),
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
-                                Text("再获得 $pointsToNext 分，就能进化成 ${nextStage!!.emoji} ${nextStage.name} 啦！",
+                                Text(strings.nextStage(pointsToNext, nextStage!!.emoji, localizedPetStageName(stageIndex + 1, displayLanguage)),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -269,7 +275,7 @@ fun ChildPetScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // 成长之路：所有阶段一览
-                    Text("🌟 成长之路", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                    Text(strings.growthPathTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                     petStages.forEachIndexed { i, stage ->
@@ -297,14 +303,14 @@ fun ChildPetScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(stage.name, style = MaterialTheme.typography.titleSmall,
+                                    Text(localizedPetStageName(i, displayLanguage), style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                                         color = if (unlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("${stage.requiredPoints} 分解锁", style = MaterialTheme.typography.labelSmall,
+                                    Text(strings.stageUnlock(stage.requiredPoints), style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 if (isCurrent) {
-                                    Text("当前", style = MaterialTheme.typography.labelSmall,
+                                    Text(strings.currentBadge, style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 } else if (unlocked) {
                                     Text("✓", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -316,10 +322,10 @@ fun ChildPetScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // 装饰商店：用积分给宠物购买/装扮生活场景
-                    Text("🛍️ 宠物装饰商店", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                    Text(strings.shopTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("用积分给宠物换一个漂亮的家吧！", style = MaterialTheme.typography.bodySmall,
+                    Text(strings.shopHint, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                     petScenes.forEach { scene ->
@@ -339,34 +345,34 @@ fun ChildPetScreen(
                                 Text(scene.emoji, fontSize = 26.sp, modifier = Modifier.width(40.dp), textAlign = TextAlign.Center)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(scene.name, style = MaterialTheme.typography.titleSmall,
+                                    Text(petSceneCopy[displayLanguage]?.get(scene.id) ?: scene.name, style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (equipped) FontWeight.Bold else FontWeight.Normal)
                                     Text(
-                                        if (scene.price == 0) "默认场景" else "${scene.price} 积分",
+                                        if (scene.price == 0) strings.defaultScene else strings.scenePrice(scene.price),
                                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 when {
-                                    equipped -> Text("已装扮", style = MaterialTheme.typography.labelSmall,
+                                    equipped -> Text(strings.equippedBadge, style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     owned -> FilledTonalButton(
                                         onClick = { scope.launch { app.userPreferences.setEquippedScene(scene.id) } },
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                                    ) { Text("装扮", style = MaterialTheme.typography.labelMedium) }
+                                    ) { Text(strings.equipButton, style = MaterialTheme.typography.labelMedium) }
                                     else -> Button(
                                         onClick = {
                                             if (totalPoints < scene.price) {
-                                                scope.launch { snackbarHostState.showSnackbar("积分不足，需要 ${scene.price} 分") }
+                                                scope.launch { snackbarHostState.showSnackbar(strings.notEnoughPoints(scene.price)) }
                                             } else {
                                                 scope.launch {
                                                     app.pointRepository.spendPoints(scene.price, "购买宠物场景：${scene.name}")
                                                     app.userPreferences.addOwnedScene(scene.id)
                                                     app.userPreferences.setEquippedScene(scene.id)
-                                                    snackbarHostState.showSnackbar("🎉 购买成功，已装扮${scene.name}！")
+                                                    snackbarHostState.showSnackbar(strings.purchaseSuccess(petSceneCopy[displayLanguage]?.get(scene.id) ?: scene.name))
                                                 }
                                             }
                                         },
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                                    ) { Text("购买", style = MaterialTheme.typography.labelMedium) }
+                                    ) { Text(strings.buyButton, style = MaterialTheme.typography.labelMedium) }
                                 }
                             }
                         }
