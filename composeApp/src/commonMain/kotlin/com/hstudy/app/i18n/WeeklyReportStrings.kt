@@ -45,8 +45,8 @@ val WeeklyReportStringsZh = WeeklyReportStrings(
 )
 
 val WeeklyReportStringsEn = WeeklyReportStrings(
-    title = "Weekly learning report",
-    body = "Your child's weekly learning report is ready — take a look!",
+    title = "Weekly report",
+    body = "Your child's weekly report is ready — take a look!",
     summary = { checkins, focusMin, reviewCount, earned ->
         "📊 Your child's week: $checkins check-ins · $focusMin min focused · " +
             "$reviewCount mistakes reviewed · $earned ${pointsWord(earned)} earned"

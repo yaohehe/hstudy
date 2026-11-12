@@ -71,8 +71,8 @@ val ChildWishGoalStringsZh = ChildWishGoalStrings(
 )
 
 val ChildWishGoalStringsEn = ChildWishGoalStrings(
-    title = "🐷 Wish Jar",
-    introTitle = "💡 What is the Wish Jar?",
+    title = "🐷 Wish Pool",
+    introTitle = "💡 What is the Wish Pool?",
     introBody = "Set a big goal and save your points into it bit by bit — once you've saved enough, you can redeem it! Learn to wait patiently and enjoy a bigger surprise.",
     emptyTitle = "No wishes yet",
     emptyHint = "Ask your parents to set up a wish for you!",

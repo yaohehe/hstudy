@@ -42,6 +42,11 @@ class WishCopyTest {
             zh.confirmDeposit to en.confirmDeposit,
             zh.insufficient to en.insufficient,
         )
+        // 静态标题两语逐字钉死：EN 用阶段 1 锁定术语 Wish Pool（不是 Wish Jar）
+        assertEquals("🐷 心愿存钱罐", zh.title)
+        assertEquals("🐷 Wish Pool", en.title)
+        assertEquals("💡 什么是心愿存钱罐？", zh.introTitle)
+        assertEquals("💡 What is the Wish Pool?", en.introTitle)
     }
 
     @Test
@@ -362,6 +367,11 @@ class WishCopyTest {
             zh.encourageGood to en.encourageGood,
             zh.fallback to en.fallback,
         )
+        // 阶段 1 术语表：周报 = Weekly report（与设置页 weeklyReportTitle 同词）
+        assertEquals("每周学习周报", zh.title)
+        assertEquals("Weekly report", en.title)
+        assertEquals("本周学习周报已生成，来看看孩子的学习情况吧！", zh.body)
+        assertEquals("Your child's weekly report is ready — take a look!", en.body)
     }
 
     /**
@@ -417,5 +427,8 @@ class WishCopyTest {
         assertEquals("Cancel", AppStringsEn.common.cancelButton)
         assertEquals("删除", AppStringsZh.common.deleteContentDescription)
         assertEquals("Delete", AppStringsEn.common.deleteContentDescription)
+        // W6：心愿页标题与孩子首页入口共用功能名 Wish Pool（阶段 1 锁定术语）
+        assertEquals("Wish Pool", AppStringsEn.childHome.entryWishBankTitle)
+        assertTrue(AppStringsEn.childWishGoal.title.contains("Wish Pool"))
     }
 }
