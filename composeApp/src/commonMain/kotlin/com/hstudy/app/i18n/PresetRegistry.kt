@@ -228,6 +228,27 @@ val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     preset("未选择文件", "No file selected"),
     preset("不是有效的备份文件", "Not a valid backup file"),
     preset("备份内容损坏", "The backup content is corrupted"),
+    // ===== W5 页面内预设目录（16 条新增：日常目标 5 + 复盘标签 6 + 日程示例 5）=====
+    // 阅读30分钟 / 英语听说训练 / 整理笔记 与既有任务标题共享 canonical，不重复收录
+    // （同 key 二次 preset 在 mapOf 末位覆盖，会静默改写既有页面英文——去重裁决）。
+    // 这些 canonical 会被落库（日程示例写入 daily_schedules；复盘标签写入偏好）
+    // 或进入积分账本 description（每日目标），渲染/发通知时才本地化（Ruling 25）。
+    preset("复习错题", "Review mistakes"),
+    preset("专注2个番茄钟", "Focus for 2 Pomodoros"),
+    preset("完成作业", "Finish homework"),
+    preset("预习新课", "Preview new lessons"),
+    preset("体育锻炼", "Exercise"),
+    preset("今天很专注", "Focused today"),
+    preset("完成了难题", "Solved a hard problem"),
+    preset("复习了错题", "Reviewed mistakes"),
+    preset("有点分心", "A bit distracted"),
+    preset("时间不够用", "Not enough time"),
+    preset("明天会更好", "Tomorrow will be better"),
+    preset("起床啦", "Time to get up"),
+    preset("吃早餐", "Breakfast"),
+    preset("开始写作业", "Homework time"),
+    preset("阅读时间", "Reading time"),
+    preset("准备睡觉", "Getting ready for bed"),
 )
 
 /**

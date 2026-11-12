@@ -39,6 +39,12 @@ data class AppStrings(
     val childLuckyDraw: ChildLuckyDrawStrings,
     val childPoints: ChildPointsStrings,
     val childAchievements: ChildAchievementsStrings,
+    val childDailyTarget: ChildDailyTargetStrings,
+    val parentSchedule: ParentScheduleStrings,
+    val scheduleAlarm: ScheduleAlarmStrings,
+    val childHabitChallenge: ChildHabitChallengeStrings,
+    val childGoalTracker: ChildGoalTrackerStrings,
+    val childScheduleTimeline: ChildScheduleTimelineStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -70,6 +76,12 @@ val AppStringsZh = AppStrings(
     childLuckyDraw = ChildLuckyDrawStringsZh,
     childPoints = ChildPointsStringsZh,
     childAchievements = ChildAchievementsStringsZh,
+    childDailyTarget = ChildDailyTargetStringsZh,
+    parentSchedule = ParentScheduleStringsZh,
+    scheduleAlarm = ScheduleAlarmStringsZh,
+    childHabitChallenge = ChildHabitChallengeStringsZh,
+    childGoalTracker = ChildGoalTrackerStringsZh,
+    childScheduleTimeline = ChildScheduleTimelineStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -100,6 +112,12 @@ val AppStringsEn = AppStrings(
     childLuckyDraw = ChildLuckyDrawStringsEn,
     childPoints = ChildPointsStringsEn,
     childAchievements = ChildAchievementsStringsEn,
+    childDailyTarget = ChildDailyTargetStringsEn,
+    parentSchedule = ParentScheduleStringsEn,
+    scheduleAlarm = ScheduleAlarmStringsEn,
+    childHabitChallenge = ChildHabitChallengeStringsEn,
+    childGoalTracker = ChildGoalTrackerStringsEn,
+    childScheduleTimeline = ChildScheduleTimelineStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

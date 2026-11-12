@@ -28,6 +28,7 @@ import kotlin.test.assertTrue
  * - FamilySyncHelper/BackupHelper 的字面量是私有代码路径，无法程序化读取：按 2026-11-10 源码
  *   逐字钉住（行号见断言内注释）。本阶段 data/ 零改动；未来若获准改这些字面量，
  *   必须同步更新此处与注册表——这是该组唯一的漂移守卫，诚实声明其上限。
+ * - W5 起的页面内预设目录组由本测试按源码字面量逐字钉住（与 deviceFallbacks/diagnostics 同法）。
  */
 class PresetRegistryTest {
 
@@ -76,8 +77,14 @@ class PresetRegistryTest {
             "数据库文件尚未创建，暂时无法备份", "没有找到备份文件", "未选择文件",
             "不是有效的备份文件", "备份内容损坏",
         )
+        val w5PageLocalPresets = setOf( // PresetRegistry.kt「W5 页面内预设目录」组 16 条新增（目标 5 + 标签 6 + 日程示例 5）
+            // 阅读30分钟 / 英语听说训练 / 整理笔记 与任务标题种子组共享 canonical，不计入本组
+            "复习错题", "专注2个番茄钟", "完成作业", "预习新课", "体育锻炼",
+            "今天很专注", "完成了难题", "复习了错题", "有点分心", "时间不够用", "明天会更好",
+            "起床啦", "吃早餐", "开始写作业", "阅读时间", "准备睡觉",
+        )
         val expected = taskSeedCanonicals() + rewardTexts + rewardCategories + defaultCategory +
-            mistakeErrorTypes.toSet() + difficultyLabels + deviceFallbacks + diagnostics
+            mistakeErrorTypes.toSet() + difficultyLabels + deviceFallbacks + diagnostics + w5PageLocalPresets
         val missing = expected - presetTextRegistry.keys
         val extra = presetTextRegistry.keys - expected
         assertTrue(
@@ -184,6 +191,41 @@ class PresetRegistryTest {
         }
         assertTrue(en.values.flatMap { it.toList() }.none { it in '一'..'鿿' }, "英文场景名残留汉字")
         assertEquals("My Little Home", en["home"])
+    }
+
+    @Test
+    fun w5PageLocalPresetsResolvePerLanguage() {
+        // W5 页面内预设目录：日常目标 8 + 复盘标签 6 + 日程示例 5（canonical 会被落库/进账本）
+        // 其中「阅读30分钟」「英语听说训练」「整理笔记」与既有任务标题共享 canonical：
+        // 注册表不重复收录，英文必须沿用任务标题种子组既有译文（去重裁决，防末位覆盖改写存量页面）。
+        val sharedWithTaskTitles = mapOf(
+            "阅读30分钟" to "Read for 30 minutes",
+            "英语听说训练" to "English listening and speaking practice",
+            "整理笔记" to "Organize class notes",
+        )
+        val presets = mapOf(
+            "复习错题" to "Review mistakes",
+            "专注2个番茄钟" to "Focus for 2 Pomodoros",
+            "完成作业" to "Finish homework",
+            "预习新课" to "Preview new lessons",
+            "体育锻炼" to "Exercise",
+            "今天很专注" to "Focused today",
+            "完成了难题" to "Solved a hard problem",
+            "复习了错题" to "Reviewed mistakes",
+            "有点分心" to "A bit distracted",
+            "时间不够用" to "Not enough time",
+            "明天会更好" to "Tomorrow will be better",
+            "起床啦" to "Time to get up",
+            "吃早餐" to "Breakfast",
+            "开始写作业" to "Homework time",
+            "阅读时间" to "Reading time",
+            "准备睡觉" to "Getting ready for bed",
+        )
+        assertEquals(19, presets.size + sharedWithTaskTitles.size, "W5 页面内预设 canonical 共 19 条（16 新增 + 3 共享）")
+        for ((zh, en) in sharedWithTaskTitles + presets) {
+            assertEquals(zh, localizedPresetText(zh, DisplayLanguage.ZH), "ZH 必须恒等：$zh")
+            assertEquals(en, localizedPresetText(zh, DisplayLanguage.EN), "EN 译文漂移：$zh")
+        }
     }
 }
 

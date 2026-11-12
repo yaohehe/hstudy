@@ -4,7 +4,7 @@
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
-    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部二十八张表
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部三十四张表
     python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
         --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
@@ -21,10 +21,10 @@
   的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
   里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
   带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
-* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部二十八张**表"可用**。限制不来自表侧读取本身，而来自
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部三十四张**表"可用**。限制不来自表侧读取本身，而来自
   [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
-  [BRANCH_TABLES] 二十八张全读一遍。阶段 2 W4 那四张孩子端表是 W4 提交才落进历史的，所以**可用的最早
-  rev 就是 W4 提交本身**；在它之前（W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
+  [BRANCH_TABLES] 三十四张全读一遍。阶段 2 W5 那六张表是 W5 提交才落进历史的，所以**可用的最早
+  rev 就是 W5 提交本身**；在它之前（W4 收口 5d65128、W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
   `git show …失败`。实测（W2 提交之前的工作树）：
       --tables-rev HEAD      -> **1**    `git show HEAD:…/ParentTaskManageStrings.kt 失败`（W2 四张表尚未进历史）
       --tables-rev 4d28c8e   -> **1**    `git show 4d28c8e:…/MistakeStrings.kt 失败`（W1 之前没有错题表）
@@ -148,6 +148,7 @@ W1_REV = "4d28c8e"        # 阶段 2 W1（错题域）迁移前 = v3.1.0 发布�
 W2_REV = "5deed68"        # 阶段 2 W2（家长任务管理）迁移前 = W1 收口提交
 W3_REV = "aae364e"        # 阶段 2 W3（家长积分/审批/奖励）迁移前 = W2 收口提交
 W4_REV = "14c4d82"        # 阶段 2 W4（孩子商店/积分/抽奖/成就）迁移前 = W3 收口提交
+W5_REV = "5d65128"        # 阶段 2 W5（习惯/目标/日程）迁移前 = W4 收口提交
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -173,9 +174,9 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（W4 Task 5 复算，改登记时必须同时改这里）：表里现在 **35 条**
-# （7 条两侧同形 + 21 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **29** 条默认组用不到；`--branch` 组碰到 **34** 条、只剩 **1** 条报
+# 登记表的当前实况读数（W5 Task 7 复算，改登记时必须同时改这里）：表里现在 **56 条**
+# （7 条两侧同形 + 42 条只看页面 + 7 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **50** 条默认组用不到；`--branch` 组碰到 **55** 条、只剩 **1** 条报
 # "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
 # 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
 #
@@ -220,6 +221,13 @@ BRANCH_PAGES = DEFAULT_PAGES + [
     (W4_REV, "com/hstudy/app/ui/child/ChildLuckyDrawScreen.kt"),
     (W4_REV, "com/hstudy/app/ui/child/ChildPointsScreen.kt"),
     (W4_REV, "com/hstudy/app/ui/child/ChildAchievementsScreen.kt"),
+    # ---- 阶段 2 W5（习惯/目标/日程，W5_REV）----
+    (W5_REV, "com/hstudy/app/ui/target/ChildDailyTargetScreen.kt"),
+    (W5_REV, "com/hstudy/app/ui/schedule/ParentScheduleManageScreen.kt"),
+    (W5_REV, "com/hstudy/app/ui/schedule/ScheduleAlarmHelper.kt"),
+    (W5_REV, "com/hstudy/app/ui/habit/ChildHabitChallengeScreen.kt"),
+    (W5_REV, "com/hstudy/app/ui/habit/ChildGoalTrackerScreen.kt"),
+    (W5_REV, "com/hstudy/app/ui/schedule/ChildScheduleTimelineScreen.kt"),
 ]
 BRANCH_TABLES = [
     ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
@@ -234,6 +242,8 @@ BRANCH_TABLES = [
         "ParentRewardEditStrings", "ParentRewardManageStrings",
         "ChildRewardStoreStrings", "ChildLuckyDrawStrings",
         "ChildPointsStrings", "ChildAchievementsStrings",
+        "ChildDailyTargetStrings", "ParentScheduleStrings", "ScheduleAlarmStrings",
+        "ChildHabitChallengeStrings", "ChildGoalTrackerStrings", "ChildScheduleTimelineStrings",
     )
 ]
 
@@ -374,6 +384,35 @@ DISCLOSED_RESIDUALS = [
      "reason": "W4 Ruling 25：ChildLuckyDrawScreen.kt:117 adjustPoints 账本 note，值留在 Canonical 层"},
     {"page": "兑换：⟨$⟩", "table": None,
      "reason": "W4 Ruling 25：ChildRewardStoreScreen.kt:231 spendPoints 账本 note，值留在 Canonical 层"},
+    # ---- 阶段 2 W5：页面内预设 canonical 与账本/成就字面量（页面单边；值不进表，渲染走注册表/localizedPresetText）----
+    # 日常目标标题 8 里只有 5 条是页面单边：「复习错题」「完成作业」「预习新课」与 PomodoroStrings 的
+    # 规范专注目标同值同义、两侧同形自然配平（同 W3「其他」与 MistakeStrings.subjectOther 的先例），
+    # 登记反而会把页面侧摘掉、让表侧报 invented，所以不登记——那三条继续由整枝组实际比对。
+    # 复盘标签 6：落偏好 canonical（注册表 W5 组收录译文，渲染时本地化）。
+    {"page": "专注2个番茄钟", "table": None, "reason": "W5 Ruling 25：ChildDailyTargetScreen.kt:23 dailyTargetDefs 标题，账本 description 用 canonical"},
+    {"page": "阅读30分钟", "table": None, "reason": "W5 Ruling 25：同上（dailyTargetDefs）"},
+    {"page": "英语听说训练", "table": None, "reason": "W5 Ruling 25：同上（dailyTargetDefs）"},
+    {"page": "整理笔记", "table": None, "reason": "W5 Ruling 25：同上（dailyTargetDefs）"},
+    {"page": "体育锻炼", "table": None, "reason": "W5 Ruling 25：同上（dailyTargetDefs）"},
+    {"page": "今天很专注", "table": None, "reason": "W5 Ruling 25：ChildDailyTargetScreen.kt:310 tagOptions 落偏好 canonical"},
+    {"page": "完成了难题", "table": None, "reason": "W5 Ruling 25：同上（tagOptions）"},
+    {"page": "复习了错题", "table": None, "reason": "W5 Ruling 25：同上（tagOptions）"},
+    {"page": "有点分心", "table": None, "reason": "W5 Ruling 25：同上（tagOptions）"},
+    {"page": "时间不够用", "table": None, "reason": "W5 Ruling 25：同上（tagOptions）"},
+    {"page": "明天会更好", "table": None, "reason": "W5 Ruling 25：同上（tagOptions）"},
+    # 账本 description 模板（canonical，含目标标题/挑战标题）
+    {"page": "完成每日目标：⟨$⟩", "table": None, "reason": "W5 Ruling 25：ChildDailyTargetScreen.kt:215 checkIn description（账本）"},
+    {"page": "每日学习目标全部达成奖励", "table": None, "reason": "W5 Ruling 25：ChildDailyTargetScreen.kt:225 checkIn description（账本）"},
+    {"page": "习惯打卡: ⟨$⟩", "table": None, "reason": "W5 Ruling 25：ChildHabitChallengeScreen.kt:87/:102 checkIn description（账本）"},
+    # 日程示例标题 5：落库 canonical（注册表 W5 组收录译文）
+    {"page": "起床啦", "table": None, "reason": "W5 Ruling 25：ParentScheduleManageScreen.kt:81 示例日程落库标题"},
+    {"page": "吃早餐", "table": None, "reason": "W5 Ruling 25：同上（示例日程）"},
+    {"page": "开始写作业", "table": None, "reason": "W5 Ruling 25：同上（示例日程）"},
+    {"page": "阅读时间", "table": None, "reason": "W5 Ruling 25：同上（示例日程）"},
+    {"page": "准备睡觉", "table": None, "reason": "W5 Ruling 25：同上（示例日程）"},
+    # 成就解锁 canonical（tryUnlockAchievement 写库参数）
+    {"page": "习惯达人", "table": None, "reason": "W5 Ruling 25：ChildHabitChallengeScreen.kt:94 tryUnlockAchievement 写库参数（achievementCopy canonical）"},
+    {"page": "完成一个21天挑战", "table": None, "reason": "W5 Ruling 25：同上（成就描述）"},
 ]
 
 
@@ -589,9 +628,9 @@ def main():
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE,
-                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部二十八张表的 rev 可用**"
-                         "（本分支上阶段 2 W4 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
-                         " BRANCH_TABLES 二十八张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部三十四张表的 rev 可用**"
+                         "（本分支上阶段 2 W5 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 三十四张，早于它的 rev 直接 `git show … 失败` 退 1。"
                          "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)

@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.DailyScheduleEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.AmbientBackground
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -29,6 +32,7 @@ fun ChildScheduleTimelineScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.childScheduleTimeline
     val app = AppGraph
     val schedules by app.scheduleRepository.getEnabledSchedules().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -44,7 +48,7 @@ fun ChildScheduleTimelineScreen(
     }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "📅 今日时间线", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             AmbientBackground()
@@ -65,9 +69,9 @@ fun ChildScheduleTimelineScreen(
                             Text("🕐", fontSize = 28.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("现在 ${com.hstudy.app.ui.dt.strFormat("%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))}",
+                                Text(strings.nowLabel(com.hstudy.app.ui.dt.strFormat("%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))),
                                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("看看今天还有哪些安排吧～", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.subtitle, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -83,8 +87,8 @@ fun ChildScheduleTimelineScreen(
                             ) {
                                 Text("🎈", fontSize = 48.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("今天没有日程安排", style = MaterialTheme.typography.titleMedium)
-                                Text("轻松的一天，自由安排吧！", style = MaterialTheme.typography.bodySmall,
+                                Text(strings.emptyTitle, style = MaterialTheme.typography.titleMedium)
+                                Text(strings.emptyHint, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -120,6 +124,8 @@ private fun TimelineItem(
     linkedTaskTitle: String?,
     state: TimelineState
 ) {
+    val displayLanguage = LocalDisplayLanguage.current
+    val strings = LocalStrings.current.childScheduleTimeline
     val (dotColor, cardColor) = when (state) {
         TimelineState.PAST -> MaterialTheme.colorScheme.outline to MaterialTheme.colorScheme.surfaceVariant
         TimelineState.CURRENT -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.primaryContainer
@@ -156,10 +162,10 @@ private fun TimelineItem(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(schedule.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                        Text(localizedPresetText(schedule.title, displayLanguage), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                         if (state == TimelineState.CURRENT) {
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("👈 现在", style = MaterialTheme.typography.labelSmall,
+                            Text(strings.nowBadge, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         } else if (state == TimelineState.PAST) {
                             Spacer(modifier = Modifier.width(6.dp))
@@ -167,7 +173,7 @@ private fun TimelineItem(
                         }
                     }
                     if (linkedTaskTitle != null) {
-                        Text("🔗 $linkedTaskTitle · 完成后记得打卡哦", style = MaterialTheme.typography.bodySmall,
+                        Text(strings.linkedTaskLine(localizedPresetText(linkedTaskTitle, displayLanguage)), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary)
                     }
                 }

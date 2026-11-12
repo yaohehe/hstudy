@@ -131,6 +131,8 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "childPoints.balanceTitle",               // "Total points balance"
     "childPoints.recordsTitle",               // "Point history"
     "childPoints.emptyRecords",               // "No point records yet — go check in!"
+    // ---- W5 Task 2 每日目标页新增 1 条（英文原文逐条留在行尾注释里）。
+    "childDailyTarget.allDoneBonus",          // "🎉 All goals achieved! Bonus +10 points (awaiting approval)"
 )
 
 /**

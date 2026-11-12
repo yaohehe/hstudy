@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.DailyScheduleEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -28,6 +31,8 @@ fun ParentScheduleManageScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.parentSchedule
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -38,11 +43,11 @@ fun ParentScheduleManageScreen(
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "⏰ 每日日程", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "添加日程")
+                Icon(Icons.Filled.Add, contentDescription = strings.addSchedule)
             }
         }
     ) { padding ->
@@ -56,7 +61,7 @@ fun ParentScheduleManageScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                     ) {
-                        Text("💡 为孩子设置每日时间日程（如 7:00 起床、16:00 写作业），到点自动通知提醒。可关联具体任务，引导孩子打卡。",
+                        Text(strings.hint,
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp))
                     }
 
@@ -71,8 +76,8 @@ fun ParentScheduleManageScreen(
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Text("⏰", fontSize = 48.sp)
-                                Text("还没有日程安排", style = MaterialTheme.typography.titleMedium)
-                                Text("点击下方按钮一键载入示例日程（起床/早餐/写作业/睡觉等），再按需调整时间即可。",
+                                Text(strings.emptyTitle, style = MaterialTheme.typography.titleMedium)
+                                Text(strings.emptyHint,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Button(onClick = {
@@ -88,10 +93,10 @@ fun ParentScheduleManageScreen(
                                             val id = app.scheduleRepository.addSchedule(s)
                                             ScheduleAlarmHelper.schedule(s.copy(id = id))
                                         }
-                                        snackbarHostState.showSnackbar("✅ 已载入示例日程")
+                                        snackbarHostState.showSnackbar(strings.samplesLoaded)
                                     }
-                                }) { Text("✨ 一键载入示例日程") }
-                                Text("或点击右下角 + 自行添加", style = MaterialTheme.typography.labelSmall,
+                                }) { Text(strings.loadSamplesButton) }
+                                Text(strings.addOwnHint, style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -115,7 +120,7 @@ fun ParentScheduleManageScreen(
                                 scope.launch {
                                     ScheduleAlarmHelper.cancel(schedule)
                                     app.scheduleRepository.deleteSchedule(schedule.id)
-                                    snackbarHostState.showSnackbar("已删除「${schedule.title}」")
+                                    snackbarHostState.showSnackbar(strings.removedMessage(localizedPresetText(schedule.title, displayLanguage)))
                                 }
                             }
                         )
@@ -138,7 +143,7 @@ fun ParentScheduleManageScreen(
                     if (newSchedule.isEnabled) {
                         ScheduleAlarmHelper.schedule(newSchedule.copy(id = id))
                     }
-                    snackbarHostState.showSnackbar("✅ 已添加日程")
+                    snackbarHostState.showSnackbar(strings.addedMessage)
                 }
             }
         )
@@ -156,7 +161,7 @@ fun ParentScheduleManageScreen(
                     app.scheduleRepository.updateSchedule(updated)
                     ScheduleAlarmHelper.cancel(schedule)
                     if (updated.isEnabled) ScheduleAlarmHelper.schedule(updated)
-                    snackbarHostState.showSnackbar("✅ 已更新日程")
+                    snackbarHostState.showSnackbar(strings.updatedMessage)
                 }
             }
         )
@@ -171,6 +176,10 @@ private fun ScheduleManageCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = LocalStrings.current.parentSchedule
+    val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -189,19 +198,19 @@ private fun ScheduleManageCard(
                     Text(schedule.time, style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(schedule.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                    Text(localizedPresetText(schedule.title, displayLanguage), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                 }
                 if (linkedTaskTitle != null) {
-                    Text("🔗 关联任务：$linkedTaskTitle", style = MaterialTheme.typography.bodySmall,
+                    Text(strings.linkedTaskLabel(localizedPresetText(linkedTaskTitle, displayLanguage)), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary)
                 }
-                Text(repeatDaysText(schedule.repeatDays), style = MaterialTheme.typography.labelSmall,
+                Text(strings.repeatDays(schedule.repeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Switch(checked = schedule.isEnabled, onCheckedChange = onToggle)
             IconButton(onClick = onEdit) { Text("✏️") }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Filled.Delete, contentDescription = common.deleteContentDescription, tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -214,6 +223,11 @@ private fun ScheduleEditDialog(
     onDismiss: () -> Unit,
     onSaved: (DailyScheduleEntity) -> Unit
 ) {
+    val strings = LocalStrings.current.parentSchedule
+    val common = LocalStrings.current.common
+    val taskEdit = LocalStrings.current.parentTaskEdit
+    val displayLanguage = LocalDisplayLanguage.current
+
     var hour by remember { mutableIntStateOf(schedule?.time?.split(":")?.getOrNull(0)?.toIntOrNull() ?: 7) }
     var minute by remember { mutableIntStateOf(schedule?.time?.split(":")?.getOrNull(1)?.toIntOrNull() ?: 0) }
     var title by remember { mutableStateOf(schedule?.title ?: "") }
@@ -225,12 +239,12 @@ private fun ScheduleEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (schedule == null) "添加日程" else "编辑日程") },
+        title = { Text(if (schedule == null) strings.addSchedule else strings.editTitle) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // 时间选择（步进器，避免文本输入光标问题）
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("时间", style = MaterialTheme.typography.labelMedium)
+                    Text(strings.timeLabel, style = MaterialTheme.typography.labelMedium)
                     com.hstudy.app.ui.common.HourMinuteStepper(
                         hour = hour,
                         minute = minute,
@@ -238,7 +252,7 @@ private fun ScheduleEditDialog(
                     )
                 }
                 OutlinedTextField(value = title, onValueChange = { title = it },
-                    label = { Text("日程标题（如：起床、写作业）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    label = { Text(strings.titleFieldLabel) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
                 // 图标
                 androidx.compose.foundation.layout.FlowRow(
@@ -252,25 +266,25 @@ private fun ScheduleEditDialog(
                 }
 
                 // 关联任务
-                Text("关联任务（可选）", style = MaterialTheme.typography.labelMedium)
+                Text(strings.linkedTaskOptional, style = MaterialTheme.typography.labelMedium)
                 var taskExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = taskExpanded, onExpandedChange = { taskExpanded = it }) {
                     OutlinedTextField(
-                        value = tasks.find { it.id == linkedTaskId }?.title ?: "无",
+                        value = tasks.find { it.id == linkedTaskId }?.title?.let { localizedPresetText(it, displayLanguage) } ?: strings.none,
                         onValueChange = {}, readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = taskExpanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = taskExpanded, onDismissRequest = { taskExpanded = false }) {
-                        DropdownMenuItem(text = { Text("无") }, onClick = { linkedTaskId = null; taskExpanded = false })
+                        DropdownMenuItem(text = { Text(strings.none) }, onClick = { linkedTaskId = null; taskExpanded = false })
                         tasks.forEach { t ->
-                            DropdownMenuItem(text = { Text(t.title) }, onClick = { linkedTaskId = t.id; taskExpanded = false })
+                            DropdownMenuItem(text = { Text(localizedPresetText(t.title, displayLanguage)) }, onClick = { linkedTaskId = t.id; taskExpanded = false })
                         }
                     }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("启用提醒", modifier = Modifier.weight(1f))
+                    Text(strings.enableReminder, modifier = Modifier.weight(1f))
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                 }
             }
@@ -291,15 +305,8 @@ private fun ScheduleEditDialog(
                         sortOrder = schedule?.sortOrder ?: 0
                     )
                 )
-            }) { Text("保存") }
+            }) { Text(taskEdit.saveButton) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(common.cancelButton) } }
     )
-}
-
-private fun repeatDaysText(repeatDays: String): String {
-    val days = repeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }
-    if (days.size == 7) return "每天"
-    val names = mapOf(1 to "一", 2 to "二", 3 to "三", 4 to "四", 5 to "五", 6 to "六", 7 to "日")
-    return "周" + days.mapNotNull { names[it] }.joinToString("、")
 }

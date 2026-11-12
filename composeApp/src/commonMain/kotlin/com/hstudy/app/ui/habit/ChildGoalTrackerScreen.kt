@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
@@ -22,6 +23,7 @@ fun ChildGoalTrackerScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.childGoalTracker
     val app = AppGraph
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -46,7 +48,7 @@ fun ChildGoalTrackerScreen(
     val weekEnd = cal2.timeInMillis
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "📈 目标追踪", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -58,11 +60,11 @@ fun ChildGoalTrackerScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("今日目标完成率", style = MaterialTheme.typography.titleMedium)
+                    Text(strings.completionRateTitle, style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("${completionRate}%", style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Text("${todayCompleted} / ${todayTotal} 任务已完成", style = MaterialTheme.typography.bodyMedium)
+                    Text(strings.tasksCompleted(todayCompleted, todayTotal), style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     val animProgress by animateFloatAsState(
                         targetValue = if (todayTotal > 0) todayCompleted.toFloat() / todayTotal else 0f,
@@ -82,23 +84,23 @@ fun ChildGoalTrackerScreen(
                     modifier = Modifier.padding(20.dp).fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    GoalStatItem("🔥", "${streak}", "连续打卡天数")
-                    GoalStatItem("✅", "${todayCompleted}", "今日完成")
-                    GoalStatItem("📋", "${todayTotal}", "今日总任务")
+                    GoalStatItem("🔥", "${streak}", strings.streakLabel)
+                    GoalStatItem("✅", "${todayCompleted}", strings.todayDoneLabel)
+                    GoalStatItem("📋", "${todayTotal}", strings.todayTotalLabel)
                 }
             }
 
             // 每日目标建议
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("📋 每日学习目标", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.dailyGoalsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val suggestions = listOf(
-                        "完成当天所有学习任务" to (todayCompleted == todayTotal && todayTotal > 0),
-                        "至少完成3个基础任务" to (completedIds.size >= 3),
-                        "番茄钟专注至少25分钟" to false,
-                        "复习1道错题" to false
+                        strings.suggestionAllTasks to (todayCompleted == todayTotal && todayTotal > 0),
+                        strings.suggestionThreeBasic to (completedIds.size >= 3),
+                        strings.suggestionPomodoro to false,
+                        strings.suggestionReview to false
                     )
 
                     suggestions.forEach { (goal, achieved) ->
@@ -120,10 +122,10 @@ fun ChildGoalTrackerScreen(
 
             // 鼓励
             val encouragement = when {
-                completionRate == 100 -> "🎉 完美！今日目标全部达成！"
-                completionRate >= 70 -> "💪 快完成了，再接再厉！"
-                completionRate >= 30 -> "👍 不错的进展，继续加油！"
-                else -> "🚀 开始行动吧，每一步都算数！"
+                completionRate == 100 -> strings.encouragePerfect
+                completionRate >= 70 -> strings.encourageHigh
+                completionRate >= 30 -> strings.encourageMid
+                else -> strings.encourageStart
             }
             Card(
                 modifier = Modifier.fillMaxWidth(),

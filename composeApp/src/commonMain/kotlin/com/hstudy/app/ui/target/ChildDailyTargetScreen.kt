@@ -12,6 +12,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -40,6 +43,8 @@ fun ChildDailyTargetScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    val strings = LocalStrings.current.childDailyTarget
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -75,7 +80,7 @@ fun ChildDailyTargetScreen(
     var editMode by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "🎯 每日学习目标", onNavigateBack = onNavigateBack) },
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -90,7 +95,7 @@ fun ChildDailyTargetScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                         ) {
-                            Text("💡 自己定目标，主动学习更有效！挑选今天想完成的目标（建议 3-5 个）。",
+                            Text(strings.setGoalsHint,
                                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(14.dp))
                         }
 
@@ -102,9 +107,9 @@ fun ChildDailyTargetScreen(
                             ) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("🤖 智能推荐", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                        Text(strings.recommendTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("根据你的学习数据生成", style = MaterialTheme.typography.labelSmall,
+                                        Text(strings.recommendSubtitle, style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSecondaryContainer)
                                     }
                                     recommendations.take(4).forEach { rec ->
@@ -124,12 +129,12 @@ fun ChildDailyTargetScreen(
                                     Button(
                                         onClick = { picking = recommendations.take(4).map { it.targetId }.toSet() },
                                         modifier = Modifier.fillMaxWidth()
-                                    ) { Text("✨ 一键采纳推荐目标") }
+                                    ) { Text(strings.adoptAllButton) }
                                 }
                             }
                         }
 
-                        Text("选择今日学习目标", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(strings.pickGoalsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             dailyTargetDefs.forEach { def ->
                                 FilterChip(
@@ -137,7 +142,7 @@ fun ChildDailyTargetScreen(
                                     onClick = {
                                         picking = if (def.id in picking) picking - def.id else picking + def.id
                                     },
-                                    label = { Text("${def.emoji} ${def.title}") }
+                                    label = { Text("${def.emoji} ${localizedPresetText(def.title, displayLanguage)}") }
                                 )
                             }
                         }
@@ -145,18 +150,18 @@ fun ChildDailyTargetScreen(
                         Button(
                             onClick = {
                                 if (picking.isEmpty()) {
-                                    scope.launch { snackbarHostState.showSnackbar("请至少选择一个目标") }
+                                    scope.launch { snackbarHostState.showSnackbar(strings.needOneGoal) }
                                 } else {
                                     scope.launch {
                                         app.userPreferences.setDailyTargets(today, picking)
                                         editMode = false
-                                        snackbarHostState.showSnackbar("✅ 今日目标已设定，加油！")
+                                        snackbarHostState.showSnackbar(strings.goalsSet)
                                     }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = picking.isNotEmpty()
-                        ) { Text("🎯 设定今日目标（${picking.size}个）") }
+                        ) { Text(strings.setGoalsButton(picking.size)) }
                     } else {
                         // ===== 目标追踪模式 =====
                         val total = selectedTargets.size
@@ -169,7 +174,7 @@ fun ChildDailyTargetScreen(
                         ) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("📅 今日目标达成", style = MaterialTheme.typography.titleSmall,
+                                    Text(strings.todayProgressTitle, style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                                     Text("$done/$total", style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -180,7 +185,7 @@ fun ChildDailyTargetScreen(
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 if (done == total && total > 0) {
-                                    Text("🎉 太棒了！今日目标全部达成，你真是个自律的学习者！",
+                                    Text(strings.allDonePraise,
                                         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
@@ -227,9 +232,9 @@ fun ChildDailyTargetScreen(
                                                             date = today
                                                         )
                                                         app.userPreferences.setDailyTargetBonusDate(today)
-                                                        snackbarHostState.showSnackbar("🎉 今日目标全部达成！额外奖励 +10 分（待审核）")
+                                                        snackbarHostState.showSnackbar(strings.allDoneBonus)
                                                     } else {
-                                                        snackbarHostState.showSnackbar("✅ 「${def.title}」完成 +2分（待家长审核）")
+                                                        snackbarHostState.showSnackbar(strings.goalDonePending(localizedPresetText(def.title, displayLanguage)))
                                                     }
                                                 } else {
                                                     // 取消勾选 = 撤销该目标打卡：
@@ -241,7 +246,7 @@ fun ChildDailyTargetScreen(
                                                         app.pointRepository.undoCheckIn("TARGET_ALL:$today", date = today)
                                                         app.userPreferences.setDailyTargetBonusDate("")
                                                     }
-                                                    snackbarHostState.showSnackbar("↩️ 已取消「${def.title}」")
+                                                    snackbarHostState.showSnackbar(strings.goalUndone(localizedPresetText(def.title, displayLanguage)))
                                                 }
                                             }
                                         }
@@ -249,7 +254,7 @@ fun ChildDailyTargetScreen(
                                     Text(def.emoji, style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Text(
-                                        def.title,
+                                        localizedPresetText(def.title, displayLanguage),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (isDone) FontWeight.Normal else FontWeight.Medium,
                                         modifier = Modifier.weight(1f)
@@ -262,7 +267,7 @@ fun ChildDailyTargetScreen(
                         OutlinedButton(
                             onClick = { picking = selectedTargets; editMode = true },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("✏️ 重新设定今日目标") }
+                        ) { Text(strings.resetGoalsButton) }
 
                         // ===== 每日复盘（自我调节学习的反思环节）=====
                         Card(
@@ -270,19 +275,19 @@ fun ChildDailyTargetScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("🔍 每日复盘", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(strings.reflectionTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                 if (reflectionSavedToday) {
                                     // 今天已复盘，展示结果
-                                    Text("今日自评：" + "⭐".repeat(reflectionStars.coerceAtLeast(1)),
+                                    Text(strings.selfRating(reflectionStars.coerceAtLeast(1)),
                                         style = MaterialTheme.typography.bodyMedium)
                                     if (reflectionTags.isNotEmpty()) {
-                                        Text("我的反思：${reflectionTags.joinToString("、")}",
+                                        Text(strings.reflectionTags(reflectionTags.map { localizedPresetText(it, displayLanguage) }),
                                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Text("✅ 已完成今日复盘，反思让学习更高效！",
+                                    Text(strings.reflectionDone,
                                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 } else {
-                                    Text("今天学得怎么样？给自己打个分吧～", style = MaterialTheme.typography.bodySmall,
+                                    Text(strings.reflectionPrompt, style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     // 星级自评（点击星星打分）
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -299,7 +304,7 @@ fun ChildDailyTargetScreen(
                                         }
                                         if (pickStars > 0) {
                                             Text(
-                                                when (pickStars) { 1 -> "需努力"; 2 -> "还不错"; 3 -> "不错哦"; 4 -> "很棒"; else -> "太棒了" },
+                                                when (pickStars) { 1 -> strings.starLabel1; 2 -> strings.starLabel2; 3 -> strings.starLabel3; 4 -> strings.starLabel4; else -> strings.starLabel5 },
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.align(Alignment.CenterVertically)
@@ -313,24 +318,24 @@ fun ChildDailyTargetScreen(
                                             FilterChip(
                                                 selected = tag in pickTags,
                                                 onClick = { pickTags = if (tag in pickTags) pickTags - tag else pickTags + tag },
-                                                label = { Text(tag, style = MaterialTheme.typography.labelMedium) }
+                                                label = { Text(localizedPresetText(tag, displayLanguage), style = MaterialTheme.typography.labelMedium) }
                                             )
                                         }
                                     }
                                     Button(
                                         onClick = {
                                             if (pickStars == 0) {
-                                                scope.launch { snackbarHostState.showSnackbar("请先给自己打个分吧") }
+                                                scope.launch { snackbarHostState.showSnackbar(strings.rateFirst) }
                                             } else {
                                                 scope.launch {
                                                     app.userPreferences.saveDailyReflection(today, pickStars, pickTags)
-                                                    snackbarHostState.showSnackbar("✅ 复盘完成！反思让你进步更快")
+                                                    snackbarHostState.showSnackbar(strings.reflectionSaved)
                                                 }
                                             }
                                         },
                                         modifier = Modifier.fillMaxWidth(),
                                         enabled = pickStars > 0
-                                    ) { Text("📝 完成今日复盘") }
+                                    ) { Text(strings.saveReflectionButton) }
                                 }
                             }
                         }
