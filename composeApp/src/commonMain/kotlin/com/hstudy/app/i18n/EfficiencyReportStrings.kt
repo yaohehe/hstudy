@@ -16,6 +16,8 @@ package com.hstudy.app.i18n
  * `W8CopyTest.efficiencyReportInterpolatedPinsBothLanguages` 逐条两语钉死（Ruling 20-b：
  * data class 的 `toString()` 看不见 lambda 返回值，整表扫描对它们无效）。
  * 单位同形异义：[focusUnit]（分钟）与 [scoreUnit]（评分 pts）在中文都是「分」，英文必须分开。
+ * 四个 `*Unit` 只喂周/月对比行的**增减槽**（`WeekCompareRow` 的 `↑3${unit}`），英文以领先空格开头
+ * （`↑3 min` / `↑2 times`），值槽的完整单位在 `*Value` 里；不要把 `*Unit` 挪去值槽。
  */
 data class EfficiencyReportStrings(
     val title: String,
@@ -160,7 +162,7 @@ val EfficiencyReportStringsZh = EfficiencyReportStrings(
 )
 
 val EfficiencyReportStringsEn = EfficiencyReportStrings(
-    title = "📊 Learning efficiency report",
+    title = "📊 Efficiency report",
     statPointsLabel = "Total points earned",
     statFocusLabel = "Total focus time",
     statCheckinLabel = "Check-in count",
@@ -174,13 +176,13 @@ val EfficiencyReportStringsEn = EfficiencyReportStrings(
     reviewMetricLabel = "📚 Mistakes reviewed",
     avgScoreLabel = "⭐ Average score",
     focusValue = { n -> "$n min" },
-    focusUnit = "min",
-    checkinValue = { n -> "$n times" },
-    checkinUnit = "times",
+    focusUnit = " min",
+    checkinValue = { n -> "$n ${timesWord(n)}" },
+    checkinUnit = " times",
     reviewValue = { n -> "$n" },
-    reviewUnit = "mistakes",
+    reviewUnit = " mistakes",
     scoreValue = { n -> "$n pts" },
-    scoreUnit = "pts",
+    scoreUnit = " pts",
     monthTitle = "🗓️ This month vs last month",
     monthVerdictNew = "🌱 A fresh month — keep going!",
     monthVerdictUp = "📈 Up from last month — wonderful!",

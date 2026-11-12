@@ -147,7 +147,7 @@ fun ChildEfficiencyReportScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     ReportStat("⭐", "${totalPoints}", strings.statPointsLabel)
-                    ReportStat("📚", "${totalFocusMin}m", strings.statFocusLabel)
+                    ReportStat("📚", statMinutesText(totalFocusMin, strings, displayLanguage), strings.statFocusLabel)
                     ReportStat("📝", "${completions.size}", strings.statCheckinLabel)
                 }
             }
@@ -328,7 +328,7 @@ fun ChildEfficiencyReportScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             ReportStat("🌟", bestPeriodLabel.ifEmpty { "-" }, strings.bestPeriodLabel)
-                            ReportStat("⏱️", "${avgSession}m", strings.avgSessionLabel)
+                            ReportStat("⏱️", statMinutesText(avgSession, strings, displayLanguage), strings.avgSessionLabel)
                             ReportStat("🔢", "${allSessions.size}", strings.focusCountLabel)
                         }
                         if (bestPeriodLabel.isNotEmpty()) {
@@ -483,6 +483,13 @@ fun ChildEfficiencyReportScreen(
         }
     }
 }
+
+/**
+ * 统计卡的分钟值（W8 终审 #9）：中文态逐字节保留迁移前的 "150m"（v3.1.0 渲染不变，不许动）；
+ * 英文态借 [EfficiencyReportStrings.focusValue] 的 "150 min" 词形，不另写单位字面量。
+ */
+private fun statMinutesText(minutes: Int, strings: EfficiencyReportStrings, lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.EN) strings.focusValue(minutes) else "${minutes}m"
 
 @Composable
 private fun ReportStat(emoji: String, value: String, label: String) {

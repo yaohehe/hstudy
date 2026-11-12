@@ -52,8 +52,8 @@ package com.hstudy.app.i18n
  * 与 [decreaseLabel] 同样的盲区：函数型字段的返回值不进 `toString()`，整表 CJK 扫描看不见，
  * 双语逐字由 `W8CopyTest.commonStringsLevelAndStreakPinned` 钉死。
  * [levelRemaining] 的英文词形复用 [pointsWord]（与 [pointsUnit] 同源）；
- * [streakDays] 的英文 one/other 分支按设计写在函数体内，词形与 [daysWord]（Plurals.kt）一致，
- * 但两者没有共享出处——本表这一侧由 `W8CopyTest` 的逐字断言钉住。
+ * [streakDays] 的英文 one/other 词形复用 [daysWord]（Plurals.kt，W8 终审 #11 起与之同源）；
+ * 本表这一侧的取值由 `W8CopyTest` 的逐字断言钉住。
  */
 data class CommonStrings(
     val backContentDescription: String,
@@ -95,5 +95,5 @@ val CommonStringsEn = CommonStrings(
     confirmButton = "Confirm",
     deleteContentDescription = "Delete",
     levelRemaining = { points -> "$points ${pointsWord(points)} to level up" },
-    streakDays = { days -> if (days == 1) "$days day" else "$days days" },
+    streakDays = { days -> "$days ${daysWord(days)}" },
 )

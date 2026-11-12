@@ -141,6 +141,9 @@ class W8CopyTest {
         )
         assertEquals("最近专注较少（12分钟），多专注能提升效率", GoalRecommendationCopy.lowFocus(12, DisplayLanguage.ZH))
         assertEquals("Only 12 minutes of focus recently — more focus boosts efficiency", GoalRecommendationCopy.lowFocus(12, DisplayLanguage.EN))
+        // 单分钟边界（W8 终审 #6）：英文不再写死复数
+        assertEquals("最近专注较少（1分钟），多专注能提升效率", GoalRecommendationCopy.lowFocus(1, DisplayLanguage.ZH))
+        assertEquals("Only 1 minute of focus recently — more focus boosts efficiency", GoalRecommendationCopy.lowFocus(1, DisplayLanguage.EN))
         assertEquals("按时完成作业是巩固课堂知识的基础", GoalRecommendationCopy.homework(DisplayLanguage.ZH))
         assertEquals(
             "Finishing homework on time consolidates what you learn in class",
@@ -193,9 +196,11 @@ class W8CopyTest {
     }
 
     /**
-     * [TutoringCopy] 代表性 12 条两语逐字 + 7 个类别名全集（T2）。
+     * [TutoringCopy] 代表性 20 条两语逐字 + 7 个类别名全集（T2，W8 终审补齐 13 条漏钉）。
      *
-     * 12 条覆盖五个学科方法、三个错因分支（含兜底）、两条标题模板、两条详情模板；
+     * 20 条覆盖五个学科方法、六个错因分支（五个具名 + 兜底）、六条标题模板、三条详情模板；
+     * W8 终审补钉的是 T4 改写后此前未钉的 habitBuildDetail、方法不会/审题错误/计算错误三个分支，
+     * 以及 unmasteredTitle/lowFocusTitle/goodFocusTitle/streakTitle 四条标题（MATH 的 T4 改动已有 pin）。
      * 类别清单按 ZH/EN 两份精确列表断言，既证明"7 个类别两语齐全"，也钉住每个类别的英文
      * （`assertDiffers` 式的只比不等对交叉错位是瞎的）。38 条文案全部在
      * `TutoringAdviceEngine` 的消费路径里由本对象取词，整表 CJK 扫描看不见它们。
@@ -244,7 +249,7 @@ class W8CopyTest {
             TutoringCopy.subjectMethod(MistakeSubject.OTHER, DisplayLanguage.EN),
         )
 
-        // 三个错因分支：首分支、次分支、兜底
+        // 五个错因分支 + 兜底：首分支、次分支、W8 终审补钉的三分支、兜底
         assertEquals(
             "孩子最常因‘粗心马虎’出错。建议：培养做完检查的习惯，平时练习限时完成模拟考试节奏；粗心往往是熟练度不够，基础题要多练到自动化。",
             TutoringCopy.errorAdvice("粗心马虎", DisplayLanguage.ZH),
@@ -262,6 +267,30 @@ class W8CopyTest {
             TutoringCopy.errorAdvice("概念不清", DisplayLanguage.EN),
         )
         assertEquals(
+            "孩子最常因‘方法不会’出错。建议：帮孩子总结同类题的解题套路，多看例题学习标准方法；建立‘题型-方法’对应，遇到新题先想属于哪类。",
+            TutoringCopy.errorAdvice("方法不会", DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "Your child most often errs from “not knowing the method”. Suggestion: help summarize solution patterns and study worked examples; build a “problem type → method” mapping and classify new problems first.",
+            TutoringCopy.errorAdvice("方法不会", DisplayLanguage.EN),
+        )
+        assertEquals(
+            "孩子最常因‘审题错误’出错。建议：培养孩子读题时圈出关键条件和问题的习惯，看清要求再动笔；审题能力需要刻意练习。",
+            TutoringCopy.errorAdvice("审题错误", DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "Your child most often errs from “misreading the question”. Suggestion: build the habit of circling key conditions and questions before writing; reading comprehension needs deliberate practice.",
+            TutoringCopy.errorAdvice("审题错误", DisplayLanguage.EN),
+        )
+        assertEquals(
+            "孩子最常因‘计算错误’出错。建议：草稿纸写工整、关键步骤验算；每天少量计算练习提升准确率，计算熟练度需要积累。",
+            TutoringCopy.errorAdvice("计算错误", DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "Your child most often errs from “calculation errors”. Suggestion: keep scratch work neat and verify key steps; short daily calculation practice improves accuracy — fluency takes accumulation.",
+            TutoringCopy.errorAdvice("计算错误", DisplayLanguage.EN),
+        )
+        assertEquals(
             "建议和孩子一起分析错题的具体原因，针对性地制定改进计划。",
             TutoringCopy.errorAdvice("未知类型", DisplayLanguage.ZH),
         )
@@ -270,7 +299,7 @@ class W8CopyTest {
             TutoringCopy.errorAdvice("未知类型", DisplayLanguage.EN),
         )
 
-        // 两条标题模板（学科名/错因名由调用方先包注册表再传入）
+        // 六条标题模板（学科名/错因名由调用方先包注册表再传入）
         assertEquals("数学是薄弱科目（掌握率40%）", TutoringCopy.weakSubjectTitle("数学", 40, DisplayLanguage.ZH))
         assertEquals("Math is a weak subject (mastery 40%)", TutoringCopy.weakSubjectTitle("Math", 40, DisplayLanguage.EN))
         assertEquals("孩子最常因「粗心马虎」出错（3次）", TutoringCopy.errorTitle("粗心马虎", 3, DisplayLanguage.ZH))
@@ -278,8 +307,19 @@ class W8CopyTest {
             "Your child most often errs from “Careless mistakes” (3 times)",
             TutoringCopy.errorTitle("Careless mistakes", 3, DisplayLanguage.EN),
         )
+        assertEquals("还有2道错题未掌握", TutoringCopy.unmasteredTitle(2, DisplayLanguage.ZH))
+        assertEquals("2 mistakes still unmastered", TutoringCopy.unmasteredTitle(2, DisplayLanguage.EN))
+        assertEquals("孩子最近专注时长偏少", TutoringCopy.lowFocusTitle(DisplayLanguage.ZH))
+        assertEquals(
+            "Your child's recent focus time is low",
+            TutoringCopy.lowFocusTitle(DisplayLanguage.EN),
+        )
+        assertEquals("孩子专注表现不错（最近30分钟）", TutoringCopy.goodFocusTitle(30, DisplayLanguage.ZH))
+        assertEquals("Your child is focusing well (30 min recently)", TutoringCopy.goodFocusTitle(30, DisplayLanguage.EN))
+        assertEquals("孩子已连续打卡5天", TutoringCopy.streakTitle(5, DisplayLanguage.ZH))
+        assertEquals("Your child has checked in 5 days in a row", TutoringCopy.streakTitle(5, DisplayLanguage.EN))
 
-        // 两条详情模板
+        // 三条详情模板
         assertEquals(
             "建议每天固定15分钟陪孩子复习错题，用'遮住答案先回想'的方式效果最好。错题是提分最快的突破口，坚持清零进步明显。",
             TutoringCopy.unmasteredDetail(DisplayLanguage.ZH),
@@ -295,6 +335,14 @@ class W8CopyTest {
         assertEquals(
             "Focus on the effort, not just scores; empathize before guiding when your child struggles; save a little time each day to hear what they learned — “output” is the best “input”.",
             TutoringCopy.partnerDetail(DisplayLanguage.EN),
+        )
+        assertEquals(
+            "建议和孩子一起固定每天的学习时间和流程，从'小目标'开始（如每天打卡2-3个任务），达成后及时鼓励，慢慢建立学习节奏感。",
+            TutoringCopy.habitBuildDetail(DisplayLanguage.ZH),
+        )
+        assertEquals(
+            "Set a fixed daily study time and routine together, and start with small goals (e.g. 2–3 check-ins a day), encourage promptly after success, and gradually build a sense of rhythm.",
+            TutoringCopy.habitBuildDetail(DisplayLanguage.EN),
         )
 
         // 7 个类别名两语精确列表（同时证明集合大小恒为 7 且两语一一对应）
@@ -502,23 +550,32 @@ class W8CopyTest {
         val zh = AppStringsZh.efficiencyReport
         val en = AppStringsEn.efficiencyReport
 
-        // 四个指标行的值与增减单位
+        // 四个指标行的值与增减单位；四个 Unit 只进增减槽（W8 终审 #5：英文带领先空格）
         assertEquals("12分", zh.focusValue(12))
         assertEquals("12 min", en.focusValue(12))
         assertEquals("分", zh.focusUnit)
-        assertEquals("min", en.focusUnit)
+        assertEquals(" min", en.focusUnit)
         assertEquals("12次", zh.checkinValue(12))
         assertEquals("12 times", en.checkinValue(12))
+        // 单次边界（W8 终审 #6）：英文 one/other 走 timesWord
+        assertEquals("1次", zh.checkinValue(1))
+        assertEquals("1 time", en.checkinValue(1))
         assertEquals("次", zh.checkinUnit)
-        assertEquals("times", en.checkinUnit)
+        assertEquals(" times", en.checkinUnit)
         assertEquals("3道", zh.reviewValue(3))
         assertEquals("3", en.reviewValue(3))
         assertEquals("道", zh.reviewUnit)
-        assertEquals("mistakes", en.reviewUnit)
+        assertEquals(" mistakes", en.reviewUnit)
         assertEquals("87分", zh.scoreValue(87))
         assertEquals("87 pts", en.scoreValue(87))
         assertEquals("分", zh.scoreUnit)
-        assertEquals("pts", en.scoreUnit)
+        assertEquals(" pts", en.scoreUnit)
+        // 增减槽的整串拼法（WeekCompareRow）：ZH 无空格，EN 由 Unit 的领先空格成词
+        assertEquals("↑3分", "↑3${zh.focusUnit}")
+        assertEquals("↑3 min", "↑3${en.focusUnit}")
+        assertEquals("↑2 times", "↑2${en.checkinUnit}")
+        assertEquals("↓2 mistakes", "↓2${en.reviewUnit}")
+        assertEquals("↓5 pts", "↓5${en.scoreUnit}")
 
         // 7 日平均分
         assertEquals("7日平均 87 分", zh.scoreTrendAverage(87))

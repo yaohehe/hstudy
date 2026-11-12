@@ -10,8 +10,8 @@ import com.hstudy.app.data.local.entity.MistakeSubject
  * 错因分支按 canonical 错因串（`MistakeEntity.errorType` 的中文枚举值）选择，与语言无关——
  * 语言只决定"取哪份译文"，不参与任何写库/幂等比较（Ruling 25）。
  *
- * ZH 值逐字节等于迁移前引擎里的字面量（闸门证明字节）；两语代表串由
- * `W8CopyTest.tutoringCopyPinsBothLanguages` 钉死。
+ * ZH 值逐字节等于迁移前引擎字面量（W8 T4 程序化比对 50/50，一次性核对，非闸门——这些值以页面单边
+ * 披露登记）；两语由 `W8CopyTest.tutoringCopyPinsBothLanguages` 钉死。
  */
 object TutoringCopy {
 

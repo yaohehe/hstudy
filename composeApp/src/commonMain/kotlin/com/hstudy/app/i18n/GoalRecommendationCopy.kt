@@ -7,8 +7,9 @@ package com.hstudy.app.i18n
  * 调用方在生成前把生效语言传进来，本对象按语言取模板。canonical 学科名与目标标题仍由引擎传给
  * [localizedPresetText] 取词，本表只收"理由"这一层句式。
  *
- * ZH 值逐字节等于迁移前引擎里的字面量（闸门证明字节）；两语逐字由
- * `W8CopyTest.goalRecommendationCopyPinsBothLanguages` 钉死。本对象只读，不参与任何存储/业务比较（Ruling 25）。
+ * ZH 值逐字节等于迁移前引擎字面量（W8 T4 程序化比对 50/50，一次性核对，非闸门——这些值以页面单边
+ * 披露登记）；两语由 `W8CopyTest.goalRecommendationCopyPinsBothLanguages` 钉死。
+ * 本对象只读，不参与任何存储/业务比较（Ruling 25）。
  */
 object GoalRecommendationCopy {
 
@@ -35,7 +36,7 @@ object GoalRecommendationCopy {
 
     fun lowFocus(minutes: Int, lang: DisplayLanguage): String = when (lang) {
         DisplayLanguage.ZH -> "最近专注较少（${minutes}分钟），多专注能提升效率"
-        DisplayLanguage.EN -> "Only $minutes minutes of focus recently — more focus boosts efficiency"
+        DisplayLanguage.EN -> "Only $minutes ${if (minutes == 1) "minute" else "minutes"} of focus recently — more focus boosts efficiency"
     }
 
     fun homework(lang: DisplayLanguage): String = when (lang) {
