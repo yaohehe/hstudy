@@ -54,7 +54,7 @@ val ChildHabitChallengeStringsZh = ChildHabitChallengeStrings(
 )
 
 val ChildHabitChallengeStringsEn = ChildHabitChallengeStrings(
-    title = "🏆 Habit Challenge",
+    title = "🏆 Habit challenge",
     newChallengeContentDescription = "New challenge",
     emptyMessage = "Start your 21-day habit challenge!",
     activeSectionTitle = "🔥 Active challenges",

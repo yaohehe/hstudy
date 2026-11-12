@@ -76,7 +76,7 @@ val ChildDailyTargetStringsZh = ChildDailyTargetStrings(
 )
 
 val ChildDailyTargetStringsEn = ChildDailyTargetStrings(
-    title = "🎯 Daily learning goals",
+    title = "🎯 Daily study goal",
     setGoalsHint = "💡 Set your own goals — taking charge makes learning more effective! Pick what you want to finish today (3–5 recommended).",
     recommendTitle = "🤖 Smart recommendations",
     recommendSubtitle = "Generated from your learning data",

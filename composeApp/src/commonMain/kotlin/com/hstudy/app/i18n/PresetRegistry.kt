@@ -14,6 +14,8 @@ private fun preset(canonical: String, en: String): Pair<String, PresetCopy> =
  * 会打破测试，而不是静默显示未翻译文本；10 条手钉在 FamilySyncHelper/BackupHelper 里的
  * 设备/诊断字面量无法活体交叉校验（漂移守卫的上限见 PresetRegistryTest 的 KDoc）。ZH 值手打
  * （不 import ui/data 种子，i18n 自包含），测试负责跨层对账。
+ * W5 起另有 16 条页面内预设手工收录（见「W5 页面内预设目录」组，守卫见
+ * PresetRegistryTest.w5PageLocalPresetsResolvePerLanguage）。
  */
 val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     // ===== 预设任务标题（55 条去重；TaskRepository.getPresets() + getSingleTaskSuggestions()）=====
@@ -236,7 +238,7 @@ val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     preset("复习错题", "Review mistakes"),
     preset("专注2个番茄钟", "Focus for 2 Pomodoros"),
     preset("完成作业", "Finish homework"),
-    preset("预习新课", "Preview new lessons"),
+    preset("预习新课", "Preview the new lesson"),
     preset("体育锻炼", "Exercise"),
     preset("今天很专注", "Focused today"),
     preset("完成了难题", "Solved a hard problem"),

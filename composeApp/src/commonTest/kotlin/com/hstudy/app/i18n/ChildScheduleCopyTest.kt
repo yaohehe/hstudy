@@ -100,7 +100,10 @@ class ChildScheduleCopyTest {
     fun scheduleAlarmCopyDiffers() {
         val zh = AppStringsZh.scheduleAlarm
         val en = AppStringsEn.scheduleAlarm
-        assertDiffers(zh.rememberCheckIn to en.rememberCheckIn)
+        assertDiffers(
+            zh.rememberCheckIn to en.rememberCheckIn,
+            zh.bodySeparator to en.bodySeparator,   // ""（ZH 保旧字节）vs " "（EN 防粘连）
+        )
     }
 
     @Test
@@ -109,8 +112,9 @@ class ChildScheduleCopyTest {
         val en = AppStringsEn.scheduleAlarm
         assertEquals("🌅 起床啦 时间到啦！", zh.timeUp("🌅", "起床啦"))
         assertEquals("🌅 Time to get up — time's up!", en.timeUp("🌅", "Time to get up"))
-        assertEquals("🌅 起床啦 时间到啦！完成后记得打卡哦～", zh.timeUp("🌅", "起床啦") + zh.rememberCheckIn)
-        assertEquals("🌅 Time to get up — time's up!Remember to check in when you're done!", en.timeUp("🌅", "Time to get up") + en.rememberCheckIn)
+        // ZH 分隔符为空串：组合结果与迁移前逐字节一致
+        assertEquals("🌅 起床啦 时间到啦！完成后记得打卡哦～", zh.timeUp("🌅", "起床啦") + zh.bodySeparator + zh.rememberCheckIn)
+        assertEquals("🌅 Time to get up — time's up! Remember to check in when you're done!", en.timeUp("🌅", "Time to get up") + en.bodySeparator + en.rememberCheckIn)
     }
 
     @Test

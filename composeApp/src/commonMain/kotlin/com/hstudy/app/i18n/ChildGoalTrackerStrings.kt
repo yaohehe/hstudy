@@ -42,7 +42,7 @@ val ChildGoalTrackerStringsZh = ChildGoalTrackerStrings(
 )
 
 val ChildGoalTrackerStringsEn = ChildGoalTrackerStrings(
-    title = "📈 Goal tracking",
+    title = "📈 Goal tracker",
     completionRateTitle = "Today's completion rate",
     tasksCompleted = { done, total -> "$done / $total ${if (total == 1) "task" else "tasks"} completed" },
     streakLabel = "Check-in streak (days)",

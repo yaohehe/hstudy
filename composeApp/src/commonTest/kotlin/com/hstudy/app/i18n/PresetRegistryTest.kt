@@ -207,7 +207,7 @@ class PresetRegistryTest {
             "复习错题" to "Review mistakes",
             "专注2个番茄钟" to "Focus for 2 Pomodoros",
             "完成作业" to "Finish homework",
-            "预习新课" to "Preview new lessons",
+            "预习新课" to "Preview the new lesson",
             "体育锻炼" to "Exercise",
             "今天很专注" to "Focused today",
             "完成了难题" to "Solved a hard problem",
