@@ -4,7 +4,7 @@
 用法（不带参数就复现"番茄钟 + 专注这一整组已迁页面"的等价性，**默认组是自洽的，应当退 0**）：
 
     python scripts/i18n_template_diff.py                 # 默认组：6 页 × 2 表（Pomodoro/Focus）
-    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部四十三张表
+    python scripts/i18n_template_diff.py --branch        # 整枝组：全部已迁页面 × 全部四十六张表
     python scripts/i18n_template_diff.py --pages-rev 20bc060 \\
         --page com/hstudy/app/ui/child/ChildHomeScreen.kt \\
         --table com/hstudy/app/i18n/ChildHomeStrings.kt#ChildHomeStringsZh
@@ -21,11 +21,13 @@
   的前提。`--page <rev>:路径` 现给现用；默认组与整枝组的页面 rev 是 [DEFAULT_PAGES] / [BRANCH_PAGES]
   里的常量。这些常量现在**是 CI 的一部分**：`.github/workflows/android.yml` 里这道闸门自终审 D-A 起
   带 `fetch-depth: 0` 并**阻塞**构建，于是"某个钉住的 rev 不在历史里"不再是本地才能发现的问题。
-* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部四十三张**表"可用**。限制不来自表侧读取本身，而来自
+* **表侧：`--tables-rev` 只对"那个 rev 已经含**全部四十六张**表"可用**。限制不来自表侧读取本身，而来自
   [_global_sets]：判断成对登记是否过期时，它**不管这次命令带了哪几张表**，都按 `--tables-rev` 把
-  [BRANCH_TABLES] 四十三张全读一遍。阶段 2 W7 的 `PetStrings` 是 W7 提交才落进历史的，所以**可用的最早
-  rev 就是 W7 提交本身**；在它之前（W6 收口 a5cd674、W5 收口 1e1e382、W4 收口 5d65128、W3 收口 14c4d82、W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律
-  `git show …失败`。实测（W2 提交之前的工作树）：
+  [BRANCH_TABLES] 四十六张全读一遍。阶段 2 W8 的 `EfficiencyReportStrings` / `ParentTutoringAdviceStrings` /
+  `AchievementSectionStrings` 三张表是 W8 提交才落进历史的，所以**可用的最早 rev 就是 W8 提交本身**；
+  在它之前（W7 收口 7026a15、W6 收口 a5cd674、W5 收口 1e1e382、W4 收口 5d65128、W3 收口 14c4d82、
+  W2 收口 aae364e、W1 收口 5deed68、4d28c8e、c3bd94a）一律 `git show …失败`。
+  实测（W2 提交之前的工作树）：
       --tables-rev HEAD      -> **1**    `git show HEAD:…/ParentTaskManageStrings.kt 失败`（W2 四张表尚未进历史）
       --tables-rev 4d28c8e   -> **1**    `git show 4d28c8e:…/MistakeStrings.kt 失败`（W1 之前没有错题表）
       --tables-rev c3bd94a   -> **1**    `git show c3bd94a:…/MistakeStrings.kt 失败`（W1 之后最早 rev 前移）
@@ -151,6 +153,7 @@ W4_REV = "14c4d82"        # 阶段 2 W4（孩子商店/积分/抽奖/成就）�
 W5_REV = "5d65128"        # 阶段 2 W5（习惯/目标/日程）迁移前 = W4 收口提交
 W6_REV = "1e1e382"        # 阶段 2 W6（心愿/证明/报告/周报）迁移前 = W5 收口提交
 W7_REV = "a5cd674"        # 阶段 2 W7（宠物页/预览卡/成长报告阶段名）迁移前 = W6 收口提交
+W8_REV = "7026a15"        # 阶段 2 W8（报表/辅导建议/成就区/等级/树/动画/三引擎）迁移前 = W7 收口提交
 DEFAULT_PAGES = [
     (TASK7_REV, "com/hstudy/app/ui/common/PomodoroTimer.kt"),
     (TASK7_REV, "com/hstudy/app/ui/focus/ChildFocusStatsScreen.kt"),
@@ -176,22 +179,30 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（W7 Task 4 复算，改登记时必须同时改这里）：表里现在 **83 条**
-# （9 条双侧成对 + 61 条只看页面 + 13 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **77** 条默认组用不到；`--branch` 组碰到 **82** 条、只剩 **1** 条报
+# 登记表的当前实况读数（**W8 Task 4 复算**，改登记时必须同时改这里）：表里现在 **178 条**
+# （9 条双侧成对 + 155 条只看页面 + 14 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **172** 条默认组用不到；`--branch` 组碰到 **177** 条、只剩 **1** 条报
 # "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
 # 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
 # W6 那批 18 条 = 示例心愿 6 + 宠物阶段名 8（都只看页面）+ 周报通知正文 4（**只看表侧**：原文只在
 # androidMain，闸门不读平台文件，理由逐条写在条目里）。
 # W7 那批 9 条 = 账本 note 3（页面单边）+ 定值字面量 4（`积分不足，需要 10/5 分` 页面单边 2 +
 # `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel）。
+# W8 那批 95 条 = 三个引擎的 copy 常量 50（TutoringCopy 32 / GoalRecommendationCopy 8 /
+# LearningScoreCopy 10，全部页面单边：copy 不是表）+ 注册表 canonical 43（错因名 5 / 等级称号 10 /
+# 树阶段名 6 / 成就定义 22，全部页面单边）+ 首页动画条组合串 1（页面单边，emoji+`streakDays`）+
+# 报表单位 `⟨$⟩分` 1（**表侧单边**：被 Task 7b 的 page 单边 `⟨$⟩分` 按值先 pop，L-19 遮蔽）。
+# 三引擎的 50 条先逐条核对过"copy 文件的 ZH 字面量与页面迁移前 50/50 逐字节一致"，不是漏译放行；
+# 行号口径：W8 这批 reason 用 W8_REV（7026a15）坐标。
 #
 # 每个页面取**自己那批任务迁移前**的 rev（`git log --format=%h -1 <迁走它的那次提交>^`），
 # 同一页面被两批任务先后迁移的（ParentSettingsScreen）就带两个 rev，各取所需的一半原文。
 # 出处：Task 4=6f49951、Task 5=767711d、Task 6=fdf8381、Task 7=d336fb8、Task 7b=761b24e、
 # Task 8=2304fa7、Task 9=20bc060、Task 10=0c34b79/c77f91c、Task 11=ad6aa93、
+# 阶段 2 W1=4d28c8e、W2=5deed68、W3=aae364e、W4=14c4d82、W5=5d65128、W6=1e1e382、W7=a5cd674、
+# W8=7026a15（各波"迁移前"= 上一波收口提交）；
 # 终审 Ruling 41 的家长密码门=**c3bd94a 的父提交**（写这里时它恰好是 HEAD~1，HEAD 一动就不是了，
-# 所以按"迁移那次提交的父提交"这个不变量表述；当前树上是 HEAD~4 = 41c3d39）。
+# 所以按"迁移那次提交的父提交"这个不变量表述；W7 提交时它是 HEAD~4 = 41c3d39，W8 起不再按相对位置表述）。
 # 这些常量现在全部是 CI 契约的一部分：android.yml 的等价性闸门带 fetch-depth: 0 且**阻塞**，
 # 任何一个 rev 从历史里消失都会把构建变红（终审 D-A 的 rev 存在性核对逐条走过）。
 BRANCH_GATE_REV = "41c3d39"   # 密码门迁移（Ruling 41，c3bd94a）之前的 AppNavGraph
@@ -254,6 +265,21 @@ BRANCH_PAGES = DEFAULT_PAGES + [
     (W7_REV, "com/hstudy/app/ui/pet/ChildPetScreen.kt"),
     (W7_REV, "com/hstudy/app/ui/pet/PetState.kt"),
     (W7_REV, "com/hstudy/app/ui/report/GrowthReportScreen.kt"),
+    # ---- 阶段 2 W8（效率报表/辅导建议/成就区/等级/树/动画 + 三个引擎文案源，W8_REV）----
+    # 六个 UI/组件文件照常按"迁移前"取词；三个引擎 `.kt`（GoalRecommendation / TutoringAdviceEngine /
+    # LearningScore）登记为**文案源**：它们的迁移前字面量要么是 canonical 存储/注册表值（学科名、
+    # 错因名、等级称号、成就定义），要么搬进了 lang-keyed copy 常量（TutoringCopy /
+    # GoalRecommendationCopy / LearningScoreCopy，不是表）。两类都不进 AppStrings，闸门按
+    # "页面单边"披露，验证落点是 W8CopyTest 的两语整串 pin——不是闸门能证明的字节等价。
+    (W8_REV, "com/hstudy/app/ui/target/GoalRecommendation.kt"),
+    (W8_REV, "com/hstudy/app/ui/parent/TutoringAdviceEngine.kt"),
+    (W8_REV, "com/hstudy/app/ui/common/LearningScore.kt"),
+    (W8_REV, "com/hstudy/app/ui/common/AchievementManager.kt"),
+    (W8_REV, "com/hstudy/app/ui/common/LevelSystem.kt"),
+    (W8_REV, "com/hstudy/app/ui/common/LearningTree.kt"),
+    (W8_REV, "com/hstudy/app/ui/common/Animations.kt"),
+    (W8_REV, "com/hstudy/app/ui/parent/ParentTutoringAdviceScreen.kt"),
+    (W8_REV, "com/hstudy/app/ui/habit/ChildEfficiencyReportScreen.kt"),
 ]
 BRANCH_TABLES = [
     ("com/hstudy/app/i18n/%s.kt" % n, "%sZh" % n) for n in (
@@ -277,6 +303,10 @@ BRANCH_TABLES = [
         "PhotoViewerStrings", "WeeklyReportStrings",
         # ---- 阶段 2 W7（W7_REV）----
         "PetStrings",
+        # ---- 阶段 2 W8（W8_REV）----
+        # 引擎 copy 文件（TutoringCopy / GoalRecommendationCopy / LearningScoreCopy）**不是表**：
+        # 它们是 lang-keyed 常量、不进 AppStrings 聚合根（Ruling 1（W8）），所以不登记。
+        "EfficiencyReportStrings", "ParentTutoringAdviceStrings", "AchievementSectionStrings",
     )
 ]
 
@@ -541,6 +571,126 @@ DISCLOSED_RESIDUALS = [
      "reason": "W7：PetStringsZh.feedLabel 裸动词槽（页面按钮走 feedButton，页内无同形原文），表侧单边"},
     {"page": None, "table": "陪玩",
      "reason": "W7：PetStringsZh.playLabel 裸动词槽（页面按钮走 playButton，页内无同形原文），表侧单边"},
+    # ---- 阶段 2 W8：三引擎/等级/树/成就区的页面单边值（值不进表，渲染走 copy 常量或注册表）----
+    # W8 把三个引擎（GoalRecommendation / TutoringAdviceEngine / LearningScore）登记为**文案源**：
+    # 它们迁移前的 50 条文案逐字节搬进 lang-keyed copy 常量（TutoringCopy 32 / GoalRecommendationCopy 8 /
+    # LearningScoreCopy 10，Ruling 1（W8））。copy 常量不是表，闸门只读表，所以只能按页面单边披露。
+    # 这不是"漏译被放行"：三个 copy 文件的 ZH 字面量与这里的 50 条一一对应（T4 复算 50/50，0 缺），
+    # 两语整串由 W8CopyTest 的三组 pin 钉死。同理，等级称号（10）/ 树阶段名（6）/ 成就定义（22）
+    # 是 canonical 目录值，显示走 levelTitleCopy / treeStageCopy / achievementCopy（Ruling 2（W8）与 W0 注册表），
+    # 5 个错因名是写库/分支 canonical（MistakeStrings 只有学科名、没有错因名），全部注册表覆盖。
+    # 行号口径：本节 page 侧取 W8_REV（7026a15）坐标。
+    # ---- goal（8 条）----
+    {"page": "⟨$⟩掌握率仅⟨$⟩%，是薄弱科目，建议重点复习", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "劳逸结合，运动能让大脑更专注、记忆更牢固", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "按时完成作业是巩固课堂知识的基础", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "最近专注较少（⟨$⟩分钟），多专注能提升效率", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "最近还没专注记录，用番茄钟开始高效学习吧", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "有⟨$⟩道错题到了复习时间，按遗忘曲线及时复习记得更牢", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "还有⟨$⟩道错题未掌握，建议今天攻克2-3道", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "错题掌握不错，课外阅读能拓展知识面、提升理解力", "table": None, "reason": "W8 Ruling 1（W8）：GoalRecommendation 理由模板 → GoalRecommendationCopy（非表值，两语 pin 见 W8CopyTest）"},
+    # ---- tut（32 条）----
+    {"page": "⟨$⟩是薄弱科目（掌握率⟨$⟩%）", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "专注力保持", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "专注力培养", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "习惯养成激励", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "做孩子的'学习合伙人'而非'监工'", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "多关注努力过程而非只看分数；孩子遇到困难时先共情再引导；每天留一点时间听孩子讲讲今天学了什么，'输出'是最好的'输入'。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "好习惯正在养成中！及时肯定孩子的坚持（口头表扬比物质奖励更有效），帮助孩子把'坚持'内化为习惯，避免中断。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子专注表现不错（最近⟨$⟩分钟）", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子已连续打卡⟨$⟩天", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最常因‘审题错误’出错。建议：培养孩子读题时圈出关键条件和问题的习惯，看清要求再动笔；审题能力需要刻意练习。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最常因‘方法不会’出错。建议：帮孩子总结同类题的解题套路，多看例题学习标准方法；建立‘题型-方法’对应，遇到新题先想属于哪类。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最常因‘概念不清’出错。建议：回归课本把基础概念真正弄懂，让孩子用自己的话讲出概念含义；概念不清就刷题是无效的，先理解再练习。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最常因‘粗心马虎’出错。建议：培养做完检查的习惯，平时练习限时完成模拟考试节奏；粗心往往是熟练度不够，基础题要多练到自动化。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最常因‘计算错误’出错。建议：草稿纸写工整、关键步骤验算；每天少量计算练习提升准确率，计算熟练度需要积累。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最常因「⟨$⟩」出错（⟨$⟩次）", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "孩子最近专注时长偏少", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "帮助孩子建立学习规律", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "建议和孩子一起分析薄弱环节的具体原因，是基础不牢还是粗心，针对性地制定改进计划。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "建议和孩子一起分析错题的具体原因，针对性地制定改进计划。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "建议和孩子一起固定每天的学习时间和流程，从'小目标'开始（如每天打卡2-3个任务），达成后及时鼓励，慢慢建立学习节奏感。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "建议每天固定15分钟陪孩子复习错题，用'遮住答案先回想'的方式效果最好。错题是提分最快的突破口，坚持清零进步明显。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "建议用番茄钟（25分钟专注+5分钟休息）帮助孩子进入专注状态；学习时段收走手机等干扰物，营造安静环境；专注后给予肯定，逐步延长专注时间。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "数学薄弱建议：每天陪孩子做2-3道基础题巩固概念，重视错题重做而非刷难题；让孩子把解题思路讲给你听，'讲题'能暴露理解漏洞。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "科学薄弱建议：多联系生活实际讲解原理，有条件一起做小实验；让孩子画出知识导图，理解比死记硬背更重要。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "继续保持！可以在孩子黄金专注时段安排较难的学习任务，效率更高。专注时尽量不打扰孩子。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "英语薄弱建议：每天15分钟听力磨耳朵，陪孩子大声朗读培养语感；单词用'少量多次'记忆法，结合图片/场景记忆更牢固。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "薄弱科目辅导", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "语文薄弱建议：加强每日阅读积累，陪孩子朗读课文培养语感；字词基础每天听写巩固，作文多鼓励、少批评，先肯定再提建议。", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "辅导心态建议", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "还有⟨$⟩道错题未掌握", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "错因针对辅导", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "错题复习督促", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
+    # ---- score（10 条）----
+    {"page": "不错", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "不错的开始！专注和复习还能再加把劲！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "今天学习超棒！全面发展，继续保持！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "今天表现很好！再坚持一下就完美了！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "优秀", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "已经迈出一大步！继续完成更多任务吧！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "待开始", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "新的一天，从完成第一个任务开始吧！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "良好", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "起步", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    # ---- err（5 条）----
+    {"page": "粗心马虎", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
+    {"page": "概念不清", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
+    {"page": "方法不会", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
+    {"page": "审题错误", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
+    {"page": "计算错误", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
+    # ---- lvl（10 条）----
+    {"page": "传奇学者", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "勤奋小学徒", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "学习之星", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "学习新手", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "学习达人", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "学神", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "学霸少年", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "知识探索者", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "知识王者", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    {"page": "超级学霸", "table": None, "reason": "W8 Ruling 25/注册表：等级称号 canonical（levelTitleCopy 覆盖，非表值）"},
+    # ---- tree（6 条）----
+    {"page": "发芽", "table": None, "reason": "W8 Ruling 25/注册表：树阶段名 canonical（treeStageCopy 覆盖，非表值）"},
+    {"page": "大树", "table": None, "reason": "W8 Ruling 25/注册表：树阶段名 canonical（treeStageCopy 覆盖，非表值）"},
+    {"page": "幼苗", "table": None, "reason": "W8 Ruling 25/注册表：树阶段名 canonical（treeStageCopy 覆盖，非表值）"},
+    {"page": "开花", "table": None, "reason": "W8 Ruling 25/注册表：树阶段名 canonical（treeStageCopy 覆盖，非表值）"},
+    {"page": "种子", "table": None, "reason": "W8 Ruling 25/注册表：树阶段名 canonical（treeStageCopy 覆盖，非表值）"},
+    {"page": "结果", "table": None, "reason": "W8 Ruling 25/注册表：树阶段名 canonical（treeStageCopy 覆盖，非表值）"},
+    # ---- ach（22 条）----
+    {"page": "三日不辍", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "专注大师", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "专注达人", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "举一反三", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "单日完成全部任务", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "启航", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "周冠军", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "复习达人", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "完成10次专注力训练", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "完成5次举一反三思考", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "掌握100道错题", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "掌握50道错题", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "百分学霸", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "百日积累", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "累计专注10小时", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "累计专注30小时", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "累计复习错题30次", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "累计打卡100次", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "训练达人", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "连续打卡3天", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "连续打卡7天", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    {"page": "首次完成打卡", "table": None, "reason": "W8 Ruling 25/注册表：成就定义 canonical（achievementCopy 覆盖，非表值）"},
+    # 首页动画条：StreakBadge 把 emoji 与 `common.streakDays(days)` 的输出拼成一条，emoji 位塌成数值位后
+    # 与表侧 `⟨$⟩天` 不同形；`⟨$⟩天` 本身由 SettingsStrings / ParentHomeStrings / ChildHabitChallengeStrings
+    # 的同形模板配对，所以本组件只登记页面侧的组合串（不是漏译，天数文案已在表里）。
+    {"page": "⟨$⟩ ⟨$⟩天", "table": None,
+     "reason": "W8 Ruling 20 例外（同 W7 定值字面量一类）：Animations.kt:149 `$flameEmoji ${common.streakDays(days)}` "
+               "把 emoji 与表侧天数词形拼成一条；表侧 `⟨$⟩天` 已由三张表配对，故只登记页面组合串"},
+    # 报表页的评分/专注单位：表侧 `⟨$⟩分` 在 W8_REV 页面确有同形原文（WeekCompareRow `${thisFocus}分`），
+    # 但 Task 7b 的 page 单边披露 `⟨$⟩分` 按值先把页面侧摘掉（L-19 遮蔽的又一实例），所以只能在表侧登记。
+    {"page": None, "table": "⟨$⟩分",
+     "reason": "W8：EfficiencyReportStrings.focusValue/scoreValue 的 `⟨$⟩分` 被 Task 7b 的 page 单边披露"
+               "（`⟨$⟩分`，Pomodoro 单位槽）按值先摘自页面侧（L-19 遮蔽）；两语值由 W8CopyTest 钉住"},
 ]
 
 
@@ -756,9 +906,9 @@ def main():
     ap.add_argument("--pages-rev", default=None,
                     help="给**不带 rev 的** --page 用的 git rev；默认组的每个页面自带自己的 rev")
     ap.add_argument("--tables-rev", default=WORKTREE,
-                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部四十三张表的 rev 可用**"
-                         "（本分支上阶段 2 W7 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
-                         " BRANCH_TABLES 四十三张，早于它的 rev 直接 `git show … 失败` 退 1。"
+                    help="文案表取的位置（默认 WORKTREE）。**只对已经含全部四十六张表的 rev 可用**"
+                         "（本分支上阶段 2 W8 提交起，含之后的 HEAD）：[_global_sets] 会按这个 rev 读满"
+                         " BRANCH_TABLES 四十六张，早于它的 rev 直接 `git show … 失败` 退 1。"
                          "理由与实测退出码见文件头「哪些东西今天能钉回历史位置」那一段")
     ap.add_argument("--page", action="append", dest="pages",
                     help="可重复；相对 %s 的页面路径，也可写成 <rev>:路径（同一次里可以混用不同 rev）" % SRC_ROOT)

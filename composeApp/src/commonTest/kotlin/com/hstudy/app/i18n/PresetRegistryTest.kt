@@ -89,9 +89,12 @@ class PresetRegistryTest {
             "一本新书", "去书店选一本喜欢的书",
             "一台新平板", "存很久的大目标，加油！",
         )
+        val w8SubjectNames = setOf( // PresetRegistry.kt「W8 学科名」组（引擎 canonical 学科串取词；"其他"已在奖励分类组）
+            "数学", "语文", "英语", "科学",
+        )
         val expected = taskSeedCanonicals() + rewardTexts + rewardCategories + defaultCategory +
             mistakeErrorTypes.toSet() + difficultyLabels + deviceFallbacks + diagnostics + w5PageLocalPresets +
-            w6WishSamples // W5 组见上方 w5PageLocalPresets；W6 组来自 PresetRegistry.kt「W6 页面内预设目录」
+            w6WishSamples + w8SubjectNames // W5/W6/W8 页面内预设组来自 PresetRegistry.kt 对应分组
         val missing = expected - presetTextRegistry.keys
         val extra = presetTextRegistry.keys - expected
         assertTrue(

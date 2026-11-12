@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.CanonicalChildHomeText
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.*
@@ -37,6 +38,7 @@ fun ChildHomeScreen(
     val app = AppGraph
     val strings = LocalStrings.current.childHome
     val taskListStrings = LocalStrings.current.taskList
+    val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isSyncing by remember { mutableStateOf(false) }
@@ -271,8 +273,8 @@ fun ChildHomeScreen(
 
                 // ===== 今日学习表现评分（打卡+专注+复习综合反馈）=====
                 val checkinRate = if (todayTotal > 0) todayCompleted.toFloat() / todayTotal else 0f
-                val learningScore = remember(todayCompleted, todayTotal, todayFocusMinutes, todayReviewCount) {
-                    com.hstudy.app.ui.common.LearningScoreCalculator.calculate(checkinRate, todayFocusMinutes, todayReviewCount)
+                val learningScore = remember(todayCompleted, todayTotal, todayFocusMinutes, todayReviewCount, displayLanguage) {
+                    com.hstudy.app.ui.common.LearningScoreCalculator.calculate(checkinRate, todayFocusMinutes, todayReviewCount, displayLanguage)
                 }
                 val excellentBonusDate by app.userPreferences.dailyExcellentBonusDate.collectAsState(initial = "")
                 Card(

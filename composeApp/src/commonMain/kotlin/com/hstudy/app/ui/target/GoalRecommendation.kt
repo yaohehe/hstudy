@@ -2,6 +2,9 @@ package com.hstudy.app.ui.target
 
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.GoalRecommendationCopy
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.mistake.SpacedRepetition
 
 /**
@@ -20,7 +23,11 @@ data class GoalRecommendation(
  */
 object GoalRecommendationEngine {
 
-    private fun subjectName(s: MistakeSubject): String = when (s) {
+    /**
+     * 学科 canonical 串（注册表 key）：只作为 [localizedPresetText] 的入参，不直接渲染。
+     * ZH 字面量保持迁移前原样，英文由注册表 W8 学科组取词。
+     */
+    private fun canonicalSubject(s: MistakeSubject): String = when (s) {
         MistakeSubject.MATH -> "数学"
         MistakeSubject.CHINESE -> "语文"
         MistakeSubject.ENGLISH -> "英语"
@@ -32,8 +39,13 @@ object GoalRecommendationEngine {
      * 生成推荐目标列表（按优先级排序，去重）
      * @param mistakes 全部错题
      * @param recentFocusMinutes 最近专注总分钟数
+     * @param lang 生效语言：标题/学科名走注册表，理由走 [GoalRecommendationCopy]（W8 T2）
      */
-    fun generate(mistakes: List<MistakeEntity>, recentFocusMinutes: Int): List<GoalRecommendation> {
+    fun generate(
+        mistakes: List<MistakeEntity>,
+        recentFocusMinutes: Int,
+        lang: DisplayLanguage,
+    ): List<GoalRecommendation> {
         val recs = LinkedHashMap<String, GoalRecommendation>() // 按 targetId 去重，保留最高优先级
 
         // 1. 薄弱科目 → 复习错题（最高优先级）
@@ -46,8 +58,12 @@ object GoalRecommendationEngine {
         val weakest = subjectStats.filter { it.third < 0.6f }.minByOrNull { it.third }
         if (weakest != null) {
             recs["review_mistakes"] = GoalRecommendation(
-                "review_mistakes", "📚", "复习错题",
-                "${subjectName(weakest.first)}掌握率仅${(weakest.third * 100).toInt()}%，是薄弱科目，建议重点复习"
+                "review_mistakes", "📚", localizedPresetText("复习错题", lang),
+                GoalRecommendationCopy.weakSubject(
+                    localizedPresetText(canonicalSubject(weakest.first), lang),
+                    (weakest.third * 100).toInt(),
+                    lang,
+                )
             )
         }
 
@@ -55,8 +71,8 @@ object GoalRecommendationEngine {
         val dueCount = mistakes.count { SpacedRepetition.isDueForReview(it) }
         if (dueCount > 0 && !recs.containsKey("review_mistakes")) {
             recs["review_mistakes"] = GoalRecommendation(
-                "review_mistakes", "📚", "复习错题",
-                "有${dueCount}道错题到了复习时间，按遗忘曲线及时复习记得更牢"
+                "review_mistakes", "📚", localizedPresetText("复习错题", lang),
+                GoalRecommendationCopy.dueReview(dueCount, lang)
             )
         }
 
@@ -64,39 +80,39 @@ object GoalRecommendationEngine {
         val unmastered = mistakes.count { !it.isMastered }
         if (unmastered > 5 && !recs.containsKey("review_mistakes")) {
             recs["review_mistakes"] = GoalRecommendation(
-                "review_mistakes", "📚", "复习错题",
-                "还有${unmastered}道错题未掌握，建议今天攻克2-3道"
+                "review_mistakes", "📚", localizedPresetText("复习错题", lang),
+                GoalRecommendationCopy.manyUnmastered(unmastered, lang)
             )
         }
 
         // 4. 专注不足 → 专注番茄钟
         if (recentFocusMinutes < 30) {
             recs["focus_pomodoro"] = GoalRecommendation(
-                "focus_pomodoro", "🍅", "专注2个番茄钟",
-                if (recentFocusMinutes == 0) "最近还没专注记录，用番茄钟开始高效学习吧"
-                else "最近专注较少（${recentFocusMinutes}分钟），多专注能提升效率"
+                "focus_pomodoro", "🍅", localizedPresetText("专注2个番茄钟", lang),
+                if (recentFocusMinutes == 0) GoalRecommendationCopy.noFocus(lang)
+                else GoalRecommendationCopy.lowFocus(recentFocusMinutes, lang)
             )
         }
 
         // 5. 完成作业（基础目标，总是推荐）
         recs["homework"] = GoalRecommendation(
-            "homework", "✏️", "完成作业",
-            "按时完成作业是巩固课堂知识的基础"
+            "homework", "✏️", localizedPresetText("完成作业", lang),
+            GoalRecommendationCopy.homework(lang)
         )
 
         // 6. 均衡发展 → 阅读（若错题掌握较好，推荐拓展）
         val overallMastered = mistakes.count { it.isMastered }
         if (mistakes.isEmpty() || overallMastered.toFloat() / mistakes.size > 0.5f) {
             recs["reading"] = GoalRecommendation(
-                "reading", "📕", "阅读30分钟",
-                "错题掌握不错，课外阅读能拓展知识面、提升理解力"
+                "reading", "📕", localizedPresetText("阅读30分钟", lang),
+                GoalRecommendationCopy.reading(lang)
             )
         }
 
         // 7. 体育锻炼（劳逸结合，总是适度推荐）
         recs["exercise"] = GoalRecommendation(
-            "exercise", "🏃", "体育锻炼",
-            "劳逸结合，运动能让大脑更专注、记忆更牢固"
+            "exercise", "🏃", localizedPresetText("体育锻炼", lang),
+            GoalRecommendationCopy.exercise(lang)
         )
 
         return recs.values.toList()

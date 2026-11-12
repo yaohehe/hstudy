@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.TaskCategory
@@ -36,6 +37,7 @@ fun ParentDashboardScreen(
     val app = AppGraph
     val strings = LocalStrings.current.parentDashboard
     val commonStrings = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val records by app.pointRepository.getAllRecords().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -126,8 +128,8 @@ fun ParentDashboardScreen(
 
                     // ===== 孩子今日学习表现（与家长同步的学习质量反馈）=====
                     val todayCheckinRate = if (tasks.isNotEmpty()) todayCompletedIds.size.toFloat() / tasks.size else 0f
-                    val childScore = remember(todayCompletedIds.size, tasks.size, todayFocusMin, todayReviewCount) {
-                        com.hstudy.app.ui.common.LearningScoreCalculator.calculate(todayCheckinRate, todayFocusMin, todayReviewCount)
+                    val childScore = remember(todayCompletedIds.size, tasks.size, todayFocusMin, todayReviewCount, displayLanguage) {
+                        com.hstudy.app.ui.common.LearningScoreCalculator.calculate(todayCheckinRate, todayFocusMin, todayReviewCount, displayLanguage)
                     }
                     Card(
                         modifier = Modifier.fillMaxWidth(),

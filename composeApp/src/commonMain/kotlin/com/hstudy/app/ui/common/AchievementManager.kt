@@ -11,6 +11,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.AchievementEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.achievementCopy
 import kotlinx.coroutines.flow.first
 
 /**
@@ -143,6 +146,8 @@ fun AchievementBadges(
     modifier: Modifier = Modifier
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.achievementSection
+    val displayLanguage = LocalDisplayLanguage.current
     val achievements by app.habitRepository.getAllAchievements().collectAsState(initial = emptyList())
     val allDefs = AchievementManager.allAchievements
 
@@ -153,11 +158,11 @@ fun AchievementBadges(
     }
 
     Column(modifier = modifier) {
-        Text("🏅 成就徽章", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(strings.sectionTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
         if (achievements.isEmpty()) {
-            Text("还没有解锁任何成就，加油吧！", style = MaterialTheme.typography.bodySmall,
+            Text(strings.emptyLocked, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -172,15 +177,18 @@ fun AchievementBadges(
         val locked = allDefs.filter { it.type !in unlockedTypes }
         if (locked.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("🔒 待解锁（加油达成）", style = MaterialTheme.typography.labelMedium,
+            Text(strings.lockedTitle, style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 locked.forEach { def ->
                     val (cur, target) = progressMap[def.type] ?: (0 to 1)
+                    // 标题按 def.type（稳定业务键）走注册表；未命中原样回落（进度数字不随语言）。
+                    // 变量名避开 `title`：存储边界闸门按标识符污点追踪，同名会被误报进 tryUnlockAchievement。
+                    val localizedTitle = achievementCopy[displayLanguage]?.get(def.type)?.title ?: def.title
                     AssistChip(
                         onClick = {},
-                        label = { Text("${def.emoji} ${def.title} $cur/$target") },
+                        label = { Text("${def.emoji} $localizedTitle $cur/$target") },
                         enabled = false
                     )
                 }
@@ -191,9 +199,12 @@ fun AchievementBadges(
 
 @Composable
 private fun AchievementChip(achievement: AchievementEntity) {
+    val displayLanguage = LocalDisplayLanguage.current
+    // 标题按实体 type（稳定业务键）走注册表；未命中原样回落
+    val localizedTitle = achievementCopy[displayLanguage]?.get(achievement.type)?.title ?: achievement.title
     AssistChip(
         onClick = {},
-        label = { Text("${achievement.emoji} ${achievement.title}") },
+        label = { Text("${achievement.emoji} $localizedTitle") },
         colors = AssistChipDefaults.assistChipColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer
         )

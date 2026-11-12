@@ -1,5 +1,8 @@
 package com.hstudy.app.ui.common
 
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.LearningScoreCopy
+
 /**
  * 每日学习表现评分结果
  */
@@ -27,27 +30,27 @@ data class DailyLearningScore(
  */
 object LearningScoreCalculator {
 
-    fun calculate(checkinRate: Float, focusMinutes: Int, reviewCount: Int): DailyLearningScore {
+    fun calculate(
+        checkinRate: Float,
+        focusMinutes: Int,
+        reviewCount: Int,
+        lang: DisplayLanguage,
+    ): DailyLearningScore {
         val checkinScore = (checkinRate.coerceIn(0f, 1f) * 40).toInt()
         val focusScore = ((focusMinutes / 60f).coerceIn(0f, 1f) * 30).toInt()
         val reviewScore = ((reviewCount / 3f).coerceIn(0f, 1f) * 30).toInt()
         val total = checkinScore + focusScore + reviewScore
 
-        val (grade, gradeEmoji) = when {
-            total >= 85 -> "优秀" to "🌟"
-            total >= 60 -> "良好" to "😊"
-            total >= 40 -> "不错" to "👍"
-            total > 0 -> "起步" to "🌱"
-            else -> "待开始" to "💤"
+        val grade = LearningScoreCopy.grade(total, lang)
+        val gradeEmoji = when {
+            total >= 85 -> "🌟"
+            total >= 60 -> "😊"
+            total >= 40 -> "👍"
+            total > 0 -> "🌱"
+            else -> "💤"
         }
 
-        val encouragement = when {
-            total >= 85 -> "今天学习超棒！全面发展，继续保持！"
-            total >= 60 -> "今天表现很好！再坚持一下就完美了！"
-            total >= 40 -> "不错的开始！专注和复习还能再加把劲！"
-            total > 0 -> "已经迈出一大步！继续完成更多任务吧！"
-            else -> "新的一天，从完成第一个任务开始吧！"
-        }
+        val encouragement = LearningScoreCopy.encouragement(total, lang)
 
         return DailyLearningScore(
             total = total,

@@ -18,6 +18,8 @@ private fun preset(canonical: String, en: String): Pair<String, PresetCopy> =
  * PresetRegistryTest.w5PageLocalPresetsResolvePerLanguage）。
  * W6 另有 6 条示例心愿 canonical（见「W6 页面内预设目录」组，守卫见
  * PresetRegistryTest.w6WishSamplesResolvePerLanguage）。
+ * W8 另有 4 条学科名（见「W8 学科名」组）：W8 三个文案引擎把 canonical 学科串包 [localizedPresetText]
+ * 取词，注册表必须命中才能让英文推荐/辅导标题显示 Math/Chinese/… 而不是回退中文。
  */
 val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     // ===== 预设任务标题（55 条去重；TaskRepository.getPresets() + getSingleTaskSuggestions()）=====
@@ -262,6 +264,13 @@ val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     preset("去书店选一本喜欢的书", "Pick a favorite book at the bookstore"),
     preset("一台新平板", "A new tablet"),
     preset("存很久的大目标，加油！", "A big long-term goal — keep going!"),
+    // ===== W8 学科名（4 条；引擎 canonical 学科串的渲染取词）=====
+    // 数学/语文/英语/科学 此前只在 MistakeStrings 里作为页面直读字段存在；
+    // W8 三个引擎把 canonical 学科串包 localizedPresetText 取词，需要注册表命中（"其他"复用奖励分类组）。
+    preset("数学", "Math"),
+    preset("语文", "Chinese"),
+    preset("英语", "English"),
+    preset("科学", "Science"),
 )
 
 /**
@@ -344,3 +353,37 @@ val petStageCopy: Map<DisplayLanguage, List<String>> = mapOf(
 /** 阶段名按索引取词；越界回落索引 0（与 petStages 的默认阶段一致） */
 fun localizedPetStageName(index: Int, lang: DisplayLanguage): String =
     petStageCopy[lang]?.getOrNull(index) ?: petStageCopy[lang]?.firstOrNull() ?: ""
+
+/**
+ * 等级称号（键控表，索引对齐 LevelSystem 的 1..10 级）。
+ *
+ * 与 [petStageCopy] 同一模式：`LevelSystem.levels` 是带标题的 canonical 目录（private），
+ * 本表只在渲染点（LevelBadge）取词，不参与任何存储/业务比较。
+ * ZH 必须逐字等于 `LevelSystem.levels` 的标题——索引错位不会编译失败，只会安静地显示错级称号，
+ * 因此由 `W8CopyTest.levelAndTreeRegistryCoveragePinned` 全量钉住（LevelSystem 目录 private，
+ * 无法 import 对账，故 ZH 手打、首尾两级用 getLevelInfo 活体对账）。
+ */
+val levelTitleCopy: Map<DisplayLanguage, List<String>> = mapOf(
+    DisplayLanguage.ZH to listOf("学习新手", "勤奋小学徒", "知识探索者", "学习达人", "学霸少年", "知识王者", "学习之星", "超级学霸", "传奇学者", "学神"),
+    DisplayLanguage.EN to listOf("Learning Novice", "Diligent Apprentice", "Knowledge Explorer", "Study Expert", "Star Student", "Knowledge King", "Study Star", "Super Scholar", "Legendary Scholar", "Study Legend"),
+)
+
+/** 等级称号按等级取词（1 级起）；越界回落索引 0（1 级称号） */
+fun localizedLevelTitle(level: Int, lang: DisplayLanguage): String =
+    levelTitleCopy[lang]?.getOrNull(level - 1) ?: levelTitleCopy[lang]?.firstOrNull() ?: ""
+
+/**
+ * 学习树成长阶段名（键控表，6 阶段）。
+ *
+ * `LearningTree.getStageName` 保持原样（canvas 语义与其它调用者的 canonical 出处），
+ * Canvas 的显示文本改用 [localizedTreeStageName]；ZH 与 getStageName 逐字相等由
+ * `W8CopyTest.levelAndTreeRegistryCoveragePinned` 六阶段活体对账。
+ */
+val treeStageCopy: Map<DisplayLanguage, List<String>> = mapOf(
+    DisplayLanguage.ZH to listOf("种子", "发芽", "幼苗", "大树", "开花", "结果"),
+    DisplayLanguage.EN to listOf("Seed", "Sprout", "Sapling", "Big Tree", "Blooming", "Fruiting"),
+)
+
+/** 树阶段名按阶段取词（0 起）；越界回落索引 0（种子，与 getStageName 的 else 分支一致） */
+fun localizedTreeStageName(stage: Int, lang: DisplayLanguage): String =
+    treeStageCopy[lang]?.getOrNull(stage) ?: treeStageCopy[lang]?.firstOrNull() ?: ""

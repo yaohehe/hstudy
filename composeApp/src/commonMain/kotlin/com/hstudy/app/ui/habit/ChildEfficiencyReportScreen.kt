@@ -18,6 +18,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.EfficiencyReportStrings
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
@@ -28,6 +33,9 @@ fun ChildEfficiencyReportScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    // 生效语言：学习表现评分（W8 T2）与本页文案/学科与错因的注册表取词（W8 T3）都随它
+    val displayLanguage = LocalDisplayLanguage.current
+    val strings = LocalStrings.current.efficiencyReport
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val totalFocusMin by app.focusRepository.getTotalFocusMinutes().collectAsState(initial = 0)
@@ -90,7 +98,7 @@ fun ChildEfficiencyReportScreen(
     val scoreTrend = last7Dates.map { dateStr ->
         val rate = if (tasks.isNotEmpty()) (completionByDate[dateStr] ?: 0).toFloat() / tasks.size else 0f
         com.hstudy.app.ui.common.LearningScoreCalculator.calculate(
-            rate, focusByDate[dateStr] ?: 0, reviewByDate[dateStr] ?: 0
+            rate, focusByDate[dateStr] ?: 0, reviewByDate[dateStr] ?: 0, displayLanguage
         ).total
     }
 
@@ -105,7 +113,7 @@ fun ChildEfficiencyReportScreen(
     fun weekAvgScore(dates: List<String>): Int {
         val scores = dates.map { d ->
             val rate = if (tasks.isNotEmpty()) (completionByDate[d] ?: 0).toFloat() / tasks.size else 0f
-            com.hstudy.app.ui.common.LearningScoreCalculator.calculate(rate, focusByDate[d] ?: 0, reviewByDate[d] ?: 0).total
+            com.hstudy.app.ui.common.LearningScoreCalculator.calculate(rate, focusByDate[d] ?: 0, reviewByDate[d] ?: 0, displayLanguage).total
         }
         return if (scores.isEmpty()) 0 else scores.sum() / scores.size
     }
@@ -119,11 +127,11 @@ fun ChildEfficiencyReportScreen(
     val focusByHour = allSessions.groupBy { hourFormat.format(Date(it.completedAt)).toIntOrNull() ?: 0 }
         .mapValues { entry -> entry.value.sumOf { it.durationMinutes } }
     val bestHour = focusByHour.maxByOrNull { it.value }?.key
-    val bestPeriodLabel = bestHour?.let { hourLabel(it) } ?: ""
+    val bestPeriodLabel = bestHour?.let { hourLabel(it, strings) } ?: ""
     val avgSession = if (allSessions.isNotEmpty()) allSessions.sumOf { it.durationMinutes } / allSessions.size else 0
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "📊 学习效率报表", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -138,28 +146,28 @@ fun ChildEfficiencyReportScreen(
                     modifier = Modifier.padding(20.dp).fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ReportStat("⭐", "${totalPoints}", "累计积分")
-                    ReportStat("📚", "${totalFocusMin}m", "累计专注")
-                    ReportStat("📝", "${completions.size}", "打卡次数")
+                    ReportStat("⭐", "${totalPoints}", strings.statPointsLabel)
+                    ReportStat("📚", "${totalFocusMin}m", strings.statFocusLabel)
+                    ReportStat("📝", "${completions.size}", strings.statCheckinLabel)
                 }
             }
 
             // ===== 本周 vs 上周对比（周级别反思，看见持续进步）=====
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("📅 本周 vs 上周", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.weekTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     val verdict = when {
-                        lastFocus + lastComp + lastRev == 0 -> "🌱 新的开始，继续加油！"
-                        thisAvgScore > lastAvgScore || thisFocus > lastFocus -> "📈 比上周进步了，继续保持！"
-                        thisAvgScore == lastAvgScore && thisFocus == lastFocus -> "➡️ 和上周持平，稳定发挥！"
-                        else -> "💪 比上周略有下降，加把劲追回来！"
+                        lastFocus + lastComp + lastRev == 0 -> strings.weekVerdictNew
+                        thisAvgScore > lastAvgScore || thisFocus > lastFocus -> strings.weekVerdictUp
+                        thisAvgScore == lastAvgScore && thisFocus == lastFocus -> strings.weekVerdictFlat
+                        else -> strings.weekVerdictDown
                     }
                     Text(verdict, style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    WeekCompareRow("🍅 专注时长", "${thisFocus}分", thisFocus - lastFocus, "分")
-                    WeekCompareRow("✏️ 打卡次数", "${thisComp}次", thisComp - lastComp, "次")
-                    WeekCompareRow("📚 复习错题", "${thisRev}道", thisRev - lastRev, "道")
-                    WeekCompareRow("⭐ 平均评分", "${thisAvgScore}分", thisAvgScore - lastAvgScore, "分")
+                    WeekCompareRow(strings.focusMetricLabel, strings.focusValue(thisFocus), thisFocus - lastFocus, strings.focusUnit)
+                    WeekCompareRow(strings.checkinMetricLabel, strings.checkinValue(thisComp), thisComp - lastComp, strings.checkinUnit)
+                    WeekCompareRow(strings.reviewMetricLabel, strings.reviewValue(thisRev), thisRev - lastRev, strings.reviewUnit)
+                    WeekCompareRow(strings.avgScoreLabel, strings.scoreValue(thisAvgScore), thisAvgScore - lastAvgScore, strings.scoreUnit)
                 }
             }
 
@@ -167,18 +175,18 @@ fun ChildEfficiencyReportScreen(
             if (lastMonthFocus + lastMonthComp + lastMonthRev > 0 || thisMonthFocus + thisMonthComp + thisMonthRev > 0) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("🗓️ 本月 vs 上月", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(strings.monthTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         val mVerdict = when {
-                            lastMonthFocus + lastMonthComp + lastMonthRev == 0 -> "🌱 本月是新的开始，继续加油！"
-                            thisMonthFocus > lastMonthFocus || thisMonthComp > lastMonthComp -> "📈 本月比上月进步了，太棒了！"
-                            thisMonthFocus == lastMonthFocus && thisMonthComp == lastMonthComp -> "➡️ 本月和上月持平，稳定发挥！"
-                            else -> "💪 本月比上月略有下降，下个月加把劲！"
+                            lastMonthFocus + lastMonthComp + lastMonthRev == 0 -> strings.monthVerdictNew
+                            thisMonthFocus > lastMonthFocus || thisMonthComp > lastMonthComp -> strings.monthVerdictUp
+                            thisMonthFocus == lastMonthFocus && thisMonthComp == lastMonthComp -> strings.monthVerdictFlat
+                            else -> strings.monthVerdictDown
                         }
                         Text(mVerdict, style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        WeekCompareRow("🍅 专注时长", "${thisMonthFocus}分", thisMonthFocus - lastMonthFocus, "分")
-                        WeekCompareRow("✏️ 打卡次数", "${thisMonthComp}次", thisMonthComp - lastMonthComp, "次")
-                        WeekCompareRow("📚 复习错题", "${thisMonthRev}道", thisMonthRev - lastMonthRev, "道")
+                        WeekCompareRow(strings.focusMetricLabel, strings.focusValue(thisMonthFocus), thisMonthFocus - lastMonthFocus, strings.focusUnit)
+                        WeekCompareRow(strings.checkinMetricLabel, strings.checkinValue(thisMonthComp), thisMonthComp - lastMonthComp, strings.checkinUnit)
+                        WeekCompareRow(strings.reviewMetricLabel, strings.reviewValue(thisMonthRev), thisMonthRev - lastMonthRev, strings.reviewUnit)
                     }
                 }
             }
@@ -193,18 +201,13 @@ fun ChildEfficiencyReportScreen(
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("📊 学科掌握度分析", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("根据错题掌握情况，找出需要重点突破的科目", style = MaterialTheme.typography.bodySmall,
+                        Text(strings.subjectTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(strings.subjectSubtitle, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         subjectStats.forEach { (subj, total, mastered) ->
                             val rate = mastered.toFloat() / total
-                            val subjName = when (subj) {
-                                com.hstudy.app.data.local.entity.MistakeSubject.MATH -> "🔢 数学"
-                                com.hstudy.app.data.local.entity.MistakeSubject.CHINESE -> "📝 语文"
-                                com.hstudy.app.data.local.entity.MistakeSubject.ENGLISH -> "🔤 英语"
-                                com.hstudy.app.data.local.entity.MistakeSubject.SCIENCE -> "🔬 科学"
-                                com.hstudy.app.data.local.entity.MistakeSubject.OTHER -> "📋 其他"
-                            }
+                            // 科目名是 canonical 存储值：emoji 留在页面，文字走注册表取词
+                            val subjName = subjectLabel(subj, displayLanguage)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(subjName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(72.dp))
                                 LinearProgressIndicator(
@@ -230,26 +233,29 @@ fun ChildEfficiencyReportScreen(
                 val topError = errorTypeStats.first()
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("🔍 错因分析", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("分析错误类型分布，找到根本原因针对性改进", style = MaterialTheme.typography.bodySmall,
+                        Text(strings.errorTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(strings.errorSubtitle, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         errorTypeStats.forEach { (type, count) ->
                             val rate = count.toFloat() / typedMistakes.size
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(type, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(80.dp))
+                                // 错因名是 canonical 存储值（与注册表错题类型同值），渲染时才取词
+                                Text(localizedPresetText(type, displayLanguage), style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.width(80.dp))
                                 LinearProgressIndicator(progress = rate, modifier = Modifier.weight(1f).height(10.dp),
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("$count", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(28.dp))
                             }
                         }
+                        // 分支键仍是 canonical 存储值；文案整句随语言（错因名已内嵌在各语种句子里）
                         val errorAdvice = when (topError.first) {
-                            "粗心马虎" -> "💡 你最常因「粗心马虎」出错！建议：做完后回头检查一遍，圈出关键词，放慢审题速度。"
-                            "概念不清" -> "💡 你最常因「概念不清」出错！建议：回归课本把基础概念弄懂，多问为什么，别急着刷题。"
-                            "方法不会" -> "💡 你最常因「方法不会」出错！建议：总结同类题的解题套路，看例题学习标准方法。"
-                            "审题错误" -> "💡 你最常因「审题错误」出错！建议：读题时圈出条件和问题，看清要求再动笔。"
-                            "计算错误" -> "💡 你最常因「计算错误」出错！建议：草稿纸写工整，关键步骤验算一遍。"
-                            else -> "💡 针对常见错误类型，制定专门的改进计划吧！"
+                            "粗心马虎" -> strings.errorAdviceCareless
+                            "概念不清" -> strings.errorAdviceConcepts
+                            "方法不会" -> strings.errorAdviceMethod
+                            "审题错误" -> strings.errorAdviceReading
+                            "计算错误" -> strings.errorAdviceCalculation
+                            else -> strings.errorAdviceFallback
                         }
                         Text(errorAdvice, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary)
@@ -263,8 +269,10 @@ fun ChildEfficiencyReportScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("💡 学习方法建议", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    val suggestions = buildLearningSuggestions(allMistakes, totalFocusMin, completions.size, tasks.size, bestPeriodLabel)
+                    Text(strings.suggestionsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    val suggestions = buildLearningSuggestions(
+                        allMistakes, totalFocusMin, completions.size, tasks.size, bestPeriodLabel, strings, displayLanguage
+                    )
                     suggestions.forEach { s ->
                         Text("• $s", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer)
@@ -275,10 +283,10 @@ fun ChildEfficiencyReportScreen(
             // ===== 学习表现7日趋势（看见自己的进步轨迹）=====
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("📈 学习表现7日趋势", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.scoreTrendTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     if (scoreTrend.all { it == 0 }) {
                         Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                            Text("暂无数据，开始学习后这里会显示你的进步轨迹", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.scoreTrendEmpty, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         val maxScore = 100f
@@ -302,7 +310,8 @@ fun ChildEfficiencyReportScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(last7Dates.first().takeLast(5), style = MaterialTheme.typography.labelSmall)
                             val avgScore = scoreTrend.sum() / scoreTrend.size
-                            Text("7日平均 $avgScore 分", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(strings.scoreTrendAverage(avgScore), style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
                             Text(last7Dates.last().takeLast(5), style = MaterialTheme.typography.labelSmall)
                         }
                     }
@@ -313,17 +322,17 @@ fun ChildEfficiencyReportScreen(
             if (allSessions.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("⏰ 专注效率洞察", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(strings.focusInsightTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            ReportStat("🌟", bestPeriodLabel.ifEmpty { "-" }, "黄金专注时段")
-                            ReportStat("⏱️", "${avgSession}m", "平均每次专注")
-                            ReportStat("🔢", "${allSessions.size}", "专注次数")
+                            ReportStat("🌟", bestPeriodLabel.ifEmpty { "-" }, strings.bestPeriodLabel)
+                            ReportStat("⏱️", "${avgSession}m", strings.avgSessionLabel)
+                            ReportStat("🔢", "${allSessions.size}", strings.focusCountLabel)
                         }
                         if (bestPeriodLabel.isNotEmpty()) {
-                            Text("💡 你在 $bestPeriodLabel 专注力最好，建议把难题和重要学习安排在这个时段。",
+                            Text(strings.bestPeriodHint(bestPeriodLabel),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }
@@ -332,7 +341,7 @@ fun ChildEfficiencyReportScreen(
 
             // ===== 专注投入分布（看清专注时间花在哪，合理分配各科精力）=====
             if (allSessions.isNotEmpty()) {
-                val focusByTarget = allSessions.groupBy { it.taskTitle.ifEmpty { "自由学习" } }
+                val focusByTarget = allSessions.groupBy { it.taskTitle.ifEmpty { strings.freeStudy } }
                     .mapValues { it.value.sumOf { s -> s.durationMinutes } }
                     .entries.sortedByDescending { it.value }
                 val totalFocus = focusByTarget.sumOf { it.value }.coerceAtLeast(1)
@@ -340,8 +349,8 @@ fun ChildEfficiencyReportScreen(
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("📊 专注投入分布", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("按专注目标统计时间投入，看看精力都花在了哪里", style = MaterialTheme.typography.bodySmall,
+                        Text(strings.distributionTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(strings.distributionSubtitle, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         focusByTarget.take(6).forEach { (target, minutes) ->
                             val ratio = minutes.toFloat() / totalFocus
@@ -357,7 +366,7 @@ fun ChildEfficiencyReportScreen(
                             }
                         }
                         if (topTarget != null) {
-                            Text("💡 你在「${topTarget.key}」上投入最多（${topTarget.value}分钟），注意各科均衡分配哦。",
+                            Text(strings.distributionTopHint(topTarget.key, topTarget.value),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }
@@ -367,12 +376,12 @@ fun ChildEfficiencyReportScreen(
             // 专注趋势折线图
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("📈 专注时长趋势 (14天)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.focusTrendTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (focusData.isEmpty()) {
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
-                            Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.noData, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         val maxVal = focusData.maxOfOrNull { it.totalMinutes }?.toFloat()?.coerceAtLeast(1f) ?: 1f
@@ -421,13 +430,13 @@ fun ChildEfficiencyReportScreen(
             // 打卡完成率趋势
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("✅ 打卡完成率趋势 (14天)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(strings.checkinTrendTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     val totalTasks = tasks.size
                     if (completionByDate.isEmpty() || totalTasks == 0) {
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
-                            Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.noData, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         val dates = completionByDate.keys.sorted()
@@ -487,32 +496,56 @@ private fun ReportStat(emoji: String, value: String, label: String) {
 /** 本周 vs 上周对比行：显示本周值与较上周的增减（↑绿/↓红/→持平） */
 @Composable
 private fun WeekCompareRow(label: String, value: String, delta: Int, unit: String) {
+    val strings = LocalStrings.current.efficiencyReport
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(96.dp))
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         val (arrow, color) = when {
             delta > 0 -> "↑$delta$unit" to Color(0xFF4CAF50)
             delta < 0 -> "↓${-delta}$unit" to MaterialTheme.colorScheme.error
-            else -> "→ 持平" to MaterialTheme.colorScheme.onSurfaceVariant
+            else -> strings.deltaFlat to MaterialTheme.colorScheme.onSurfaceVariant
         }
         Text(arrow, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = color)
     }
 }
 
 /**
- * 将小时（0-23）转为友好的时段描述
+ * 将小时（0-23）转为友好的时段描述（时段名与 "$period${hour}点" 模板都随语言）
  */
-private fun hourLabel(hour: Int): String {
+private fun hourLabel(hour: Int, strings: EfficiencyReportStrings): String {
     val period = when (hour) {
-        in 5..8 -> "早上"
-        in 9..11 -> "上午"
-        in 12..13 -> "中午"
-        in 14..17 -> "下午"
-        in 18..22 -> "晚上"
-        else -> "深夜"
+        in 5..8 -> strings.periodEarlyMorning
+        in 9..11 -> strings.periodMorning
+        in 12..13 -> strings.periodNoon
+        in 14..17 -> strings.periodAfternoon
+        in 18..22 -> strings.periodEvening
+        else -> strings.periodLateNight
     }
-    return "$period${hour}点"
+    return strings.hourLabel(period, hour)
 }
+
+/** 学科 emoji 留在页面（Ruling 17 的装饰位例外：它是图标不是文字），科目名走注册表取词 */
+private fun subjectEmoji(subject: com.hstudy.app.data.local.entity.MistakeSubject): String = when (subject) {
+    com.hstudy.app.data.local.entity.MistakeSubject.MATH -> "🔢"
+    com.hstudy.app.data.local.entity.MistakeSubject.CHINESE -> "📝"
+    com.hstudy.app.data.local.entity.MistakeSubject.ENGLISH -> "🔤"
+    com.hstudy.app.data.local.entity.MistakeSubject.SCIENCE -> "🔬"
+    com.hstudy.app.data.local.entity.MistakeSubject.OTHER -> "📋"
+}
+
+/** 学科 canonical 存储值（原样保留在页面，渲染时由 [localizedPresetText] 按语言取词） */
+private fun subjectCanonical(subject: com.hstudy.app.data.local.entity.MistakeSubject): String = when (subject) {
+    com.hstudy.app.data.local.entity.MistakeSubject.MATH -> "数学"
+    com.hstudy.app.data.local.entity.MistakeSubject.CHINESE -> "语文"
+    com.hstudy.app.data.local.entity.MistakeSubject.ENGLISH -> "英语"
+    com.hstudy.app.data.local.entity.MistakeSubject.SCIENCE -> "科学"
+    com.hstudy.app.data.local.entity.MistakeSubject.OTHER -> "其他"
+}
+
+private fun subjectLabel(
+    subject: com.hstudy.app.data.local.entity.MistakeSubject,
+    lang: DisplayLanguage
+): String = "${subjectEmoji(subject)} ${localizedPresetText(subjectCanonical(subject), lang)}"
 
 /**
  * 根据学习数据生成个性化学习方法建议（可执行、有针对性）
@@ -522,7 +555,9 @@ private fun buildLearningSuggestions(
     totalFocusMin: Int,
     checkinCount: Int,
     taskCount: Int,
-    bestPeriodLabel: String = ""
+    bestPeriodLabel: String = "",
+    strings: EfficiencyReportStrings,
+    lang: DisplayLanguage
 ): List<String> {
     val suggestions = mutableListOf<String>()
 
@@ -535,47 +570,41 @@ private fun buildLearningSuggestions(
     }.filter { it.second >= 2 } // 至少2道错题才统计
     val weakest = subjectStats.minByOrNull { it.third }
     if (weakest != null && weakest.third < 0.6f) {
-        val name = when (weakest.first) {
-            com.hstudy.app.data.local.entity.MistakeSubject.MATH -> "数学"
-            com.hstudy.app.data.local.entity.MistakeSubject.CHINESE -> "语文"
-            com.hstudy.app.data.local.entity.MistakeSubject.ENGLISH -> "英语"
-            com.hstudy.app.data.local.entity.MistakeSubject.SCIENCE -> "科学"
-            com.hstudy.app.data.local.entity.MistakeSubject.OTHER -> "其他"
-        }
-        suggestions.add("${name}是你的薄弱科目（掌握率${(weakest.third * 100).toInt()}%），建议多花时间复习${name}错题。")
+        val name = localizedPresetText(subjectCanonical(weakest.first), lang)
+        suggestions.add(strings.suggestionWeakSubject(name, (weakest.third * 100).toInt()))
     }
 
     // 2. 间隔复习建议
     val dueCount = mistakes.count { com.hstudy.app.ui.mistake.SpacedRepetition.isDueForReview(it) }
     if (dueCount > 0) {
-        suggestions.add("有 $dueCount 道错题到了复习时间，按遗忘曲线及时复习，记忆保持率可提升一倍以上。")
+        suggestions.add(strings.suggestionDueReview(dueCount))
     }
 
     // 3. 未掌握错题建议
     val unmastered = mistakes.count { !it.isMastered }
     if (unmastered > 5) {
-        suggestions.add("还有 $unmastered 道错题未掌握，建议每天攻克 2-3 道，逐步清零。")
+        suggestions.add(strings.suggestionUnmastered(unmastered))
     }
 
     // 4. 专注建议
     if (totalFocusMin < 60) {
-        suggestions.add("试试用番茄钟专注学习（25分钟专注+5分钟休息），专注效率会更高。")
+        suggestions.add(strings.suggestionPomodoro)
     } else {
-        suggestions.add("累计专注 ${totalFocusMin} 分钟，保持专注是高效学习的关键，继续加油！")
+        suggestions.add(strings.suggestionFocusGood(totalFocusMin))
     }
 
     // 5. 黄金专注时段建议
     if (bestPeriodLabel.isNotEmpty()) {
-        suggestions.add("你在 $bestPeriodLabel 专注力最好，把难题和重要科目安排在这个时段，效率更高。")
+        suggestions.add(strings.suggestionBestPeriod(bestPeriodLabel))
     }
 
     // 6. 正面鼓励
     if (mistakes.isNotEmpty() && mistakes.count { it.isMastered } > mistakes.size / 2) {
-        suggestions.add("大部分错题都已掌握，你的复习方法很有效，继续保持！")
+        suggestions.add(strings.suggestionMastered)
     }
 
     if (suggestions.isEmpty()) {
-        suggestions.add("开始记录错题并坚持复习，这里会为你生成个性化学习建议。")
+        suggestions.add(strings.suggestionEmpty)
     }
     return suggestions
 }

@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 
@@ -23,20 +25,22 @@ fun ParentTutoringAdviceScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val app = AppGraph
+    val strings = LocalStrings.current.parentTutoringAdvice
+    val displayLanguage = LocalDisplayLanguage.current
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val allSessions by app.focusRepository.getAllSessions().collectAsState(initial = emptyList())
 
     var streak by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { streak = app.pointRepository.getCurrentStreak() }
 
-    val adviceList = remember(allMistakes, allSessions, streak) {
+    val adviceList = remember(allMistakes, allSessions, streak, displayLanguage) {
         val weekAgo = com.hstudy.app.ui.dt.nowMillis() - 7L * 24 * 60 * 60 * 1000
         val recentFocus = allSessions.filter { it.completedAt >= weekAgo }.sumOf { it.durationMinutes }
-        TutoringAdviceEngine.generate(allMistakes, recentFocus, streak)
+        TutoringAdviceEngine.generate(allMistakes, recentFocus, streak, displayLanguage)
     }
 
     Scaffold(
-        topBar = { HStudyTopBar(title = "💡 辅导建议", onNavigateBack = onNavigateBack) }
+        topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             ResponsiveContent(
@@ -49,7 +53,7 @@ fun ParentTutoringAdviceScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                     ) {
-                        Text("以下建议根据孩子的学科掌握度、错题情况和专注表现自动生成，帮助您更有针对性地辅导孩子。",
+                        Text(strings.intro,
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(14.dp))
                     }
 

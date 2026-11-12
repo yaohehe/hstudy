@@ -44,6 +44,16 @@ package com.hstudy.app.i18n
  * `assertDiffers` 对"英文互换"是瞎的，只有字面量能钉住方向。
  * 一处刻意的英文改动：记忆子页那个按钮的英文原写 `"Check"`（检查你背出来的数字），
  * 上收后统一成 `"Confirm"`——通用出处必须给通用译法，页面语义靠 ZH `确认` 与控件位置已经足够。
+ *
+ * **W8 追加两个函数型字段**（[levelRemaining] / [streakDays]）：等级徽章（`ui/common/LevelSystem.kt`）
+ * 的升级提示与首页火焰徽章（`ui/common/Animations.kt`）的 "N 天" 原先在组件里硬编码中文。
+ * 等级称号与学习树阶段名不在这里——它们是有索引结构的键控表（`levelTitleCopy` / `treeStageCopy`），
+ * 不是固定单串（Ruling 2（W8））；本表只收"句式"这一层，所以两者都是带参数的函数。
+ * 与 [decreaseLabel] 同样的盲区：函数型字段的返回值不进 `toString()`，整表 CJK 扫描看不见，
+ * 双语逐字由 `W8CopyTest.commonStringsLevelAndStreakPinned` 钉死。
+ * [levelRemaining] 的英文词形复用 [pointsWord]（与 [pointsUnit] 同源）；
+ * [streakDays] 的英文 one/other 分支按设计写在函数体内，词形与 [daysWord]（Plurals.kt）一致，
+ * 但两者没有共享出处——本表这一侧由 `W8CopyTest` 的逐字断言钉住。
  */
 data class CommonStrings(
     val backContentDescription: String,
@@ -55,6 +65,9 @@ data class CommonStrings(
     val cancelButton: String,
     val confirmButton: String,
     val deleteContentDescription: String,
+    // W8：等级徽章升级提示 / 首页火焰徽章天数（组件侧句式，见 KDoc 末段）
+    val levelRemaining: (points: Int) -> String,
+    val streakDays: (days: Int) -> String,
 )
 
 val CommonStringsZh = CommonStrings(
@@ -67,6 +80,8 @@ val CommonStringsZh = CommonStrings(
     cancelButton = "取消",                                                 // 原 FocusStrings.cancelButton
     confirmButton = "确认",                                                 // 原 FocusStrings.memoryConfirmButton
     deleteContentDescription = "删除",                                      // 原 FocusStrings.deletePlanDescription
+    levelRemaining = { points -> "还需 ${points}分 升级" },                  // 原 LevelSystem "还需 N分 升级"
+    streakDays = { days -> "${days}天" },                                  // 原 Animations "$streakDays天"
 )
 
 val CommonStringsEn = CommonStrings(
@@ -79,4 +94,6 @@ val CommonStringsEn = CommonStrings(
     cancelButton = "Cancel",
     confirmButton = "Confirm",
     deleteContentDescription = "Delete",
+    levelRemaining = { points -> "$points ${pointsWord(points)} to level up" },
+    streakDays = { days -> if (days == 1) "$days day" else "$days days" },
 )

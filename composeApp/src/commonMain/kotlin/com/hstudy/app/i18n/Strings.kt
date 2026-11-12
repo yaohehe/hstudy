@@ -54,6 +54,9 @@ data class AppStrings(
     val photoViewer: PhotoViewerStrings,
     val weeklyReport: WeeklyReportStrings,
     val pet: PetStrings,
+    val parentTutoringAdvice: ParentTutoringAdviceStrings,
+    val achievementSection: AchievementSectionStrings,
+    val efficiencyReport: EfficiencyReportStrings,
 )
 
 val AppStringsZh = AppStrings(
@@ -100,6 +103,9 @@ val AppStringsZh = AppStrings(
     photoViewer = PhotoViewerStringsZh,
     weeklyReport = WeeklyReportStringsZh,
     pet = PetStringsZh,
+    parentTutoringAdvice = ParentTutoringAdviceStringsZh,
+    achievementSection = AchievementSectionStringsZh,
+    efficiencyReport = EfficiencyReportStringsZh,
 )
 val AppStringsEn = AppStrings(
     role = RoleStringsEn,
@@ -145,6 +151,9 @@ val AppStringsEn = AppStrings(
     photoViewer = PhotoViewerStringsEn,
     weeklyReport = WeeklyReportStringsEn,
     pet = PetStringsEn,
+    parentTutoringAdvice = ParentTutoringAdviceStringsEn,
+    achievementSection = AchievementSectionStringsEn,
+    efficiencyReport = EfficiencyReportStringsEn,
 )
 
 fun stringsFor(language: DisplayLanguage): AppStrings = when (language) {

@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.localizedTreeStageName
 
 /**
  * 学习树 Canvas 绘制 - 6个成长阶段
@@ -48,6 +50,8 @@ fun LearningTreeCanvas(
     modifier: Modifier = Modifier
 ) {
     val stage = LearningTree.getStage(level)
+    // 阶段名走键控注册表（treeStageCopy）；getStageName 保持原样作为 canonical 出处（W8）
+    val displayLanguage = LocalDisplayLanguage.current
 
     val trunkColor = Color(0xFF6D4C41)
     val leafColor = Color(0xFF4CAF50)
@@ -137,7 +141,7 @@ fun LearningTreeCanvas(
             }
         }
         Text(
-            LearningTree.getStageName(stage),
+            localizedTreeStageName(stage, displayLanguage),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary

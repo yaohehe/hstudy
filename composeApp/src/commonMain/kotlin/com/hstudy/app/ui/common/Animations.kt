@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hstudy.app.i18n.LocalStrings
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
@@ -119,6 +120,8 @@ fun StreakBadge(
 ) {
     if (streakDays <= 0) return
 
+    val strings = LocalStrings.current
+
     val infiniteTransition = rememberInfiniteTransition(label = "fire")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -143,7 +146,7 @@ fun StreakBadge(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "$flameEmoji ${streakDays}天",
+            text = "$flameEmoji ${strings.common.streakDays(streakDays)}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.scale(scale)

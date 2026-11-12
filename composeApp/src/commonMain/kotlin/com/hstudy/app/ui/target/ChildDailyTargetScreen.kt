@@ -66,10 +66,10 @@ fun ChildDailyTargetScreen(
     // 智能推荐所需数据：根据薄弱项自动生成推荐目标
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val allSessions by app.focusRepository.getAllSessions().collectAsState(initial = emptyList())
-    val recommendations = remember(allMistakes, allSessions) {
+    val recommendations = remember(allMistakes, allSessions, displayLanguage) {
         val weekAgo = com.hstudy.app.ui.dt.nowMillis() - 7L * 24 * 60 * 60 * 1000
         val recentFocus = allSessions.filter { it.completedAt >= weekAgo }.sumOf { it.durationMinutes }
-        GoalRecommendationEngine.generate(allMistakes, recentFocus)
+        GoalRecommendationEngine.generate(allMistakes, recentFocus, displayLanguage)
     }
 
     // 是否为今天设定了目标

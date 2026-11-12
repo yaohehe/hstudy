@@ -23,12 +23,13 @@ package com.hstudy.app.i18n
  * 连 `showSnackbar` 都没有。所以本表**不需要** `Canonical…` 规范值对象（[CanonicalChildHomeText] 那一族），
  * 也没有参与幂等判等的值。四类闸门盲区（helper 返回值 / 字段赋值 / 无关键字再赋值 / 跨行与三引号）的逐条审结见 `docs/i18n-stage1-verification.md` §5（任务报告随分支作废，plan Ruling 35）。
  *
- * 本表要交代两处**跨文件聚合**进来的中文，它们不属于本页清单、本任务也不迁：
- * - [childPerformanceLine] 的第一个实参 `grade` 出自 `ui/common/LearningScoreCalculator.kt:36-42`
+ * 本表要交代两处**跨文件聚合**进来的内容，它们不属于本页清单、本任务也不迁：
+ * - [childPerformanceLine] 的第一个实参 `grade` 出自 `ui/common/LearningScoreCalculator.kt`
  *   （`优秀/良好/不错/起步/待开始`），同页 [scoreValue] 旁边渲染的 `childScore.total` 是数字、不受影响。
- *   英文态这一格会读出 "优秀 · Check-in 3/5 …"，是**已知未迁完**而不是本表写错：
- *   `LearningScoreCalculator` 是全仓共用计算器（`ChildHomeScreen`、`ChildEfficiencyReportScreen`
- *   也在调），按计划属 Task 11/12 之后的收尾，已进 Task 12 人工验证清单；
+ *   W8 T2 起计算器加 `lang` 参数、等级/鼓励语走 lang-keyed 的 `LearningScoreCopy`，页面把
+ *   `displayLanguage` 传进去，英文态这一格读出 "Excellent · Check-in 3/5 …"；本表仍只搬句式，
+ *   `grade` 是**内容透传**（它在本表里没有独立字段），所以 `StringsCopyTest` 的逐字断言仍用
+ *   中文实参钉"只换句式、不换内容位"的约定；
  * - `childScore.encouragement`（`:145` 的 `💡 ${…}`）同族同因，页面只是把它前面拼一枚 💡，
  *   迁移没有把它挪进表（那会改动数据源，brief 明令禁止）。
  * 这两条**都不进存储**（`DailyLearningScore` 是 UI 模型，`data` 包里没有任何字段接它），
@@ -192,7 +193,7 @@ val ParentDashboardStringsEn = ParentDashboardStrings(
     // ===== 孩子今日学习表现 =====
     childPerformanceTitle = "Your child's study performance today",
     // Ruling 20：五个实参都是内容位，取数逻辑留在页面；`grade` 来自 LearningScoreCalculator，
-    // 英文态目前仍会读出中文等级名（见类注释"跨文件聚合"那段，Task 12 人工清单）。
+    // W8 起等级/鼓励语由 LearningScoreCopy 按生效语言取词（见类注释"跨文件聚合"那段）。
     childPerformanceLine = { grade, completed, total, minutes, reviewed ->
         "$grade · Check-in $completed/$total · Focus $minutes min · Reviewed $reviewed"
     },

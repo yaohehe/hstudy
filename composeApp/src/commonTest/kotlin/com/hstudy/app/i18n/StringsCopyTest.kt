@@ -173,6 +173,10 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "pet.statusCritical",                     // "😵 I can't hold on… please save me with points (feed/play)!"
     "pet.statusBored",                        // "😔 I'm so bored… spend some points playing with me!"
     "pet.moodBored",                          // "😔 I'm so bored… spend some points playing with me!"
+    // ---- W8 Task 3 效率报表页新增 1 条。本表其余静态英文都不提积分；四个指标行的值/单位与
+    // 学习建议是函数型字段（Ruling 20-b），由 W8CopyTest.efficiencyReportInterpolatedPinsBothLanguages
+    // 逐字钉住——其中 scoreUnit 是评分 pts、focusUnit 是分钟 min，都不含 point。
+    "efficiencyReport.statPointsLabel",       // "Total points earned"
 )
 
 /**
@@ -1941,9 +1945,11 @@ class StringsCopyTest {
      * 数据看板 6 个函数型字段的逐字双语期望串（Ruling 20-b）。
      *
      * **内容透传的正面证据**：[ParentDashboardStrings.childPerformanceLine] 的第一个实参 `grade`
-     * 来自跨文件的 `ui/common/LearningScoreCalculator`（本任务不迁、不改数据源），
-     * 所以英文期望串里**故意留着 "优秀"**——这条断言同时做了两件事：证明迁移只搬句式没换数据源，
-     * 以及把"英文态这一格仍会读出中文等级名"这条已知上限写死在测试里（进 Task 12 人工清单）。
+     * 来自跨文件的 `ui/common/LearningScoreCalculator`，本表只搬句式、不翻译内容位，所以这里的
+     * 中文实参是**桩**：它证明模板对等级名原样透传（同一句模板喂英文实参也只换内容位）。
+     * W8 T2 起计算器带 `lang` 参数、等级/鼓励语走 `LearningScoreCopy` 按生效语言取词，英文态这一格
+     * 读出 "Excellent · Check-in 3/5 …"；取值链路由 `W8CopyTest.learningScoreCopyPinsBothLanguages`
+     * 与本条模板断言分工钉住，"英文态仍读出中文等级名"不再是已知上限。
      * [ParentDashboardStrings.scoreValue] 的单位实参来自同表 [ParentDashboardStrings.scoreUnit]，
      * [ParentDashboardStrings.focusMinutesValue] 的单位实参来自 [CommonStrings.minuteLabel]：
      * 两处都是"单位进实参位"的已披露拆分（见 ParentDashboardStrings 类注释与 DISCLOSED_RESIDUALS）。

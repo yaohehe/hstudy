@@ -10,6 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.hstudy.app.i18n.LocalDisplayLanguage
+import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedLevelTitle
 
 /**
  * 等级系统 - 基于累计获得积分
@@ -71,6 +74,9 @@ fun LevelBadge(
     modifier: Modifier = Modifier
 ) {
     val info = LevelSystem.getLevelInfo(totalEarnedPoints)
+    // 等级称号走键控注册表（levelTitleCopy），升级提示句式走公共文案表（W8）
+    val strings = LocalStrings.current
+    val displayLanguage = LocalDisplayLanguage.current
 
     val infiniteTransition = rememberInfiniteTransition(label = "levelPulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -95,14 +101,14 @@ fun LevelBadge(
         )
         Column {
             Text(
-                "Lv.${info.level} ${info.title}",
+                "Lv.${info.level} ${localizedLevelTitle(info.level, displayLanguage)}",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
             if (info.level < 10) {
                 val remaining = info.nextLevelPoints - totalEarnedPoints
                 Text(
-                    "还需 ${remaining}分 升级",
+                    strings.common.levelRemaining(remaining),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
