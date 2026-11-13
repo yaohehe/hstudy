@@ -92,9 +92,12 @@ class PresetRegistryTest {
         val w8SubjectNames = setOf( // PresetRegistry.kt「W8 学科名」组（引擎 canonical 学科串取词；"其他"已在奖励分类组）
             "数学", "语文", "英语", "科学",
         )
+        val w9FreeStudy = setOf( // PresetRegistry.kt「W9 专注目标」组（focus_sessions.taskTitle 的 canonical 存储值）
+            "自由学习",
+        )
         val expected = taskSeedCanonicals() + rewardTexts + rewardCategories + defaultCategory +
             mistakeErrorTypes.toSet() + difficultyLabels + deviceFallbacks + diagnostics + w5PageLocalPresets +
-            w6WishSamples + w8SubjectNames // W5/W6/W8 页面内预设组来自 PresetRegistry.kt 对应分组
+            w6WishSamples + w8SubjectNames + w9FreeStudy // W5/W6/W8/W9 页面内预设组来自 PresetRegistry.kt 对应分组
         val missing = expected - presetTextRegistry.keys
         val extra = presetTextRegistry.keys - expected
         assertTrue(

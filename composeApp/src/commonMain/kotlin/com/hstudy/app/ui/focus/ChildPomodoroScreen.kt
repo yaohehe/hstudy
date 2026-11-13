@@ -12,7 +12,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.CanonicalFocusText
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 
@@ -26,6 +28,7 @@ fun ChildPomodoroScreen(
     val app = AppGraph
     val strings = LocalStrings.current.pomodoro
     val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -88,7 +91,7 @@ fun ChildPomodoroScreen(
                         onExpandedChange = { targetExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = strings.targetLabel(focusTarget),
+                            value = strings.targetLabel(localizedPresetText(focusTarget, displayLanguage)),
                             onValueChange = {},
                             readOnly = true,
                             singleLine = true,
@@ -101,7 +104,7 @@ fun ChildPomodoroScreen(
                         ) {
                             allTargets.forEach { target ->
                                 DropdownMenuItem(
-                                    text = { Text(strings.targetLabel(target)) },
+                                    text = { Text(strings.targetLabel(localizedPresetText(target, displayLanguage))) },
                                     onClick = { focusTarget = target; targetExpanded = false }
                                 )
                             }
@@ -179,7 +182,7 @@ fun ChildPomodoroScreen(
                             }
                             app.userPreferences.boostPetMood(3)
                             app.userPreferences.incrementPomodoroTodayCount()
-                            snackbarHostState.showSnackbar(strings.focusDoneSnackbar(strings.targetLabel(focusTarget), points))
+                            snackbarHostState.showSnackbar(strings.focusDoneSnackbar(strings.targetLabel(localizedPresetText(focusTarget, displayLanguage)), points))
                         }
                     }
                 )

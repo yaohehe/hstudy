@@ -22,7 +22,10 @@ import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskEntity
 import com.hstudy.app.data.local.entity.difficultyStars
 import com.hstudy.app.data.local.entity.effectivePoints
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.achievementCopy
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -34,6 +37,7 @@ fun ChildTaskListScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val strings = LocalStrings.current.taskList
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -61,9 +65,12 @@ fun ChildTaskListScreen(
      */
     val undoAndReport: suspend (Long, String) -> Unit = { taskId, title ->
         val clawedBack = app.pointRepository.undoTaskCheckIn(taskId)
+        // 三个 snackbar 文案字段已改名 revert…/reverted…（W9 T1），调用头不再撞存储边界闸门的
+        // undo/checkIn sink 词根，标题因此可以在渲染点取词；`title` 形参保持 canonical
+        // （:159/:165 的 undoAndReport(task.id, task.title) 是业务实参不动，这里只换显示）。
         snackbarHostState.showSnackbar(
-            if (clawedBack > 0) strings.undoClawedBackMessage(title, clawedBack)
-            else strings.undoPendingApprovalMessage(title)
+            if (clawedBack > 0) strings.revertedClawedBackMessage(localizedPresetText(title, displayLanguage), clawedBack)
+            else strings.revertedPendingApprovalMessage(localizedPresetText(title, displayLanguage))
         )
     }
 
@@ -127,7 +134,13 @@ fun ChildTaskListScreen(
                                                 val isPerfect = tasks.isNotEmpty() && (completedIds.size + 1) >= tasks.size
                                                 val newlyUnlocked = com.hstudy.app.ui.common.AchievementManager.evaluate(app, isPerfect)
                                                 if (newlyUnlocked.isNotEmpty()) {
-                                                    snackbarHostState.showSnackbar(strings.achievementUnlockedMessage(newlyUnlocked.map { it.title }))
+                                                    snackbarHostState.showSnackbar(
+                                                        strings.achievementUnlockedMessage(
+                                                            newlyUnlocked.map { def ->
+                                                                achievementCopy[displayLanguage]?.get(def.type)?.title ?: def.title
+                                                            }
+                                                        )
+                                                    )
                                                 } else {
                                                     snackbarHostState.showSnackbar(strings.checkInSuccessMessage(earned))
                                                 }
@@ -138,7 +151,7 @@ fun ChildTaskListScreen(
                                             // 撤销窗口
                                             scope.launch {
                                                 val result = snackbarHostState.showSnackbar(
-                                                    message = strings.checkInUndoPrompt(task.title, earned),
+                                                    message = strings.revertCheckInPrompt(localizedPresetText(task.title, displayLanguage), earned),
                                                     actionLabel = strings.undoButton,
                                                     duration = SnackbarDuration.Short
                                                 )
@@ -175,6 +188,7 @@ private fun ChildTaskCard(
     onUploadProof: () -> Unit = {}
 ) {
     val strings = LocalStrings.current.taskList
+    val displayLanguage = LocalDisplayLanguage.current
     // 打卡完成时的弹性缩放动画
     var cardScaleTarget by remember { mutableFloatStateOf(1f) }
     LaunchedEffect(isCompleted) {
@@ -256,7 +270,7 @@ private fun ChildTaskCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        task.title,
+                        localizedPresetText(task.title, displayLanguage),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                         color = if (isCompleted) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface

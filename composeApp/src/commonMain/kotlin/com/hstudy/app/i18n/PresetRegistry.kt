@@ -20,6 +20,9 @@ private fun preset(canonical: String, en: String): Pair<String, PresetCopy> =
  * PresetRegistryTest.w6WishSamplesResolvePerLanguage）。
  * W8 另有 4 条学科名（见「W8 学科名」组）：W8 三个文案引擎把 canonical 学科串包 [localizedPresetText]
  * 取词，注册表必须命中才能让英文推荐/辅导标题显示 Math/Chinese/… 而不是回退中文。
+ * W9 另有 1 条专注目标 canonical「自由学习」（见「W9 专注目标」组）：番茄钟把
+ * CanonicalFocusText.TARGET_FREE_STUDY 原样写进 focus_sessions.taskTitle，效率报表的
+ * 专注投入分布行（ChildEfficiencyReportScreen）以它为分组键渲染，注册表命中后英文态才显示 Free study。
  */
 val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     // ===== 预设任务标题（55 条去重；TaskRepository.getPresets() + getSingleTaskSuggestions()）=====
@@ -271,6 +274,11 @@ val presetTextRegistry: Map<String, PresetCopy> = mapOf(
     preset("语文", "Chinese"),
     preset("英语", "English"),
     preset("科学", "Science"),
+    // ===== W9 专注目标（1 条；focus_sessions.taskTitle 的 canonical 存储值）=====
+    // 番茄钟 focusTarget 初值 = CanonicalFocusText.TARGET_FREE_STUDY（PomodoroStrings.kt:270），
+    // recordFocusSession 原样写库；效率报表分布行（:358/:369）已有 localizedPresetText 包装，
+    // 此前未命中注册表所以英文态回落中文，本组补齐取词（Ruling 25：只渲染，不入库）。
+    preset("自由学习", "Free study"),
 )
 
 /**

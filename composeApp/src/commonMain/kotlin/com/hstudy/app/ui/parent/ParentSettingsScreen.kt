@@ -18,7 +18,9 @@ import com.hstudy.app.i18n.CanonicalParentSettingsText
 import com.hstudy.app.i18n.DisplayLanguage
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.SyncDiagnosticAdapter
 import com.hstudy.app.i18n.appLanguageFromStorage
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.restartApp
 import com.hstudy.app.ui.common.HStudyTopBar
@@ -33,6 +35,7 @@ fun ParentSettingsScreen(
 ) {
     val strings = LocalStrings.current.settings
     val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -56,7 +59,11 @@ fun ParentSettingsScreen(
                         childProgress = result.getOrNull()
                         snackbarHostState.showSnackbar(strings.progressImportedMessage)
                     } else {
-                        snackbarHostState.showSnackbar(strings.childProgressImportFailedMessage(result.exceptionOrNull()?.message))
+                        snackbarHostState.showSnackbar(
+                            strings.childProgressImportFailedMessage(
+                                result.exceptionOrNull()?.message?.let { SyncDiagnosticAdapter.localize(it, displayLanguage) }
+                            )
+                        )
                     }
                     isTransferring = false
                 }
@@ -153,7 +160,13 @@ fun ParentSettingsScreen(
                                         isBackingUp = false
                                         result.fold(
                                             onSuccess = { snackbarHostState.showSnackbar(strings.backupSuccessMessage) },
-                                            onFailure = { snackbarHostState.showSnackbar(strings.backupFailureMessage(it.message)) }
+                                            onFailure = {
+                                                snackbarHostState.showSnackbar(
+                                                    strings.backupFailureMessage(
+                                                        it.message?.let { raw -> SyncDiagnosticAdapter.localize(raw, displayLanguage) }
+                                                    )
+                                                )
+                                            }
                                         )
                                     }
                                 }, enabled = !isBackingUp) {
@@ -186,7 +199,13 @@ fun ParentSettingsScreen(
                                                     snackbarHostState.showSnackbar(strings.restartAppNote)
                                                 }
                                             },
-                                            onFailure = { snackbarHostState.showSnackbar(strings.restoreFailureMessage(it.message)) }
+                                            onFailure = {
+                                                snackbarHostState.showSnackbar(
+                                                    strings.restoreFailureMessage(
+                                                        it.message?.let { raw -> SyncDiagnosticAdapter.localize(raw, displayLanguage) }
+                                                    )
+                                                )
+                                            }
                                         )
                                     }
                                 }) { Text(strings.restoreConfirmButton) }
@@ -235,7 +254,13 @@ fun ParentSettingsScreen(
                                                 )
                                                 snackbarHostState.showSnackbar(strings.settingsExportedMessage)
                                             } else {
-                                                snackbarHostState.showSnackbar(strings.exportFailedMessage(result.exceptionOrNull()?.message))
+                                                snackbarHostState.showSnackbar(
+                                                    strings.exportFailedMessage(
+                                                        result.exceptionOrNull()?.message?.let { raw ->
+                                                            SyncDiagnosticAdapter.localize(raw, displayLanguage)
+                                                        }
+                                                    )
+                                                )
                                             }
                                             isTransferring = false
                                         }
@@ -266,7 +291,11 @@ fun ParentSettingsScreen(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                                 ) {
                                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(strings.progressCardTitle(strings.deviceNameDisplayLabel(cp.deviceName)), style = MaterialTheme.typography.titleSmall,
+                                        // 孩子进度卡显示的是**对方设备的数据**（导入摘要的 deviceName）：
+                                        // 走注册表取词，「孩子设备」→ Child device、「家长设备」→ Parent device，
+                                        // 自建设备名原样（Ruling 25：渲染侧映射，存储值不动）。
+                                        // deviceNameDisplayLabel 只映射「家长设备」（下方保存回执 :333 仍用它）。
+                                        Text(strings.progressCardTitle(localizedPresetText(cp.deviceName, displayLanguage)), style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Column { Text(strings.progressPointsLabel, style = MaterialTheme.typography.labelSmall)
@@ -362,7 +391,7 @@ fun ParentSettingsScreen(
                             // 生效语言从根读（LocalDisplayLanguage），不在本页重算
                             // appLanguageFromStorage(...).resolveWith(systemLanguageTag())：
                             // 那等于第二份解析实现，会和 App.kt 漂移。
-                            if (LocalDisplayLanguage.current == DisplayLanguage.EN) {
+                            if (displayLanguage == DisplayLanguage.EN) {
                                 Text(strings.partialTranslationNote,
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

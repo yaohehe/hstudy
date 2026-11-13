@@ -14,7 +14,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.DailyPlanEntity
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -121,6 +123,7 @@ private fun PlanCard(
 ) {
     val strings = LocalStrings.current.focus
     val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     val bgColor = if (plan.isCompleted)
         MaterialTheme.colorScheme.secondaryContainer
     else
@@ -145,7 +148,7 @@ private fun PlanCard(
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    plan.taskTitle,
+                    localizedPresetText(plan.taskTitle, displayLanguage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )

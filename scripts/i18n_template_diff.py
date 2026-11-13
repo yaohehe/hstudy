@@ -59,21 +59,29 @@
   （Task 7 的 ZH 表没有；EN 表有，本脚本不读 EN 侧）。
 * 注释里的中文按 Ruling 18 不算可迁移文案，脚本会剥掉 `//` 行注释与 `/* */` 块注释。
 * 表侧字段名按"字面量前最近的一个 `字段 =`"归属，只为把报错指到具体字段，不参与等价性判定。
-* **登记会遮蔽表侧与它同名的值**（终审 D-A/第 4 条点出、控制器裁决为"只记录不修"）：
-  [apply_disclosures] 是在三层比对**之前**把登记的文本从两侧集合里 `pop` 掉的，它按**值**摘、
-  不按"这条值来自哪个字段"摘。于是登记表中那六条**两侧同形**的共享词——`取消` / `确定` / `确认` /
-  `删除` / `分` / `+⟨$⟩分`——是一个"免检名单"：任何人往任一中文表里**新写**一条与之逐字节相同的值，
-  这条值就在**默认组**里被无声摘掉，既不参与 [strict] 也不参与 [A]/[B]，等价性检查看不见它。
-  边界要说清楚三点：① 只有**整串逐字节相同**才被遮蔽，改成 `取消掉` / `确认。` 这类任何漂移都照旧
+* **登记会遮蔽同名的值——已按"字段 / 页面限定"收口（W9 Task 3，L-19）**（终审 D-A/第 4 条点出）：
+  [apply_disclosures] 是在三层比对**之前**把登记的文本从两侧集合里摘掉的。**不带限定时按值摘**
+  （与阶段 1 完全相同，向后兼容）；带 `table_field`（表名.字段名）或 `page_path`（页面相对路径）时
+  **只摘该字段 / 该页面那一次出现**，值若仍被别的字段 / 别的页面持有就留在集合里照旧参与
+  [strict]/[A]/[B]。于是"往任一中文表新写一条与之逐字节相同的值"不再会被无声吞掉——它落在
+  那批字段声明之外，会被 [A]/[B] 报出来。
+  已迁移的条目（W9 Task 3）：六条**两侧同形**的共享词 `取消` / `确定` / `确认` / `删除` / `分` /
+  `+⟨$⟩分` 全部 `table_field` 限定到实际持有该值的字段；其中 `分`（6 个字段）与 `+⟨$⟩分`（2 个字段）
+  是多字段共有的值，按字段拆成多条登记；三条"页面定值 → 表侧模板"成对登记
+  （Task 7b 的 `每专注 5 分钟 = +1 分…` 与 W7 的 `🍎 喂养 (10分)` / `🎾 陪玩 (5分)`）也一并限定到各自的表字段；
+  5 个**通用词** page 单边条目（`优秀` / `良好` / `不错` / `起步` / `待开始`，W8 的 LearningScoreCopy）
+  加了 `page_path`；W9 T2 的 `日程提醒` 表侧单边条目限定到 `ScheduleAlarmStrings.alarmTitle`。
+  仍然按值摘的两类（理由都在条目里）：① **page 单边**条目——值根本不在任何表里（落库 canonical /
+  copy 常量 / 注册表值），页面限定的价值只在"该值只出现在一个页面"时成立，W9 只给上面那 5 个通用词
+  加了限定，其余条目的值散布在多页或多文件；② 少数**表侧单边**条目（如 `⟨$⟩分`）——同值由同一张表的
+  两个同义槽持有，拆条收益低于维护成本，留待后续波次（条目里点名）。
+  边界照旧要说清三点：① 只有**整串逐字节相同**才被遮蔽，改成 `取消掉` / `确认。` 这类任何漂移都照旧
   报 `invented` 并退 1（终审修复波次的正对照实测过：改一个中文字 → 默认组 [A] 立即 NO、退 1）；
-  ② 遮蔽的范围是"这条**值**"，不是"这个**字段**"——同字段的其他值仍被比；
-  ③ 整枝组（`--branch`）里这六条是**双边命中**（页面确实有同一个词），遮蔽的语义就是"这条披露成立"，
-  风险只在窄组：窄组没有供值的那张表，页面侧那一条本来就会被摘掉，表侧再冒出一条同形的就一并消失。
-  同一机制的第二个实例：登记表里 `分` 有两条（Task 10 的双边 `分`/`分` 与只看表侧的 scoreUnit
-  `None`/`分`），前者先 pop 掉表侧的 `分` 之后，后者在 `--branch` 组里恒报"（未用到）"——
-  它不是过期，是被前一条遮蔽（这就是整枝组"82 用到 / 1 未用到"里那 1 条的来历）。
-  阶段二若要收掉这个口子，形状是给登记加"字段名"限定（`table_field="CommonStrings.cancelButton"`）
-  而不是继续按值 pop。
+  ② 带限定的条目不再遮蔽**别的字段 / 别的页面**的同值；③ 整枝组（`--branch`）里这六条是**双边命中**
+  （页面确实有同一个词），遮蔽的语义就是"这条披露成立"，风险只在窄组：窄组没有供值的那张表，
+  页面侧那一条本来就会被摘掉，表侧再冒出一条同形的就一并消失——这条窄组风险对**未加限定**的条目
+  仍然存在。旧的遮蔽实例（`分` 的表侧 scoreUnit 条目在整枝组恒报"（未用到）"）随之消失：字段限定后
+  两条各自命中自己的字段，整枝组不再有"未用到"。
 
 退出码：[A]、[B] 与 [strict] 残差三者都成立、且残差全部被"格式串拆分位点"或
 **已披露残差表** [DISCLOSED_RESIDUALS] 解释掉，才返回 0。
@@ -179,21 +187,31 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**W8 Task 4 复算**，改登记时必须同时改这里）：表里现在 **178 条**
-# （9 条双侧成对 + 155 条只看页面 + 14 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **172** 条默认组用不到；`--branch` 组碰到 **177** 条、只剩 **1** 条报
-# "（未用到）"——那 1 条是 `None`/`分` 的 scoreUnit 登记被前一条 `分`/`分` 先 pop 掉而遮蔽的，
-# 不是过期，见文件头「已知边界」的最后一 bullet。放宽的代价（窄组会遮蔽同形新值）也已写在那里。
+# 登记表的当前实况读数（**W9 Task 4 复算**，改登记时必须同时改这里）：表里现在 **182 条**
+# （9 条双侧成对 + 155 条只看页面 + 18 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **176** 条默认组用不到；`--branch` 组碰到 **182 条**、**0** 条"（未用到）"。
+# W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
+# PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
+# W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
+# 被双边 `分`/`分` 按值先摘掉而遮蔽；字段限定落地后每条各自命中自己的字段，那 1 条不再出现（L-19
+# 收口）。Task 3 新增的 5 条全是 `分` 的同值字段（4 条）与 `+⟨$⟩分` 的第二个槽（1 条），见下面 Task 10 那组。
+# 放宽的代价（窄组会遮蔽同形新值）只对**未加限定**的条目仍然成立，已写进文件头「已知边界」。
 # W6 那批 18 条 = 示例心愿 6 + 宠物阶段名 8（都只看页面）+ 周报通知正文 4（**只看表侧**：原文只在
 # androidMain，闸门不读平台文件，理由逐条写在条目里）。
 # W7 那批 9 条 = 账本 note 3（页面单边）+ 定值字面量 4（`积分不足，需要 10/5 分` 页面单边 2 +
-# `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel）。
+# `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel——
+# **W9 Task 4 已删除**：两槽零渲染点，连同比值登记一并清理，本批现计 7 条）。
 # W8 那批 95 条 = 三个引擎的 copy 常量 50（TutoringCopy 32 / GoalRecommendationCopy 8 /
 # LearningScoreCopy 10，全部页面单边：copy 不是表）+ 注册表 canonical 43（错因名 5 / 等级称号 10 /
 # 树阶段名 6 / 成就定义 22，全部页面单边）+ 首页动画条组合串 1（页面单边，emoji+`streakDays`）+
-# 报表单位 `⟨$⟩分` 1（**表侧单边**：被 Task 7b 的 page 单边 `⟨$⟩分` 按值先 pop，L-19 遮蔽）。
+# 报表单位 `⟨$⟩分` 1（**表侧单边**：被 Task 7b 的 page 单边 `⟨$⟩分` 按值先 pop，L-19 遮蔽；
+# W9 T3 未加字段限定——该值由 EfficiencyReportStrings 的 focusValue/scoreValue 两个同义槽持有，
+# 拆条收益低于维护成本，见条目 reason）。
 # 三引擎的 50 条先逐条核对过"copy 文件的 ZH 字面量与页面迁移前 50/50 逐字节一致"，不是漏译放行；
 # 行号口径：W8 这批 reason 用 W8_REV（7026a15）坐标。
+# W9 那批 1 条 = 日程通知兜底标题 `日程提醒`（**只看表侧**：取用点在 androidMain/ScheduleAlarmReceiver，
+# 原文随 W5 迁移前字面量逐字节搬入 ScheduleAlarmStrings.alarmTitle；闸门不读平台文件）。
+# W9 Task 3 没有新增"批"，只给既有条目补限定、并把 `分`/`+⟨$⟩分` 按字段拆成多条（见 Task 10 那组）。
 #
 # 每个页面取**自己那批任务迁移前**的 rev（`git log --format=%h -1 <迁走它的那次提交>^`），
 # 同一页面被两批任务先后迁移的（ParentSettingsScreen）就带两个 rev，各取所需的一半原文。
@@ -312,6 +330,15 @@ BRANCH_TABLES = [
 
 # 已披露残差的登记处。每条 {"page": 页面原文或 None, "table": 表侧模板或 None, "reason": 披露出处}，
 # page / table 至少给一个；两边的键都是**塌掉插值之后**的模板文本。
+# **可选限定键（W9 Task 3 / L-19 的收口形状）**：
+#   "table_field": "CommonStrings.cancelButton"
+#       —— 表侧只从这个字段摘。写**表名.字段名**（不带 Zh 段标记）；[table_templates] 收集出来的是
+#          `CommonStringsZh.cancelButton`，比较时两边都经 [_norm_field] 归一化，所以两种写法都认。
+#   "page_path": "com/hstudy/app/ui/common/LearningScore.kt"
+#       —— 页面侧只从这个文件摘（相对 SRC_ROOT 的路径，与 [BRANCH_PAGES] 里写的一致）。
+# 两个键都可省略、也可同时给。省略 = 阶段 1 的**按值**语义（两侧整值摘掉，向后兼容）；
+# 带限定时"只摘该字段 / 该文件那一次出现"，值若仍被别的字段 / 页面持有就留在集合里照旧参与
+# [strict]/[A]/[B]（实现见 [_pop_table] / [_pop_page]）。
 # 只有 Ruling 20(d) 已经在字段 KDoc 里点名披露过的位点才能进这里（任务报告不再是披露落点：`.superpowers/` 是 gitignore 的临时件，plan Ruling 35）。
 # 为什么两边可以只写一边：抽取器只收"塌掉插值后仍含汉字"的字面量，
 # 所以表侧 `"$minutes$unit"`（塌成 `⟨$⟩⟨$⟩`，一个汉字都没有）根本不会出现在表侧集合里——
@@ -332,8 +359,10 @@ DISCLOSED_RESIDUALS = [
     {
         "page": "每专注 5 分钟 = +1 分（所有时长均有效）",
         "table": "每专注 %s 分钟 = +%s 分（所有时长均有效）" % (VALUE, VALUE),
+        "table_field": "PomodoroStrings.pointsPerFocusRule",
         "reason": "Task 7b Ruling 20 例外③：两个数字进实参位，把同行两种 `分` 在结构上分槽"
-                  "（见 PomodoroStrings 类注释）",
+                  "（见 PomodoroStrings 类注释）。W9 T3 起表侧限定到 PomodoroStrings.pointsPerFocusRule"
+                  "（同一中文值只有这一个槽，字段限定不改变命中）",
     },
     {
         "page": None, "table": "（超%s小时）" % VALUE,
@@ -343,24 +372,32 @@ DISCLOSED_RESIDUALS = [
     },
     # Task 7b 第 1 轮审查第 8 条：三条通用按钮词从 FocusStrings 上收到 CommonStrings，
     # 中文值逐字节不变，但本命令的表组只有 Pomodoro/Focus 两张表，所以只登记页面侧。
-    {"page": "取消", "table": "取消",
+    {"page": "取消", "table": "取消", "table_field": "CommonStrings.cancelButton",
      "reason": "审查第 8 条：上收为 CommonStrings.cancelButton（值未变，出处换了）。"
                "Task 11 复用同一条登记：ParentSettingsScreen.kt:192 与 :431 两处都取 common.cancelButton，"
                "本命令的表组没有 CommonStrings 所以只登记页面侧。"
                "终审 Ruling 41 之后登记成**两侧同形**：整枝组把 CommonStrings 带进表组，"
                "页面侧 AppNavGraph.kt:283（家长密码门）与表侧 cancelButton 都是『取消』，"
-               "只登记单边会让宽组把表侧报成 invented（第 9 条点出的结构性恒红）"},
-    {"page": "确定", "table": "确定",
+               "只登记单边会让宽组把表侧报成 invented（第 9 条点出的结构性恒红）。"
+               "W9 T3（L-19）：表侧限定到 CommonStrings.cancelButton——这个中文值在整枝表组里只有"
+               "这一个槽，限定后行为不变；页面侧仍是值级（『取消』出现在 10 个页面的 15 处，"
+               "没有单一 page_path 可限定）"},
+    {"page": "确定", "table": "确定", "table_field": "SettingsStrings.passwordOkButton",
      "reason": "终审 Ruling 41：家长密码门（AppNavGraph.kt:281）的提交按钮复用"
                "SettingsStrings.passwordOkButton（同一个中文值『确定』、同一个语义），不在新表里重开同值槽；"
                "表侧归 SettingsStrings，所以窄组（只带 ParentGateStrings）要靠这条双边登记说明它为什么只在页面侧。"
                "与 CommonStrings.confirmButton 的『确认』是**两个中文值**（差一个字、字节不同），"
-               "两侧词形由 StringsCopyTest.settingsOkButtonIsNotTheCommonConfirmButton 钉住"},
-    {"page": "确认", "table": "确认",
+               "两侧词形由 StringsCopyTest.settingsOkButtonIsNotTheCommonConfirmButton 钉住。"
+               "W9 T3（L-19）：表侧限定到 SettingsStrings.passwordOkButton（该值的唯一持有者）"},
+    {"page": "确认", "table": "确认", "table_field": "CommonStrings.confirmButton",
      "reason": "审查第 8 条：上收为 CommonStrings.confirmButton（值未变，出处换了）。"
-               "终审第 9 条改成两侧同形登记，宽组（--branch）与窄组都能复验它"},
-    {"page": "删除", "table": "删除",
-     "reason": "审查第 8 条：上收为 CommonStrings.deleteContentDescription（值未变，出处换了）。终审第 9 条改成两侧同形登记"},
+               "终审第 9 条改成两侧同形登记，宽组（--branch）与窄组都能复验它。"
+               "W9 T3（L-19）：表侧限定到 CommonStrings.confirmButton（该值的唯一持有者）；"
+               "页面侧仍是值级（『确认』在 ChildMemoryTrainingScreen 与 ParentPointsScreen 两页）"},
+    {"page": "删除", "table": "删除", "table_field": "CommonStrings.deleteContentDescription",
+     "reason": "审查第 8 条：上收为 CommonStrings.deleteContentDescription（值未变，出处换了）。终审第 9 条改成两侧同形登记。"
+               "W9 T3（L-19）：表侧限定到 CommonStrings.deleteContentDescription（该值的唯一持有者）；"
+               "页面侧仍是值级（『删除』散布在 8 个页面）"},
     # ---- Task 9（孩子首页）的 5 条残差 ----
     # 前四条是 Ruling 25 的存储边界：原文**不进文案表**，而是搬到 ChildHomeStrings.kt 里的
     # CanonicalChildHomeText 常量（该对象不属于 Zh/En 表，所以本命令的表侧集合里看不到它们）。
@@ -377,21 +414,52 @@ DISCLOSED_RESIDUALS = [
      "reason": "Task 9 Ruling 25：:586 跨行 checkIn(bizKey, description) 的 description 参与 "
                "PointRepository.kt:256 幂等判等，值留在 CanonicalChildHomeText.assignmentDescription(name)"},
     {"page": "+%s分" % VALUE, "table": "+%s分" % VALUE,
+     "table_field": "TaskListStrings.pointsEarnedLabel",
      "reason": "Task 9 跨表复用：ChildHomeScreen.kt:567 的 `+${a.points}分` 用 TaskListStrings.pointsEarnedLabel"
-               "（同一中文值、同一语义 = 某件事值多少积分），本命令的表组只有 ChildHomeStrings，故只登记页面侧"},
+               "（同一中文值、同一语义 = 某件事值多少积分），本命令的表组只有 ChildHomeStrings，故只登记页面侧。"
+               "W9 T3（L-19）：表侧限定到 TaskListStrings.pointsEarnedLabel；同值的第二个槽"
+               "ParentAssignTaskStrings.pointsBadge 由下面那条表侧单边条目单独声明（拆条后整枝组读数不变）"},
     # ---- Task 10（家长首页 / 数据看板）的 2 条残差 ----
     # 家长首页那 59 条是逐字节整串搬进表的（strict 59/59，0 残差），只有仪表盘这一处需要登记。
-    {"page": "分", "table": "分",
+    {"page": "分", "table": "分", "table_field": "CommonStrings.pointsUnit",
      "reason": "Task 10 Ruling 20 例外（与上面例外②同一类，单位来自另一张表）："
                "ParentDashboardScreen.kt:171 传给 ParentCompareRow(…, unit) 的 `分` 是**分钟**，"
                "迁移后由 CommonStrings.minuteLabel 供值；本命令的表组只有 ParentDashboardStrings，"
                "而那边没有这个值，所以只登记页面侧。评分单位那个 `分`（:142）是**另一个槽**，"
-               "见下面那条表侧登记，两者不得合并（由 StringsCopyTest.parentDashboardScoreUnitIsNotPoints 钉住）"},
-    {"page": None, "table": "分",
+               "见下面那条表侧登记，两者不得合并（由 StringsCopyTest.parentDashboardScoreUnitIsNotPoints 钉住）。"
+               "W9 T3（L-19）：表侧限定到 CommonStrings.pointsUnit（积分单位槽）；`分` 这个中文值在整枝表组里"
+               "由 **6 个字段**共同持有（pointsUnit / minuteLabel / ChildHome.scoreUnit /"
+               " ParentDashboard.scoreUnit / EfficiencyReport.focusUnit / EfficiencyReport.scoreUnit），"
+               "因此按字段拆成 6 条登记，下面 5 条各管一个槽——这样任一表新写一条 `分` 都会掉在这 6 条之外、"
+               "被 [A]/[B] 报出来。页面侧仍是值级（`分` 出现在 4 个页面共 7 处，语义分属积分/分钟/评分/专注单位，"
+               "没有单一 page_path 可限定）"},
+    {"page": None, "table": "分", "table_field": "ParentDashboardStrings.scoreUnit",
      "reason": "Task 10 Ruling 20 例外（与上面例外①同一类，只在表侧可见）："
                "ParentDashboardStrings.scoreUnit 是 :142 `${childScore.total}分` 的评分单位槽，"
                "页面写成 `strings.scoreValue(total, strings.scoreUnit)`，"
-               "数值位与单位位塌成 `⟨$⟩⟨$⟩`（无汉字、不入页面集合），所以只有表侧有这一条"},
+               "数值位与单位位塌成 `⟨$⟩⟨$⟩`（无汉字、不入页面集合），所以只有表侧有这一条。"
+               "W9 T3：本条的字段限定正是为了让它**不再是死条目**——旧行为里它被上一条 `分`/`分` 按值先摘掉，"
+               "整枝组恒报「（未用到）」（L-19 的第二个实例）；限定后两条各自命中自己的字段"},
+    # `分` 的其余 4 个同值字段（W9 T3 为收口而拆出的表侧单边条目；值级 pop 拆成逐字段 pop 后，
+    # 整枝组"分"的最终集合与拆分前逐字节相同——6 个字段全部被摘掉。任何一个字段消失、或新冒出一个
+    # 同值字段，都会以"（未用到）"或 [A]/[B] 残差的形式暴露出来）。
+    {"page": None, "table": "分", "table_field": "CommonStrings.minuteLabel",
+     "reason": "W9 T3/L-19：`分` 的同值槽之一——CommonStrings.minuteLabel（分钟单位，CommonStrings.kt:77，"
+               "W8 之后 ParentDashboardStrings.focusMinutesValue / PomodoroStrings.durationChip 等单位由它供值）"},
+    {"page": None, "table": "分", "table_field": "ChildHomeStrings.scoreUnit",
+     "reason": "W9 T3/L-19：`分` 的同值槽之一——ChildHomeStrings.scoreUnit（评分单位、非积分，"
+               "ChildHomeStrings.kt:235 注释里的 :290 出处）"},
+    {"page": None, "table": "分", "table_field": "EfficiencyReportStrings.focusUnit",
+     "reason": "W9 T3/L-19：`分` 的同值槽之一——EfficiencyReportStrings.focusUnit（增减行单位=分钟，"
+               "EfficiencyReportStrings.kt:109，注释里的 :162 出处）"},
+    {"page": None, "table": "分", "table_field": "EfficiencyReportStrings.scoreUnit",
+     "reason": "W9 T3/L-19：`分` 的同值槽之一——EfficiencyReportStrings.scoreUnit（评分单位、非积分，"
+               "EfficiencyReportStrings.kt:115，注释里的 :165 出处）"},
+    # `+⟨$⟩分` 的第二个同值槽（同上：拆条后整枝组读数不变，两个字段都被摘掉）。
+    {"page": None, "table": "+%s分" % VALUE, "table_field": "ParentAssignTaskStrings.pointsBadge",
+     "reason": "W9 T3/L-19：`+N分` 的第二个同值槽——ParentAssignTaskStrings.pointsBadge"
+               "（ParentAssignTaskStrings.kt:48 `+${points}分`）；页面侧那一处（ParentAssignTaskScreen.kt:138）"
+               "已由 Task 9 的双边登记按值覆盖，本条只声明表侧字段"},
     # ---- Task 11（家长设置页剩余 64 条）----
     # 页面侧只有一条 `⟨$⟩分`（:275 `${cp.totalFocusMinutes}分`，单位来自 CommonStrings.minuteLabel），
     # 与上面 Task 7b 例外②同形，因此由那条登记复用；`取消`（:192 / :431）复用上面审查第 8 条那条。
@@ -560,17 +628,15 @@ DISCLOSED_RESIDUALS = [
                "strict 层不塌裸数字 10，故与带 ⟨$⟩ 位的表模板不同形（表侧模板由 :358 的动态版本配对）"},
     {"page": "积分不足，需要 5 分", "table": None,
      "reason": "W7：ChildPetScreen.kt:222 的定值字面量，迁移后走 PetStrings.notEnoughPoints(5)，同上"},
-    {"page": "🍎 喂养 (10分)", "table": "🍎 喂养 (⟨$⟩分)",
+    {"page": "🍎 喂养 (10分)", "table": "🍎 喂养 (⟨$⟩分)", "table_field": "PetStrings.feedButton",
      "reason": "W7：ChildPetScreen.kt:218 的定值按钮字面量 → PetStrings.feedButton(cost)；"
-               "10 是裸数字、不被格式串塌缩，登记成页面定值与表侧模板成对"},
-    {"page": "🎾 陪玩 (5分)", "table": "🎾 陪玩 (⟨$⟩分)",
-     "reason": "W7：ChildPetScreen.kt:233 的定值按钮字面量 → PetStrings.playButton(cost)，同上"},
-    # 两条表侧单边：裸动词槽没有被任何页面字面量渲染（按钮走带价格的 feedButton/playButton，
-    # 见 PetStrings KDoc），页面侧没有同形原文，只能在表侧登记。
-    {"page": None, "table": "喂养",
-     "reason": "W7：PetStringsZh.feedLabel 裸动词槽（页面按钮走 feedButton，页内无同形原文），表侧单边"},
-    {"page": None, "table": "陪玩",
-     "reason": "W7：PetStringsZh.playLabel 裸动词槽（页面按钮走 playButton，页内无同形原文），表侧单边"},
+               "10 是裸数字、不被格式串塌缩，登记成页面定值与表侧模板成对。"
+               "W9 T3（L-19）：表侧限定到 PetStrings.feedButton（该模板的唯一持有者）"},
+    {"page": "🎾 陪玩 (5分)", "table": "🎾 陪玩 (⟨$⟩分)", "table_field": "PetStrings.playButton",
+     "reason": "W7：ChildPetScreen.kt:233 的定值按钮字面量 → PetStrings.playButton(cost)，同上。"
+               "W9 T3（L-19）：表侧限定到 PetStrings.playButton（该模板的唯一持有者）"},
+    # 两条表侧单边（裸动词槽 feedLabel/playLabel）曾在此登记，W9 Task 4（Ruling 4）随
+    # PetStrings 的死字段删除一并移除：两槽零渲染点，表里不再有这个值，登记留着只会恒报过期。
     # ---- 阶段 2 W8：三引擎/等级/树/成就区的页面单边值（值不进表，渲染走 copy 常量或注册表）----
     # W8 把三个引擎（GoalRecommendation / TutoringAdviceEngine / LearningScore）登记为**文案源**：
     # 它们迁移前的 50 条文案逐字节搬进 lang-keyed copy 常量（TutoringCopy 32 / GoalRecommendationCopy 8 /
@@ -623,16 +689,21 @@ DISCLOSED_RESIDUALS = [
     {"page": "错因针对辅导", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
     {"page": "错题复习督促", "table": None, "reason": "W8 Ruling 1（W8）：TutoringAdviceEngine 文案 → TutoringCopy（非表值，两语 pin 见 W8CopyTest）"},
     # ---- score（10 条）----
-    {"page": "不错", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    # W9 T3（L-19）：5 个**通用单词**（优秀/良好/不错/起步/待开始）加 `page_path` 限定到
+    # ui/common/LearningScore.kt——这 5 个值在迁移前只出现在这一个文件（W8_REV 取证：5 个值各 1 处，
+    # 见 [BRANCH_PAGES] 的 LearningScore.kt 条目），限定后摘除范围从"整棵页面集合"缩到"这个文件"，
+    # 将来任一别的页面写出同词不会再被无声摘掉。另外 5 条是整句鼓励语（逐字节长句，遮蔽风险可忽略），
+    # 保持值级。
+    {"page": "不错", "table": None, "page_path": "com/hstudy/app/ui/common/LearningScore.kt", "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）。W9 T3：page_path 限定到 LearningScore.kt（L-19）"},
     {"page": "不错的开始！专注和复习还能再加把劲！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
     {"page": "今天学习超棒！全面发展，继续保持！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
     {"page": "今天表现很好！再坚持一下就完美了！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
-    {"page": "优秀", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "优秀", "table": None, "page_path": "com/hstudy/app/ui/common/LearningScore.kt", "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）。W9 T3：page_path 限定到 LearningScore.kt（L-19）"},
     {"page": "已经迈出一大步！继续完成更多任务吧！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
-    {"page": "待开始", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "待开始", "table": None, "page_path": "com/hstudy/app/ui/common/LearningScore.kt", "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）。W9 T3：page_path 限定到 LearningScore.kt（L-19）"},
     {"page": "新的一天，从完成第一个任务开始吧！", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
-    {"page": "良好", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
-    {"page": "起步", "table": None, "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）"},
+    {"page": "良好", "table": None, "page_path": "com/hstudy/app/ui/common/LearningScore.kt", "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）。W9 T3：page_path 限定到 LearningScore.kt（L-19）"},
+    {"page": "起步", "table": None, "page_path": "com/hstudy/app/ui/common/LearningScore.kt", "reason": "W8 Ruling 1（W8）：LearningScore 等级/鼓励语 → LearningScoreCopy（非表值，两语 pin 见 W8CopyTest）。W9 T3：page_path 限定到 LearningScore.kt（L-19）"},
     # ---- err（5 条）----
     {"page": "粗心马虎", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
     {"page": "概念不清", "table": None, "reason": "W8 Ruling 25/注册表：错因名 canonical（注册表覆盖，非表值）"},
@@ -690,7 +761,22 @@ DISCLOSED_RESIDUALS = [
     # 但 Task 7b 的 page 单边披露 `⟨$⟩分` 按值先把页面侧摘掉（L-19 遮蔽的又一实例），所以只能在表侧登记。
     {"page": None, "table": "⟨$⟩分",
      "reason": "W8：EfficiencyReportStrings.focusValue/scoreValue 的 `⟨$⟩分` 被 Task 7b 的 page 单边披露"
-               "（`⟨$⟩分`，Pomodoro 单位槽）按值先摘自页面侧（L-19 遮蔽）；两语值由 W8CopyTest 钉住"},
+               "（`⟨$⟩分`，Pomodoro 单位槽）按值先摘自页面侧（L-19 遮蔽）；两语值由 W8CopyTest 钉住。"
+               "W9 T3 复核后**仍按值摘**（不加 table_field）：该值由同一张表的 focusValue / scoreValue 两个"
+               "同义槽持有，字段限定同样要拆成两条、而它们永远同进同出（同表同批次加的），拆条收益低于维护成本；"
+               "风险面被限制在「这两条同义槽」（新写第三条同值仍会被本条按值吞掉），记在这里待后续波次"},
+    # ---- 阶段 2 W9：日程通知兜底标题（**表侧单边**；取用点在 androidMain，闸门读不到）----
+    # ScheduleAlarmStringsZh.alarmTitle 的「日程提醒」原文在迁移前只存在于
+    # androidMain/platform/ScheduleAlarmReceiver.kt:14 的 `?: "日程提醒"`（组合期之外的平台回调），
+    # 本脚本页面侧只读 commonMain、平台文件不登记（同 W6 周报正文四段的先例），所以只能在表侧披露。
+    # 它不是新写文案：中文值与迁移前字面量逐字节相同（W9CopyTest.alarmTitlePinned 钉两语，
+    # ChildScheduleCopyTest.scheduleAlarmCopyDiffers 钉 ZH≠EN）。
+    {"page": None, "table": "日程提醒", "table_field": "ScheduleAlarmStrings.alarmTitle",
+     "reason": "W9 T2：ScheduleAlarmStrings.alarmTitle 只在 androidMain/platform/ScheduleAlarmReceiver.kt"
+               "（EXTRA_TITLE 缺失时的兜底通知标题）取词，闸门不读平台文件；ZH 值与迁移前字面量"
+               "「日程提醒」逐字节相同，两语由 W9CopyTest.alarmTitlePinned 钉死。"
+               "W9 T3（L-19）：表侧限定到 ScheduleAlarmStrings.alarmTitle——这是这条兜底标题在表里的"
+               "唯一槽，限定后其他表再写出同值不会被这条披露吞掉"},
 ]
 
 
@@ -813,8 +899,99 @@ def parse_page_spec(spec, default_rev):
     return (default_rev, spec)
 
 
+def _norm_field(field_id):
+    """把表侧字段 id 归一成「表名.字段名」（去掉 `Zh` 语言段标记）。
+
+    [table_templates] 收集出来的 id 形如 `CommonStringsZh.cancelButton`（带表变量的 marker），
+    而登记的 `table_field` 按可读写法记**表名**（`CommonStrings.cancelButton`，L-19 的收口形状）。
+    两边都归一化再比，于是两种写法都认；`--table <path>#<任意 marker>` 传进来的 marker 也照旧匹配
+    （不以 `Zh` 结尾就原样返回）。
+    """
+    table_name, dot, name = field_id.rpartition(".")
+    if not dot:
+        return field_id
+    if table_name.endswith("Zh"):
+        table_name = table_name[:-2]
+    return "%s.%s" % (table_name, name)
+
+
+def _field_owned(fields, field=None):
+    """这条值在表侧的字段 id 列表里有没有 field（field=None 表示不看字段，只要值在就算）。"""
+    if field is None:
+        return True
+    want = _norm_field(field)
+    return any(_norm_field(owner) == want for owner in fields)
+
+
+def _table_hit(table, text, field=None):
+    """表侧命中：值在，且（带了 field 时）该字段确实持有它。"""
+    fields = table.get(text)
+    return bool(fields) and _field_owned(fields, field)
+
+
+def _pop_table(table, text, field=None):
+    """从表侧摘一条。
+
+    带 field 时**只摘该字段的那一次出现**（L-19）：值若仍被别的字段持有，就把集合里这条值的
+    字段列表重建为"剩下的字段"，值照旧参与三层比对——这正是"新写一条同值"要暴露出来的形态。
+    """
+    fields = table.get(text)
+    if not fields or not _field_owned(fields, field):
+        return False
+    if field is None:
+        del table[text]
+        return True
+    want = _norm_field(field)
+    kept = [owner for owner in fields if _norm_field(owner) != want]
+    if kept:
+        table[text] = kept
+    else:
+        del table[text]
+    return True
+
+
+def _page_hit(page, text, path=None):
+    """页面侧命中：值在，且（带了 path 时）该文件确实有一处原文。"""
+    sites = page.get(text)
+    if not sites:
+        return False
+    return path is None or any(rel == path for rel, _line, _fmt in sites)
+
+
+def _pop_page(page, text, path=None):
+    """从页面侧摘一条；带 path 时只摘该文件的出现，别处仍有原文就把站点列表重建后留着。"""
+    sites = page.get(text)
+    if not sites or not _page_hit(page, text, path):
+        return False
+    if path is None:
+        del page[text]
+        return True
+    kept = [site for site in sites if site[0] != path]
+    if kept:
+        page[text] = kept
+    else:
+        del page[text]
+    return True
+
+
+def _qual_tag(page_path, table_field):
+    """说明行里的限定标记；没有限定就返回空串（无限定条目的输出因此逐字节不变）。"""
+    parts = []
+    if table_field:
+        parts.append("table_field=%s" % table_field)
+    if page_path:
+        parts.append("page_path=%s" % page_path)
+    return "［限定 %s］" % "，".join(parts) if parts else ""
+
+
 def apply_disclosures(page, table, entries, scope_page=None, scope_table=None):
     """把已披露的残差从两侧集合里摘掉，并校验登记本身没有过期。
+
+    **限定（W9 Task 3 / L-19）**：条目可以带 `table_field`（表名.字段名，如
+    `CommonStrings.cancelButton`）与/或 `page_path`（相对 SRC_ROOT 的页面路径）。带了限定的一侧
+    只摘"该字段 / 该文件那一次出现"；值若仍被别的字段 / 别的页面持有，就留在集合里继续参与
+    [strict]/[A]/[B]（见 [_pop_table] / [_pop_page]）。两个键都不带 = 阶段 1 的**按值**语义
+    （两侧整值摘掉），向后兼容。
 
     返回 (是否成立, 说明行列表)。校验规则（终审第 9 条放宽了第 3 条，见下面粗体那段的括号）：
     * 两边都不在本次的集合里 -> 只提示，不判失败（命令可能只带了共享表的一部分页面）；
@@ -826,44 +1003,48 @@ def apply_disclosures(page, table, entries, scope_page=None, scope_table=None):
       原先不看范围就一律失败，后果是共享词的成对登记让宽组天然不可能退 0
       （`取消` 登记在页面侧、CommonStrings 进了表组之后就成了 invented）。
       白名单仍然会过期：过期判定的参照系从"这次命令带了什么"换成"整个分支还有什么"。
+      带限定时，"存在"的判据也一并收紧：字段限定要求该字段仍持有该值，页面限定要求该文件仍有原文。
     """
     notes = []
     ok = True
     for entry in entries:
         page_text = entry.get("page")
         table_text = entry.get("table")
+        page_path = entry.get("page_path")
+        table_field = entry.get("table_field")
         reason = entry.get("reason", "")
-        on_page = page_text in page if page_text else False
-        on_table = table_text in table if table_text else False
+        tag = _qual_tag(page_path, table_field)
+        on_page = bool(page_text) and _page_hit(page, page_text, page_path)
+        on_table = bool(table_text) and _table_hit(table, table_text, table_field)
         if not on_page and not on_table:
             notes.append("    （未用到）%r / %r 都不在本次集合里——命令没带对应的页面或表，"
-                         "不算失败，但这条披露没被复验：%s" % (page_text, table_text, reason))
+                         "不算失败，但这条披露没被复验：%s%s" % (page_text, table_text, reason, tag))
             continue
         if page_text and table_text and on_page != on_table:
             # 只找到一侧：另一半是"这次命令没带"，还是"整枝范围里已经不存在了"？
             if not on_page:
-                stale = scope_page is not None and page_text not in scope_page
+                stale = scope_page is not None and not _page_hit(scope_page, page_text, page_path)
             else:
-                stale = scope_table is not None and table_text not in scope_table
+                stale = scope_table is not None and not _table_hit(scope_table, table_text, table_field)
             if stale:
                 notes.append("    （登记过期）%r / %r 只找得到%s一边，另一侧在**整枝范围**里也不存在了"
-                             "（那是有人改了拆分形态却没改登记）：%s"
-                             % (page_text, table_text, "页面" if on_page else "表", reason))
+                             "（那是有人改了拆分形态却没改登记）：%s%s"
+                             % (page_text, table_text, "页面" if on_page else "表", reason, tag))
                 ok = False
                 continue
             notes.append("    （单边在范围）%r / %r 这次只带到了%s那一侧，另一侧在整枝范围里存在、"
-                         "只是这条命令没带它（宽窄组合天然如此，不算过期）：%s"
-                         % (page_text, table_text, "页面" if on_page else "表", reason))
-            if page_text and on_page:
-                page.pop(page_text)
-            if table_text and on_table:
-                table.pop(table_text)
+                         "只是这条命令没带它（宽窄组合天然如此，不算过期）：%s%s"
+                         % (page_text, table_text, "页面" if on_page else "表", reason, tag))
+            if on_page:
+                _pop_page(page, page_text, page_path)
+            else:
+                _pop_table(table, table_text, table_field)
             continue
-        if page_text and on_page:
-            page.pop(page_text)
-        if table_text and on_table:
-            table.pop(table_text)
-        notes.append("    （已披露）page=%r table=%r：%s" % (page_text, table_text, reason))
+        if on_page:
+            _pop_page(page, page_text, page_path)
+        if on_table:
+            _pop_table(table, table_text, table_field)
+        notes.append("    （已披露）page=%r table=%r%s：%s" % (page_text, table_text, tag, reason))
     return ok, notes
 
 

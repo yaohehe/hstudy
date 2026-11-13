@@ -24,6 +24,8 @@ import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.CanonicalChildHomeText
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.SyncDiagnosticAdapter
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.navigation.Screen
@@ -51,9 +53,13 @@ fun ChildHomeScreen(
                     isSyncing = true
                     val result = com.hstudy.app.data.sync.FamilySyncHelper.importControlConfig(text)
                     if (result.isSuccess) {
-                        snackbarHostState.showSnackbar("✅ ${result.getOrNull()}")
+                        snackbarHostState.showSnackbar("✅ ${SyncDiagnosticAdapter.localize(result.getOrNull() ?: "", displayLanguage)}")
                     } else {
-                        snackbarHostState.showSnackbar(strings.importFailedMessage(result.exceptionOrNull()?.message))
+                        snackbarHostState.showSnackbar(
+                            strings.importFailedMessage(
+                                result.exceptionOrNull()?.message?.let { SyncDiagnosticAdapter.localize(it, displayLanguage) }
+                            )
+                        )
                     }
                     isSyncing = false
                 }
@@ -263,7 +269,7 @@ fun ChildHomeScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(strings.hardTaskFirstTitle(hardTasksNotDone.size), style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                Text(strings.tackleFirstHint(hardest.title, hardestStars, hardestName),
+                                Text(strings.tackleFirstHint(localizedPresetText(hardest.title, displayLanguage), hardestStars, hardestName),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                         }
@@ -536,7 +542,9 @@ fun ChildHomeScreen(
                 MyGoalCard(
                     totalPoints = totalPoints,
                     wishGoals = wishGoals,
-                    rewards = rewards,
+                    // 展示用投影：卡内只读渲染奖励名（成本/图标原样），规范化标题在此一次性取词；
+                    // 不写库、不参与业务判等（Ruling 25）。
+                    rewards = rewards.map { it.copy(name = localizedPresetText(it.name, displayLanguage)) },
                     onNavigate = onNavigate
                 )
 
@@ -568,7 +576,7 @@ fun ChildHomeScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(a.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                                                Text(localizedPresetText(a.title, displayLanguage), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Text(taskListStrings.pointsEarnedLabel(a.points), style = MaterialTheme.typography.labelMedium,
                                                     color = MaterialTheme.colorScheme.primary)
@@ -764,6 +772,7 @@ private fun MyGoalCard(
     onNavigate: (String) -> Unit
 ) {
     val strings = LocalStrings.current.childHome
+    val displayLanguage = LocalDisplayLanguage.current
     val mainWish = wishGoals.firstOrNull()
     val nextReward = rewards.firstOrNull { totalPoints < it.pointsCost }
     val affordableCount = rewards.count { totalPoints >= it.pointsCost }
@@ -796,7 +805,7 @@ private fun MyGoalCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(mainWish.iconEmoji, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(strings.wishGoalNameLabel(mainWish.name), style = MaterialTheme.typography.titleSmall,
+                            Text(strings.wishGoalNameLabel(localizedPresetText(mainWish.name, displayLanguage)), style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                             Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)

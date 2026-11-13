@@ -30,22 +30,28 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Ensure gradlew is executable
         run: chmod +x gradlew
-      # 双语阶段的三道文案闸门（终审 Ruling 43）。放在 Gradle 构建之前：它们是秒级的纯静态检查，
-      # 失败原因是"某条界面文案进了写库调用"这种代码问题，不需要等编译跑完。
+      # 双语阶段的四道文案闸门（终审 Ruling 43；W9 T3 新增披露机制自测）。放在 Gradle 构建之前：
+      # 它们是秒级的纯静态检查，失败原因是"某条界面文案进了写库调用"/"披露限定语义回归"这种代码问题，
+      # 不需要等编译跑完。
       # 用 python3 而不是 python：GitHub 的 ubuntu 运行器不保证 `python` 这个别名存在
       # （本机是 Windows，文档里的命令用 `python`）。
       - name: i18n storage boundary (Ruling 25, blocking)
         run: python3 scripts/i18n_storage_boundary.py
       - name: i18n storage boundary self-test (Ruling 30, blocking)
         run: python3 scripts/tests/i18n_storage_boundary_selftest.py
+      # W9 T3 的 `table_field` / `page_path` 限定语义只在自测里验证（主闸门在"拆条不完整"时
+      # 仍可能是绿的），所以它必须与另外两道闸门一样阻塞。脚本自带 UTF-8 换装护栏，
+      # `PYTHONIOENCODING=utf-8` 是双保险，与本地 L-19 的复跑命令同形。
+      - name: i18n template disclosure self-test (W9 T3, blocking)
+        run: PYTHONIOENCODING=utf-8 python3 scripts/tests/i18n_template_diff_selftest.py
       # 逐字节等价脚本要 `git show <rev>` 取迁移前的页面原文，靠的就是上面那条 fetch-depth: 0。
       # 终审 D-A 把它从 continue-on-error 提升为**阻塞**：脚本自身的教义就是"恒红的闸门不会被读"，
       # 那么"非阻塞"等于这道闸门永远没人读；历史齐了它应当恒绿，红了就是真的有人把界面文案
       # 改动得对不上迁移前的原文。它钉的每一个 rev 都在本分支历史里（终审逐条
       # `git cat-file -e <rev>^{commit}` + `git merge-base --is-ancestor <rev> HEAD` 核对过），
       # 复现命令见 docs/i18n-stage1-verification.md §6。
-      # 默认组只覆盖窄组页面；--branch 扩到全部已迁页面 × 全部十张表（BRANCH_PAGES/BRANCH_TABLES），
-      # 本地实测退出 0（393/393 模板），宽组下 L-19 遮蔽登记为双边命中。
+      # 默认组只覆盖窄组页面；--branch 扩到全部已迁页面 × 全部 46 张表（BRANCH_PAGES/BRANCH_TABLES），
+      # 本地实测退出 0（987/987 模板；W9 T4 复算），宽组下 L-19 的限定登记逐条命中。
       - name: i18n template byte-equivalence (Ruling 20, blocking)
         run: python3 scripts/i18n_template_diff.py --branch
       - name: Build debug APK

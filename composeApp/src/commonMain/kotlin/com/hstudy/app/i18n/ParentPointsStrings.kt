@@ -10,7 +10,7 @@ package com.hstudy.app.i18n
  * 缺失回退 [taskFallbackTitle]（"任务#N" 是 UI 文案，入表）。
  * [timesCount] 英文 one/other 用 [timesWord]；[netValue] 是纯数值标签（Net -3），无复数。
  * 记录卡 `record.note` 是积分账本备注（spec §1：写入时语言冻结的动态数据），原样渲染不入表。
- * 类型标签词汇与既有表对齐：撤销 = check-in undo/reversal（[TaskListStrings.undoClawedBackMessage]），
+ * 类型标签词汇与既有表对齐：撤销 = check-in undo/reversal（[TaskListStrings.revertedClawedBackMessage]），
  * 兑换 = redeem/redemption（[RoleStrings.childDesc] EN "Redeem rewards"）。
  */
 data class ParentPointsStrings(

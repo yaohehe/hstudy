@@ -19,14 +19,12 @@ import com.hstudy.app.platform.ScheduledReminder
  *   [ScheduledReminder] 的 title/body 在**排程时**冻结一份快照，之后不追更。
  *
  * 本地化文案的**实际存活期**（诚实口径，别读成"切语言自动生效"）：
- * - iOS 的快照只存活到下次冷启动之前：`AppGraph.bootstrap()` 每次冷启动都用硬编码中文
- *   重注册 9002（与 W1 复习提醒同型），切语言须重新启停周报开关才刷新。
- * - Android 的通知**标题**恒为 per-kind 渠道默认中文「HStudy 每周学习周报」
- *   （`AndroidNotificationScheduler` 调 `showNotification` 不带 `titleOverride`，回落到固定中文
- *   标题；本对象传入的 [ScheduledReminder.title] 只是排程元数据），**正文**在触发时现拼、
- *   跟着生效语言走。
- * - 标题与 iOS 重注册都属 W9 遗留（需平台文件授权才可收口），口径见
- *   `docs/i18n-stage1-verification.md` 的 L-16（计划 Ruling 6）。
+ * - iOS 的快照只存活到下次冷启动之前：`AppGraph.bootstrap()` 每次冷启动都会重注册 9002
+ *   （W9 起该重注册按生效语言取词，不再是硬编码中文），切语言须重新启停周报开关才刷新。
+ * - Android 的通知**正文**在触发时现拼、跟着生效语言走；**标题** EN 态用
+ *   [com.hstudy.app.i18n.WeeklyReportStrings.title] 覆盖，ZH 态沿用渠道默认标题
+ *   「HStudy 每周学习周报」（与 v3.1.0 逐字节一致，W1 终审裁决；W9 接线，见 androidMain 接收器 KDoc）。
+ *   本对象传入的 [ScheduledReminder.title] 在 Android 侧只是排程元数据。
  *
  * 取词依赖 suspend 的 `currentDisplayLanguage()`，因此 [schedule] 也是 suspend：
  * 唯一调用点（ParentSettingsScreen 的周报开关）已在 `scope.launch {}` 内；纯取消的 [cancel]

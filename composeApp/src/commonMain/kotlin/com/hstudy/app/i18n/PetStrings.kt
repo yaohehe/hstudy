@@ -26,15 +26,15 @@ package com.hstudy.app.i18n
  * "让我开心一下吧"）；moodHungry/moodBored/moodAllDone 的源串两组恰好逐字节相同，
  * 仍保留独立槽位（两处可独立演进）。两组都进表，英文按各自源串的强弱分别给出。
  *
- * [feedLabel]/[playLabel] 是裸动词（页面按钮走带价格的 [feedButton]/[playButton]）。
+ * **W9 清理（Ruling 4）**：W7 曾带两个裸动词槽 `feedLabel`/`playLabel`（`喂养`/`陪玩`），
+ * 但页面按钮自始走带价格的 [feedButton]/[playButton]，两槽零渲染点、属死字段，
+ * W9 Task 4 连同比值登记一并删除（等价闸门登记表同步 -2 条）。
  */
 data class PetStrings(
     val title: String,
     val careTitle: String,
     val fullnessLabel: String,
     val moodLabel: String,
-    val feedLabel: String,
-    val playLabel: String,
     val feedButton: (cost: Int) -> String,
     val playButton: (cost: Int) -> String,
     val notEnoughPoints: (cost: Int) -> String,
@@ -82,8 +82,6 @@ val PetStringsZh = PetStrings(
     careTitle = "❤️ 照顾宠物",                                                    // :196
     fullnessLabel = "🍎 饱食度",                                                  // :199
     moodLabel = "😊 心情",                                                       // :201
-    feedLabel = "喂养",                                                          // :218（裸动词，按钮见 feedButton）
-    playLabel = "陪玩",                                                          // :233（裸动词，按钮见 playButton）
     feedButton = { cost -> "🍎 喂养 (${cost}分)" },                               // :218
     playButton = { cost -> "🎾 陪玩 (${cost}分)" },                               // :233
     notEnoughPoints = { cost -> "积分不足，需要 $cost 分" },                        // :207/:222/:358
@@ -131,8 +129,6 @@ val PetStringsEn = PetStrings(
     careTitle = "❤️ Take care of your pet",
     fullnessLabel = "🍎 Fullness",
     moodLabel = "😊 Mood",
-    feedLabel = "Feed",
-    playLabel = "Play",
     feedButton = { cost -> "🍎 Feed ($cost ${pointsWord(cost)})" },
     playButton = { cost -> "🎾 Play ($cost ${pointsWord(cost)})" },
     notEnoughPoints = { cost -> "Not enough points — $cost needed" },

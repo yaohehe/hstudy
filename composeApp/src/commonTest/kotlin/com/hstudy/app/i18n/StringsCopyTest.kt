@@ -518,19 +518,19 @@ class StringsCopyTest {
     fun taskListInterpolatedCopyPinsBothLanguages() {
         assertEquals(
             "↩️ 已撤销 每日阅读，扣回 5 分",
-            AppStringsZh.taskList.undoClawedBackMessage("每日阅读", 5),
+            AppStringsZh.taskList.revertedClawedBackMessage("每日阅读", 5),
         )
         assertEquals(
             "↩️ Check-in undone for Daily reading · 5 points removed",
-            AppStringsEn.taskList.undoClawedBackMessage("Daily reading", 5),
+            AppStringsEn.taskList.revertedClawedBackMessage("Daily reading", 5),
         )
         assertEquals(
             "↩️ 已撤销 每日阅读（尚未审批，无积分变动）",
-            AppStringsZh.taskList.undoPendingApprovalMessage("每日阅读"),
+            AppStringsZh.taskList.revertedPendingApprovalMessage("每日阅读"),
         )
         assertEquals(
             "↩️ Check-in undone for Daily reading (not approved yet, so no points changed)",
-            AppStringsEn.taskList.undoPendingApprovalMessage("Daily reading"),
+            AppStringsEn.taskList.revertedPendingApprovalMessage("Daily reading"),
         )
         assertEquals(
             "🏅 解锁成就：启航、周冠军！",
@@ -545,10 +545,10 @@ class StringsCopyTest {
             "✅ Checked in! +5 points pending approval",
             AppStringsEn.taskList.checkInSuccessMessage(5),
         )
-        assertEquals("✅ 每日阅读 +5分（待审核）", AppStringsZh.taskList.checkInUndoPrompt("每日阅读", 5))
+        assertEquals("✅ 每日阅读 +5分（待审核）", AppStringsZh.taskList.revertCheckInPrompt("每日阅读", 5))
         assertEquals(
             "✅ Daily reading +5 points (pending approval)",
-            AppStringsEn.taskList.checkInUndoPrompt("Daily reading", 5),
+            AppStringsEn.taskList.revertCheckInPrompt("Daily reading", 5),
         )
         assertEquals("+5分", AppStringsZh.taskList.pointsEarnedLabel(5))
         assertEquals("+5 points", AppStringsEn.taskList.pointsEarnedLabel(5))
@@ -576,11 +576,11 @@ class StringsCopyTest {
         )
         assertEquals(
             "✅ Daily reading +1 point (pending approval)",
-            AppStringsEn.taskList.checkInUndoPrompt("Daily reading", 1),
+            AppStringsEn.taskList.revertCheckInPrompt("Daily reading", 1),
         )
         assertEquals(
             "↩️ Check-in undone for Daily reading · 1 point removed",
-            AppStringsEn.taskList.undoClawedBackMessage("Daily reading", 1),
+            AppStringsEn.taskList.revertedClawedBackMessage("Daily reading", 1),
         )
         // 成就同理：一条用单数，两条用复数（上面那条已钉复数）
         assertEquals(

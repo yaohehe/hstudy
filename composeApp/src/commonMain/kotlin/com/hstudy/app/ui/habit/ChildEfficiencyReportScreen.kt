@@ -355,7 +355,7 @@ fun ChildEfficiencyReportScreen(
                         focusByTarget.take(6).forEach { (target, minutes) ->
                             val ratio = minutes.toFloat() / totalFocus
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(target, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(88.dp), maxLines = 1)
+                                Text(localizedPresetText(target, displayLanguage), style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(88.dp), maxLines = 1)
                                 LinearProgressIndicator(
                                     progress = ratio,
                                     modifier = Modifier.weight(1f).height(10.dp),
@@ -366,7 +366,7 @@ fun ChildEfficiencyReportScreen(
                             }
                         }
                         if (topTarget != null) {
-                            Text(strings.distributionTopHint(topTarget.key, topTarget.value),
+                            Text(strings.distributionTopHint(localizedPresetText(topTarget.key, displayLanguage), topTarget.value),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                     }

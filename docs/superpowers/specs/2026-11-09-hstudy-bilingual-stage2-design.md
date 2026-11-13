@@ -158,7 +158,7 @@ val petSceneCopy: Map<DisplayLanguage, Map<String, String>>              // key 
 |---|---|---|
 | 错题本 | Mistakes | 包名 `ui/mistake`（阶段 1 已定 Mistakes） |
 | 举一反三 | Variation | `variationNote`/`variation_5`/`VARIATION` |
-| 心愿存钱罐 | Wish Jar | `ui/wish`、`WishGoalEntity` |
+| 心愿存钱罐 | Wish Pool | `ui/wish`、`WishGoalEntity`（术语取阶段 1 §11 锁定值，W9 校正） |
 | 习惯挑战 | Habit Challenge | `ui/habit`、`habit_challenges` |
 | 每日目标 | Daily Target | `DAILY_TARGETS`、`ChildDailyTargetScreen` |
 | 专注力训练 | Focus Training | `FOCUS_TRAINING_COUNT`、`ChildFocusTrainingScreen` |

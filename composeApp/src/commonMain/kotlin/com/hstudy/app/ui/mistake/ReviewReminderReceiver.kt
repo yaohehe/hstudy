@@ -14,8 +14,10 @@ import com.hstudy.app.platform.ScheduledReminder
  * - Android 在**触发时**由 androidMain ReviewReminderReceiver 重新按当前语言取词
  *   （ZH 态标题沿用渠道默认，见该文件 KDoc）。
  *
- * 已知残留（W9）：`AppGraph.bootstrap()` 每次冷启动都会用硬编码中文重注册提醒 9001，
- * 在 iOS 上会覆盖排程时的本地化快照——本地化文案只存活到下一次冷启动之前。
+ * 冷启动重注册（W9 起按生效语言取词）：`AppGraph.bootstrap()` 与开机
+ * `AndroidReminderBootstrap.rescheduleAll()` 都用 `ReviewReminderStrings.title/defaultBody`
+ * 按**当前**语言重注册 9001，不再用硬编码中文覆盖 iOS 排程时冻结的本地化快照。
+ * 仍然成立的上限：切语言后要**关闭再开启**「每日复习提醒」（或重启）才刷新已排程副本。
  */
 object ReviewReminderReceiver {
 

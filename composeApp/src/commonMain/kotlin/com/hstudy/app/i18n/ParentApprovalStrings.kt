@@ -10,7 +10,7 @@ package com.hstudy.app.i18n
  * [pendingTab] 的 ZH 侧保留原文的条件计数结构（`待审核` + 可选 ` N`），塌缩后与页面原文同形；
  * EN 用 "Pending (N)"。[approveAllMessage]/[approvedMessage] 英文 one/other 用 [pointsWord]。
  * `approval.description` 是审批描述（写入时语言冻结的动态业务数据，spec §1），原样渲染不入表。
- * 状态词汇与既有表对齐：撤销扣回 = points removed（[TaskListStrings.undoClawedBackMessage]）。
+ * 状态词汇与既有表对齐：撤销扣回 = points removed（[TaskListStrings.revertedClawedBackMessage]）。
  */
 data class ParentApprovalStrings(
     val title: String,

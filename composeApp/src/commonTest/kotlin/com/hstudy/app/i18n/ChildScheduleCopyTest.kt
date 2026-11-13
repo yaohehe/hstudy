@@ -103,6 +103,7 @@ class ChildScheduleCopyTest {
         assertDiffers(
             zh.rememberCheckIn to en.rememberCheckIn,
             zh.bodySeparator to en.bodySeparator,   // ""（ZH 保旧字节）vs " "（EN 防粘连）
+            zh.alarmTitle to en.alarmTitle,         // W9 新增：兜底通知标题「日程提醒」/「Schedule reminder」
         )
     }
 

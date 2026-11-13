@@ -3,7 +3,8 @@ package com.hstudy.app.i18n
 /**
  * 添加错题页（ui/mistake/ChildMistakeAddScreen.kt）文案表（阶段 2 W1）。
  * 科目芯片标签走共享表 [MistakeStrings]（带 emoji 的 chip 形状），本表不重复；
- * 错误类型芯片显示 canonical 原值（`mistakeErrorTypes`），本波不映射（W9 注册表接线）。
+ * 错误类型芯片显示 canonical 原值（`mistakeErrorTypes`）——W9 结束时仍未接线映射，
+ * 属**已知残留**（芯片值参与落库；V-36 已按此口径改写）。
  */
 data class MistakeAddStrings(
     val title: String,

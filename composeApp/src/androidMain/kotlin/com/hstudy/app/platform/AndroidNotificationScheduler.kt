@@ -107,8 +107,9 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
 
         /** 弹出本地通知（渠道/标题/图标与原实现一致），点击打开 MainActivity。
          *  [titleOverride] 供需要本地化标题的调用方使用；缺省 null 时用各 kind 与渠道固定的原中文标题。
-         *  错题复习接收器**只在 EN 态**覆盖标题，ZH 态保持该 kind 的既有默认标题
-         *  （周报/日程仍走缺省，待各自波次接线）。 */
+         *  W9 起的调用方口径：日程、错题复习与周报接收器**都只在 EN 态**覆盖标题；ZH 态一律不传，
+         *  保持该 kind 的既有默认标题（与 v3.1.0 逐字节一致——W1 终审 Important 裁决，W9 Ruling 7
+         *  把它扩到日程接收器）。 */
         fun showNotification(
             context: Context,
             kind: ReminderKind,

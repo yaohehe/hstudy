@@ -30,8 +30,6 @@ class PetCopyTest {
             zh.careTitle to en.careTitle,
             zh.fullnessLabel to en.fullnessLabel,
             zh.moodLabel to en.moodLabel,
-            zh.feedLabel to en.feedLabel,
-            zh.playLabel to en.playLabel,
             zh.fedMessage to en.fedMessage,
             zh.playedMessage to en.playedMessage,
             zh.careTip to en.careTip,

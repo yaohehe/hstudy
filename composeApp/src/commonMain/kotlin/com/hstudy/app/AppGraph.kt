@@ -4,6 +4,9 @@ import com.hstudy.app.data.local.AppDatabase
 import com.hstudy.app.data.local.getAppDatabase
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.*
+import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.currentDisplayLanguage
+import com.hstudy.app.i18n.stringsFor
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ReminderKind
 import com.hstudy.app.platform.ScheduledReminder
@@ -105,7 +108,16 @@ object AppGraph {
         userPreferences = UserPreferences()
     }
 
-    /** 启动引导：默认数据补全 + 恢复提醒（对应原 HStudyApp.onCreate 的启动逻辑） */
+    /** 启动引导：默认数据补全 + 恢复提醒（对应原 HStudyApp.onCreate 的启动逻辑）
+     *
+     *  提醒文案的语言解析（W9 Task 2）：`bootstrap()` 由 `HStudyApplication.onCreate`（Android）
+     *  与 `initIosPlatform`（iOS）在**主线程同步**调用，而 `currentDisplayLanguage()` 是 suspend
+     *  （要读 DataStore），所以**不能在 bootstrap() 里 runBlocking**——那会卡住启动首帧。
+     *  计划 Ruling 2 的选型就是这条既有的 `appScope.launch`（Dispatchers.Default，与补默认数据的
+     *  协程同源）：语言在后台协程里解析，排程照旧由同一条协程完成，不阻塞主线程。
+     *  取词失败（DataStore 读异常）时退化为 ZH——与各 Receiver 的兜底口径一致，不因语言解析
+     *  失败而跳过提醒重注册。
+     */
     fun bootstrap() {
         init()
         // Ruling 46：首帧语言快照的**唯一赋值点**（见上面 [startupLanguage] 那段为什么在这里）。
@@ -120,12 +132,17 @@ object AppGraph {
                 taskRepository.ensureDefaultTasks()
                 rewardRepository.ensureDefaultRewards()
             }
+            // 通知 title/body 在**发出时**按生效语言取词（spec §8）：这里处于 suspend 协程内，
+            // 直接调 currentDisplayLanguage()，无需（也不得）在主线程 runBlocking。
+            val lang = runCatching { currentDisplayLanguage() }.getOrDefault(DisplayLanguage.ZH)
+            val review = stringsFor(lang).reviewReminder
+            val weekly = stringsFor(lang).weeklyReport
             if (userPreferences.reviewReminderEnabled.first()) {
                 val hour = userPreferences.reviewReminderHour.first()
                 Platform.notifications.schedule(
                     ScheduledReminder(
                         id = 9001, kind = ReminderKind.REVIEW, hour = hour, minute = 0,
-                        title = "错题复习提醒", body = "今天还有错题等着复习，快去看看吧！"
+                        title = review.title, body = review.defaultBody
                     )
                 )
             }
@@ -133,7 +150,7 @@ object AppGraph {
                 Platform.notifications.schedule(
                     ScheduledReminder(
                         id = 9002, kind = ReminderKind.WEEKLY_REPORT, hour = 20, minute = 0,
-                        title = "每周学习周报", body = "本周学习周报已生成，来看看孩子的学习情况吧！",
+                        title = weekly.title, body = weekly.body,
                         dayOfWeek = 7
                     )
                 )

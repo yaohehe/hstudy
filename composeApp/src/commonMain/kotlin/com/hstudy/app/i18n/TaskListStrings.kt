@@ -17,8 +17,12 @@ package com.hstudy.app.i18n
  * 字段名沿用被筛选的 `TaskCategory.ENHANCEMENT`，便于回溯源值。后续页面（ParentDashboard、
  * WeeklyTracker、ParentTaskManage 等）迁移同一概念时应复用 Basic / Advanced，避免一词多译。
  *
- * 7 个函数型字段（[undoClawedBackMessage]、[undoPendingApprovalMessage]、[achievementUnlockedMessage]、
- * [checkInSuccessMessage]、[checkInUndoPrompt]、[pointsEarnedLabel]、[bonusPointsLabel]）：
+ * 7 个函数型字段（[revertedClawedBackMessage]、[revertedPendingApprovalMessage]、[achievementUnlockedMessage]、
+ * [checkInSuccessMessage]、[revertCheckInPrompt]、[pointsEarnedLabel]、[bonusPointsLabel]）：
+ * 前三个原名 `undoClawedBackMessage` / `undoPendingApprovalMessage` / `checkInUndoPrompt`，
+ * 调用头以 `undo…`/`checkIn…` 开头会撞存储边界闸门的 sink 词根（`PointRepository.undoCheckIn` 等），
+ * 渲染点传入 `localizedPresetText(...)` 时会被误判"文案进写库"。W9 T1 修复按 W4/W6 改名先例改为
+ * `revert…/reverted…`（值逐字节不变），闸门不放宽。
  * 设计文档 §3 规定带参数文案存函数而不是 `{0}` 模板，因为中英语序不同、位置插值会写出洋泾浜。
  * [achievementUnlockedMessage] 收 `List<String>` 而不是拼好的串，是因为分隔符本身属于文案：
  * 中文用 "、"、英文用 ", "，留在页面里就会在英文态输出 "Blast Off、周冠军"。
@@ -40,11 +44,11 @@ data class TaskListStrings(
     val completedContentDescription: String,
     val mandatoryBadge: String,
     val proofButton: String,
-    val undoClawedBackMessage: (title: String, points: Int) -> String,
-    val undoPendingApprovalMessage: (title: String) -> String,
+    val revertedClawedBackMessage: (title: String, points: Int) -> String,
+    val revertedPendingApprovalMessage: (title: String) -> String,
     val achievementUnlockedMessage: (titles: List<String>) -> String,
     val checkInSuccessMessage: (points: Int) -> String,
-    val checkInUndoPrompt: (title: String, points: Int) -> String,
+    val revertCheckInPrompt: (title: String, points: Int) -> String,
     val pointsEarnedLabel: (points: Int) -> String,
     val bonusPointsLabel: (points: Int) -> String,
 )
@@ -59,11 +63,11 @@ val TaskListStringsZh = TaskListStrings(
     completedContentDescription = "已完成(点击撤销)",
     mandatoryBadge = "⚠必须",
     proofButton = "📷 证明",
-    undoClawedBackMessage = { title, points -> "↩️ 已撤销 $title，扣回 $points 分" },
-    undoPendingApprovalMessage = { title -> "↩️ 已撤销 $title（尚未审批，无积分变动）" },
+    revertedClawedBackMessage = { title, points -> "↩️ 已撤销 $title，扣回 $points 分" },
+    revertedPendingApprovalMessage = { title -> "↩️ 已撤销 $title（尚未审批，无积分变动）" },
     achievementUnlockedMessage = { titles -> "🏅 解锁成就：${titles.joinToString("、")}！" },
     checkInSuccessMessage = { points -> "✅ 打卡成功！+${points}分待家长审核" },
-    checkInUndoPrompt = { title, points -> "✅ $title +${points}分（待审核）" },
+    revertCheckInPrompt = { title, points -> "✅ $title +${points}分（待审核）" },
     pointsEarnedLabel = { points -> "+${points}分" },
     bonusPointsLabel = { points -> "奖励+${points}分" },
 )
@@ -78,10 +82,10 @@ val TaskListStringsEn = TaskListStrings(
     completedContentDescription = "Checked in (tap to undo)",
     mandatoryBadge = "⚠ Must-do",
     proofButton = "📷 Proof",
-    undoClawedBackMessage = { title, points ->
+    revertedClawedBackMessage = { title, points ->
         "↩️ Check-in undone for $title · $points ${pointsWord(points)} removed"
     },
-    undoPendingApprovalMessage = { title ->
+    revertedPendingApprovalMessage = { title ->
         "↩️ Check-in undone for $title (not approved yet, so no points changed)"
     },
     achievementUnlockedMessage = { titles ->
@@ -89,7 +93,7 @@ val TaskListStringsEn = TaskListStrings(
         else "🏅 Achievements unlocked: ${titles.joinToString(", ")}!"
     },
     checkInSuccessMessage = { points -> "✅ Checked in! +$points ${pointsWord(points)} pending approval" },
-    checkInUndoPrompt = { title, points -> "✅ $title +$points ${pointsWord(points)} (pending approval)" },
+    revertCheckInPrompt = { title, points -> "✅ $title +$points ${pointsWord(points)} (pending approval)" },
     pointsEarnedLabel = { points -> "+$points ${pointsWord(points)}" },
     bonusPointsLabel = { points -> "Reward +$points ${pointsWord(points)}" },
 )

@@ -145,13 +145,10 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
 - [ ] **V-16 系统通知栏文案（仅限番茄钟常驻通知这一条）**：`PomodoroTimer.kt:104-106` 在
   `LaunchedEffect` 协程里用 `currentStrings`（`rememberUpdatedState`，`:49`）现取 title/text，
   词源仍是 `LocalStrings`，表值由 `StringsCopyTest.runningNotificationCopyIsPinnedInBothLanguages` 钉住；
-  渲染由系统完成，本机看不到内容。**注意覆盖面**：定时提醒类通知在**组合期之外**触发，W1 的错题复习提醒现状是——
-  Android 在**触发时**重新按当前语言取词与正文（ZH 态标题沿用渠道默认 `HStudy 错题复习提醒`，与 v3.1.0 逐字节一致；
-  EN 态标题/正文均为英文）；iOS 消费**排程时**冻结的本地化文案，但 `AppGraph.bootstrap()` 每次冷启动都用硬编码中文
-  重注册提醒 9001，本地化文案只存活到下次重启前（W9 残留，spec §12）；周报提醒正文 W6 起在发出点取词
-  （Android 触发时、iOS 排程时；通知标题仍是中文渠道默认，见 V-64 / L-16），启动补挂仍是中文，
-  日程提醒只在"保存/启停 → 下次启动/开机"之间存活（见 **L-16**），
-  本条**不**替你确认那几路。
+  渲染由系统完成，本机看不到内容。**注意覆盖面**：定时提醒类通知在**组合期之外**触发，W9 起四路
+  （错题复习 / 周报 / 日程 / 冷启动与开机重注册）都已接线，规则见 **L-16**：**Android 标题只在 EN 态覆盖为
+  本地化标题，ZH 态一律沿用渠道默认**；正文按触发时语言（Android）或排程时冻结快照（iOS）渲染。
+  通知实际弹出语言属 V-73 人工项，本条**不**替你确认那几路。
 - [ ] **V-17 中文态零位移回归**：以上每一页在**中文态**下应与迁移前逐字、逐位一致
   （`i18n_template_diff.py` 证明字节相同，但"字节相同"不等于"排版没动"——
   字段拆分可能改变组合期布局输入，需人眼确认徽章行、chip 行没有回流）。
@@ -208,7 +205,7 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
   （`启航`、`三日不辍`、`周冠军`…），英文态解锁句会念成 `🏅 Achievement unlocked: 启航!`
   （模板在 `i18n/TaskListStrings.kt:88-89`）。注意它们的**成因**与种子任务不同：
   成就名不是 spec §5 的数据库种子，只是不在阶段一的 13 个文件清单里（plan Ruling 21）。
-  **徽章区与成就中心已回接（V-70/W4）**；解锁 snackbar 仍显示 canonical 成就名（`ChildTaskListScreen.kt:130`）——W9 残留。写库参数仍是 canonical。
+  **徽章区与成就中心已回接（V-70/W4）**；**W9 起解锁 snackbar 也回接**：`ChildTaskListScreen.kt:138-141` 按稳定业务键 `AchievementDef.type` 映射 `achievementCopy[displayLanguage]`（不按标题字节，未知 type 回落 `def.title`），W9 残留关闭。写库参数仍是 canonical。
 - [ ] **V-26 种子任务/奖励标题**：数据库里 `title = "完成当天作业"` 一类的种子内容保持中文
   （spec §5 的非目标：种子随界面语言变会让同一 schema 因安装语言写入不同行）。
 - [ ] **V-27 未迁移页里的公共控件**：`HStudyTopBar` / `PointsBadge` / `HourMinuteStepper` / `NumberStepper`
@@ -227,12 +224,11 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
   复核：`python scripts/i18n_inventory.py navigation/AppNavGraph.kt` → `出现 0 次 / 去重 0 条`（本波次实跑 0）。
   人工侧要看的：英文态从**任意**家长入口触发门禁，三句 + 两枚按钮都应是英文；
   出现整块中文即是回归（曾是限制的这条已由 Ruling 41 关闭，见 L-09）。
-- [ ] **V-29 Android 分享面板标题**：英文态导出家长设置/学习进度时，系统分享面板标题仍是中文「分享文件」
-  （`composeApp/src/androidMain/…/platform/AndroidFileSharer.kt:27` 硬编码，`shareTextFile` 签名里没有标题位；
-  `FamilySyncHelper.kt:249-260` 收下 `title` 参数就丢弃）。
-  所以 `SettingsStrings.exportChooserTitle` / `ChildHomeStrings.shareProgressChooserTitle` 两份英文值
-  **目前在两个平台上都渲染不出来**（iOS 的 `UIActivityViewController` 根本没有标题行，
-  `IosFileSharer.kt:34-38`）。属既成事实，不是漏译（spec §11"家长远程控制"行的注记）。
+- [ ] **V-29 Android 分享面板标题（W9 已接线，见 V-74/L-08）**：W9 T2 起 `AndroidFileSharer.kt:36-38` 用
+  `ShareStrings.shareFileTitle(currentDisplayLanguageSnapshot())`——EN 态 `Share file`、ZH 态「分享文件」（逐字节不变）。
+  仍成立的事实：`SettingsStrings.exportChooserTitle` / `ChildHomeStrings.shareProgressChooserTitle` 两份英文值
+  **在两个平台上都渲染不出来**（平台分享器只接受一个面板标题；iOS 的 `UIActivityViewController` 没有标题行，
+  `IosFileSharer.kt:34-38`）。不是漏译（spec §11"家长远程控制"行的注记）。
 - [ ] **V-30 设备名编辑器**：英文态、家长没填设备名时，可编辑框那一格显示规范中文 `家长设备`
   （`ParentSettingsScreen.kt:292-293` 的 `OutlinedTextField` `value` **刻意不本地化**，否则下一次保存会把英文标签写回存储）；
   而保存回执那一行是英文 `Device name saved: Parent device`（只读渲染位做了本地化）。
@@ -255,26 +251,28 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
   "跟随系统"在 iOS 上的生效时机与 Android 不同。
 - [ ] **V-33 iOS 文件分享与推送文案**：阶段一没动平台分享器；`LocalStrings` 会喂英文串给分享路径与番茄钟常驻通知
   （V-16；后者的词源是组合期的 `currentStrings`）。**W1 起**错题复习提醒的 iOS 定时通知改在**排程时**拿到本地化文案
-  （切换语言后关闭再开启「每日复习提醒」即重新排程），但冷启动 `AppGraph.bootstrap()` 会用硬编码中文重注册提醒 9001
-  （W9 残留，见 L-16），故英文态只存活到重启前；周报正文 W6 起在排程时取词（Android 通知标题仍为中文渠道默认）、
-  启动补挂仍是中文；日程提醒 W5 起在排程/重新保存时取词，
-  但同样只存活到下次启动/开机（管理页重新保存才刷新，见 L-16）。iOS 侧的实际呈现
+  （切换语言后关闭再开启「每日复习提醒」即重新排程）；**W9 T2 起**冷启动 `AppGraph.bootstrap()` 重注册提醒 9001
+  也按当前语言取 `ReviewReminderStrings.title/defaultBody`，不再用硬编码中文覆盖排程时冻结的英文快照
+  （W9 残留关闭，见 L-16）；周报正文 W6 起在排程时取词（Android 标题 EN 覆盖、ZH 渠道默认）、W9 起 9002 重注册同口径；
+  日程提醒 W5 起在排程/重新保存时取词，W9 起启动/开机重注册也按语言取词，
+  但切语言后仍须**在管理页重新保存/启停**才刷新已排程的副本（见 L-16）。iOS 侧的实际呈现
   （尤其 V-29 的"无标题行"）需目视一次。
 
 ### 阶段 2 W1（错题域）追加项
 
 - [ ] **V-34** 英文态进入错题列表：标题/状态卡/筛选栏/空状态全英文（用户错题标题/错因/解法为自建内容，按原样）
 - [ ] **V-35** 英文态错题详情：主动回忆三阶段按钮、举一反三 15 条引导问题、复习记录格式全英文；落库原文（账本描述）按数据原样
-- [ ] **V-36** 英文态添加错题：科目芯片（含 emoji）、保存校验 snackbar 全英文；**错误类型 chip 刻意保持 canonical 中文**（值参与落库，W9 才接线映射），不要按"漏译"记缺陷
+- [ ] **V-36** 英文态添加错题：科目芯片（含 emoji）、保存校验 snackbar 全英文；**错误类型 chip 在 W9 结束时仍显示 canonical 中文**（`ChildMistakeAddScreen.kt:107` 的 `Text(type)`；编辑对话框同形，`ChildMistakeDetailScreen.kt:137-139`；值参与落库）。W9 计划里点过"错误类型映射"，实际未实施——按**已知残留**读，不要第一次见就记缺陷，也别当成"已接线"。
 - [ ] **V-37** 英文态家长错题分析：概览/科目分布/最近错题全英文
 - [ ] **V-38** 切换语言后关闭再开启「每日复习提醒」：
   **Android**——到点弹的通知按**触发时**语言渲染（ZH 标题 `HStudy 错题复习提醒`，EN 标题 `Mistake review reminder`；正文同为当前语言），语言切换从下一次触发生效，已排程旧通知不追更（spec §8）；
-  **iOS**——本地化只在**排程时**冻结（关闭再开启后重新排程即英文），但冷启动 `AppGraph.bootstrap()` 会用硬编码中文重注册 9001（W9），英文文案只存活到下次重启。
+  **iOS**——本地化只在**排程时**冻结（关闭再开启后重新排程即英文）；**W9 T2 起**冷启动 `AppGraph.bootstrap()` 重注册 9001 也按当前语言取词，英文快照不再被中文盖掉（W9 残留关闭）。
 - [ ] **V-39** 中文态回归：以上四页与通知与 v3.1.0 文案逐字节一致
 
-> **W9 残留（本轮已知、不修）**：`AppGraph.bootstrap()` 每次冷启动都用硬编码中文重注册提醒 9001（`AppGraph.kt:126-129`）
-> 与周报 9002（`:134-138`）；iOS 端会因此覆盖排程时冻结的本地化文案，故英文态复习提醒"只到下一次重启为止"。
-> spec §12 的 W9 行（"AppGraph 通知接线"）把这两处改为按生效语言取词后消解；日程（W5）与周报（W6）的本地化各自归其波次。
+> **W9 已完成（原"W9 残留"条目关闭）**：`AppGraph.bootstrap()` 的 9001/9002（`AppGraph.kt:137-157`）与
+> `AndroidReminderBootstrap.rescheduleAll()` 冷启动/开机重注册均已按生效语言取词（`currentDisplayLanguage()`，
+> 取词失败退化 ZH），iOS 排程时冻结的本地化文案不再被中文覆盖。规则仍是 **EN-only 标题覆盖**：EN 态标题为
+> 表值标题、ZH 态保持渠道默认 `HStudy …`（逐字节不变）。
 
 ### 阶段 2 W2（家长任务管理）追加项
 
@@ -300,7 +298,7 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
 ### 阶段 2 W5（习惯/目标/日程）追加项
 - [ ] V-52 英文态每日学习目标：设定/推荐/复盘三块全英文；8 个目标标题与 6 个复盘标签显示英文（注册表）、历史账本 note 仍为中文 canonical；智能推荐卡片标题/理由 W8 已回接，见 V-72（W5 时属 W8 残留，spec §14 明示）
 - [ ] V-53 英文态家长日程管理：提示/空态/示例载入/编辑对话框/星期行（Every day / Mon, Tue…）全英文；示例日程标题显示英文（注册表）、家长自建原样；删除 snackbar 的标题已本地化；编辑对话框的标题输入框回填 canonical 中文（它是写库来源，不本地化）
-- [ ] V-54 英文态日程闹钟通知（**W5 只做到"发出时取词"，生存期有限，别按"已完成"读**）：管理页保存/启停日程时按当前语言注册正文——预设日程标题译出、自建原样，关联任务的"完成后记得打卡"句随语言并与前句有语言分隔符（ZH 空串、EN 空格）。仍然存在的边界（终审复核）：① Android 通知**标题**恒为 per-kind 渠道默认中文「HStudy 日程提醒」（`platform/ScheduleAlarmReceiver.kt` 调 showNotification 不带 `titleOverride`，`AndroidNotificationScheduler` 回落中文），本地化 `ScheduledReminder.title` 只作额外/正文回退；② 每次启动/开机 `HStudyApplication` → `AndroidReminderBootstrap.rescheduleScheduleAlarms()` 用硬编码 canonical 中文正文重注册，EN 正文**下次启动/开机即回退**；③ `ScheduleAlarmHelper.rescheduleAll()` 当前无生产调用点；④ 切语言后须在管理页**重新保存/启停**该日程才刷新文案（iOS 同样没有启动重注册来治好）。W9 计划：`ScheduleAlarmReceiver` 把 `EXTRA_TITLE` 当 `titleOverride` 传入、bootstrap 改走本地化辅助（均需平台文件授权）。人工验证只要求"保存/启停后下一次通知正文为英文（关联任务句带空格分隔）"
+- [ ] V-54 英文态日程闹钟通知（**W9 已完成接线，别按"W5 残留"读**）：管理页保存/启停日程时按当前语言注册正文——预设日程标题译出、自建原样，关联任务的"完成后记得打卡"句随语言并与前句有语言分隔符（ZH 空串、EN 空格）。W9 T2 + Ruling 7 收口后的规则：① Android 通知**标题只在 EN 态覆盖**为排程时冻结的日程标题（`platform/ScheduleAlarmReceiver.kt` 的 `titleOverride = if (lang == EN) EXTRA_TITLE else null`）；**ZH 态传 null，保持渠道默认「HStudy 日程提醒」，与迁移前逐字节一致**；`EXTRA_TITLE` 缺失/为空的历史/外部闹钟回落 `ScheduleAlarmStrings.alarmTitle`（`日程提醒`/`Schedule reminder`）。② 每次启动/开机 `HStudyApplication` → `AndroidReminderBootstrap.rescheduleScheduleAlarms()` 已按当前语言重注册正文与标题（W9 T2，不再硬编码 canonical 中文），EN 副本不再在重启后退回中文。③ `ScheduleAlarmHelper.rescheduleAll()` 仍无生产调用点（保留事实）。④ 切语言后，**已排程副本**仍须在管理页重新保存/启停该日程才刷新（重注册只发生在冷启动/开机；iOS 同样没有其它入口）。人工验证要求：EN 态保存/启停后下一次通知正文为英文（关联任务句带空格分隔）、标题为该日程英文名；ZH 态标题仍是「HStudy 日程提醒」、正文与 v3.1.0 逐字节一致。
 - [ ] V-55 英文态习惯挑战：列表/空态/对话框/打卡按钮与成功文案全英文（+N points one/other）；挑战标题/描述是用户内容原样；账本 note 与成就解锁数据仍为中文 canonical
 - [ ] V-56 英文态目标追踪：完成率卡/统计标签/四条建议/四条鼓励语全英文
 - [ ] V-57 英文态今日时间线：当前时间提示/空态/时间线卡片/👈 Now 徽标全英文；日程与关联任务标题预设译出、自建原样
@@ -313,7 +311,7 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
 - [ ] V-61 成长报告（标题/六项统计/分享文案全英文；宠物阶段名（宠物蛋…小神龙）在 W6 时仍为中文——当时归 W7，spec §12；W7 已回接，见 V-67；分享文件内容为英文模板（V-61 不受 W8 影响））
 - [ ] V-62 证明审核（筛选/状态/空态/备注行/按钮/snackbar 全英文；备注 note 与照片为用户内容；任务名预设译出）
 - [ ] V-63 证明提交 + 照片查看（全英文；关联任务标题预设译出；相机与提交逻辑不变）
-- [ ] V-64 周报通知（Android 触发时按生效语言生成摘要——切语言无需重新开启或等待重排、触发即跟随生效语言，**Android 通知标题仍为中文渠道默认**，且启动/开机重注册 9002 仍写 canonical——见 L-16 / W9；iOS 排程时冻结快照，切语言需重新开启周报开关重新排程，且英文正文只存活到下次冷启动/开机；Android 接收器的失败路径保留刻意写死的中文兜底字面量，文件内已注明）
+- [ ] V-64 周报通知（Android 触发时按生效语言生成摘要——切语言无需重新开启或等待重排、触发即跟随生效语言；**通知标题 EN 态覆盖为 `Weekly report`，ZH 态保持渠道默认「HStudy 每周学习周报」**（Ruling 7 的 EN-only 规则）；W9 T2 起启动/开机重注册 9002 也按当前语言取 `WeeklyReportStrings.title/body`，canonical 中文重注册已消失——见 L-16；iOS 排程时冻结快照，切语言需重新开启周报开关重新排程；Android 接收器的失败路径保留刻意写死的中文兜底字面量，文件内已注明）
 
 ### 阶段 2 W7（宠物）追加项
 
@@ -328,6 +326,38 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
 - [ ] V-70 英文态成就徽章区（区标题/空态/待解锁标题英文；成就名（徽章区）走 achievementCopy 注册表；进度 `N/M` 数字不变，未命中实体历史标题原样回退）
 - [ ] V-71 英文态等级徽章/学习树/首页动画条（等级称号与树阶段名按索引查键控注册表；升级提示 "N points to level up" 与连续打卡 "N days" 随语言；中文态逐字不变）
 - [ ] V-72 英文态智能推荐（目标页推荐卡标题/理由随语言：5 个目标标题走注册表、8 条理由走 GoalRecommendationCopy；W5 的 V-52 智能推荐残留关闭）
+
+### 阶段 2 W9（标题 sweep、通知/分享标题、诊断映射）追加项
+
+- [ ] V-73 通知标题与重注册随语言（Android 为主；iOS 只看重注册）。规则见 L-16 的 **EN-only 覆盖 + ZH 渠道默认**：
+  EN 态标题为本地化标题、ZH 态保持渠道默认——复习 9001 EN `Mistake review reminder` / ZH `HStudy 错题复习提醒`；
+  周报 9002 EN `Weekly report` / ZH `HStudy 每周学习周报`；日程 EN = 排程时冻结的日程标题 / ZH `HStudy 日程提醒`。
+  验证步骤：① EN 态冷启动（杀进程再开）后分别触发/等到三类通知，标题为英文；
+  ② 切回 ZH 冷启动后标题恢复渠道默认中文（不是「错题复习提醒」这类无前缀标题）；
+  ③ 设备重启（或 App 冷启动）后重注册的 9001/9002 与日程仍是**当前**语言，不再被 canonical 中文覆盖；
+  ④ 周报正文在**触发时**重拼（切语言后无需重排，下一次触发即跟随）；
+  ⑤ 两个 androidMain 接收器的 catch 兜底路径刻意保留中文（死路径，文件内已注明），不要按缺陷报。
+  自动化边界：`assembleDebug` 只证明平台接线可编译、`W9CopyTest.alarmTitlePinned` 钉死兜底标题两语；
+  实际弹出语言属本人工项（spec §11）。
+- [ ] V-74 分享面板标题随语言：英文态任意一次导出（家长设置/孩子进度/周报分享）弹系统分享面板，标题应为 `Share file`；
+  中文态仍是「分享文件」（与迁移前逐字节一致）。iOS 的 `UIActivityViewController` 没有标题行（V-29），不在本项范围。
+  自动化边界：`ShareStrings` 两值由 `W9CopyTest.shareTitlePinned` 钉死；实际面板标题只能目视。
+- [ ] V-75 同步/备份诊断消息（英文态）：固定 7 条诊断文案（`不是家长控制文件` / `不是孩子进度文件` /
+  `数据库文件尚未创建，暂时无法备份` / `没有找到备份文件` / `未选择文件` / `不是有效的备份文件` / `备份内容损坏`）
+  精确命中注册表；唯一插值摘要 `已应用${deviceName}的设置：${n}个任务、${m}个奖励` 由 `SyncDiagnosticAdapter`
+  的钉死正则重组为 `Applied settings from …: N tasks, M rewards`（任务词形 one/other，奖励词形 reward/rewards），
+  `家长设备`/`孩子设备` 走注册表回退映射、自建设备名原样；未命中的历史消息/用户数据原样透传。
+  **已知上限（诚实声明）**：canonical 格式由 `W9CopyTest.syncAdapterPinsBothLanguages` **构造同形字符串**验证，
+  与 `FamilySyncHelper.kt:172` 的一致性**只是注释级 pin**（测试注释引用行号），不是对 data 层源码的运行时断言——
+  有人改 `FamilySyncHelper` 的格式串时本测试**不会红**，英文态会静默回落到"原样透传"（中文摘要）。
+  复现：`grep -n "已应用" composeApp/src/commonMain/kotlin/com/hstudy/app/data/sync/FamilySyncHelper.kt`（应为 `:172` 一处）。
+- [ ] V-76 阶段 1 页面 task/reward 标题 sweep（英文态抽样）：任务列表卡标题；首页先难后易提示、家长布置任务卡、
+  我的目标卡（心愿名与"下个可兑换奖励"）；番茄钟专注目标（选中值/下拉项/完成 snackbar）；每日计划卡；
+  效率报表专注分布行与 Top 提示——**预设标题应为英文、家长自建标题原样**；成就解锁 snackbar 念英文成就名（V-25 关闭）。
+  **已知非目标（记录，不按缺陷报）**：`task.description`（任务描述预设）仍是 canonical 中文——W9 只 sweep 标题；
+  错误类型 chip 也仍 canonical（V-36）；历史账本/审批 note 与用户自建内容按数据原样（spec §1/§5）。写库/业务实参保持 canonical
+  （`checkInForTask(…task.title)`、`undoAndReport(…task.title)`、`onUploadProof(…task.title)`、
+  `recordFocusSession(…focusTarget…)` 等），不要因为"输入框/回执里是中文"报漏译。
 
 ## 3. 已知限制
 
@@ -425,11 +455,11 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-01 | 阶段一只双语 425 条 / 13 个文件，其余 ~905 条（45 文件）仍是中文 | §3.1 |
 | L-02 | 英文态会出现中英混排（设计代价），设置页有一行英文提示兜底 | spec §1 非目标 1、§7；V-09 |
 | L-03 | 家长审批列表整体中文（效率报表 **W8 已双语化**，见 V-68），其中出现的专注描述是存储的规范中文 | plan Ruling 27；`ParentApprovalScreen.kt:182`、`ChildEfficiencyReportScreen.kt:335` |
-| L-04 | （**W8 已关闭，成就名除外**，保留编号）等级评语/鼓励语/等级徽章/学习树/首页动画条阶段 1 时是中文；W8 起分别走 `LearningScoreCopy` / `levelTitleCopy` / `treeStageCopy` / `common.streakDays`（V-71）；徽章区与成就中心走 `achievementCopy`（V-70/W4），但解锁 snackbar 仍念 canonical 成就名（`ChildTaskListScreen.kt:130`）——**W9 残留**：`ChildTaskListScreen` 不在 W8 源清单里，接入需它自己的 rev + 披露登记 | `ChildHomeScreen.kt:289`、`AchievementManager.kt:29-42` |
+| L-04 | （**W9 已全部关闭**，保留编号）等级评语/鼓励语/等级徽章/学习树/首页动画条阶段 1 时是中文；W8 起分别走 `LearningScoreCopy` / `levelTitleCopy` / `treeStageCopy` / `common.streakDays`（V-71）；徽章区与成就中心走 `achievementCopy`（V-70/W4）；**W9 T1 起解锁 snackbar 也按稳定业务键 `AchievementDef.type` 取 `achievementCopy[displayLanguage]`**（`ChildTaskListScreen.kt:138-141`，未知 type 回落 `def.title`），"成就名"这一项不再例外 | `ChildHomeScreen.kt:289`、`AchievementManager.kt:29-42`、`ChildTaskListScreen.kt:138-141`；V-25/V-76 |
 | L-05 | `TaskEntity.difficultyName()`（`data/local/entity/TaskEntity.kt:50-54`）仍返回中文，但**当前零调用点**，英文态实际看不到它——这是死代码里的中文，属阶段二清理项（本期不动 `data/**`） | `grep -rn "difficultyName" composeApp/src` 只命中声明本身；另一处在不参与构建的 `legacy/android-v2.88/` |
 | L-06 | `PointsBadge` 的单位是静态字段，英文 1 分显示 `⭐ 1 points`（需要"带计数的单位"字段，属页面改动，超出等价替换） | plan Ruling 22 相关（Task 6+8 新发现）；`CommonComponents.kt:108-131` |
 | L-07 | 番茄钟进行中的文案陈旧**已不是限制**（Task 7b `d282cb3` 起 `rememberUpdatedState` + 索引式 `remember`，见 V-19 注记），且"跑一轮中途切语言"在本版本**不可达**（语言入口只在家长设置页、`AppNavGraph` 一次只组合一个目的地）；仍然成立的取舍只剩 `focusTarget` 选中值不随语言（key 刻意不含 `strings`，否则冲掉用户已选目标）与跨越配置变更的完成回调 | spec §4；V-19/V-20/V-21；`PomodoroTimer.kt:49`、`:142-150` |
-| L-08 | 英文态 Android 系统分享面板标题仍是「分享文件」；iOS 分享面板根本没有标题位 | `AndroidFileSharer.kt:27`、`IosFileSharer.kt:34-38`；spec §11"家长远程控制"行注记；V-29 |
+| L-08 | （**W9 已关闭**，保留编号）英文态 Android 系统分享面板标题曾是「分享文件」；W9 T2 起走 `ShareStrings.shareFileTitle(currentDisplayLanguageSnapshot())`——EN 态 `Share file`、ZH 态仍「分享文件」（迁移前字面量逐字节）；iOS 的 `UIActivityViewController` 根本没有标题位（不受影响） | `androidMain/…/platform/AndroidFileSharer.kt:36-39`、`ShareStrings.kt`；`IosFileSharer.kt:34-38`；V-29/V-74 |
 | L-09 | （已关闭，编号保留防指针漂移）家长密码门对话框曾是整块中文门禁，**终审 Ruling 41 已迁入 `ParentGateStrings`**、两个按钮复用既有字段，英文态不再是限制；验证项转为 V-28 的"确认真的跟表走" | `AppNavGraph.kt:253-288`、`ParentGateStrings.kt:28-30/34-36/40-42`；V-28 |
 | L-10 | 英文态日期/数字格式不本地化（`yyyy-MM-dd`、周一起始、`8:00`） | spec §6；V-31 |
 | L-11 | 未迁移页面里的公共控件（顶栏返回说明、`hr`/`min` 步进器）会形成"中文页面嵌英文控件"的反向混排 | `ParentScheduleManageScreen.kt:228-241`（W5 后该对话框已双语化，本条示例已失效，保留作阶段 1 历史）；V-27 |
@@ -437,10 +467,10 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 | L-13 | 清单脚本的两个已知口径问题：`i18n_inventory.py` 只剥 `//` 行注释，块注释里的中文会被算成"残留字面量"（`ChildFocusTrainingScreen.kt:23` 就是这种假阳性）；`i18n_coverage_audit.py` 用"文件名是否出现在 plan 文本里"判定覆盖 | `scripts/i18n_inventory.py:30`、`scripts/i18n_coverage_audit.py:35` |
 | L-14 | 双语视觉效果无法由 CI 验证；iOS 在本工作机上连链接都没发生过 | spec §9；§1、§2.5 |
 | L-15 | 阶段一是 v3.1.0 的**前半段**（Analytics 子项目未实施），版本号仍为 3.0.0/30000 | `docs/VERSIONING.md`；`composeApp/build.gradle.kts:89-90`；V-00b |
-| L-16 | **定时提醒类通知的本地化现状（设计边界，不是漏译）**：W1 只接通了错题复习提醒——Android 在**触发时**重新按当前语言取词（ZH 态标题沿用渠道默认 `HStudy 错题复习提醒`，与 v3.1.0 逐字节一致；EN 态标题/正文为英文）；iOS 在**排程时**冻结本地化文案，但 `AppGraph.bootstrap()` 冷启动会用硬编码中文重注册提醒 9001，英文文案只存活到重启前（**W9 残留**，spec §12）。周报提醒与启动补挂的 title/body 仍在**任何组合期之外**构造（`bootstrap()`、Receiver、AlarmHelper 里没有 CompositionLocal，`LocalStrings` 按构造到不了它们）；**W6 起周报正文改在发出点取词**（Android 触发时取 `WeeklyReportStrings.summary/encourage*/fallback`，iOS 排程时冻结 `title/body`），但 Android 通知**标题**仍是 per-kind 渠道默认中文「HStudy 每周学习周报」、且 `AppGraph.bootstrap()` 与 `AndroidReminderBootstrap` 冷启动/开机重注册 9002 仍写 canonical 中文；正文存活期按平台区分——**Android 接收器在触发时重拼正文**，切语言无需任何操作、触发即跟随生效语言（仅 init/取词失败的紧急兜底路径保留刻意写死的中文兜底字面量，该文件 `:52` 已注明），**iOS 的英文正文快照只存活到下次冷启动/开机**（冻结快照被 `AppGraph.bootstrap()` 的 canonical 重注册盖掉，与 W1 复习提醒同型）；启动补挂仍是中文——两处都归 W9（AppGraph 接线）。**日程提醒（W5 已交付部分的残留，不是"已完成"）**：管理页保存/启停时按当前语言注册正文（关联任务句带语言分隔符，ZH 空串 / EN 空格），但 Android 通知**标题**恒为 per-kind 渠道默认中文（`platform/ScheduleAlarmReceiver.kt` 调 showNotification 不带 `titleOverride`），且每次启动/开机 `AndroidReminderBootstrap` 重注册硬编码 canonical 中文正文，EN 副本只存活到下次启动/开机；`ScheduleAlarmHelper.rescheduleAll()` 无生产调用点；切语言须在管理页重新保存/启停日程才刷新（iOS 同样没有启动重注册来治好）。收口归 W9：`ScheduleAlarmReceiver` 传 `EXTRA_TITLE` + bootstrap 走本地化辅助（均需平台文件授权）。番茄钟常驻通知不在此列（计时协程里现取 `currentStrings`，见 V-16）。 | `AppGraph.kt:128`、`:136`（两处 `ScheduledReminder` 的 title/body 裸字面量，均在 `bootstrap()` 里；终审 Minor 3 把 `startupLanguage` 换成 `StateFlow` 后这两个坐标从 `:112`/`:120` 顺移而来，本行按当前树复算）、`ui/parent/WeeklyReportReceiver.kt`（W6 起 `schedule()` 在排程时取 `WeeklyReportStrings.title/body`，原 `TITLE`/`BODY` 常量已删）、`ui/schedule/ScheduleAlarmHelper.kt:94-100`（正文拼接；文案规则与存活期见该文件 `:27-38` KDoc）；`ui/mistake/ReviewReminderReceiver.kt:34-35` 已改为取 `localizedCopy()`（不再有裸字面量）。Android 周报触发器 W6 起也走 `WeeklyReportStrings`（`androidMain/…/platform/WeeklyReportReceiver.kt` 只保留统计与调度，正文取表函数）。**平台文件口径**：用户明确授权的平台改动共三处：2026-11-10 两个 androidMain 通知文件（`platform/ReviewReminderReceiver.kt`、`platform/AndroidNotificationScheduler.kt`，W1 通知本地化），以及 2026-11-12 的 `platform/WeeklyReportReceiver.kt`（W6 周报正文发出时取词，仅消息拼装 + 兜底）；其余平台文件零改动；`AndroidFileSharer.kt:27` 的分享标题仍属 W9（L-08） |
+| L-16 | **定时提醒类通知的本地化——W9 已完成（保留编号供指针）**。核心规则（**EN-only 覆盖 + ZH 渠道默认**）：**Android 通知标题只在 EN 态覆盖为本地化标题；ZH 态一律传 null、沿用 per-kind 渠道默认「HStudy …」，与 v3.1.0 逐字节一致**（W1 终审 `5deed68` 对复习通知的裁决，W9 Ruling 7 扩到周报与日程）。四路现状：① **复习 9001**：Android 触发时按当前语言取词（EN 标题 `Mistake review reminder` / ZH 渠道默认 `HStudy 错题复习提醒`，正文同为当前语言）；**冷启动 `AppGraph.bootstrap()` 与开机 `AndroidReminderBootstrap.rescheduleAll()` 均按生效语言取 `ReviewReminderStrings.title/defaultBody`**（W9 T2，取词失败退化 ZH，下同），不再写死中文。② **周报 9002**：Android 触发时重拼正文（`WeeklyReportStrings.summary/encourage*/fallback`），标题 EN 覆盖 `Weekly report` / ZH 渠道默认 `HStudy 每周学习周报`；冷启动/开机重注册 9002 同样按语言取 `title/body`。③ **日程**：管理页保存/启停按当前语言注册标题与正文（预设标题译出、自建原样；关联任务句带语言分隔符 ZH 空串/EN 空格）；`ScheduleAlarmReceiver` **EN 态**把排程时冻结的 `EXTRA_TITLE` 当 `titleOverride`、**ZH 态传 null 保渠道默认「HStudy 日程提醒」**；兜底标题 `ScheduleAlarmStrings.alarmTitle`（`日程提醒`/`Schedule reminder`）只服务 `EXTRA_TITLE` 缺失的历史/外部闹钟；冷启动/开机 `rescheduleScheduleAlarms()` 按语言重注册，EN 副本不再在重启后退回中文。④ **iOS**：三类通知仍只在排程/开关时冻结本地化快照；W9 T2 起冷启动重注册 9001/9002 也按语言取词，英文快照不再被中文覆盖。仍然成立的边界：① 切语言后**已排程副本**要在管理页重新保存/启停（Android 日程）或重新开关（iOS 复习/周报）才刷新，重注册只在冷启动/开机发生；② `ScheduleAlarmHelper.rescheduleAll()` 仍无生产调用点；③ 两个 androidMain 接收器的 catch 兜底路径保留刻意写死的中文（死路径，文件内注明）；④ 番茄钟常驻通知不在此列（计时协程里现取 `currentStrings`，见 V-16）。 | `AppGraph.kt:137-157`（9001/9002 的 title/body 全部来自 `stringsFor(lang)`）、`androidMain/…/platform/AndroidReminderBootstrap.kt:26-102`（`rescheduleScheduleAlarms`/`rescheduleAll`/`toReminder` 按 lang 取词）、`androidMain/…/platform/ScheduleAlarmReceiver.kt:28-44`（EN-only `titleOverride` + `alarmTitle` 兜底）、`androidMain/…/platform/WeeklyReportReceiver.kt:47-70`（EN-only 标题覆盖）、`ui/parent/WeeklyReportReceiver.kt`（iOS 排程时取 `WeeklyReportStrings.title/body`）、`ui/schedule/ScheduleAlarmHelper.kt:27-40`（正文拼接与存活期 KDoc）；**平台授权**：2026-11-10 两个通知文件（W1）、2026-11-12 `AndroidFileSharer`/`AndroidReminderBootstrap`/`ScheduleAlarmReceiver`/`AndroidNotificationScheduler`（W9，仅文案/取词，后者仅 KDoc）+ 既有授权内的 `WeeklyReportReceiver` 标题覆盖；其余平台文件零改动。分享标题已从本行移出（W9 走 `ShareStrings`，见 L-08/V-74） |
 | L-17 | 设备名兜底在 `data/**` 里各存了一份**表外副本**：家长控制导出包的 `家长设备`（`FamilySyncHelper.kt:107`，落进孩子设备存储，不在设置页出现）与进度包的 `孩子设备`（`:190` 与 DTO 默认值 `:82`）。它们不引用 `CanonicalParentSettingsText`/文案表，本阶段禁改 `data/**`，属阶段二与规范值常量对账的项（另见 spec §11"家长设备"行） | `grep -n "家长设备\|孩子设备" composeApp/src/commonMain/kotlin/com/hstudy/app/data/sync/FamilySyncHelper.kt`（3 处命中：`:82`/`:107`/`:190`） |
 | L-18 | `App.kt:60` 的 `.catch { emit(null) }` 是"降级不崩根"的例外：DataStore 读一旦抛错，上游以一次 `null` 完成、订阅就此终止，**本次会话语言被钉死在系统语言**，设置页切换不再生效，直到组合树重建（Android 配置变更 / iOS 重启）。代码注释写明了代价（`App.kt:54-59`），本清单此前未列 | `composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt:52-62` |
-| L-19 | **等价性登记表的"共享词遮蔽"**（终审 D-A 第 4 条裁决为记录、不修）：`i18n_template_diff.py` 的 `DISCLOSED_RESIDUALS`（现 178 条）里有**六条两侧同形**的通用词登记——`取消` / `确定` / `确认` / `删除` / `分` / `+⟨$⟩分`——而 `apply_disclosures()` 是在三层比对**之前**按**值**（不按字段）把它们从两侧集合里 `pop` 掉的。后果：在**默认组（窄组）**里新写或改出一条与这六个词**逐字节相同**的中文表值，会被无声摘掉，既不参与 `[strict]` 也不参与 `[A]/[B]`，等价性检查看不见它。边界要说清三条，别把它读成"闸门失效"：① 只有整串相同才遮蔽——`累计专注` 改成 `累计专注。` 这种真实漂移照旧报 `invented` 并退 1（本波次在当前树复做正对照实测：默认组 `[A] NO (1 missing, 1 invented)`、exit 1）；② 遮蔽的是**这条值**，不是这个字段，同字段其他值仍被比；③ `--branch` 整枝组里这六条是双边命中，摘掉等于"披露成立"，风险只在没带供值那张表的窄组。同一机制的第二个实例：表里第 14 条（`ParentDashboardStrings.scoreUnit` 的表侧单边 `分`）被第 13 条双边 `分`/`分` 先 pop，因而在整枝组恒报"（未用到）"——这就是 §6 那句"177 命中 / 1 未用到"里那 1 条的来历，不是登记过期。第三个实例（W8 复算新增）：`EfficiencyReportStrings.focusValue/scoreValue` 的表侧 `⟨$⟩分` 被 Task 7b 的 page 单边披露 `⟨$⟩分` 按值先摘掉页面侧，只能按表侧单边登记（理由写在条目里，两语值由 `W8CopyTest` 钉住）。阶段二的收口形状：给登记加**字段名**限定（如 `table_field="CommonStrings.cancelButton"`）而不是继续按值 pop。**W8 后放大（终审 #10）**：登记表现 **178 条、其中 155 条是 page 单边**，含 `优秀`/`良好`/`不错`/`起步`/`待开始`/`种子`/`开花`/`结果` 这类通用单词；page 单边条目在**每个组**都会被 pop，W9 必须把披露实现成**字段/页面限定**（field/page-scoped），否则遮蔽面按组同步放大——这是本波最大的残余风险 | 脚本头「已知边界」最后一条 + `scripts/i18n_template_diff.py` 的 [DISCLOSED_RESIDUALS] 注释；复跑：`python scripts/i18n_template_diff.py`（0）与"把一个 ZH 值改一个中文字"的 mutation（1） |
+| L-19 | **等价性登记表的"共享词遮蔽"——W9 Task 3 已按字段/页面限定收口**（终审 D-A 第 4 条先裁决为"只记录不修"，W9 收口）：`apply_disclosures()` 是在三层比对**之前**把登记文本从两侧集合里摘掉的，阶段 1 按**值**摘、不按字段摘。W9 Task 3 起条目接受两个可选键——`table_field`（`表名.字段名`，如 `CommonStrings.cancelButton`；收集出来的字段 id 是 `CommonStringsZh.cancelButton`，比较时两边归一化）与 `page_path`（相对 `composeApp/src/commonMain/kotlin/` 的页面路径）。带限定时**只摘该字段 / 该文件那一次出现**，值若仍被别的字段 / 别的页面持有就留在集合里、照旧参与 `[strict]`/`[A]`/`[B]`；两键都不带 = 阶段 1 的**按值**语义（向后兼容，当前树的读数逐字节不变：默认组披露后 118/118、`[strict]` 117 条 + 1 条拆分位点、`[A]/[B]` 0 残差；整枝组 987/987、986 + 1）。**已迁移的条目**：① 六条两侧同形共享词——`取消`→`CommonStrings.cancelButton`、`确定`→`SettingsStrings.passwordOkButton`、`确认`→`CommonStrings.confirmButton`、`删除`→`CommonStrings.deleteContentDescription`；`分` 与 `+⟨$⟩分` 由**多个字段**共同持有（`分`：`CommonStrings.pointsUnit`/`minuteLabel`、`ChildHomeStrings.scoreUnit`、`ParentDashboardStrings.scoreUnit`、`EfficiencyReportStrings.focusUnit`/`scoreUnit`；`+⟨$⟩分`：`TaskListStrings.pointsEarnedLabel`、`ParentAssignTaskStrings.pointsBadge`），按字段拆成 6 条 / 2 条登记——值级 pop 拆成逐字段 pop 后，整枝组的最终集合与拆分前逐字节相同，但新写一条同值字段不再被吞；② 三条"页面定值 → 表侧模板"成对登记限定到表字段（`每专注 5 分钟 = +1 分…`→`PomodoroStrings.pointsPerFocusRule`、`🍎 喂养 (10分)`→`PetStrings.feedButton`、`🎾 陪玩 (5分)`→`PetStrings.playButton`）；③ W8 的 5 个**通用单词** `优秀`/`良好`/`不错`/`起步`/`待开始` → `page_path="com/hstudy/app/ui/common/LearningScore.kt"`（迁移前只出现在这一个文件）；④ W9 T2 的 `日程提醒` → `ScheduleAlarmStrings.alarmTitle`。登记表现 **182 条**（9 条双侧成对 + 155 条只看页面 + 18 条只看表侧；W9 Task 4 删掉 PetStrings 两个死字段槽后由 184 → 182），整枝组 **182 条全部命中、0 条"（未用到）"**——W8 那条恒报未用到的 `ParentDashboardStrings.scoreUnit` 表侧 `分` 现在命中自己的字段（旧遮蔽实例随之消失）。**仍然按值摘的两类**（理由写在各条目里）：① page 单边条目——值根本不进任何表（落库 canonical / copy 常量 / 注册表值），页面限定只在"该值只出现在一个页面"时有意义，本轮只给上面 5 个通用词加了 `page_path`，其余条目（含 `种子`/`开花`/`结果` 等单字阶段名）的值散布在多页或多文件；② 少数表侧单边条目 `⟨$⟩分`（`EfficiencyReportStrings.focusValue`/`scoreValue` 两个同义槽同进同出，拆条收益低于维护成本）。**残余风险（诚实边界）**：① 未加限定的条目在窄组仍会遮蔽**同值**新值，只有整串逐字节相同才遮蔽——把 `累计专注` 改成 `累计专注。` 这类真实漂移照旧报 `invented` 并退 1；② `分` / `+⟨$⟩分` 的**页面侧**仍是值级（它们出现在多页的多处、语义分属积分/分钟/评分/专注单位，没有单一 `page_path` 可限定）；③ 带限定的条目不再遮蔽别的字段 / 别的页面。自测：`python scripts/tests/i18n_template_diff_selftest.py`（**37 条断言、0 失败**，含"已声明字段集合 == 树上实际持有该值的字段集合"的对账——新写一条同值字段会让它红，而主命令此时可能仍绿） | 脚本头「已知边界」最后一条、`DISCLOSED_RESIDUALS` 块注释与条目、`apply_disclosures()` 的 KDoc；复跑：`python scripts/i18n_template_diff.py`（exit 0）、`python scripts/i18n_template_diff.py --branch`（exit 0）、`python scripts/tests/i18n_template_diff_selftest.py`（exit 0，37 断言） |
 
 ## 4. 英文措辞：一处已裁决关闭（Ruling 45），一处仍待裁决
 
@@ -480,8 +510,8 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
 ## 6. 复现与回归
 
 （编码前提见 §1 末注：`export PYTHONIOENCODING=utf-8` **已经不需要**，四个脚本自带 UTF-8 换装护栏。
-以下每条都是终审修复波次在当前树实跑过的，括注实测退出码；终审 D-B 之后本波次又按"不设
-`PYTHONIOENCODING` + 输出接管道"的更严条件复跑过一遍，退出码逐条不变。）
+以下读数按 **W9 Task 4 的当前树实跑**（T1–T3 全部合入后）复算，括注实测退出码；更早的"终审修复波次"与
+终审 D-B 的两次复跑结论（不设 `PYTHONIOENCODING` + 输出接管道）仍然成立。）
 
 - 阶段一各页的中文态等价证明：`python scripts/i18n_template_diff.py`（默认组，实测 **exit 0**；
   distinct 123/120 → 披露后 **118/118**，`[strict]` **整串逐字节相同 117 条** + 1 条已披露的
@@ -489,22 +519,27 @@ plan Global Constraints 的硬约束（Ruling 25）：**任何文案表字符串
   注意"118 条"是**披露后的模板集合大小**，"117 条"才是**整串相同**的条数，两个数字不是一回事，
   旧文档把 118/118 写成"条整串"是假陈述，本波次已按工具当日输出改正）。
 - **整枝组（终审第 9 条新发布的长期复验命令，`d4d441b` 起脚本自带 `--branch`）**：
-  `python scripts/i18n_template_diff.py --branch`（阶段 2 W8 登记后实测 **exit 0**；distinct 1151/1009 →
-  披露后 987/987，`[strict]` 986 条整串相同 + 同一条拆分位点，`[A] 0 missing / 0 invented`、`[B] 0 difference`。它把本分支全部已迁页面（59 条页面组条目 /
-  57 个文件，含 W1 的六页、W2 的四页、W3 的四页、W4 的四页、W5 的六页、W6 的七页 + 一个 commonMain 接收器、W7 的三页与 W8 的六页 + 三个引擎文案源）× 全部 46 张表放进同一命题，`DISCLOSED_RESIDUALS` 登记表（现 178 条）整张受它复验
-  （实跑 177 条命中打印，1 条恒报"未用到"——`ParentDashboardStrings.scoreUnit` 的表侧 `分` 被前一条
-  `分`/`分` 先 pop，见 L-19，不是过期），
-  默认组只碰到其中 6 条（实跑打印 3 条"已披露"双边/单边命中 + 3 条"单边在范围"），其余 172 条默认组用不到。
+  `python scripts/i18n_template_diff.py --branch`（W9 Task 4 实测 **exit 0**；distinct 1151/1008 →
+  披露后 987/987，`[strict]` 986 条整串相同 + 同一条拆分位点，`[A] 0 missing / 0 invented`、`[B] 0 difference`
+  （中文副本 983/983）。它把本分支全部已迁页面（59 条页面组条目 /
+  57 个文件，含 W1 的六页、W2 的四页、W3 的四页、W4 的四页、W5 的六页、W6 的七页 + 一个 commonMain 接收器、W7 的三页与 W8 的六页 + 三个引擎文案源）× 全部 46 张表放进同一命题，`DISCLOSED_RESIDUALS` 登记表（现 **182 条**）整张受它复验
+  （实跑 **182 条命中打印，0 条"（未用到）"**；W8 那条恒报未用到的 `ParentDashboardStrings.scoreUnit` 表侧 `分`
+  在 W9 T3 字段限定后已命中自己的字段，见 L-19），
+  默认组只碰到其中 6 条（实跑打印 3 条"已披露"双边/单边命中 + 3 条"单边在范围"），其余 **176** 条默认组用不到。
   W6 新增的 18 条 = 示例心愿 6 + 宠物阶段名 8（页面单边）+ 周报通知正文 4（**表侧单边**：原文只在
   `androidMain/platform/WeeklyReportReceiver.kt`，闸门只读 commonMain，见脚本登记条目的理由）。
   W7 新增的 9 条 = 账本 note 3（页面单边）+ 定值字面量 4（`积分不足，需要 10/5 分` 页面单边 2 +
-  `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel）。
+  `🍎 喂养 (10分)` / `🎾 陪玩 (5分)` 定值→模板成对 2）+ 裸动词表侧 2（feedLabel/playLabel——**W9 T4 已随
+  PetStrings 死字段删除**，本批现计 7 条）。
   W8 新增的 95 条 = 三个引擎的 copy 常量 50（`TutoringCopy` 32 / `GoalRecommendationCopy` 8 /
   `LearningScoreCopy` 10，全部页面单边——copy 不是表，闸门看不见；迁移前页面 50 条与 copy 文件的 ZH
   字面量 T4 逐条核对 50/50 一致，两语由 `W8CopyTest` 钉死）+ 注册表 canonical 43（错因名 5 / 等级称号 10 /
   树阶段名 6 / 成就定义 22，页面单边，显示走 `presetTextRegistry` / `levelTitleCopy` / `treeStageCopy` /
   `achievementCopy`）+ 首页动画条组合串 1（页面单边：emoji 与 `common.streakDays` 输出拼接）+ 报表单位
   `⟨$⟩分` 1（**表侧单边**：被 Task 7b 的 page 单边 `⟨$⟩分` 按值先 pop，L-19 遮蔽的又一实例）。
+  W9 T2 新增 1 条 = 日程通知兜底标题 `日程提醒`（**表侧单边**：原文只在
+  `androidMain/platform/ScheduleAlarmReceiver.kt`，闸门不读平台文件；W9 T3 限定到
+  `ScheduleAlarmStrings.alarmTitle`）。
 - **`SettingsStrings` 这张表必须带两个页面 rev 才退 0**（表由 Task 5 与 Task 11 两批页面共同填写，
   其中语言分区那 5 条是 Task 5 为新功能新写、没有迁移前原文）：
   ```bash

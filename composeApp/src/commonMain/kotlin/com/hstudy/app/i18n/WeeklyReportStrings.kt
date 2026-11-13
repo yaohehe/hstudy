@@ -6,16 +6,15 @@ package com.hstudy.app.i18n
  *
  * 取词时机按平台不同（与 [ReviewReminderStrings] / [ScheduleAlarmStrings] 同型）：
  * - Android 在**触发时**取词：androidMain 接收器到点统计本周数据后，现取
- *   `stringsFor(currentDisplayLanguage()).weeklyReport` 拼正文——[title]/[body] 只进
- *   [com.hstudy.app.platform.ScheduledReminder] 的排程元数据（AlarmManager 的 extras），
- *   **通知栏标题恒为 per-kind 渠道默认中文「HStudy 每周学习周报」**（`AndroidNotificationScheduler`
- *   调 `showNotification` 不带 `titleOverride`）。标题英文态属 W9 残留，口径见
- *   `docs/i18n-stage1-verification.md` 的 L-16（与 W5 日程闹钟同一类）。
+ *   `stringsFor(currentDisplayLanguage()).weeklyReport` 拼正文；**标题** EN 态用 [title] 覆盖，
+ *   ZH 态沿用渠道默认标题「HStudy 每周学习周报」（与 v3.1.0 逐字节一致，W1 终审裁决；W9 接线，
+ *   见 androidMain/WeeklyReportReceiver 的 KDoc）。[title]/[body] 在其余场合只进
+ *   [com.hstudy.app.platform.ScheduledReminder] 的排程元数据（AlarmManager 的 extras）。
  * - iOS 在**排程时**把 [title]/[body] 冻结进 UNNotificationRequest（`IosNotificationScheduler`），
  *   没有周期重建，之后不追更；切语言须重新启停周报开关（或在设置页重新开启）才刷新。
- * - 排程/开机重注册仍是硬编码中文（`AppGraph.bootstrap()` 与 `AndroidReminderBootstrap` 用
- *   「每周学习周报」/「本周学习周报已生成，来看看孩子的学习情况吧！」重注册 9002），
- *   所以 iOS 的本地化快照只存活到下次冷启动之前——W9 归属（计划 Ruling 6，L-16）。
+ * - 排程/开机重注册（`AppGraph.bootstrap()` 与 `AndroidReminderBootstrap`）W9 起按生效语言取
+ *   [title]/[body]（不再是硬编码中文：「每周学习周报」/「本周学习周报已生成，来看看孩子的学习情况吧！」
+ *   即本表 ZH 值），所以冷启动不再把 iOS 的本地化快照盖回中文；但已发出的通知仍不追更（spec §8）。
  *
  * 中文值与迁移前逐字节一致：[title] = 原 `TITLE` 常量（ui/parent/WeeklyReportReceiver.kt:28），
  * [body] = 原 `BODY` 常量（:29）；[summary] = androidMain 接收器 `buildString` 前两次 append
