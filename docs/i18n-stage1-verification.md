@@ -262,7 +262,7 @@ W8 的九源守卫另在 W8CopyTest（**10** 条，含 `crossTableVocabularyPinn
 
 - [ ] **V-34** 英文态进入错题列表：标题/状态卡/筛选栏/空状态全英文（用户错题标题/错因/解法为自建内容，按原样）
 - [ ] **V-35** 英文态错题详情：主动回忆三阶段按钮、举一反三 15 条引导问题、复习记录格式全英文；落库原文（账本描述）按数据原样
-- [ ] **V-36** 英文态添加错题：科目芯片（含 emoji）、保存校验 snackbar 全英文；**错误类型 chip 在 W9 结束时仍显示 canonical 中文**（`ChildMistakeAddScreen.kt:107` 的 `Text(type)`；编辑对话框同形，`ChildMistakeDetailScreen.kt:137-139`；值参与落库）。W9 计划里点过"错误类型映射"，实际未实施——按**已知残留**读，不要第一次见就记缺陷，也别当成"已接线"。
+- [ ] **V-36** 英文态添加错题：科目芯片（含 emoji）、保存校验 snackbar 全英文；**错误类型 chip 已接线（W9 收口修复）**：标签渲染走 `localizedPresetText(type/et, displayLanguage)`（`ChildMistakeAddScreen.kt:107`、`ChildMistakeDetailScreen.kt:139`）；值仍 canonical 落库，选择状态与保存参数不变。
 - [ ] **V-37** 英文态家长错题分析：概览/科目分布/最近错题全英文
 - [ ] **V-38** 切换语言后关闭再开启「每日复习提醒」：
   **Android**——到点弹的通知按**触发时**语言渲染（ZH 标题 `HStudy 错题复习提醒`，EN 标题 `Mistake review reminder`；正文同为当前语言），语言切换从下一次触发生效，已排程旧通知不追更（spec §8）；

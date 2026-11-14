@@ -16,7 +16,9 @@ import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
 import com.hstudy.app.data.local.entity.mistakeErrorTypes
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.HStudyTopBar
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -31,6 +33,7 @@ fun ChildMistakeAddScreen(
 ) {
     val strings = LocalStrings.current.mistakeAdd
     val shared = LocalStrings.current.mistake
+    val displayLanguage = LocalDisplayLanguage.current
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -104,7 +107,7 @@ fun ChildMistakeAddScreen(
                     FilterChip(
                         selected = errorType == type,
                         onClick = { errorType = if (errorType == type) "" else type },
-                        label = { Text(type) }
+                        label = { Text(localizedPresetText(type, displayLanguage)) }
                     )
                 }
             }

@@ -16,7 +16,9 @@ import coil3.compose.AsyncImage
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.MistakeSubject
 import com.hstudy.app.data.local.entity.mistakeErrorTypes
+import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.dt.fileExists
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
@@ -30,6 +32,7 @@ fun ChildMistakeDetailScreen(
     val strings = LocalStrings.current.mistakeDetail
     val shared = LocalStrings.current.mistake
     val common = LocalStrings.current.common
+    val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -136,7 +139,7 @@ fun ChildMistakeDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                     mistakeErrorTypes.forEach { et ->
                         FilterChip(selected = editErrorType == et, onClick = { editErrorType = if (editErrorType == et) "" else et },
-                            label = { Text(et, style = MaterialTheme.typography.labelSmall) })
+                            label = { Text(localizedPresetText(et, displayLanguage), style = MaterialTheme.typography.labelSmall) })
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
