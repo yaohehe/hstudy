@@ -559,28 +559,28 @@ import ComposeApp
 import FirebaseCore
 import FirebaseAnalytics
 
-final class FirebaseAnalyticsBridge: NSObject, Analytics {
+final class FirebaseAnalyticsBridge: NSObject, ComposeApp.Analytics {
     func logEvent(event: AnalyticsEvent) {
         guard FirebaseApp.app() != nil else { return }
         let wire = AnalyticsMapping.shared.wire(event: event)
         let name = wire.first as? String ?? ""
         let params = wire.second as? [String: String] ?? [:]
-        Analytics.logEvent(name, parameters: params)
+        FirebaseAnalytics.Analytics.logEvent(name, parameters: params)
     }
 
     func setUserProperty(property: UserProperty, value: String?) {
         guard FirebaseApp.app() != nil else { return }
-        Analytics.setUserProperty(value, forName: AnalyticsMapping.shared.propertyName(property: property))
+        FirebaseAnalytics.Analytics.setUserProperty(value, forName: AnalyticsMapping.shared.propertyName(property: property))
     }
 
     func setEnabled(enabled: Bool) {
         guard FirebaseApp.app() != nil else { return }
-        Analytics.setAnalyticsCollectionEnabled(enabled)
+        FirebaseAnalytics.Analytics.setAnalyticsCollectionEnabled(enabled)
     }
 }
 ```
 
-（ObjC selector 对应：`logEventEvent:` / `setUserPropertyProperty:value:` / `setEnabledEnabled:`；Swift 侧签名即上述写法。若 CI 报 protocol 构象不匹配，按编译器给出的 required selector 修正 Swift 方法标签，**不改 Kotlin 接口**。）
+（**名字冲突护栏**：ComposeApp 与 FirebaseAnalytics 两个 module 都导出 `Analytics` 这个名字——protocol 构象必须写 `ComposeApp.Analytics`，Firebase 调用必须写 `FirebaseAnalytics.Analytics.*`，裸 `Analytics` 会 ambiguous。ObjC selector 对应：`logEventEvent:` / `setUserPropertyProperty:value:` / `setEnabledEnabled:`；Swift 侧签名即上述写法。若 CI 报 protocol 构象不匹配，按编译器给出的 required selector 修正 Swift 方法标签，**不改 Kotlin 接口**。）
 
 - [ ] **Step 4: iosApp.swift init**
 
