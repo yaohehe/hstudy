@@ -535,6 +535,20 @@ revert 会移除 SPM/plist/探针；下一步重加正式部分。若 revert 冲
 
 - [ ] **Step 2: 主分支（裁决=SPM）——pbxproj 重加 T1 Step 2 的全部 SPM/plist 编辑（逐字同 T1），但 Sources 不加 AnalyticsSpike，改为 FirebaseAnalyticsBridge.swift 三条（fileRef `C10000000000000000000008`、buildFile `C10000000000000000000009`，形状照抄 iosApp.swift）**
 
+**另加 FirebaseCore product**（spike 裁决证据：`FirebaseApp` 在 FirebaseCore module，只 import FirebaseAnalytics 会 cannot-find-in-scope）：
+PBXBuildFile 加 `C1000000000000000000000B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C1000000000000000000000A /* FirebaseCore */; };`；
+Frameworks phase files 加 `C1000000000000000000000B /* FirebaseCore in Frameworks */,`；
+target packageProductDependencies 加 `C1000000000000000000000A /* FirebaseCore */,`；
+XCSwiftPackageProductDependency section 加：
+
+```
+		C1000000000000000000000A /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C10000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+```
+
 - [ ] **Step 3: Swift bridge**
 
 Create `iosApp/FirebaseAnalyticsBridge.swift`：
@@ -542,6 +556,7 @@ Create `iosApp/FirebaseAnalyticsBridge.swift`：
 ```swift
 import Foundation
 import ComposeApp
+import FirebaseCore
 import FirebaseAnalytics
 
 final class FirebaseAnalyticsBridge: NSObject, Analytics {
@@ -583,7 +598,7 @@ final class FirebaseAnalyticsBridge: NSObject, Analytics {
     }
 ```
 
-顶部 import 加 `import FirebaseAnalytics`（若 spike revert 已删）。
+顶部 import 加 `import FirebaseCore` 与 `import FirebaseAnalytics`（spike revert 已删旧 import）。
 
 - [ ] **Step 5: IosPlatform.kt 签名**
 
