@@ -16,6 +16,8 @@ object Platform {
     var fileSharer: FileSharer = NoopFileSharer
     var camera: CameraLauncher = NoopCameraLauncher
     var deviceDiscovery: DeviceDiscovery = NoopDeviceDiscovery
+    var analytics: Analytics = NoopAnalytics
+    var appChannel: String = "release"
 
     fun init(
         filesDir: String,
@@ -24,7 +26,8 @@ object Platform {
         notifications: NotificationScheduler = NoopNotificationScheduler,
         fileSharer: FileSharer = NoopFileSharer,
         camera: CameraLauncher = NoopCameraLauncher,
-        deviceDiscovery: DeviceDiscovery = NoopDeviceDiscovery
+        deviceDiscovery: DeviceDiscovery = NoopDeviceDiscovery,
+        analytics: Analytics = NoopAnalytics
     ) {
         this.filesDir = filesDir
         this.cacheDir = cacheDir
@@ -33,6 +36,7 @@ object Platform {
         this.fileSharer = fileSharer
         this.camera = camera
         this.deviceDiscovery = deviceDiscovery
+        this.analytics = analytics
     }
 }
 
