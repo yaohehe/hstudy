@@ -2,12 +2,15 @@ package com.hstudy.app
 
 import android.app.Application
 import com.hstudy.app.platform.ActivityTracker
+import com.hstudy.app.platform.Analytics
 import com.hstudy.app.platform.AndroidCameraLauncher
 import com.hstudy.app.platform.AndroidDeviceDiscovery
 import com.hstudy.app.platform.AndroidDeviceFeedback
 import com.hstudy.app.platform.AndroidFileSharer
+import com.hstudy.app.platform.AndroidFirebaseAnalytics
 import com.hstudy.app.platform.AndroidNotificationScheduler
 import com.hstudy.app.platform.AndroidReminderBootstrap
+import com.hstudy.app.platform.NoopAnalytics
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.installDeviceFeedback
 import kotlinx.coroutines.launch
@@ -24,6 +27,12 @@ class HStudyApplication : Application() {
         instance = this
         registerActivityLifecycleCallbacks(ActivityTracker)
 
+        Platform.appChannel =
+            if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
+        val analytics: Analytics = runCatching { AndroidFirebaseAnalytics(this) as Analytics }
+            .onFailure { android.util.Log.w("HStudy", "analytics init failed; falling back to noop", it) }
+            .getOrDefault(NoopAnalytics)
+
         Platform.init(
             filesDir = filesDir.absolutePath,
             cacheDir = cacheDir.absolutePath,
@@ -31,7 +40,8 @@ class HStudyApplication : Application() {
             notifications = AndroidNotificationScheduler(this),
             fileSharer = AndroidFileSharer(this),
             camera = AndroidCameraLauncher(this),
-            deviceDiscovery = AndroidDeviceDiscovery(this)
+            deviceDiscovery = AndroidDeviceDiscovery(this),
+            analytics = analytics
         )
         // 番茄钟震动/提示音/进行中通知（原 commonMain 直接调 android.* 的实现搬到这里）
         installDeviceFeedback(AndroidDeviceFeedback(this))
