@@ -862,9 +862,9 @@ import 补 `androidx.compose.runtime.LaunchedEffect`、`androidx.compose.runtime
 | 同上 | :332 跳过呼吸按钮同语句之后 | 同上 |
 | `ui/focus/ChildPomodoroScreen.kt` | :175-185 `onComplete = {` lambda 首行 | `AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_COMPLETE))` |
 | `ui/child/ChildTaskListScreen.kt` | :133 `checkInForTask(...)` 之后 | `AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))` |
-| `ui/child/ChildHomeScreen.kt` | :597 打卡调用之后（读文件确认成功路径） | 同上 CHECKIN |
-| `ui/child/ChildDailyTargetScreen.kt` | :217 与 :227 两处打卡调用之后 | 同上 CHECKIN（两行） |
-| `ui/child/ChildHabitChallengeScreen.kt` | :79 挑战打卡调用之后 | 同上 CHECKIN |
+| `ui/child/ChildHomeScreen.kt` | :597 `checkIn(` 调用（completeAssignment lambda 内，:603 闭括号后） | 同上 CHECKIN |
+| `ui/target/ChildDailyTargetScreen.kt` | :217 与 :227 两处 `checkIn(` 调用之后 | 同上 CHECKIN（两行） |
+| `ui/habit/ChildHabitChallengeScreen.kt` | :86 与 :101 两处成功分支 `checkIn(` 调用之后（ALREADY_CHECKED_IN 分支不发） | 同上 CHECKIN（两行） |
 | `ui/child/ChildLuckyDrawScreen.kt` | :117 `adjustPoints(won, ...)` 之后 | `AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.LUCKY_DRAW))` |
 | `ui/pet/ChildPetScreen.kt` | :216 `spendPoints(10, ...)` 之后 | `AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.PET_CARE))` |
 | 同上 | :231 `spendPoints(5, ...)` 之后 | 同上 PET_CARE |
@@ -908,8 +908,8 @@ SITES = [
     ("ui/child/ChildTaskListScreen.kt", "Feature.CHECKIN", 1),
     ("ui/child/ChildHomeScreen.kt", "Feature.CHECKIN", 1),
     ("ui/child/ChildHomeScreen.kt", "AnalyticsEvent.PairingCompleted", 1),
-    ("ui/child/ChildDailyTargetScreen.kt", "Feature.CHECKIN", 2),
-    ("ui/child/ChildHabitChallengeScreen.kt", "Feature.CHECKIN", 1),
+    ("ui/target/ChildDailyTargetScreen.kt", "Feature.CHECKIN", 2),
+    ("ui/habit/ChildHabitChallengeScreen.kt", "Feature.CHECKIN", 2),
     ("ui/child/ChildLuckyDrawScreen.kt", "Feature.LUCKY_DRAW", 1),
     ("ui/pet/ChildPetScreen.kt", "Feature.PET_CARE", 2),
     ("ui/wish/ChildWishGoalScreen.kt", "Feature.WISH_SUBMIT", 1),
