@@ -34,6 +34,8 @@ SITES = [
     ("App.kt", "AnalyticsEvent.ScreenView", 1),
     ("AppGraph.kt", "AnalyticsEvent.LanguageChanged", 1),
     ("AppGraph.kt", "AnalyticsReporter.setEnabled", 1),
+    ("ui/parent/ParentSettingsScreen.kt", "setAnalyticsEnabled", 1),
+    ("ui/parent/ParentSettingsScreen.kt", "strings.analyticsTitle", 1),
 ]
 
 failures = []
@@ -50,8 +52,10 @@ for dirpath, _, filenames in os.walk(data_dir):
         if not name.endswith(".kt"):
             continue
         with open(os.path.join(dirpath, name), encoding="utf-8") as fh:
-            if "AnalyticsReporter." in fh.read():
-                failures.append("data layer must not call analytics: %s" % os.path.join(dirpath, name))
+            content = fh.read()
+        for needle in ("AnalyticsReporter.", "Platform.analytics"):
+            if needle in content:
+                failures.append("data layer must not call analytics (%s): %s" % (needle, os.path.join(dirpath, name)))
 
 if failures:
     for line in failures:

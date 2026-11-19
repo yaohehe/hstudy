@@ -225,6 +225,8 @@ data class SettingsStrings(
     val languageEn: String,
     val languageNote: String,
     val partialTranslationNote: String,
+    val analyticsTitle: String,
+    val analyticsNote: String,
 
     // ===== 顶栏与家长密码分区（Task 11）=====
     val pageTitle: String,
@@ -344,6 +346,8 @@ val SettingsStringsZh = SettingsStrings(
     languageEn = "English",
     languageNote = "选择界面显示语言，立即生效。",
     partialTranslationNote = "部分页面仍在适配英文，会暂时保持中文显示。",
+    analyticsTitle = "📊 分享使用数据",
+    analyticsNote = "仅统计功能使用次数、界面语言等匿名信息，不含姓名、任务内容或积分明细。关闭后立即停止上报。",
 
     // ===== 顶栏与家长密码分区 =====
     pageTitle = "⚙️ 家长设置",                                            // :74
@@ -432,6 +436,8 @@ val SettingsStringsEn = SettingsStrings(
     languageEn = "English",
     languageNote = "Choose the app language. Changes apply immediately.",
     partialTranslationNote = "Some screens are not translated yet and stay in Chinese.",
+    analyticsTitle = "📊 Share usage data",
+    analyticsNote = "Only anonymous usage counts and app language are collected. No names, task content or point details. Turning this off stops reporting immediately.",
 
     // ===== 顶栏与家长密码分区 =====
     pageTitle = "⚙️ Parent settings",

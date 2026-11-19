@@ -402,6 +402,28 @@ fun ParentSettingsScreen(
                             }
                         }
                     }
+
+                    // ===== 分享使用数据（v3.2.0，spec §5：语言项下方）=====
+                    val analyticsEnabled by app.userPreferences.analyticsEnabled.collectAsState(initial = true)
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(strings.analyticsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Switch(
+                                    checked = analyticsEnabled,
+                                    onCheckedChange = { on ->
+                                        scope.launch { app.userPreferences.setAnalyticsEnabled(on) }
+                                    },
+                                )
+                            }
+                            Text(strings.analyticsNote,
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }

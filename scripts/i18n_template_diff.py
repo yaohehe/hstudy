@@ -187,9 +187,10 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**W9 Task 4 复算**，改登记时必须同时改这里）：表里现在 **182 条**
-# （9 条双侧成对 + 155 条只看页面 + 18 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **176** 条默认组用不到；`--branch` 组碰到 **182 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**v3.2.0 复算**，改登记时必须同时改这里）：表里现在 **184 条**
+# （9 条双侧成对 + 155 条只看页面 + 20 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **178** 条默认组用不到；`--branch` 组碰到 **184 条**、**0** 条"（未用到）"。
+# v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -479,6 +480,11 @@ DISCLOSED_RESIDUALS = [
      "reason": "Task 5 新写文案（同上）：SettingsStringsZh.languageNote"},
     {"page": None, "table": "部分页面仍在适配英文，会暂时保持中文显示。",
      "reason": "Task 5 新写文案（同上，且只在英文态渲染，spec §7）：SettingsStringsZh.partialTranslationNote"},
+    # ---- v3.2.0 Analytics 开关（只有表侧：新写文案，迁移前该页没有此分区）----
+    {"page": None, "table": "📊 分享使用数据",
+     "reason": "v3.2.0 新写文案（spec §5 开关标题）：SettingsStringsZh.analyticsTitle"},
+    {"page": None, "table": "仅统计功能使用次数、界面语言等匿名信息，不含姓名、任务内容或积分明细。关闭后立即停止上报。",
+     "reason": "v3.2.0 新写文案（spec §5 采集范围说明）：SettingsStringsZh.analyticsNote"},
     # ---- 阶段 2 W1：Ruling 25 落库原文（页面单边；值不进表）----
     {"page": "主动回忆-做对", "table": None,
      "reason": "W1 Ruling 25：ChildMistakeDetailScreen.kt:259 reviewMistake(note) 落库，不本地化"},
