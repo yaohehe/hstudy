@@ -21,6 +21,8 @@ import com.hstudy.app.data.local.entity.WishGoalEntity
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 
@@ -131,6 +133,7 @@ fun ChildWishGoalScreen(
                     val success = app.wishGoalRepository.depositPoints(goal.id, amount)
                     depositGoal = null
                     if (success) {
+                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.WISH_SUBMIT))
                         // 检查是否达成
                         val updated = app.wishGoalRepository.getGoalById(goal.id)
                         if (updated != null && !updated.isActive) {

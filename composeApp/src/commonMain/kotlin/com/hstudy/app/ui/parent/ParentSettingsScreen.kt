@@ -21,6 +21,8 @@ import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.SyncDiagnosticAdapter
 import com.hstudy.app.i18n.appLanguageFromStorage
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.restartApp
 import com.hstudy.app.ui.common.HStudyTopBar
@@ -159,7 +161,10 @@ fun ParentSettingsScreen(
                                         val result = BackupHelper.backup()
                                         isBackingUp = false
                                         result.fold(
-                                            onSuccess = { snackbarHostState.showSnackbar(strings.backupSuccessMessage) },
+                                            onSuccess = {
+                                                AnalyticsReporter.log(AnalyticsEvent.BackupExported)
+                                                snackbarHostState.showSnackbar(strings.backupSuccessMessage)
+                                            },
                                             onFailure = {
                                                 snackbarHostState.showSnackbar(
                                                     strings.backupFailureMessage(
@@ -395,6 +400,28 @@ fun ParentSettingsScreen(
                                 Text(strings.partialTranslationNote,
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                        }
+                    }
+
+                    // ===== 分享使用数据（v3.2.0，spec §5：语言项下方）=====
+                    val analyticsEnabled by app.userPreferences.analyticsEnabled.collectAsState(initial = true)
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(strings.analyticsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Switch(
+                                    checked = analyticsEnabled,
+                                    onCheckedChange = { on ->
+                                        scope.launch { app.userPreferences.setAnalyticsEnabled(on) }
+                                    },
+                                )
+                            }
+                            Text(strings.analyticsNote,
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

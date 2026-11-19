@@ -15,6 +15,8 @@ import com.hstudy.app.i18n.CanonicalFocusText
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 
@@ -173,6 +175,7 @@ fun ChildPomodoroScreen(
                     skipBreathing = skipBreathing,
                     onActiveChange = { isTimerActive = it },
                     onComplete = { minutes ->
+                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_COMPLETE))
                         scope.launch {
                             // 记录专注时长（每5分钟=1分，积分待家长审核）
                             val points = minutes / 5

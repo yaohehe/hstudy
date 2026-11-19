@@ -3,6 +3,8 @@ package com.hstudy.app.ui.mistake
 import com.hstudy.app.i18n.ReviewReminderStrings
 import com.hstudy.app.i18n.currentDisplayLanguage
 import com.hstudy.app.i18n.stringsFor
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ReminderKind
 import com.hstudy.app.platform.ScheduledReminder
@@ -43,6 +45,7 @@ object ReviewReminderReceiver {
                 repeatDaily = true
             )
         )
+        AnalyticsReporter.log(AnalyticsEvent.ReminderScheduled(ReminderKind.REVIEW))
     }
 
     /** 取消每日复习提醒 */

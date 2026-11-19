@@ -26,6 +26,8 @@ import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.SyncDiagnosticAdapter
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.navigation.Screen
@@ -53,6 +55,7 @@ fun ChildHomeScreen(
                     isSyncing = true
                     val result = com.hstudy.app.data.sync.FamilySyncHelper.importControlConfig(text)
                     if (result.isSuccess) {
+                        AnalyticsReporter.log(AnalyticsEvent.PairingCompleted)
                         snackbarHostState.showSnackbar("✅ ${SyncDiagnosticAdapter.localize(result.getOrNull() ?: "", displayLanguage)}")
                     } else {
                         snackbarHostState.showSnackbar(
@@ -601,6 +604,7 @@ fun ChildHomeScreen(
                                                             points = pts,
                                                             date = assignDate
                                                         )
+                                                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                                     }
                                                     snackbarHostState.showSnackbar(strings.assignmentCompletedMessage(a.points))
                                                 }

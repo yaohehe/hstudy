@@ -8,12 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		B1000000000000000000000E /* iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* iosApp.swift */; };
+		C10000000000000000000002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = C10000000000000000000001 /* FirebaseAnalytics */; };
+		C10000000000000000000005 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000004 /* GoogleService-Info.plist */; };
+		C10000000000000000000009 /* FirebaseAnalyticsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000008 /* FirebaseAnalyticsBridge.swift */; };
+		C1000000000000000000000B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C1000000000000000000000A /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B10000000000000000000006 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000007 /* iosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iosApp.swift; sourceTree = "<group>"; };
 		B10000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C10000000000000000000004 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		C10000000000000000000008 /* FirebaseAnalyticsBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAnalyticsBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -21,6 +27,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C10000000000000000000002 /* FirebaseAnalytics in Frameworks */,
+				C1000000000000000000000B /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -32,6 +40,8 @@
 			children = (
 				B10000000000000000000007 /* iosApp.swift */,
 				B10000000000000000000008 /* Info.plist */,
+				C10000000000000000000008 /* FirebaseAnalyticsBridge.swift */,
+				C10000000000000000000004 /* GoogleService-Info.plist */,
 				B10000000000000000000005 /* Frameworks */,
 				B10000000000000000000004 /* Products */,
 			);
@@ -68,6 +78,10 @@
 			);
 			dependencies = (
 			);
+			packageProductDependencies = (
+				C10000000000000000000001 /* FirebaseAnalytics */,
+				C1000000000000000000000A /* FirebaseCore */,
+			);
 			name = iosApp;
 			productName = iosApp;
 			productReference = B10000000000000000000006 /* iosApp.app */;
@@ -96,6 +110,9 @@
 				en,
 				Base,
 			);
+			packageReferences = (
+				C10000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			mainGroup = B10000000000000000000002;
 			productRefGroup = B10000000000000000000004 /* Products */;
 			projectDirPath = "";
@@ -111,6 +128,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C10000000000000000000005 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -142,6 +160,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1000000000000000000000E /* iosApp.swift in Sources */,
+				C10000000000000000000009 /* FirebaseAnalyticsBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,7 +219,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30101;
+				CURRENT_PROJECT_VERSION = 30200;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -213,7 +232,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.1.1;
+				MARKETING_VERSION = 3.2.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
@@ -231,7 +250,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30101;
+				CURRENT_PROJECT_VERSION = 30200;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -244,7 +263,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.1.1;
+				MARKETING_VERSION = 3.2.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
@@ -280,6 +299,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C10000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C10000000000000000000001 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C10000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		C1000000000000000000000A /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C10000000000000000000003 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B10000000000000000000001 /* Project object */;
 }

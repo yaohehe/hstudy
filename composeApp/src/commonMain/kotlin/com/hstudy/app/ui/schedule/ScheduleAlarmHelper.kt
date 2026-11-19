@@ -7,6 +7,8 @@ import com.hstudy.app.i18n.ScheduleAlarmStrings
 import com.hstudy.app.i18n.currentDisplayLanguage
 import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.i18n.stringsFor
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ReminderKind
 import com.hstudy.app.platform.ScheduledReminder
@@ -57,6 +59,7 @@ object ScheduleAlarmHelper {
                 repeatDaily = true
             )
         )
+        AnalyticsReporter.log(AnalyticsEvent.ReminderScheduled(ReminderKind.SCHEDULE))
     }
 
     /** 取消单条日程的提醒 */

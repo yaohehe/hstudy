@@ -26,6 +26,8 @@ import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.achievementCopy
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -131,6 +133,7 @@ fun ChildTaskListScreen(
                                                 // 打卡：只记录完成 + 生成待审申请，此刻**不计入任何积分**；
                                                 // 积分仅在家长审批通过后写入一次。重复打卡不会生成第二条申请。
                                                 app.pointRepository.checkInForTask(task.id, earned, task.title)
+                                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                                 val isPerfect = tasks.isNotEmpty() && (completedIds.size + 1) >= tasks.size
                                                 val newlyUnlocked = com.hstudy.app.ui.common.AchievementManager.evaluate(app, isPerfect)
                                                 if (newlyUnlocked.isNotEmpty()) {

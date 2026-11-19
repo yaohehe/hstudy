@@ -177,10 +177,14 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     // 学习建议是函数型字段（Ruling 20-b），由 W8CopyTest.efficiencyReportInterpolatedPinsBothLanguages
     // 逐字钉住——其中 scoreUnit 是评分 pts、focusUnit 是分钟 min，都不含 point。
     "efficiencyReport.statPointsLabel",       // "Total points earned"
+    // ---- v3.2.0 Analytics 开关新增 1 条。analyticsTitle（"📊 Share usage data"）不含 point；
+    // analyticsNote 的 "point details" 是**否定句里的积分名词**（不采集积分明细），词形仍是
+    // §11 的 points/point，闭集按词形登记，语义由 analyticsCopyDiffers 与本行注释承担。
+    "settings.analyticsNote",                 // "No names, task content or point details."
 )
 
 /**
- * Task 11：家长设置页 `SettingsStrings` 里**必须进 ZH≠EN 穷举清单**的静态字段名（57 个）。
+ * Task 11：家长设置页 `SettingsStrings` 里**必须进 ZH≠EN 穷举清单**的静态字段名（57 个；v3.2.0 增 analytics 两条 → 59 个）。
  *
  * 为什么把字段名单独做成一份**集合**而不是只写一长排 `zh.x to en.x`：
  * [settingsCopyDiffers] 里那份手写清单是**开放枚举**——Task 9/10 的教训（见
@@ -195,6 +199,8 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
 private val SETTINGS_STATIC_DIFFERS_FIELDS = setOf(
     // Task 5 的语言分区（languageZh / languageEn 两个自称词除外）
     "languageTitle", "languageSystem", "languageNote", "partialTranslationNote",
+    // v3.2.0 Analytics 开关（spec §5）
+    "analyticsTitle", "analyticsNote",
     // 顶栏与家长密码
     "pageTitle", "passwordCardTitle", "passwordSetNote", "passwordMissingNote",
     "changePasswordButton", "setPasswordButton", "clearPasswordButton",
@@ -348,6 +354,14 @@ class StringsCopyTest {
             AppStringsZh.settings.languageTitle to AppStringsEn.settings.languageTitle,
             AppStringsZh.settings.languageNote to AppStringsEn.settings.languageNote,
             AppStringsZh.settings.partialTranslationNote to AppStringsEn.settings.partialTranslationNote,
+        )
+    }
+
+    @Test
+    fun analyticsCopyDiffers() {
+        assertDiffers(
+            AppStringsZh.settings.analyticsTitle to AppStringsEn.settings.analyticsTitle,
+            AppStringsZh.settings.analyticsNote to AppStringsEn.settings.analyticsNote,
         )
     }
 
@@ -2119,7 +2133,7 @@ class StringsCopyTest {
     // =====================================================================
 
     /**
-     * 家长设置页 57 个**静态**字段的 ZH≠EN 穷举 + 清单本身的闭合校验（Ruling 34 携带项 3 要求的
+     * 家长设置页 59 个**静态**字段（Task 11 时 57 + v3.2.0 analytics 2）的 ZH≠EN 穷举 + 清单本身的闭合校验（Ruling 34 携带项 3 要求的
      * "自称的守卫必须真的存在且真的穷举"）。
      *
      * 两条断言方向相反，缺一条就会漏一类错：

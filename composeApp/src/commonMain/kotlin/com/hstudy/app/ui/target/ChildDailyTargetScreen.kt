@@ -15,6 +15,8 @@ import com.hstudy.app.data.repository.PointRepository
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -221,6 +223,7 @@ fun ChildDailyTargetScreen(
                                                         points = 2,
                                                         date = today
                                                     )
+                                                    AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                                     // 检查是否全部达成→额外奖励 +10（每天只领一次）
                                                     val newDoneCount = doneTargets.size + 1
                                                     if (newDoneCount >= selectedTargets.size && bonusDate != today) {
@@ -231,6 +234,7 @@ fun ChildDailyTargetScreen(
                                                             points = 10,
                                                             date = today
                                                         )
+                                                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                                         app.userPreferences.setDailyTargetBonusDate(today)
                                                         snackbarHostState.showSnackbar(strings.allDoneBonus)
                                                     } else {

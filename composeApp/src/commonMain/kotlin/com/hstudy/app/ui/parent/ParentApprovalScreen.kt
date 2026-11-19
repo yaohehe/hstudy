@@ -17,6 +17,8 @@ import com.hstudy.app.data.local.entity.ApprovalStatus
 import com.hstudy.app.data.local.entity.PointApprovalEntity
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.ParentApprovalStrings
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.launch
@@ -55,6 +57,7 @@ fun ParentApprovalScreen(
                             scope.launch {
                                 // 批量通过：逐条走幂等发放，同一业务只会真正计分一次
                                 val awarded = app.pointRepository.approveAllAndAward()
+                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.APPROVAL_ACTION))
                                 snackbarHostState.showSnackbar(strings.approveAllMessage(awarded))
                             }
                         }) { Text(strings.approveAllButton) }
@@ -97,6 +100,7 @@ fun ParentApprovalScreen(
                                     scope.launch {
                                         // 幂等发放：仅 PENDING 可计分，重复通过不会重复加分
                                         val awarded = app.pointRepository.approveAndAward(approval.id)
+                                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.APPROVAL_ACTION))
                                         snackbarHostState.showSnackbar(
                                             if (awarded > 0) strings.approvedMessage(awarded)
                                             else strings.alreadyProcessedMessage
@@ -106,6 +110,7 @@ fun ParentApprovalScreen(
                                 onReject = {
                                     scope.launch {
                                         app.pointRepository.rejectApproval(approval.id)
+                                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.APPROVAL_ACTION))
                                         snackbarHostState.showSnackbar(strings.rejectedMessage)
                                     }
                                 }

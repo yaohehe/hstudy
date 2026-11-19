@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.delay
@@ -115,6 +117,7 @@ fun ChildLuckyDrawScreen(
                                 isDrawing = false
                                 canDraw = false
                                 app.pointRepository.adjustPoints(won, "每日幸运抽奖")
+                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.LUCKY_DRAW))
                                 app.userPreferences.setLastLuckyDraw(today)
                                 snackbarHostState.showSnackbar(strings.drawSnackbar(won))
                             }

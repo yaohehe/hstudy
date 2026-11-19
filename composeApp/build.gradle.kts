@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.googleServices)
 }
 
 kotlin {
@@ -64,6 +65,7 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.coil.network.okhttp)
+            implementation(libs.firebase.analytics)
         }
         iosMain.dependencies {
             implementation(libs.coil.network.ktor3)
@@ -86,8 +88,8 @@ android {
         applicationId = "com.hstudy.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 30101
-        versionName = "3.1.1"
+        versionCode = 30200
+        versionName = "3.2.0"
     }
     // 发布签名：keystore 与口令只经环境变量注入（CI secrets / 本地导出），绝不入库。
     // 未设置时 release 变体照旧产出未签名 APK，无密钥环境仍可构建。

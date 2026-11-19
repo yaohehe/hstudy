@@ -1,11 +1,20 @@
 import SwiftUI
 import ComposeApp
+import FirebaseCore
+import FirebaseAnalytics
 
 @main
 struct iOSApp: App {
     init() {
-        // Kotlin fun initIosPlatform() 导出到 Swift 时带 do 前缀
-        IosPlatformKt.doInitIosPlatform()
+        if FirebaseApp.app() == nil { FirebaseApp.configure() }
+        if FirebaseApp.app() == nil { print("analytics: FirebaseApp configure failed; noop") }
+        let channel: String
+        #if DEBUG
+        channel = "debug"
+        #else
+        channel = "release"
+        #endif
+        IosPlatformKt.doInitIosPlatform(analytics: FirebaseAnalyticsBridge(), appChannel: channel)
     }
 
     var body: some Scene {
