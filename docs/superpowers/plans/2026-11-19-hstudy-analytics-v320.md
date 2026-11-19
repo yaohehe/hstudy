@@ -1142,16 +1142,31 @@ import 补 `androidx.compose.material3.Switch`（若未 import）。`collectAsSt
     ("ui/parent/ParentSettingsScreen.kt", "strings.analyticsTitle", 1),
 ```
 
-- [ ] **Step 7: 全套本地验证**
+- [ ] **Step 7: 收口 T5 review 遗留 minor（M-1/M-2）**
+
+1. 三个文件补末尾换行符：`composeApp/src/commonMain/kotlin/com/hstudy/app/platform/AnalyticsReporter.kt`、`composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsReporterTest.kt`、`scripts/analytics_call_sites.py`。
+2. `scripts/analytics_call_sites.py` 数据层零调用守卫扩第二支针（M-2：数据层也不得直接碰 `Platform.analytics`），把守卫循环体替换为：
+
+```python
+        with open(os.path.join(dirpath, name), encoding="utf-8") as fh:
+            content = fh.read()
+        for needle in ("AnalyticsReporter.", "Platform.analytics"):
+            if needle in content:
+                failures.append("data layer must not call analytics (%s): %s" % (needle, os.path.join(dirpath, name)))
+```
+
+（替换原先只读一次、只查 `"AnalyticsReporter."` 的 with 块；其余不动。）
+
+- [ ] **Step 8: 全套本地验证**
 
 Run: `./gradlew :composeApp:testDebugUnitTest`
 Run: `python scripts/i18n_storage_boundary.py && python scripts/tests/i18n_storage_boundary_selftest.py && python scripts/tests/i18n_template_diff_selftest.py && python scripts/i18n_template_diff.py --branch && python scripts/analytics_call_sites.py`
 Expected: 全绿；template diff 打印 987+2 模板级命中、0 missing、0 invented。
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/SettingsStrings.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentSettingsScreen.kt scripts/i18n_template_diff.py scripts/analytics_call_sites.py composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsPreferenceTest.kt
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/i18n/SettingsStrings.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui/parent/ParentSettingsScreen.kt scripts/i18n_template_diff.py scripts/analytics_call_sites.py composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/StringsCopyTest.kt composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsPreferenceTest.kt composeApp/src/commonMain/kotlin/com/hstudy/app/platform/AnalyticsReporter.kt composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsReporterTest.kt
 git commit -m "feat(analytics): 家长设置「分享使用数据」开关 + 双语文案 + 闸门登记 184（spec §5）"
 ```
 
