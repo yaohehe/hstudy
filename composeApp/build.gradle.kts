@@ -66,6 +66,9 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.coil.network.okhttp)
             implementation(libs.firebase.analytics)
+            // play-services-basement 传递引入 fragment 1.1.0，触发 lintVitalRelease 的
+            // InvalidFragmentVersionForActivityResult（要求 >=1.3.0）；显式钉到稳定版
+            implementation("androidx.fragment:fragment:1.8.5")
         }
         iosMain.dependencies {
             implementation(libs.coil.network.ktor3)
