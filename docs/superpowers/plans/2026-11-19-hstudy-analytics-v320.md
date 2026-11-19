@@ -969,16 +969,22 @@ print("ANALYTICS_GATE_OK: %d site checks + data-layer zero-call guard" % len(SIT
         run: python3 scripts/analytics_call_sites.py
 ```
 
-- [ ] **Step 9: 全套本地验证**
+- [ ] **Step 9: 收口前序任务遗留 minor（T2/T3/T4 review 已登记）**
+
+1. 四个文件补末尾换行符（EOF newline）：`composeApp/src/commonMain/kotlin/com/hstudy/app/platform/Analytics.kt`、`composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsMappingTest.kt`、`composeApp/src/androidMain/kotlin/com/hstudy/app/platform/AndroidFirebaseAnalytics.kt`、`iosApp/FirebaseAnalyticsBridge.swift`。
+2. `composeApp/src/iosMain/kotlin/com/hstudy/app/platform/IosPlatform.kt:12` KDoc 里的 `IosPlatformKt.doInitIosPlatform()` 更新为 `IosPlatformKt.doInitIosPlatform(analytics:appChannel:)`（T4 改了签名，注释滞后）。
+除这两项外不动这些文件的任何其它内容。
+
+- [ ] **Step 10: 全套本地验证**
 
 Run: `./gradlew :composeApp:assembleDebug :composeApp:testDebugUnitTest`
 Run: `python scripts/analytics_call_sites.py && python scripts/i18n_storage_boundary.py && python scripts/i18n_template_diff.py --branch`
 Expected: 全绿（settings 开关 UI 尚未加，闸门 SITES 不含 settings 断言，T6 补）。
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add composeApp/src/commonMain/kotlin/com/hstudy/app/platform/AnalyticsReporter.kt composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsReporterTest.kt composeApp/src/commonMain/kotlin/com/hstudy/app/AppGraph.kt composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt composeApp/src/commonMain/kotlin/com/hstudy/app/data/preferences/UserPreferences.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui scripts/analytics_call_sites.py .github/workflows/android.yml
+git add composeApp/src/commonMain/kotlin/com/hstudy/app/platform/AnalyticsReporter.kt composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsReporterTest.kt composeApp/src/commonMain/kotlin/com/hstudy/app/AppGraph.kt composeApp/src/commonMain/kotlin/com/hstudy/app/App.kt composeApp/src/commonMain/kotlin/com/hstudy/app/data/preferences/UserPreferences.kt composeApp/src/commonMain/kotlin/com/hstudy/app/ui composeApp/src/commonMain/kotlin/com/hstudy/app/platform/Analytics.kt composeApp/src/commonTest/kotlin/com/hstudy/app/platform/AnalyticsMappingTest.kt composeApp/src/androidMain/kotlin/com/hstudy/app/platform/AndroidFirebaseAnalytics.kt composeApp/src/iosMain/kotlin/com/hstudy/app/platform/IosPlatform.kt iosApp/FirebaseAnalyticsBridge.swift scripts/analytics_call_sites.py .github/workflows/android.yml
 git commit -m "feat(analytics): Reporter 两层拦截 + bootstrap 订阅 + screen_view + 全埋点 + wiring 静态闸门（spec §4/§5/§7）"
 ```
 
