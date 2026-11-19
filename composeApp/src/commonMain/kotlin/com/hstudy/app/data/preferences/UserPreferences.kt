@@ -61,10 +61,12 @@ class UserPreferences {
         val LAST_SYNC_DATE = stringPreferencesKey("last_sync_date") // 上次设备间数据同步日期（yyyy-MM-dd）
         val SYNC_REMINDER_ENABLED = booleanPreferencesKey("sync_reminder_enabled") // 定期同步提醒开关
         val LAST_MANDATORY_PENALTY_DATE = stringPreferencesKey("last_mandatory_penalty_date") // 已处理每日必须扣分的最后日期
+        val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled") // 分享使用数据开关，缺省 true
     }
 
     val currentRole: Flow<String?> = dataStore.data.map { it[ROLE_KEY] }
     val appLanguage: Flow<String?> = dataStore.data.map { it[LANGUAGE_KEY] }
+    val analyticsEnabled: Flow<Boolean> = dataStore.data.map { it[ANALYTICS_ENABLED] ?: true }
     val hasOnboarded: Flow<Boolean> = dataStore.data.map { it[HAS_ONBOARDED] ?: false }
     val parentPassword: Flow<String?> = dataStore.data.map { it[PARENT_PASSWORD] }
     val hasParentPassword: Flow<Boolean> = dataStore.data.map { !it[PARENT_PASSWORD].isNullOrEmpty() }
@@ -103,6 +105,10 @@ class UserPreferences {
 
     suspend fun setAppLanguage(language: AppLanguage) {
         dataStore.edit { it[LANGUAGE_KEY] = language.toStorageValue() }
+    }
+
+    suspend fun setAnalyticsEnabled(value: Boolean) {
+        dataStore.edit { it[ANALYTICS_ENABLED] = value }
     }
 
     suspend fun setOnboarded(value: Boolean) {

@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.HabitChallengeEntity
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -90,6 +92,7 @@ fun ChildHabitChallengeScreen(
                                                     points = challenge.dailyPoints,
                                                     date = today
                                                 )
+                                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                             }
                                             snackbarHostState.showSnackbar(strings.challengeCompleteMessage(challenge.title, challenge.dailyPoints))
                                             app.habitRepository.tryUnlockAchievement(
@@ -105,6 +108,7 @@ fun ChildHabitChallengeScreen(
                                                     points = challenge.dailyPoints,
                                                     date = today
                                                 )
+                                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                             }
                                             snackbarHostState.showSnackbar(strings.checkInSuccessMessage(challenge.dailyPoints, challenge.completedDays + 1, challenge.totalDays))
                                         }

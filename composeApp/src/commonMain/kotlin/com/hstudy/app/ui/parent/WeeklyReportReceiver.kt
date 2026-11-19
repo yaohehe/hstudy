@@ -2,6 +2,8 @@ package com.hstudy.app.ui.parent
 
 import com.hstudy.app.i18n.currentDisplayLanguage
 import com.hstudy.app.i18n.stringsFor
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ReminderKind
 import com.hstudy.app.platform.ScheduledReminder
@@ -58,6 +60,7 @@ object WeeklyReportReceiver {
                 dayOfWeek = 7
             )
         )
+        AnalyticsReporter.log(AnalyticsEvent.ReminderScheduled(ReminderKind.WEEKLY_REPORT))
     }
 
     /** 取消每周周报推送 */

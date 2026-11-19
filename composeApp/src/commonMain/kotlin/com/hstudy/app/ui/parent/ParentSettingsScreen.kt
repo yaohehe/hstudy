@@ -21,6 +21,8 @@ import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.SyncDiagnosticAdapter
 import com.hstudy.app.i18n.appLanguageFromStorage
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.restartApp
 import com.hstudy.app.ui.common.HStudyTopBar
@@ -159,7 +161,10 @@ fun ParentSettingsScreen(
                                         val result = BackupHelper.backup()
                                         isBackingUp = false
                                         result.fold(
-                                            onSuccess = { snackbarHostState.showSnackbar(strings.backupSuccessMessage) },
+                                            onSuccess = {
+                                                AnalyticsReporter.log(AnalyticsEvent.BackupExported)
+                                                snackbarHostState.showSnackbar(strings.backupSuccessMessage)
+                                            },
                                             onFailure = {
                                                 snackbarHostState.showSnackbar(
                                                     strings.backupFailureMessage(

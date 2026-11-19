@@ -21,6 +21,8 @@ import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPetStageName
 import com.hstudy.app.i18n.petSceneCopy
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.AmbientBackground
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -214,6 +216,7 @@ fun ChildPetScreen(
                                         } else {
                                             scope.launch {
                                                 app.pointRepository.spendPoints(10, "喂养宠物")
+                                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.PET_CARE))
                                                 fullness = (fullness + 25).coerceAtMost(100)
                                                 app.userPreferences.setPetCare(fullness, mood, today)
                                                 snackbarHostState.showSnackbar(strings.fedMessage)
@@ -229,6 +232,7 @@ fun ChildPetScreen(
                                         } else {
                                             scope.launch {
                                                 app.pointRepository.spendPoints(5, "陪宠物玩耍")
+                                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.PET_CARE))
                                                 mood = (mood + 25).coerceAtMost(100)
                                                 app.userPreferences.setPetCare(fullness, mood, today)
                                                 snackbarHostState.showSnackbar(strings.playedMessage)

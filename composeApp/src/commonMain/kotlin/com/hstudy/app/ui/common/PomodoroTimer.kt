@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.feedback
 import com.hstudy.app.ui.dt.monotonicMillis
@@ -85,6 +87,7 @@ fun PomodoroTimer(
             remainingSeconds = totalSeconds
             endTimeMillis = monotonicMillis() + totalSeconds * 1000L
             state = PomodoroState.RUNNING
+            AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_START))
         }
     }
 
@@ -313,6 +316,7 @@ fun PomodoroTimer(
                             remainingSeconds = totalSeconds
                             endTimeMillis = monotonicMillis() + totalSeconds * 1000L
                             state = PomodoroState.RUNNING
+                            AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_START))
                         } else {
                             // 先进入专注前呼吸引导，帮助平静心神
                             state = PomodoroState.BREATHING
@@ -330,6 +334,7 @@ fun PomodoroTimer(
                         remainingSeconds = totalSeconds
                         endTimeMillis = monotonicMillis() + totalSeconds * 1000L
                         state = PomodoroState.RUNNING
+                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_START))
                     }) {
                         Text(strings.skipBreathingButton)
                     }

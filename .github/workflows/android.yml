@@ -54,6 +54,8 @@ jobs:
       # 本地实测退出 0（987/987 模板；W9 T4 复算），宽组下 L-19 的限定登记逐条命中。
       - name: i18n template byte-equivalence (Ruling 20, blocking)
         run: python3 scripts/i18n_template_diff.py --branch
+      - name: analytics call-site wiring (v3.2.0, blocking)
+        run: python3 scripts/analytics_call_sites.py
       - name: Build debug APK
         run: ./gradlew :composeApp:assembleDebug --no-daemon
       - name: Run unit tests

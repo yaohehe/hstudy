@@ -4,15 +4,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.appLanguageFromStorage
 import com.hstudy.app.i18n.stringsFor
 import com.hstudy.app.i18n.systemLanguageTag
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.navigation.AppNavGraph
 import com.hstudy.app.ui.navigation.LocalNavigator
 import com.hstudy.app.ui.navigation.Screen
@@ -20,6 +24,7 @@ import com.hstudy.app.ui.navigation.rememberAppNavigator
 import com.hstudy.app.ui.theme.HStudyTheme
 import com.hstudy.app.ui.theme.ProvideWindowSizeClass
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * 应用根 Composable（跨平台入口）。
@@ -74,6 +79,14 @@ fun App() {
     HStudyTheme {
         ProvideWindowSizeClass {
             val navigator = rememberAppNavigator(Screen.RoleSelect.route)
+            LaunchedEffect(navigator) {
+                snapshotFlow { navigator.currentRoute }
+                    .distinctUntilChanged()
+                    .collect { route ->
+                        // 参数化路由含实体 ID：只发首段路由名（spec §4 不发送任何 ID/自由文本）
+                        AnalyticsReporter.log(AnalyticsEvent.ScreenView(route.substringBefore('/')))
+                    }
+            }
             Surface(modifier = Modifier.fillMaxSize()) {
                 CompositionLocalProvider(
                     LocalNavigator provides navigator,

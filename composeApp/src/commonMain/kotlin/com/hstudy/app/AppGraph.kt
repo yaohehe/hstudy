@@ -5,8 +5,12 @@ import com.hstudy.app.data.local.getAppDatabase
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.*
 import com.hstudy.app.i18n.DisplayLanguage
+import com.hstudy.app.i18n.appLanguageFromStorage
 import com.hstudy.app.i18n.currentDisplayLanguage
 import com.hstudy.app.i18n.stringsFor
+import com.hstudy.app.i18n.systemLanguageTag
+import com.hstudy.app.platform.AnalyticsEvent
+import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ReminderKind
 import com.hstudy.app.platform.ScheduledReminder
@@ -122,7 +126,26 @@ object AppGraph {
         init()
         // Ruling 46：首帧语言快照的**唯一赋值点**（见上面 [startupLanguage] 那段为什么在这里）。
         // 单独一条 launch：collect 永不返回，混进下面那条就会挡住补默认数据与恢复提醒的整段逻辑。
-        appScope.launch { userPreferences.appLanguage.collect { _startupLanguage.value = it } }
+        // v3.2.0：订阅扩了三条（analyticsEnabled/currentRole/appLanguage 的埋点上报），语言那条顺带发 language_changed。
+        AnalyticsReporter.setChannel(Platform.appChannel)
+        appScope.launch { userPreferences.analyticsEnabled.collect { AnalyticsReporter.setEnabled(it) } }
+        appScope.launch { userPreferences.currentRole.collect { it?.let { role -> AnalyticsReporter.setRole(role) } } }
+        appScope.launch {
+            var lastStored: String? = null
+            var seen = false
+            userPreferences.appLanguage.collect {
+                _startupLanguage.value = it
+                val display = appLanguageFromStorage(it).resolveWith(systemLanguageTag())
+                AnalyticsReporter.setLanguage(display.name.lowercase())
+                // language_changed 只在运行中切换时发（首帧 emission 不算切换）；
+                // 埋点不进数据层 setAppLanguage（Ruling 25 存储边界）
+                if (seen && lastStored != it) {
+                    AnalyticsReporter.log(AnalyticsEvent.LanguageChanged(appLanguageFromStorage(it)))
+                }
+                lastStored = it
+                seen = true
+            }
+        }
         appScope.launch {
             if (!userPreferences.hasOnboarded.first()) {
                 taskRepository.initDefaultTasks()

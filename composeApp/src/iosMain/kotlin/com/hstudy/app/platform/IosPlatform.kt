@@ -9,7 +9,7 @@ import platform.Foundation.NSTemporaryDirectory
 import platform.UIKit.UIViewController
 
 /**
- * iOS 平台入口：Swift 侧在 App.init 调用（导出为 IosPlatformKt.doInitIosPlatform()）。
+ * iOS 平台入口：Swift 侧在 App.init 调用（导出为 IosPlatformKt.doInitIosPlatform(analytics:appChannel:)）。
  * 初始化 Platform 服务后执行 AppGraph.bootstrap（默认数据补全 + 提醒恢复）。
  */
 fun initIosPlatform(analytics: Analytics, appChannel: String) {
