@@ -1,5 +1,18 @@
 # HStudy 版本更新记录
 
+## v3.2.0 (2026-11-19)
+
+- Analytics：集成 Google Analytics for Firebase（GA4），Android + iOS 双平台匿名使用统计
+  （screen_view / feature_used / reminder_scheduled / language_changed / backup_exported /
+  pairing_completed；app_open 由 SDK 自动采集），用户属性 app_language / user_role / app_channel。
+- 家长设置新增「分享使用数据 / Share usage data」开关（默认开启）：两层拦截，关闭立即停止
+  上报且持久化，重新开启不回溯补发；初始化失败降级 Noop，主流程零影响。
+- iOS 经 SPM 引入 FirebaseAnalytics（spike 闸门验证），Swift bridge 实现 Kotlin 导出的
+  Analytics protocol；Kotlin framework/cinterop/KSP 配置未改。
+- 新增埋点 wiring 静态闸门 scripts/analytics_call_sites.py（CI 阻塞）。
+- README 重写为中英双语；新增 GitHub Sponsors 捐赠入口（.github/FUNDING.yml）。
+- versionCode 30200 / versionName 3.2.0（build.gradle.kts、Info.plist、pbxproj 四处同步）。
+
 ## v3.1.1 (2026-11-14)
 **中英双语阶段 2 完成：全应用文案双语化（W0–W9），预设内容英文化，Android 发布包自此正式签名**
 
