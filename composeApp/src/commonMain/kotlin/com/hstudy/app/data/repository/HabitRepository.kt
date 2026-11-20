@@ -4,6 +4,10 @@ import com.hstudy.app.data.local.dao.HabitDao
 import com.hstudy.app.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
 
 class HabitRepository(private val habitDao: HabitDao) {
 
@@ -63,7 +67,17 @@ class HabitRepository(private val habitDao: HabitDao) {
      * （bizKey=`HABIT:id:date`），保持撤销对称（不变量 4）。
      */
     suspend fun undoCheckInChallenge(challenge: HabitChallengeEntity) {
-        if (challenge.lastCheckInDate != todayString()) return
+        // 回审 P1-1：撤销锚定**存储的打卡日**而非点击时刻的今天——
+        // 页面跨午夜未关时（23:59 打卡、00:01 撤销），今天已不是打卡日，旧守卫会静默 return。
+        // 允许 今天/昨天 两日窗口（跨午夜对称），更早的打卡日不允许经此入口回退。
+        val stored = challenge.lastCheckInDate
+        if (stored.isEmpty()) return
+        val today = todayString()
+        val yesterday = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+            .minus(1, DateTimeUnit.DAY)
+            .toString()
+        if (stored != today && stored != yesterday) return
         habitDao.updateChallenge(
             challenge.copy(
                 completedDays = (challenge.completedDays - 1).coerceAtLeast(0),
