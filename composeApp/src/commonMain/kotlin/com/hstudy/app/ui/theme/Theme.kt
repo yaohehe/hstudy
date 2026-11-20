@@ -63,7 +63,12 @@ private val LightColorScheme = lightColorScheme(
     inversePrimary = M3InversePrimary,
 )
 
-/** 暗色方案：沿用既有暖黑底，按 §3.2.1 的角色补 tertiary/surfaceContainer 层级/outlineVariant。 */
+/**
+ * 暗色方案：沿用既有暖黑底，按 §3.2.1 的角色补 tertiary/surfaceContainer 层级/outlineVariant，
+ * 并接线 inverse 角色族（暗色审计 D1-dark/D2-dark：此前未接线回落 M3 默认冷紫，
+ * 与暖橙品牌冲突且 snackbar 动作色实测 1.33:1）。实算：inverseOnSurface/inverseSurface 11.77:1、
+ * inversePrimary/inverseSurface 4.87:1，均 ≥4.5。
+ */
 private val DarkColorScheme = darkColorScheme(
     primary = M3DarkPrimary,
     onPrimary = M3DarkOnPrimary,
@@ -94,6 +99,9 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerHighest = M3DarkSurfaceContainerHighest,
     outline = M3DarkOutline,
     outlineVariant = M3DarkOutlineVariant,
+    inverseSurface = M3DarkInverseSurface,
+    inverseOnSurface = M3DarkInverseOnSurface,
+    inversePrimary = M3DarkInversePrimary,
 )
 
 /**

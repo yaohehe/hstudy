@@ -765,7 +765,11 @@ fun ChildHomeScreen(
                 val step4 = @Composable {
                     StepSection(
                         step = 4, title = strings.step4Title, subtitle = strings.step4Subtitle,
-                        color = MaterialTheme.colorScheme.inversePrimary,
+                        // 暗色审计 D1-dark：不再用 inversePrimary（未接线时回落默认冷紫，徽章数字 1.86:1），
+                        // 步骤 4 徽章改主色 tonal 芯片：primaryContainer 底 + onPrimaryContainer 数字
+                        // （浅色 13.30:1 / 深色 6.33:1，均 ≥4.5）
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        onColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         entries = listOf(
                             StepEntry("🎰", strings.entryLuckyDrawTitle, strings.entryLuckyDrawSubtitle, Screen.ChildLuckyDraw.route),
                             StepEntry("📊", strings.entryEfficiencyReportTitle, strings.entryEfficiencyReportSubtitle, Screen.ChildEfficiencyReport.route),
@@ -820,6 +824,7 @@ private fun StepSection(
     title: String,
     subtitle: String,
     color: androidx.compose.ui.graphics.Color,
+    onColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary,
     entries: List<StepEntry>,
     onNavigate: (String) -> Unit
 ) {
@@ -837,7 +842,7 @@ private fun StepSection(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("${step}", style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                        fontWeight = FontWeight.Bold, color = onColor)
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))

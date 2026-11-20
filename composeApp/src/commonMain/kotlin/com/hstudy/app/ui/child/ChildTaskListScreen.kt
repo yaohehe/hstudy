@@ -92,7 +92,9 @@ fun ChildTaskListScreen(
                 Snackbar(
                     snackbarData = data,
                     containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    actionColor = MaterialTheme.colorScheme.tertiary
+                    // 暗色审计 D2：tertiary 压在 inverseSurface 上浅色 2.07:1、深色 1.33:1，
+                    // 改用 inversePrimary（浅色 7.85:1 / 深色 4.87:1，与 M3 Snackbar 默认动作角色一致）
+                    actionColor = MaterialTheme.colorScheme.inversePrimary
                 )
             }
         }

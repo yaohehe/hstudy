@@ -52,6 +52,9 @@ val M3Outline = Color(0xFF85736B)
 val M3OutlineVariant = Color(0xFFD7C2B9)
 
 // ===== Inverse 角色（Snackbar/反色容器；暖中性，取代 lightColorScheme 默认冷紫）=====
+// 暗色审计 D1/D2 收口：三对组合均经 WCAG 实算——
+// inverseOnSurface/inverseSurface 11.77:1；inversePrimary/inverseSurface 7.85:1（≥4.5）。
+// 旧 snackbar action 直接用 tertiary（00658F）对 inverseSurface 仅 2.07:1，已改走 inversePrimary。
 val M3InverseSurface = Color(0xFF342E2A)
 val M3InverseOnSurface = Color(0xFFF7EFEA)
 val M3InversePrimary = Color(0xFFFFB59A)
@@ -85,3 +88,11 @@ val M3DarkSurfaceContainerHighest = Color(0xFF38312A)
 val M3DarkOnSurfaceVariant = Color(0xFFC4B5A6)
 val M3DarkOutline = Color(0xFFA09087)
 val M3DarkOutlineVariant = Color(0xFF53443C)
+
+// ===== Dark Inverse 角色（暗色审计 D1-dark/D2-dark：此前未接线，回落 M3 默认冷紫）=====
+// 亮色反色容器（暖米白）+ 深色文字 + tone-40 暖橙反色主色，实算：
+// inverseOnSurface/inverseSurface 11.77:1；inversePrimary(A65100)/inverseSurface 4.87:1（≥4.5）。
+// 更暗的候选容器（如 0xFFEFE3D8）会把 inversePrimary 压到 4.38:1，故取 0xFFF7EFEA。
+val M3DarkInverseSurface = Color(0xFFF7EFEA)
+val M3DarkInverseOnSurface = Color(0xFF342E2A)
+val M3DarkInversePrimary = Color(0xFFA65100)

@@ -66,6 +66,9 @@
 
 修复轮后全量证据：`:composeApp:testDebugUnitTest` **248/0/0**、`:composeApp:assembleDebug` OK、`analytics_call_sites.py` ANALYTICS_GATE_OK（20 checks）、`i18n_storage_boundary.py` + 双 selftest + `i18n_template_diff.py --branch` 全部 exit 0。
 
+### DARK fix round（暗色审计 D1-dark/D2-dark，本 commit）
+D1-dark `ChildHomeScreen.kt` 步骤 4 徽章（onPrimary 压默认冷紫 inversePrimary 1.86:1）与 D2-dark `ChildTaskListScreen.kt` snackbar 动作色（tertiary 压 inverseSurface 暗色 1.33:1、浅色同站 2.07:1，跨方案缺陷）根因同为 **darkColorScheme 未接线 inverse 角色族**。修复：`Theme.kt` 暗色补 `inverseSurface=0xFFF7EFEA / inverseOnSurface=0xFF342E2A / inversePrimary=0xFFA65100`（浅色族此前已接线且实测达标，不动）；snackbar `actionColor` 改 `inversePrimary`（对齐 M3 Snackbar 默认动作角色）；步骤 4 徽章改 `primaryContainer`+`onPrimaryContainer` tonal 芯片（StepSection 新增 `onColor` 默认 `onPrimary`，步骤 1–3 行为不变）。复算（python WCAG，非引用审计数）：snackbar 正文 浅色 11.77 / 深色 11.77；动作色 浅色 7.85 / 深色 4.87（修复前 2.07 / 1.33）；步骤 4 徽章数字 浅色 13.30 / 深色 6.33（修复前 1.86 深色）——全部 ≥4.5。新色值仅落 `ui/theme/Color.kt`，页面零裸色值。
+
 ## 真机视觉与行为签核清单（用户设备执行，逐项打勾）
 安装 `composeApp/build/outputs/apk/debug/HStudy-v3.2.1-debug.apk`（Android 9+ 即可；本包未升版本号，属预发布验证）：
 1. [ ] 孩子首页：无全屏呼吸抖动；待审胶囊与"已通过/已拒绝"回顾**同时可见**；Hero/CTA 为暖橙语义色板
