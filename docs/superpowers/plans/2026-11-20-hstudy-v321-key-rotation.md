@@ -45,18 +45,21 @@
      --new-signer --ks "$RELEASE_JKS" --ks-pass pass:"$RELEASE_PW" --key-pass pass:"$KEY_PW" --ks-key-alias "$ALIAS" \
      --out build/rotation-proof/lineage.bin
    ```
-4. 双 signer 重签：
+4. 双 signer 重签（**必须带 `--rotation-min-sdk-version 28`**：T1 实证发现默认值把新 key 只放进 v3.1 块（Android 13+），v3 块（9–12）仍是旧 debug key，会断掉已装 v3.x 的 Android 9–12 设备升级；设为 28 后新 key 进原始 v3 块、无平台定向）：
    ```bash
    java -jar "$BT/lib/apksigner.jar" sign \
      --ks /c/Users/xuany/.android/debug.keystore --ks-pass pass:android --key-pass pass:android --ks-key-alias androiddebugkey \
      --next-signer --ks "$RELEASE_JKS" --ks-pass pass:"$RELEASE_PW" --key-pass pass:"$KEY_PW" --ks-key-alias "$ALIAS" \
      --lineage build/rotation-proof/lineage.bin \
-     --min-sdk-version 26 \
+     --min-sdk-version 26 --rotation-min-sdk-version 28 \
      --out build/rotation-proof/HStudy-v321-rotated.apk <输入APK>
    ```
-5. 验证（必须全中才算过）：
-   - `apksigner verify -v --print-certs`：v2=true 且 v2 signer 证书 = 25491253…4d3d；v3=true 且 v3 signer = 703e2991…2f00；输出含 lineage/proof-of-rotation 信息。
+5. 验证（必须全中才算过；`--print-certs` 默认只显示 v3 signer，**必须强制 SDK 区间分别验 v2/v3 块**）：
+   - `apksigner verify -v`：v2=true、v3=true、Verifies。
+   - `apksigner verify --min-sdk-version 26 --max-sdk-version 27 --print-certs`：signer = debug 证书 25491253…4d3d。
+   - `apksigner verify --min-sdk-version 28 --max-sdk-version 32 --print-certs`：signer = release 证书 703e2991…2f00。
    - `aapt2 dump badging`：versionCode/versionName 与输入一致（重签不改版本；版本戳在 Task 3 才改）。
+   - T1 已于 2026-11-20 23:50 用 v3.2.0 发布 APK 实证通过（产物 build/rotation-proof/HStudy-v320-rotated.apk）。
 6. 失败处理：语法/参数错查 `apksigner sign --help`；lineage 校验错核对 alias/口令；不得用关闭 v2/v3 方案的方式绕过。
 
 ## Task 2：CI 接线（release.yml）
