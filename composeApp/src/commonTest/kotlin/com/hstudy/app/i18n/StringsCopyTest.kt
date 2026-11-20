@@ -131,6 +131,8 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "childPoints.balanceTitle",               // "Total points balance"
     "childPoints.recordsTitle",               // "Point history"
     "childPoints.emptyRecords",               // "No point records yet — go check in!"
+    // ---- W4（M3 重设计 指令 §3.3.4-1）积分明细资产看板副标新增 1 条。
+    "childPoints.balanceSubtitle",            // "Points available now"
     // ---- W5 Task 2 每日目标页新增 1 条（英文原文逐条留在行尾注释里）。
     "childDailyTarget.allDoneBonus",          // "🎉 All goals achieved! Bonus +10 points (awaiting approval)"
     // ---- W6 Task 2 心愿两页新增 7 条（英文原文逐条留在行尾注释里）。
@@ -1842,6 +1844,14 @@ class StringsCopyTest {
             zh.setupWishAction to en.setupWishAction,
             zh.setupScheduleMissing to en.setupScheduleMissing,
             zh.setupScheduleAction to en.setupScheduleAction,
+            // v3.3 W4 §3.3.5 三层驾驶舱：待办横幅 + Daily Pulse 新指标标签 + 三个分组标题
+            zh.urgentBarTitle to en.urgentBarTitle,
+            zh.urgentProcessButton to en.urgentProcessButton,
+            zh.overviewFocusDuration to en.overviewFocusDuration,
+            zh.overviewMistakesDue to en.overviewMistakesDue,
+            zh.groupDailyTitle to en.groupDailyTitle,
+            zh.groupStudyTitle to en.groupStudyTitle,
+            zh.groupAdvancedTitle to en.groupAdvancedTitle,
         )
         // 三个"去 X"按钮英文必须互不相同：它们同屏并排出现，同译会把四个入口念成同一个动作。
         assertDiffers(
@@ -1947,6 +1957,20 @@ class StringsCopyTest {
         assertEquals("Reward store set up (3)", en.setupRewardsConfigured(3))
         assertEquals("Wish Pool set up (2)", en.setupWishConfigured(2))
         assertEquals("Daily schedule set up (5)", en.setupScheduleConfigured(5))
+
+        // v3.3 W4 §3.3.5 待办横幅三条（ZH 不分支只换数字；EN 覆盖 1/other 两支）
+        assertEquals("3 条积分申请待批", zh.urgentTodoApprovals(3))
+        assertEquals("1 条积分申请待批", zh.urgentTodoApprovals(1))
+        assertEquals("2 张证明待审", zh.urgentTodoProofs(2))
+        assertEquals("1 张证明待审", zh.urgentTodoProofs(1))
+        assertEquals("3 条积分申请待批，2 张证明待审", zh.urgentTodoBoth(3, 2))
+        assertEquals("1 条积分申请待批，1 张证明待审", zh.urgentTodoBoth(1, 1))
+        assertEquals("3 point requests await approval", en.urgentTodoApprovals(3))
+        assertEquals("1 point request awaits approval", en.urgentTodoApprovals(1))
+        assertEquals("2 proofs await review", en.urgentTodoProofs(2))
+        assertEquals("1 proof awaits review", en.urgentTodoProofs(1))
+        assertEquals("3 point requests and 2 proofs await review", en.urgentTodoBoth(3, 2))
+        assertEquals("1 point request and 1 proof await review", en.urgentTodoBoth(1, 1))
     }
 
     /**

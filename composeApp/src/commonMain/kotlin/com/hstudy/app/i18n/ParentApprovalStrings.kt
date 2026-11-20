@@ -18,6 +18,15 @@ package com.hstudy.app.i18n
  * 历史二级筛选钮 [historyFilterUndone] 覆盖 REVOKED+CANCELLED 两种"孩子撤销"终态；
  * 「全部/已通过/已拒绝」复用 [TaskListStrings.filterAll] 与本表 [statusApproved]/[statusRejected]
  * （同一中文值一个英文出处，不重开同值槽）。状态图标（emoji）不受 i18n 约束（RA8）。
+ *
+ * v3.3 W4（指令 §3.3.3）新增**待审看板 + 卡片业务类型标签**文案：
+ * - [pendingCountLabel]/[pendingPointsLabel]：Tab 下方看板卡的两行读数（笔数 / 待发放积分）；
+ *   [approveAllPointsButton] 是看板上"全部通过 (+M分)"填充按钮（与顶栏旧 [approveAllButton] 是两个值，
+ *   旧字段保留——它仍是迁移前页面原文的配对槽，删了会破坏等价闸门）；
+ * - [approveAllDialogMessage]：批量确认对话框正文（确认/取消复用 [CommonStrings.confirmButton/cancelButton]）；
+ * - typeChip*：ApprovalCard 头部 SuggestionChip 的业务类型词（actionType → 词面映射在页面侧做；
+ *   「习惯挑战」在 [ChildHomeStrings.entryHabitChallengeTitle] 已有同值槽，故本表 chip 用
+ *   "习惯打卡"（HABIT_CHECKIN 的准确口径）重开**不同值**槽，沿 W2 typePenalty 差前缀先例。
  */
 data class ParentApprovalStrings(
     val title: String,
@@ -38,11 +47,25 @@ data class ParentApprovalStrings(
     val scoreCancelled: String,
     val scoreRejected: String,
     val historyFilterUndone: String,
+    // W4 §3.3.3-2 ApprovalCard 头部业务类型 SuggestionChip（按 actionType 映射）
+    val typeChipTask: String,
+    val typeChipHabit: String,
+    val typeChipAssignment: String,
+    val typeChipTarget: String,
+    val typeChipMistake: String,
+    val typeChipFocus: String,
+    val typeChipVariation: String,
+    val typeChipOther: String,
     val approveAllMessage: (points: Int) -> String,
     val pendingTab: (count: Int) -> String,
     val approvedMessage: (points: Int) -> String,
     val scorePending: (points: Int) -> String,
     val scoreRevoked: (points: Int) -> String,
+    // W4 §3.3.3-1 待审看板（笔数 / 待发放积分 / 批量钮 / 确认对话框正文）
+    val pendingCountLabel: (count: Int) -> String,
+    val pendingPointsLabel: (points: Int) -> String,
+    val approveAllPointsButton: (points: Int) -> String,
+    val approveAllDialogMessage: (count: Int, points: Int) -> String,
 )
 
 val ParentApprovalStringsZh = ParentApprovalStrings(
@@ -65,11 +88,25 @@ val ParentApprovalStringsZh = ParentApprovalStrings(
     scoreCancelled = "0 (打卡已取消)",
     scoreRejected = "0 (已拒绝)",
     historyFilterUndone = "已撤销",
+    // W4 §3.3.3-2：ApprovalCard 头部业务类型 chip（actionType → 词面）
+    typeChipTask = "每日任务",
+    typeChipHabit = "习惯打卡",
+    typeChipAssignment = "家长布置",
+    typeChipTarget = "每日目标",
+    typeChipMistake = "错题复习",
+    typeChipFocus = "专注番茄钟",
+    typeChipVariation = "一题多解",
+    typeChipOther = "学习打卡",
     approveAllMessage = { points -> "✅ 已全部通过，共发放 $points 分" },         // :54
     pendingTab = { count -> "待审核${if (count > 0) " $count" else ""}" },      // :67
     approvedMessage = { points -> "✅ 已通过：+${points}分" },                   // :97
     scorePending = { points -> "+$points (待审)" },
     scoreRevoked = { points -> "-$points (已扣回)" },
+    // W4 §3.3.3-1：待审看板（中文侧量词 笔/分，不分支）
+    pendingCountLabel = { count -> "待审总笔数：$count 笔" },
+    pendingPointsLabel = { points -> "待发放总积分：+$points 分" },
+    approveAllPointsButton = { points -> "全部通过 (+${points}分)" },
+    approveAllDialogMessage = { count, points -> "确认一次通过全部 $count 笔申请，共发放 +$points 分？" },
 )
 
 val ParentApprovalStringsEn = ParentApprovalStrings(
@@ -92,9 +129,28 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     scoreCancelled = "0 (check-in cancelled)",
     scoreRejected = "0 (rejected)",
     historyFilterUndone = "Undone",
+    // W4 §3.3.3-2: business-type chips on the approval card header (actionType mapping lives in the screen)
+    typeChipTask = "Daily task",
+    typeChipHabit = "Habit check-in",
+    typeChipAssignment = "Parent assignment",
+    typeChipTarget = "Daily goal",
+    typeChipMistake = "Mistake review",
+    typeChipFocus = "Focus timer",
+    typeChipVariation = "Variation bonus",
+    typeChipOther = "Study activity",
     approveAllMessage = { points -> "✅ All approved — $points ${pointsWord(points)} awarded" },
     pendingTab = { count -> if (count > 0) "Pending ($count)" else "Pending" },
     approvedMessage = { points -> "✅ Approved: +$points ${pointsWord(points)}" },
     scorePending = { points -> "+$points ${pointsWord(points)} pending" },
     scoreRevoked = { points -> "-$points ${pointsWord(points)} clawed back" },
+    // W4 §3.3.3-1: pending dashboard rows, batch button and its confirm dialog
+    pendingCountLabel = { count ->
+        if (count == 1) "1 request pending review" else "$count requests pending review"
+    },
+    pendingPointsLabel = { points -> "+$points ${pointsWord(points)} to award" },
+    approveAllPointsButton = { points -> "Approve all (+$points ${pointsWord(points)})" },
+    approveAllDialogMessage = { count, points ->
+        val requests = if (count == 1) "the 1 pending request" else "all $count pending requests"
+        "Approve $requests and award +$points ${pointsWord(points)} now?"
+    },
 )

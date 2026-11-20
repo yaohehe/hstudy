@@ -1,5 +1,6 @@
 package com.hstudy.app.ui.parent
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import com.hstudy.app.data.local.entity.effectivePoints
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
+import com.hstudy.app.ui.child.pointRecordSection
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -27,6 +29,15 @@ import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
 
+/**
+ * 家长积分管理页（指令 §3.3.4：透明信用账本，家长端同构）。
+ *
+ * v3.3 W4：顶部新增**资产看板**（surfaceContainerHigh：displayLarge 余额 + 当前可用积分副标 +
+ * ⏳ 待家长审核行（tertiaryContainer，审核后计入注）+ 🌟 累计获得行）；全部积分记录按
+ * 今天/昨天/本周更早/历史记录分组；记录卡左侧加类型徽章，REVERSAL/PENALTY 附小标签。
+ * 看板/分组/标签词面跨表复用 [ChildPointsStrings]（同一中文值一个英文出处；家长端
+ * ParentPointsStrings 只保留本页独有词面），分组函数复用孩子端 [pointRecordSection] 保证两端口径一致。
+ */
 @Composable
 fun ParentPointsScreen(
     onNavigateBack: () -> Unit,
@@ -35,6 +46,8 @@ fun ParentPointsScreen(
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
+    // 待家长审批的积分：尚未计入余额，看板单独分列（与余额概念严格区分）
+    val pendingPoints by app.pointRepository.getPendingApprovalPoints().collectAsState(initial = 0)
     val records by app.pointRepository.getAllRecords().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
 
@@ -47,9 +60,15 @@ fun ParentPointsScreen(
     var adjustNote by remember { mutableStateOf("") }
 
     val strings = LocalStrings.current.parentPoints
+    val pointsDetail = LocalStrings.current.childPoints
     val common = LocalStrings.current.common
     val parentHome = LocalStrings.current.parentHome
     val displayLanguage = LocalDisplayLanguage.current
+
+    // 累计获得 = 账本正分合计（只读展示，不参与余额判等；与孩子端口径一致）
+    val totalEarned = remember(records) { records.filter { it.points > 0 }.sumOf { it.points } }
+    // 时间轴分桶：LazyColumn 的 LazyListScope 内容不是 composable 上下文，remember 必须在页面作用域算好
+    val grouped = remember(records) { records.groupBy { pointRecordSection(it.date) } }
 
     Scaffold(
         topBar = {
@@ -69,6 +88,39 @@ fun ParentPointsScreen(
             ResponsiveContent(windowSizeClass = windowSizeClass, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item { Spacer(modifier = Modifier.height(8.dp)) }
+
+                    // ===== 资产看板（指令 §3.3.4-1，余额与待审严格分列）=====
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.extraLarge,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                        ) {
+                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(pointsDetail.balanceTitle, style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(pointsDetail.balanceValue(totalPoints), style = MaterialTheme.typography.displayLarge)
+                                Text(pointsDetail.balanceSubtitle, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (pendingPoints > 0) {
+                                    Text(
+                                        pointsDetail.pendingNote(pendingPoints),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier
+                                            .background(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.shapes.small)
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                                Text(
+                                    pointsDetail.totalEarnedValue(totalEarned),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                    }
 
                     // ===== 每日得分统计（近7天）=====
                     item {
@@ -131,8 +183,26 @@ fun ParentPointsScreen(
                     }
 
                     item { Text(strings.allRecordsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
-                    items(records) { record ->
-                        PointRecordCard(record = record)
+                    // ===== 时间轴分组（指令 §3.3.4-2）：今天/昨天/本周更早/历史记录，两端同口径 =====
+                    listOf(
+                        pointsDetail.sectionToday, pointsDetail.sectionYesterday,
+                        pointsDetail.sectionWeekEarlier, pointsDetail.sectionHistory
+                    ).mapIndexed { sectionIndex, title -> sectionIndex to title }.forEach { (sectionIndex, title) ->
+                        val sectionRecords = grouped[sectionIndex].orEmpty()
+                        if (sectionRecords.isNotEmpty()) {
+                            item(key = "section-$sectionIndex") {
+                                Text(
+                                    title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                                )
+                            }
+                            items(sectionRecords) { record ->
+                                PointRecordCard(record = record)
+                            }
+                        }
                     }
                     if (records.isEmpty()) {
                         item {
@@ -187,9 +257,15 @@ fun ParentPointsScreen(
     }
 }
 
+/**
+ * 记录卡（指令 §3.3.4-3）：左圆角类型徽章 / 中类型+备注+时间 / 右大号带符号分值。
+ * 数值语义与孩子端一致：获得=secondary 绿、兑换=primary 橙、撤销/PENALTY=error 警示并附小标签
+ * （[打卡撤销] 词面跨表复用 ChildPointsStrings.tagCheckInUndo；[未完成扣分] 沿用 W2 typePenalty）。
+ */
 @Composable
 private fun PointRecordCard(record: PointRecordEntity) {
     val strings = LocalStrings.current.parentPoints
+    val pointsDetail = LocalStrings.current.childPoints
     val typeLabel = when (record.type) {
         PointRecordType.TASK_COMPLETE -> strings.typeTaskComplete
         PointRecordType.BONUS -> strings.typeBonus
@@ -198,14 +274,45 @@ private fun PointRecordCard(record: PointRecordEntity) {
         PointRecordType.REVERSAL -> strings.typeReversal
         PointRecordType.PENALTY -> strings.typePenalty
     }
+    val icon = when (record.type) {
+        PointRecordType.TASK_COMPLETE -> "✅"
+        PointRecordType.BONUS -> "🎁"
+        PointRecordType.ADJUSTMENT -> "✏️"
+        PointRecordType.REWARD_EXCHANGE -> "🛒"
+        PointRecordType.REVERSAL -> "↩️"
+        PointRecordType.PENALTY -> "⚠️"
+    }
+    val badgeContainer = when (record.type) {
+        PointRecordType.TASK_COMPLETE, PointRecordType.BONUS -> MaterialTheme.colorScheme.secondaryContainer
+        PointRecordType.REWARD_EXCHANGE -> MaterialTheme.colorScheme.primaryContainer
+        PointRecordType.REVERSAL, PointRecordType.PENALTY -> MaterialTheme.colorScheme.errorContainer
+        PointRecordType.ADJUSTMENT -> MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+    val valueColor = when {
+        record.type == PointRecordType.REWARD_EXCHANGE -> MaterialTheme.colorScheme.primary
+        record.type == PointRecordType.REVERSAL || record.type == PointRecordType.PENALTY -> MaterialTheme.colorScheme.error
+        record.points >= 0 -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
+    }
     val isPositive = record.points >= 0
     val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(badgeContainer, MaterialTheme.shapes.small),
+                contentAlignment = Alignment.Center
+            ) { Text(icon, style = MaterialTheme.typography.titleMedium) }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 // P2-01：系统扣分（PENALTY）标签用警示色，与家长奖惩的 ADJUSTMENT 区分
                 Text(typeLabel, style = MaterialTheme.typography.titleSmall,
@@ -216,11 +323,29 @@ private fun PointRecordCard(record: PointRecordEntity) {
                 }
                 Text(dateFormat.format(Date(record.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(
-                text = "${if (isPositive) "+" else ""}${record.points}",
-                style = MaterialTheme.typography.titleLarge,
-                color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${if (isPositive) "+" else ""}${record.points}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = valueColor
+                )
+                when (record.type) {
+                    PointRecordType.REVERSAL -> Text(
+                        "[${pointsDetail.tagCheckInUndo}]",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    PointRecordType.PENALTY -> Text(
+                        // [未完成扣分] 标签词面复用孩子端无 emoji 前缀的 typePenalty（W2 登记值），不截字符 hack
+                        "[${pointsDetail.typePenalty}]",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    else -> Unit
+                }
+            }
         }
     }
 }

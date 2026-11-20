@@ -101,7 +101,18 @@ class ChildRewardStoreCopyTest {
             zh.typeReversal to en.typeReversal,
             // v3.3 W2 P2-01：系统自动扣分 PENALTY 类型标签
             zh.typePenalty to en.typePenalty,
+            // v3.3 W4 §3.3.4：资产看板副标 + 时间轴分组标题 + REVERSAL 标签（历史记录带 🕰️ 前缀
+            // 与 parentApproval.historyTab 区分成两个值，沿 typePenalty 差前缀先例）
+            zh.balanceSubtitle to en.balanceSubtitle,
+            zh.sectionToday to en.sectionToday,
+            zh.sectionYesterday to en.sectionYesterday,
+            zh.sectionWeekEarlier to en.sectionWeekEarlier,
+            zh.sectionHistory to en.sectionHistory,
+            zh.tagCheckInUndo to en.tagCheckInUndo,
         )
+        // 四个分组标题两两互不相同（when 分桶的 0..3 支同值等于两段流水念成同一段）
+        assertEquals(4, listOf(zh.sectionToday, zh.sectionYesterday, zh.sectionWeekEarlier, zh.sectionHistory).distinct().size)
+        assertEquals(4, listOf(en.sectionToday, en.sectionYesterday, en.sectionWeekEarlier, en.sectionHistory).distinct().size)
     }
 
     @Test
@@ -114,6 +125,11 @@ class ChildRewardStoreCopyTest {
         assertEquals("⏳ 待家长审核 +3 分（通过后计入余额）", zh.pendingNote(3))
         assertEquals("⏳ Pending parent approval: +3 points (added to your balance once approved)", en.pendingNote(3))
         assertEquals("⏳ Pending parent approval: +1 point (added to your balance once approved)", en.pendingNote(1))
+        // v3.3 W4 §3.3.4-1：🌟 累计获得行（英文单复数 + 中文只换数字）
+        assertEquals("🌟 累计获得 40 分", zh.totalEarnedValue(40))
+        assertEquals("🌟 累计获得 1 分", zh.totalEarnedValue(1))
+        assertEquals("🌟 Total earned: 40 points", en.totalEarnedValue(40))
+        assertEquals("🌟 Total earned: 1 point", en.totalEarnedValue(1))
     }
 
     @Test
