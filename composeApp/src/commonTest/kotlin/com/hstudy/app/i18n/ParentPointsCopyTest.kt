@@ -133,7 +133,8 @@ class ParentPointsCopyTest {
         assertEquals("确认一次通过全部 3 笔申请，共发放 +12 分？", zh.approveAllDialogMessage(3, 12))
         assertEquals("确认一次通过全部 1 笔申请，共发放 +1 分？", zh.approveAllDialogMessage(1, 1))
         assertEquals("Approve all 3 pending requests and award +12 points now?", en.approveAllDialogMessage(3, 12))
-        assertEquals("Approve all 1 pending requests and award +1 point now?", en.approveAllDialogMessage(1, 1))
+        assertEquals("Approve your only pending request and award +1 point now?", en.approveAllDialogMessage(1, 1))
+        assertEquals("Approve all 3 pending requests and award +5 points now?", en.approveAllDialogMessage(3, 5))
     }
 
     @Test

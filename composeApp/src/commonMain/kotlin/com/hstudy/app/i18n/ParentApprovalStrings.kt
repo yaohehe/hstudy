@@ -150,6 +150,11 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     pendingPointsLabel = { points -> "+$points ${pointsWord(points)} to award" },
     approveAllPointsButton = { points -> "Approve all (+$points ${pointsWord(points)})" },
     approveAllDialogMessage = { count, points ->
-        "Approve all $count pending requests and award +$points ${pointsWord(points)} now?"
+        // QA C4 后续语法收口：count==1 用自然单数；复数保留计数
+        if (count == 1) {
+            "Approve your only pending request and award +$points ${pointsWord(points)} now?"
+        } else {
+            "Approve all $count pending requests and award +$points ${pointsWord(points)} now?"
+        }
     },
 )
