@@ -875,10 +875,10 @@ DISCLOSED_RESIDUALS = [
     {"page": None, "table": "-%s (已扣回)" % VALUE, "table_field": "ParentApprovalStrings.scoreRevoked",
      "reason": "v3.3 W2 P1-02 新写文案：REVOKED（审批后撤销，REVERSAL 已扣回、净额 0）的历史卡分值语义；"
                "撤销扣回词面与 TaskListStrings.revertedClawedBackMessage 的「扣回 N 分」对齐"},
-    {"page": None, "table": "已撤销", "table_field": "ParentApprovalStrings.historyFilterUndone",
-     "reason": "v3.3 W2 P1-02 新写文案：历史二级筛选钮「已撤销」（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）；"
-               "「全部/已通过/已拒绝」复用 TaskListStrings.filterAll 与 statusApproved/statusRejected（已配对），"
-               "此值是撤销族的新短词（statusRevoked 的「已撤销（积分已扣回）」是另一个值、另一处渲染）"},
+    {"page": None, "table": "撤销与取消", "table_field": "ParentApprovalStrings.historyFilterUndone",
+     "reason": "v3.3 W2 P1-02 新写文案：历史二级筛选钮（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）；"
+               "「全部/已通过/已拒绝」复用 TaskListStrings.filterAll 与 statusApproved/statusRejected（已配对）。"
+               "QA C6 修正：原值「已撤销」与 statusRevoked「已撤销（积分已扣回）」同族碰撞，改为「撤销与取消」"},
     # P2-01（指令【P2-01】/规则 16）：PointRecordType.PENALTY 的类型标签（两页各一槽，不同值）。
     {"page": None, "table": "未完成扣分", "table_field": "ChildPointsStrings.typePenalty",
      "reason": "v3.3 W2 P2-01 新写文案：孩子端积分明细页 PENALTY 类型标签（note 为空时回退显示）；"

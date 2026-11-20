@@ -83,5 +83,5 @@ val ChildPointsStringsEn = ChildPointsStrings(
     sectionYesterday = "Yesterday",
     sectionWeekEarlier = "Earlier this week",
     sectionHistory = "🕰️ History",
-    tagCheckInUndo = "check-in undo",
+    tagCheckInUndo = "Check-in undo",
 )

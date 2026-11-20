@@ -112,6 +112,6 @@ val TaskListStringsEn = TaskListStrings(
     revertCheckInPrompt = { title, points -> "✅ $title +$points ${pointsWord(points)} (pending approval)" },
     pointsEarnedLabel = { points -> "+$points ${pointsWord(points)}" },
     bonusPointsLabel = { points -> "Reward +$points ${pointsWord(points)}" },
-    expectedPointsLabel = { points -> "Check in to earn +$points ${pointsWord(points)} (needs approval)" },
+    expectedPointsLabel = { points -> "Check in to earn +$points ${pointsWord(points)} (pending approval)" },
     revertConfirmMessage = { title -> "Undo the check-in for $title? Points already awarded will be removed." },
 )

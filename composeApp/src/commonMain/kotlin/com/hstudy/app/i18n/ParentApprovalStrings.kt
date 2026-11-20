@@ -87,7 +87,7 @@ val ParentApprovalStringsZh = ParentApprovalStrings(
     // P1-02：历史卡分值语义（§四：CANCELLED 从未计分 / REJECTED 不计分 / REVOKED 已扣回 / PENDING 待审）
     scoreCancelled = "0 (打卡已取消)",
     scoreRejected = "0 (已拒绝)",
-    historyFilterUndone = "已撤销",
+    historyFilterUndone = "撤销与取消",
     // W4 §3.3.3-2：ApprovalCard 头部业务类型 chip（actionType → 词面）
     typeChipTask = "每日任务",
     typeChipHabit = "习惯打卡",
@@ -128,7 +128,7 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     // P1-02 history-card score semantics (§四 status machine)
     scoreCancelled = "0 (check-in cancelled)",
     scoreRejected = "0 (rejected)",
-    historyFilterUndone = "Undone",
+    historyFilterUndone = "Reversed & cancelled",
     // W4 §3.3.3-2: business-type chips on the approval card header (actionType mapping lives in the screen)
     typeChipTask = "Daily task",
     typeChipHabit = "Habit check-in",
@@ -150,7 +150,6 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     pendingPointsLabel = { points -> "+$points ${pointsWord(points)} to award" },
     approveAllPointsButton = { points -> "Approve all (+$points ${pointsWord(points)})" },
     approveAllDialogMessage = { count, points ->
-        val requests = if (count == 1) "the 1 pending request" else "all $count pending requests"
-        "Approve $requests and award +$points ${pointsWord(points)} now?"
+        "Approve all $count pending requests and award +$points ${pointsWord(points)} now?"
     },
 )

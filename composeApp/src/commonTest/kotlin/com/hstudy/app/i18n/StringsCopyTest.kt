@@ -572,7 +572,7 @@ class StringsCopyTest {
         assertEquals("Reward +3 points", AppStringsEn.taskList.bonusPointsLabel(3))
         // W3 卡内预得分值（指令 §3.3.2-3 新写文案；闸门表侧单边已登记）
         assertEquals("打卡预得 +5分（需审批）", AppStringsZh.taskList.expectedPointsLabel(5))
-        assertEquals("Check in to earn +5 points (needs approval)", AppStringsEn.taskList.expectedPointsLabel(5))
+        assertEquals("Check in to earn +5 points (pending approval)", AppStringsEn.taskList.expectedPointsLabel(5))
         // 终审 I-1（指令 §3.3.2-4）撤销二度确认对话框正文（新写文案；闸门表侧单边已登记）
         assertEquals(
             "确定要撤销「每日阅读」的打卡吗？已发放的积分会被扣回。",
@@ -620,7 +620,7 @@ class StringsCopyTest {
         assertEquals("奖励+1分", AppStringsZh.taskList.bonusPointsLabel(1))
         assertEquals("✅ 打卡成功！+1分待家长审核", AppStringsZh.taskList.checkInSuccessMessage(1))
         // W3 expectedPointsLabel（指令 §3.3.2-3）：英文 1 分单数、中文同形
-        assertEquals("Check in to earn +1 point (needs approval)", AppStringsEn.taskList.expectedPointsLabel(1))
+        assertEquals("Check in to earn +1 point (pending approval)", AppStringsEn.taskList.expectedPointsLabel(1))
         assertEquals("打卡预得 +1分（需审批）", AppStringsZh.taskList.expectedPointsLabel(1))
     }
 
@@ -1599,7 +1599,7 @@ class StringsCopyTest {
 
         // W3 待审进度胶囊（指令 §3.3.1-3 新写文案；详情展开仍用上面的 pendingApprovalSummary）
         assertEquals("⏳ 2 个打卡正在等家长盖章 (+12分)", zh.pendingApprovalCapsule(2, 12))
-        assertEquals("⏳ 2 check-ins waiting for a parent stamp (+12 points)",
+        assertEquals("⏳ 2 check-ins waiting for parent approval (+12 points)",
             en.pendingApprovalCapsule(2, 12))
 
         assertEquals("✅ 数学作业 +5分", zh.approvedRequestLine("数学作业", 5))
@@ -1655,7 +1655,7 @@ class StringsCopyTest {
         assertEquals("1 mistake to review today", en.mistakesDueTitle(1))
         assertEquals("⏳ 1 request waiting for parent approval (+1 point, counted once approved)",
             en.pendingApprovalSummary(1, 1))
-        assertEquals("⏳ 1 check-in waiting for a parent stamp (+1 point)", en.pendingApprovalCapsule(1, 1))
+        assertEquals("⏳ 1 check-in waiting for parent approval (+1 point)", en.pendingApprovalCapsule(1, 1))
         assertEquals("⏳ 1 个打卡正在等家长盖章 (+1分)", zh.pendingApprovalCapsule(1, 1))
         assertEquals("✅ 数学作业 +1 point", en.approvedRequestLine("数学作业", 1))
         assertEquals("1 day in a row — what a streak!", en.streakMilestoneTitle(1))

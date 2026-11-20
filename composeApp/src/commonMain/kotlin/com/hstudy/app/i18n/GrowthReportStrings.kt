@@ -107,7 +107,7 @@ val GrowthReportStringsEn = GrowthReportStrings(
     wishesLabel = "Wishes achieved",
     lifetimeValue = { n -> "$n ${pointsWord(n)}" },
     balanceSub = { n -> "Current balance: $n ${pointsWord(n)}" },
-    balanceSubPending = { n, pending -> "Current balance: $n ${pointsWord(n)} · $pending more ${pointsWord(pending)} awaiting parent approval" },
+    balanceSubPending = { n, pending -> "Current balance: $n ${pointsWord(n)} · plus $pending ${pointsWord(pending)} awaiting parent approval" },
     streakValue = { n -> "$n ${if (n == 1) "day" else "days"}" },
     streakSubPositive = "Persistence is victory!",
     streakSubZero = "Start checking in today",

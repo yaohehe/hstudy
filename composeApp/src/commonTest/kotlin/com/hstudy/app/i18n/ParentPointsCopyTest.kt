@@ -133,7 +133,7 @@ class ParentPointsCopyTest {
         assertEquals("确认一次通过全部 3 笔申请，共发放 +12 分？", zh.approveAllDialogMessage(3, 12))
         assertEquals("确认一次通过全部 1 笔申请，共发放 +1 分？", zh.approveAllDialogMessage(1, 1))
         assertEquals("Approve all 3 pending requests and award +12 points now?", en.approveAllDialogMessage(3, 12))
-        assertEquals("Approve the 1 pending request and award +1 point now?", en.approveAllDialogMessage(1, 1))
+        assertEquals("Approve all 1 pending requests and award +1 point now?", en.approveAllDialogMessage(1, 1))
     }
 
     @Test
@@ -222,6 +222,6 @@ class ParentPointsCopyTest {
         // v3.3 W4 §3.3.4：家长端积分管理页看板/分组/标签跨表消费 childPoints 槽（不重开同值槽），
         // PENALTY 标签用无 emoji 前缀的孩子端词面（家长端 typePenalty 带 ⚠️ 前缀是两个值）
         assertEquals("打卡撤销", AppStringsZh.childPoints.tagCheckInUndo)
-        assertEquals("check-in undo", AppStringsEn.childPoints.tagCheckInUndo)
+        assertEquals("Check-in undo", AppStringsEn.childPoints.tagCheckInUndo)
     }
 }

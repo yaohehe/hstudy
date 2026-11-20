@@ -422,7 +422,7 @@ val ChildHomeStringsEn = ChildHomeStrings(
             "(+$points ${pointsWord(points)}, counted once approved)"
     },
     pendingApprovalCapsule = { count, points ->
-        "⏳ $count ${if (count == 1) "check-in" else "check-ins"} waiting for a parent stamp " +
+        "⏳ $count ${if (count == 1) "check-in" else "check-ins"} waiting for parent approval " +
             "(+$points ${pointsWord(points)})"
     },
     approvedRequestLine = { description, points -> "✅ $description +$points ${pointsWord(points)}" },
