@@ -5,6 +5,9 @@ package com.hstudy.app.i18n
  *
  * 清单口径：`python scripts/i18n_inventory.py child/ChildHomeScreen.kt` 迁移前给出**去重 107 条 / 含插值 20 条**。
  * 本表落成 **102 个字段（其中 17 个函数型）**，与清单的差额是三条去向，逐条可查：
+ * **v3.3 W3（M3 重设计指令 §3.3.1）另新写 3 条**（ctaTodayMustDoTitle / ctaStartFocusTitle 两条静态 +
+ * pendingApprovalCapsule 一条函数型，现共 105 字段 / 18 函数型）：它们是首页重设计的新词，
+ * 迁移前页面没有原文可比，已在 `scripts/i18n_template_diff.py` DISCLOSED_RESIDUALS 登记表侧单边。
  * - 4 条进存储/幂等路径 → 不在本表，改由 [CanonicalChildHomeText] 持有规范中文（Ruling 25，详见下面那段）；
  * - 1 条（`:567` 的 `+${a.points}分`）复用 [TaskListStrings.pointsEarnedLabel]（中文值逐字节相同、
  *   语义同为"某件事值多少积分"），按"复用不新增"的约定不在本表重开一个字段；
@@ -67,6 +70,12 @@ data class ChildHomeStrings(
     val todayCheckinTitle: String,
     val todayAllDoneBanner: String,
 
+    // ===== 快捷行动卡片组（M3 重设计指令 §3.3.1-5：今日必做 + 开始专注两张大 Action Card）=====
+    // 副标题不复开字段：复用 [entryStartCheckinSubtitle] / [entryPomodoroSubtitle]（同语义同句式），
+    // 与 :567 `+N分` 复用 TaskListStrings.pointsEarnedLabel 的"复用不新增"约定一致。
+    val ctaTodayMustDoTitle: String,
+    val ctaStartFocusTitle: String,
+
     // ===== 先难后易（吃青蛙）=====
     val difficultyChallengeLevel: String,
     val difficultyAdvancedLevel: String,
@@ -98,6 +107,9 @@ data class ChildHomeStrings(
     val viewAllAchievementsButton: String,
     val myApprovalRequestsTitle: String,
     val pendingApprovalSummary: (count: Int, points: Int) -> String,
+    // 待审进度胶囊（指令 §3.3.1-3）：pendingApprovalSummary 的压缩形态，放 Hero 正下方；
+    // 点击展开的详情卡仍渲染 pendingApprovalSummary + approved/rejected 行（信息不删减）。
+    val pendingApprovalCapsule: (count: Int, points: Int) -> String,
     val approvedRequestLine: (description: String, points: Int) -> String,
     val rejectedRequestLine: (description: String) -> String,
 
@@ -221,6 +233,10 @@ val ChildHomeStringsZh = ChildHomeStrings(
     todayCheckinTitle = "📊 今日打卡",                                        // :219
     todayAllDoneBanner = "🎊 今日任务全部完成！",                              // :234
 
+    // ===== 快捷行动卡片组（指令 §3.3.1-5，W3 新写：迁移前页面没有这两条）=====
+    ctaTodayMustDoTitle = "🎯 今日必做",
+    ctaStartFocusTitle = "🍅 开始专注",
+
     // ===== 先难后易 =====
     difficultyChallengeLevel = "挑战",                                        // :249
     difficultyAdvancedLevel = "进阶",                                         // :249
@@ -256,6 +272,7 @@ val ChildHomeStringsZh = ChildHomeStrings(
     pendingApprovalSummary = { count, points ->
         "⏳ $count 个申请待家长审核（+$points 分，通过后计入）"                    // :401
     },
+    pendingApprovalCapsule = { count, points -> "⏳ $count 个打卡正在等家长盖章 (+${points}分)" },
     approvedRequestLine = { description, points -> "✅ $description +${points}分" },   // :406
     rejectedRequestLine = { description -> "❌ $description（未通过）" },        // :410
 
@@ -359,6 +376,10 @@ val ChildHomeStringsEn = ChildHomeStrings(
     todayCheckinTitle = "📊 Today's Check-in",
     todayAllDoneBanner = "🎊 Every task for today is done!",
 
+    // ===== 快捷行动卡片组（指令 §3.3.1-5，W3 新写）=====
+    ctaTodayMustDoTitle = "🎯 Today's must-dos",
+    ctaStartFocusTitle = "🍅 Start focusing",
+
     // ===== 先难后易 =====
     difficultyChallengeLevel = "Challenge",
     difficultyAdvancedLevel = "Advanced",
@@ -399,6 +420,10 @@ val ChildHomeStringsEn = ChildHomeStrings(
     pendingApprovalSummary = { count, points ->
         "⏳ $count ${if (count == 1) "request" else "requests"} waiting for parent approval " +
             "(+$points ${pointsWord(points)}, counted once approved)"
+    },
+    pendingApprovalCapsule = { count, points ->
+        "⏳ $count ${if (count == 1) "check-in" else "check-ins"} waiting for a parent stamp " +
+            "(+$points ${pointsWord(points)})"
     },
     approvedRequestLine = { description, points -> "✅ $description +$points ${pointsWord(points)}" },
     rejectedRequestLine = { description -> "❌ $description (not approved)" },

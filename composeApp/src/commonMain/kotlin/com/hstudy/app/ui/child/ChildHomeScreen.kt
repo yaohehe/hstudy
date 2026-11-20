@@ -14,7 +14,7 @@ import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -143,13 +143,10 @@ fun ChildHomeScreen(
         else -> strings.encouragementKickoff
     }
 
-    // 积分卡片呼吸动画
-    val breathTransition = rememberInfiniteTransition(label = "breath")
-    val breathScale by breathTransition.animateFloat(
-        initialValue = 1f, targetValue = 1.02f,
-        animationSpec = infiniteRepeatable(animation = tween(2000, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
-        label = "breathScale"
-    )
+    // M3 重设计指令 §3.3.1-1：原"积分卡片呼吸缩放"（无限循环 animateFloat + 整卡 scale）
+    // 已删除——常驻缩放造成文字边缘抖动、分散儿童注意力，违背 M3 动效的克制原则。
+    // 指令 §3.3.1-3：待审进度胶囊的详情展开态（点击胶囊=原来的审批详情卡，信息不删减）。
+    var approvalDetailsExpanded by remember { mutableStateOf(false) }
 
     val levelInfo = LevelSystem.getLevelInfo(totalPoints)
 
@@ -178,19 +175,22 @@ fun ChildHomeScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ===== 积分 + 等级 + 学习树 综合卡片（暖色渐变焦点）=====
-                Card(
-                    modifier = Modifier.fillMaxWidth().scale(breathScale),
-                    shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                // ===== Hero Card：积分 + 等级 + 学习树（M3 ElevatedCard，指令 §3.3.1-2）=====
+                // 渐变只作卡片装饰层，且一律取语义色（primaryContainer→surface 微妙渐变），
+                // 原三条硬十六进制暖橙渐变值已退役；卡片不再参与呼吸缩放。
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 ) {
                     Box(
                         modifier = Modifier.background(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    Color(0xFFFFE8CC),
-                                    Color(0xFFFFD8A8),
-                                    Color(0xFFFFC078)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.surface
                                 )
                             )
                         )
@@ -199,10 +199,25 @@ fun ChildHomeScreen(
                             modifier = Modifier.padding(20.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 左侧：学习树
-                            LearningTreeCanvas(level = levelInfo.level)
+                            // 左侧：学习树（数据逻辑不变）+ 微妙等级光环（primaryContainer 径向渐变，§3.3.1-2）
+                            Box(contentAlignment = Alignment.Center) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(136.dp)
+                                        .background(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                                    Color.Transparent
+                                                )
+                                            ),
+                                            shape = CircleShape
+                                        )
+                                )
+                                LearningTreeCanvas(level = levelInfo.level)
+                            }
                             Spacer(modifier = Modifier.width(12.dp))
-                            // 右侧：积分 + 等级
+                            // 右侧：积分（displayMedium 加粗，§3.3.1-2）+ 等级
                             Column(modifier = Modifier.weight(1f)) {
                                 AnimatedPointsDisplay(targetPoints = totalPoints)
                                 LevelBadge(totalEarnedPoints = totalPoints)
@@ -210,6 +225,71 @@ fun ChildHomeScreen(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     StreakBadge(streakDays = streak)
                                 }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ===== 待审进度胶囊（指令 §3.3.1-3：原底部审批状态卡上移至 Hero 正下方、精简为胶囊）=====
+                // 点击展开的详情与旧卡完全同源（pendingApprovalSummary + 最近通过/拒绝行），只搬位置不改数据流。
+                if (pendingApprovalCount > 0) {
+                    AssistChip(
+                        onClick = { approvalDetailsExpanded = !approvalDetailsExpanded },
+                        label = {
+                            Text(
+                                strings.pendingApprovalCapsule(pendingApprovalCount, pendingApprovalPoints),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        },
+                        shape = CircleShape,
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    )
+                    if (approvalDetailsExpanded) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(strings.myApprovalRequestsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(strings.pendingApprovalSummary(pendingApprovalCount, pendingApprovalPoints),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                recentApproved.forEach { a ->
+                                    Text(strings.approvedRequestLine(a.description, a.requestedPoints), style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                }
+                                recentRejected.forEach { a ->
+                                    Text(strings.rejectedRequestLine(a.description), style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                } else if (recentApproved.isNotEmpty() || recentRejected.isNotEmpty()) {
+                    // 无待审：审核结果回顾仍按旧卡形态呈现（原 :405 卡片的信息保真分支）
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(strings.myApprovalRequestsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            recentApproved.forEach { a ->
+                                Text(strings.approvedRequestLine(a.description, a.requestedPoints), style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            recentRejected.forEach { a ->
+                                Text(strings.rejectedRequestLine(a.description), style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -235,14 +315,16 @@ fun ChildHomeScreen(
                             Text("${todayCompleted}/${todayTotal}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                         }
                         Spacer(modifier = Modifier.height(6.dp))
+                        // 指令 §3.3.1-4：弹簧过渡（spring dampingRatio 0.75）替代 800ms tween，
+                        // 进度条圆角走 shapes.small（8dp），不再裸数值。
                         val animatedProgress by animateFloatAsState(
                             targetValue = if (todayTotal > 0) todayCompleted.toFloat() / todayTotal else 0f,
-                            animationSpec = tween(800, easing = FastOutSlowInEasing), label = "progress"
+                            animationSpec = spring(dampingRatio = 0.75f), label = "progress"
                         )
                         LinearProgressIndicator(
                             progress = animatedProgress,
-                            modifier = Modifier.fillMaxWidth().height(10.dp),
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth().height(10.dp).clip(MaterialTheme.shapes.small),
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         )
                         if (todayCompleted == todayTotal && todayTotal > 0) {
                             Spacer(modifier = Modifier.height(6.dp))
@@ -250,6 +332,29 @@ fun ChildHomeScreen(
                                 color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                         }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ===== 快捷行动卡片组 CTA（指令 §3.3.1-5：今日必做 + 开始专注两张大 Action Card）=====
+                // 只新增聚焦入口，不迁移/删除任何既有导航目标（4 步引导里的同名入口原样保留）。
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HomeCtaCard(
+                        modifier = Modifier.weight(1f),
+                        title = strings.ctaTodayMustDoTitle,
+                        subtitle = strings.entryStartCheckinSubtitle,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { onNavigate(Screen.ChildTaskList.route) }
+                    )
+                    HomeCtaCard(
+                        modifier = Modifier.weight(1f),
+                        title = strings.ctaStartFocusTitle,
+                        subtitle = strings.entryPomodoroSubtitle,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        onClick = { onNavigate(Screen.ChildPomodoro.route) }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -401,34 +506,8 @@ fun ChildHomeScreen(
                     Text(strings.viewAllAchievementsButton)
                 }
 
-                // ===== 积分申请状态（孩子查看审核进度）=====
-                if (pendingApprovalCount > 0 || recentApproved.isNotEmpty() || recentRejected.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (pendingApprovalCount > 0) MaterialTheme.colorScheme.tertiaryContainer
-                                else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(strings.myApprovalRequestsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            if (pendingApprovalCount > 0) {
-                                Text(strings.pendingApprovalSummary(pendingApprovalCount, pendingApprovalPoints),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                            recentApproved.forEach { a ->
-                                Text(strings.approvedRequestLine(a.description, a.requestedPoints), style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                            recentRejected.forEach { a ->
-                                Text(strings.rejectedRequestLine(a.description), style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                // ===== 积分申请状态：已按指令 §3.3.1-3 上移为 Hero 下方"待审进度胶囊"（见页面顶部），
+                // 此处不再重复渲染审核卡。 =====
 
                 // ===== 家长同步（接收家长设置 / 发送进度给家长）=====
                 Card(
@@ -895,5 +974,36 @@ private fun ScoreDimensionBar(label: String, score: Int, maxScore: Int, color: a
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text("$score/$maxScore", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(40.dp))
+    }
+}
+
+/**
+ * 首页快捷行动大卡（指令 §3.3.1-5）：extraLarge 形状 + 语义容器色，
+ * 触控面积 ≥56dp（整卡可点，最小高度 96dp）。只做导航，不携带业务写入。
+ */
+@Composable
+private fun HomeCtaCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 96.dp).padding(16.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }

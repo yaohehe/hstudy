@@ -187,9 +187,9 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**v3.3 W2 复算**，改登记时必须同时改这里）：表里现在 **201 条**
-# （9 条双侧成对 + 158 条只看页面 + 34 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **195** 条默认组用不到；`--branch` 组碰到 **201 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**v3.3 W3 复算**，改登记时必须同时改这里）：表里现在 **205 条**
+# （9 条双侧成对 + 158 条只看页面 + 38 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **199** 条默认组用不到；`--branch` 组碰到 **205 条**、**0** 条"（未用到）"。
 # v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
 # v3.3 W1（Antigravity P0-01）在 184 条上新增错题 pending Snackbar 新写文案 5 条（表侧单边：
 # gotItPendingMessage / missedPendingMessage / variationPendingMessage / reviewPendingMessage /
@@ -199,6 +199,10 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # typePenalty + ParentPointsStrings.typePenalty + MistakeDetailStrings.gotItButton「(+3)」/
 # missedButton「(+1)」）+ 页面单边 2 条（自评按钮旧徽标「(+5)」「(+2)」）→ 190 + 11 = 201
 # （两个组读数实测如上：默认组仍 6/195，--branch 201 条、0 条未用到）。
+# v3.3 W3（M3 界面重设计 指令 §3.3.1/§3.3.2）在 201 条上新增表侧单边 4 条（ChildHomeStrings.
+# pendingApprovalCapsule/ctaTodayMustDoTitle/ctaStartFocusTitle + TaskListStrings.expectedPointsLabel，
+# 全部为重设计新写文案、两语由 StringsCopyTest 钉死）→ 201 + 4 = 205（两个组读数实测如上：
+# 默认组仍 6/199，--branch 205 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -865,6 +869,27 @@ DISCLOSED_RESIDUALS = [
     {"page": None, "table": "⚠️ 未完成扣分", "table_field": "ParentPointsStrings.typePenalty",
      "reason": "v3.3 W2 P2-01 新写文案：家长端积分记录卡 PENALTY 类型标签（本表 type* 槽带 emoji 前缀的既有风格）；"
                "与孩子端 ChildPointsStrings.typePenalty 是**两个值**（差 ⚠️ 前缀），沿两表 type* 不跨表复用先例"},
+    # ---- v3.3 W3（M3 界面重设计 指令 §3.3.1/§3.3.2）：孩子首页/任务打卡页新写文案（表侧单边）----
+    # 这四条是重设计的**新写**词面，迁移前页面无对应原文可比；两语由 StringsCopyTest 的
+    # childHomeCopyDiffers / childHomeInterpolatedCopyPinsBothLanguages / taskListInterpolatedCopyPinsBothLanguages
+    # / taskListEnglishPluralsCoverOneAndOther 逐字钉死（视觉重设计不动任何旧配对字段）。
+    {"page": None, "table": "⏳ %s 个打卡正在等家长盖章 (+%s分)" % (VALUE, VALUE),
+     "table_field": "ChildHomeStrings.pendingApprovalCapsule",
+     "reason": "v3.3 W3 §3.3.1-3 新写文案：待审进度胶囊（AssistChip 形态，Hero 正下方）。详情展开仍渲染"
+               "pendingApprovalSummary + approved/rejected 行（均已与迁移前原文配对，信息不删减）；"
+               "胶囊整串在迁移前页面不存在，两语由 childHomeInterpolatedCopyPinsBothLanguages 钉死"},
+    {"page": None, "table": "🎯 今日必做", "table_field": "ChildHomeStrings.ctaTodayMustDoTitle",
+     "reason": "v3.3 W3 §3.3.1-5 新写文案：CTA 快捷行动卡「今日必做」标题（副标题复用 entryStartCheckinSubtitle、"
+               "导航目标 Screen.ChildTaskList 与 4 步引导既有入口一致，不删任何导航点）；ZH≠EN 由 childHomeCopyDiffers 钉死"},
+    {"page": None, "table": "🍅 开始专注", "table_field": "ChildHomeStrings.ctaStartFocusTitle",
+     "reason": "v3.3 W3 §3.3.1-5 新写文案：CTA 快捷行动卡「开始专注」标题（副标题复用 entryPomodoroSubtitle，"
+               "导航目标 Screen.ChildPomodoro 同上）；ZH≠EN 由 childHomeCopyDiffers 钉死"},
+    {"page": None, "table": "打卡预得 +%s分（需审批）" % VALUE,
+     "table_field": "TaskListStrings.expectedPointsLabel",
+     "reason": "v3.3 W3 §3.3.2-3 新写文案：任务卡内预得分值（指令要求「打卡预得 +N 分（需审批）」，避免误读为立即加分）。"
+               "旧 pointsEarnedLabel（`+⟨$⟩分`）**保留不删**——它仍与 Task9 迁移前 ChildHomeScreen 的 `+N分` 原文配对，"
+               "首页布置任务卡继续用；本条两语+英文单复数由 taskListInterpolatedCopyPinsBothLanguages / "
+               "taskListEnglishPluralsCoverOneAndOther 钉死"},
 ]
 
 

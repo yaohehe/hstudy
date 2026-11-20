@@ -568,6 +568,9 @@ class StringsCopyTest {
         assertEquals("+5 points", AppStringsEn.taskList.pointsEarnedLabel(5))
         assertEquals("奖励+3分", AppStringsZh.taskList.bonusPointsLabel(3))
         assertEquals("Reward +3 points", AppStringsEn.taskList.bonusPointsLabel(3))
+        // W3 卡内预得分值（指令 §3.3.2-3 新写文案；闸门表侧单边已登记）
+        assertEquals("打卡预得 +5分（需审批）", AppStringsZh.taskList.expectedPointsLabel(5))
+        assertEquals("Check in to earn +5 points (needs approval)", AppStringsEn.taskList.expectedPointsLabel(5))
     }
 
     /**
@@ -605,6 +608,9 @@ class StringsCopyTest {
         assertEquals("+1分", AppStringsZh.taskList.pointsEarnedLabel(1))
         assertEquals("奖励+1分", AppStringsZh.taskList.bonusPointsLabel(1))
         assertEquals("✅ 打卡成功！+1分待家长审核", AppStringsZh.taskList.checkInSuccessMessage(1))
+        // W3 expectedPointsLabel（指令 §3.3.2-3）：英文 1 分单数、中文同形
+        assertEquals("Check in to earn +1 point (needs approval)", AppStringsEn.taskList.expectedPointsLabel(1))
+        assertEquals("打卡预得 +1分（需审批）", AppStringsZh.taskList.expectedPointsLabel(1))
     }
 
     /**
@@ -1449,6 +1455,9 @@ class StringsCopyTest {
             zh.encouragementKickoff to en.encouragementKickoff,
             zh.todayCheckinTitle to en.todayCheckinTitle,
             zh.todayAllDoneBanner to en.todayAllDoneBanner,
+            // W3 M3 重设计（指令 §3.3.1-5）新增的两条 CTA 标题（表侧新写，闸门 DISCLOSED_RESIDUALS 已登记）
+            zh.ctaTodayMustDoTitle to en.ctaTodayMustDoTitle,
+            zh.ctaStartFocusTitle to en.ctaStartFocusTitle,
             zh.difficultyChallengeLevel to en.difficultyChallengeLevel,
             zh.difficultyAdvancedLevel to en.difficultyAdvancedLevel,
             zh.difficultyNormalLevel to en.difficultyNormalLevel,
@@ -1577,6 +1586,11 @@ class StringsCopyTest {
         assertEquals("⏳ 2 requests waiting for parent approval (+12 points, counted once approved)",
             en.pendingApprovalSummary(2, 12))
 
+        // W3 待审进度胶囊（指令 §3.3.1-3 新写文案；详情展开仍用上面的 pendingApprovalSummary）
+        assertEquals("⏳ 2 个打卡正在等家长盖章 (+12分)", zh.pendingApprovalCapsule(2, 12))
+        assertEquals("⏳ 2 check-ins waiting for a parent stamp (+12 points)",
+            en.pendingApprovalCapsule(2, 12))
+
         assertEquals("✅ 数学作业 +5分", zh.approvedRequestLine("数学作业", 5))
         assertEquals("✅ 数学作业 +5 points", en.approvedRequestLine("数学作业", 5))
 
@@ -1630,6 +1644,8 @@ class StringsCopyTest {
         assertEquals("1 mistake to review today", en.mistakesDueTitle(1))
         assertEquals("⏳ 1 request waiting for parent approval (+1 point, counted once approved)",
             en.pendingApprovalSummary(1, 1))
+        assertEquals("⏳ 1 check-in waiting for a parent stamp (+1 point)", en.pendingApprovalCapsule(1, 1))
+        assertEquals("⏳ 1 个打卡正在等家长盖章 (+1分)", zh.pendingApprovalCapsule(1, 1))
         assertEquals("✅ 数学作业 +1 point", en.approvedRequestLine("数学作业", 1))
         assertEquals("1 day in a row — what a streak!", en.streakMilestoneTitle(1))
         assertEquals("Milestone reached — claim your +1 point reward!", en.streakMilestoneBonusNote(1))
@@ -1740,6 +1756,9 @@ class StringsCopyTest {
             zh.weeklyChallengeClaimedNote to en.weeklyChallengeClaimedNote,
             zh.parentAssignmentsTitle to en.parentAssignmentsTitle,
             zh.affordableRewardsNote(2) to en.affordableRewardsNote(2),
+            // W3 新增 CTA 两卡：行首 emoji（🎯/🍅）必须留在表内且两表一致（Ruling 17）
+            zh.ctaTodayMustDoTitle to en.ctaTodayMustDoTitle,
+            zh.ctaStartFocusTitle to en.ctaStartFocusTitle,
         ).forEach { (chinese, english) ->
             assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "行首 emoji 应两表一致")
         }

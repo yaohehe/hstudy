@@ -19,6 +19,7 @@ package com.hstudy.app.i18n
  *
  * 7 个函数型字段（[revertedClawedBackMessage]、[revertedPendingApprovalMessage]、[achievementUnlockedMessage]、
  * [checkInSuccessMessage]、[revertCheckInPrompt]、[pointsEarnedLabel]、[bonusPointsLabel]）：
+ * **v3.3 W3 新增第 8 个函数型字段 [expectedPointsLabel]**（指令 §3.3.2-3 新写文案，见表内注释）。
  * 前三个原名 `undoClawedBackMessage` / `undoPendingApprovalMessage` / `checkInUndoPrompt`，
  * 调用头以 `undo…`/`checkIn…` 开头会撞存储边界闸门的 sink 词根（`PointRepository.undoCheckIn` 等），
  * 渲染点传入 `localizedPresetText(...)` 时会被误判"文案进写库"。W9 T1 修复按 W4/W6 改名先例改为
@@ -51,6 +52,12 @@ data class TaskListStrings(
     val revertCheckInPrompt: (title: String, points: Int) -> String,
     val pointsEarnedLabel: (points: Int) -> String,
     val bonusPointsLabel: (points: Int) -> String,
+    // M3 重设计指令 §3.3.2-3「分值与状态明确化」：卡内分值改为"打卡预得 +N 分（需审批）"形态，
+    // 避免孩子误读为立刻加分（打卡此刻只登记待审申请，不计分——与 checkInSuccessMessage 同一口径）。
+    // W3 新写：迁移前页面用的是 pointsEarnedLabel（`+N分`），本值无页面原文可比，
+    // 已在 scripts/i18n_template_diff.py DISCLOSED_RESIDUALS 登记表侧单边；两语由
+    // StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages / taskListEnglishPluralsCoverOneAndOther 钉死。
+    val expectedPointsLabel: (points: Int) -> String,
 )
 
 val TaskListStringsZh = TaskListStrings(
@@ -70,6 +77,7 @@ val TaskListStringsZh = TaskListStrings(
     revertCheckInPrompt = { title, points -> "✅ $title +${points}分（待审核）" },
     pointsEarnedLabel = { points -> "+${points}分" },
     bonusPointsLabel = { points -> "奖励+${points}分" },
+    expectedPointsLabel = { points -> "打卡预得 +${points}分（需审批）" },
 )
 
 val TaskListStringsEn = TaskListStrings(
@@ -96,4 +104,5 @@ val TaskListStringsEn = TaskListStrings(
     revertCheckInPrompt = { title, points -> "✅ $title +$points ${pointsWord(points)} (pending approval)" },
     pointsEarnedLabel = { points -> "+$points ${pointsWord(points)}" },
     bonusPointsLabel = { points -> "Reward +$points ${pointsWord(points)}" },
+    expectedPointsLabel = { points -> "Check in to earn +$points ${pointsWord(points)} (needs approval)" },
 )

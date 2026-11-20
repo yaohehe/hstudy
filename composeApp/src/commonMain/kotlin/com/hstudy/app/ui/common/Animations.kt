@@ -89,7 +89,8 @@ fun ConfettiOverlay(
 }
 
 // ============================================================
-// ⭐ 积分数字滚动动画
+// ⭐ 积分数字滚动动画（孩子首页 Hero 卡唯一使用点；
+//    M3 重设计指令 §3.3.1-2：积分数字用 displayMedium 加粗）
 // ============================================================
 @Composable
 fun AnimatedPointsDisplay(
@@ -104,7 +105,7 @@ fun AnimatedPointsDisplay(
 
     Text(
         text = "⭐ $animatedPoints",
-        style = MaterialTheme.typography.displayLarge,
+        style = MaterialTheme.typography.displayMedium,
         fontWeight = FontWeight.Bold,
         modifier = modifier
     )
