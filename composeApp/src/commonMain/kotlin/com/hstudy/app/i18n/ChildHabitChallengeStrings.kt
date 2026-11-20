@@ -8,6 +8,9 @@ package com.hstudy.app.i18n
  * `checkIn(description = "习惯打卡: ${challenge.title}")` 与
  * `tryUnlockAchievement("habit_complete", "习惯达人", "完成一个21天挑战", "🏆")`。
  * 「取消」复用 [CommonStrings.cancelButton]。[daysProgress] 英文单复数用行内条件。
+ * v3.3 W2 P1-01 撤销闭环：今日已打卡的「撤销」按钮与如实反馈 Snackbar **复用**
+ * [TaskListStrings.undoButton] / [TaskListStrings.revertedClawedBackMessage] /
+ * [TaskListStrings.revertedPendingApprovalMessage]（RA4 取词路径，同值不重开槽），本表不增字段。
  */
 data class ChildHabitChallengeStrings(
     val title: String,

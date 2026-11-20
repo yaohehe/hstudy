@@ -99,6 +99,8 @@ class ChildRewardStoreCopyTest {
             zh.typeAdjustment to en.typeAdjustment,
             zh.typeRewardExchange to en.typeRewardExchange,
             zh.typeReversal to en.typeReversal,
+            // v3.3 W2 P2-01：系统自动扣分 PENALTY 类型标签
+            zh.typePenalty to en.typePenalty,
         )
     }
 

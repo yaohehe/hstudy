@@ -56,6 +56,24 @@ class HabitRepository(private val habitDao: HabitDao) {
         return challenge.lastCheckInDate == today
     }
 
+    /**
+     * 撤销今日打卡（Antigravity 指令 P1-01，撤销闭环）：回退一天并清掉 lastCheckInDate；
+     * 若撤销的是"完成日"那一次打卡（CHALLENGE_COMPLETED 分支），同时把挑战重新置为进行中。
+     * 积分侧的取消/扣回由调用方紧接着走 [PointRepository.undoCheckIn]
+     * （bizKey=`HABIT:id:date`），保持撤销对称（不变量 4）。
+     */
+    suspend fun undoCheckInChallenge(challenge: HabitChallengeEntity) {
+        if (challenge.lastCheckInDate != todayString()) return
+        habitDao.updateChallenge(
+            challenge.copy(
+                completedDays = (challenge.completedDays - 1).coerceAtLeast(0),
+                lastCheckInDate = "",
+                isActive = true,
+                isCompleted = false
+            )
+        )
+    }
+
     // ===== 成就 =====
     suspend fun addAchievement(achievement: AchievementEntity): Long = habitDao.insertAchievement(achievement)
 

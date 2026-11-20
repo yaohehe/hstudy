@@ -5,7 +5,7 @@ package com.hstudy.app.i18n
  *
  * 页标题「积分明细」复用 [ChildHomeStrings.entryPointsDetailTitle]（孩子首页入口同值）。
  * 记录行优先显示账本 note（动态数据，原样）；note 为空时按 [PointRecordType] 回退到本表
- * 五条类型标签（与家长端 ParentPointsStrings.type* 文案不同值，不跨表复用）。
+ * 六条类型标签（与家长端 ParentPointsStrings.type* 文案不同值，不跨表复用；v3.3 W2 P2-01 增 typePenalty）。
  * 数量词一律 [pointsWord]。
  */
 data class ChildPointsStrings(
@@ -19,6 +19,7 @@ data class ChildPointsStrings(
     val typeAdjustment: String,
     val typeRewardExchange: String,
     val typeReversal: String,
+    val typePenalty: String,
 )
 
 val ChildPointsStringsZh = ChildPointsStrings(
@@ -32,6 +33,7 @@ val ChildPointsStringsZh = ChildPointsStrings(
     typeAdjustment = "家长调整",                                              // :107
     typeRewardExchange = "兑换奖励",                                          // :108
     typeReversal = "撤销扣回",                                                // :109
+    typePenalty = "未完成扣分",
 )
 
 val ChildPointsStringsEn = ChildPointsStrings(
@@ -45,4 +47,5 @@ val ChildPointsStringsEn = ChildPointsStrings(
     typeAdjustment = "Parent adjustment",
     typeRewardExchange = "Reward redeemed",
     typeReversal = "Reversed",
+    typePenalty = "Daily-task penalty",
 )

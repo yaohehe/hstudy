@@ -94,6 +94,7 @@ private fun PointHistoryItem(record: PointRecordEntity) {
         PointRecordType.ADJUSTMENT -> "✏️"
         PointRecordType.REWARD_EXCHANGE -> "🛒"
         PointRecordType.REVERSAL -> "↩️"
+        PointRecordType.PENALTY -> "⚠️"
     }
     val isPositive = record.points >= 0
     val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
@@ -111,9 +112,13 @@ private fun PointHistoryItem(record: PointRecordEntity) {
                             PointRecordType.ADJUSTMENT -> strings.typeAdjustment
                             PointRecordType.REWARD_EXCHANGE -> strings.typeRewardExchange
                             PointRecordType.REVERSAL -> strings.typeReversal
+                            PointRecordType.PENALTY -> strings.typePenalty
                         }
                     },
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    // P2-01：系统扣分（PENALTY）用警示色标签，与家长奖惩区分
+                    color = if (record.type == PointRecordType.PENALTY)
+                        MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                 )
                 Text(dateFormat.format(Date(record.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

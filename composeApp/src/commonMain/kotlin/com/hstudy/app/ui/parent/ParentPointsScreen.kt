@@ -196,6 +196,7 @@ private fun PointRecordCard(record: PointRecordEntity) {
         PointRecordType.ADJUSTMENT -> strings.typeAdjustment
         PointRecordType.REWARD_EXCHANGE -> strings.typeRewardExchange
         PointRecordType.REVERSAL -> strings.typeReversal
+        PointRecordType.PENALTY -> strings.typePenalty
     }
     val isPositive = record.points >= 0
     val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
@@ -206,7 +207,10 @@ private fun PointRecordCard(record: PointRecordEntity) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(typeLabel, style = MaterialTheme.typography.titleSmall)
+                // P2-01：系统扣分（PENALTY）标签用警示色，与家长奖惩的 ADJUSTMENT 区分
+                Text(typeLabel, style = MaterialTheme.typography.titleSmall,
+                    color = if (record.type == PointRecordType.PENALTY)
+                        MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 if (record.note.isNotEmpty()) {
                     Text(record.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

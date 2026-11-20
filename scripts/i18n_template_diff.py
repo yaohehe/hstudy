@@ -187,13 +187,18 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**v3.3 W1 复算**，改登记时必须同时改这里）：表里现在 **190 条**
-# （9 条双侧成对 + 156 条只看页面 + 25 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **184** 条默认组用不到；`--branch` 组碰到 **190 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**v3.3 W2 复算**，改登记时必须同时改这里）：表里现在 **201 条**
+# （9 条双侧成对 + 158 条只看页面 + 34 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **195** 条默认组用不到；`--branch` 组碰到 **201 条**、**0** 条"（未用到）"。
 # v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
 # v3.3 W1（Antigravity P0-01）在 184 条上新增错题 pending Snackbar 新写文案 5 条（表侧单边：
 # gotItPendingMessage / missedPendingMessage / variationPendingMessage / reviewPendingMessage /
 # reviewButton「复习+1」）+ 快捷复习旧徽标「复习+3」1 条页面单边 → 184 + 6 = 190（两个组读数实测如上）。
+# v3.3 W2（P1-02/P2-01/折叠项 D）在 190 条上新增表侧单边 9 条（ParentApprovalStrings 的
+# scoreCancelled/scoreRejected/scorePending/scoreRevoked/historyFilterUndone + ChildPointsStrings.
+# typePenalty + ParentPointsStrings.typePenalty + MistakeDetailStrings.gotItButton「(+3)」/
+# missedButton「(+1)」）+ 页面单边 2 条（自评按钮旧徽标「(+5)」「(+2)」）→ 190 + 11 = 201
+# （两个组读数实测如上：默认组仍 6/195，--branch 201 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -819,6 +824,47 @@ DISCLOSED_RESIDUALS = [
      "reason": "v3.3 W1 P0-01：W1_REV（4d28c8e）ChildMistakeListScreen 的快捷复习按钮原文「复习+3」——"
                "旧分值来自绕过 bizKey 的直提 submitApproval（指令 P0-01 点名的失控链路），"
                "现表侧 reviewButton 已改为「复习+1」，这条页面原文不再有表侧出处，按页面单边披露"},
+    # ---- v3.3 W2（Antigravity P1-02 / P2-01 / 控制器折叠项 D）----
+    # 错题详情页自评按钮徽标分值按规则 6 修正：(+5)/(+2) 是绕过审批的旧失控分值，
+    # 现与 reviewMistake 实发分值一致改为 (+3)/(+1)。表侧新值与页面旧值各成单边，
+    # 形态与上面「复习+1 / 复习+3」那一对完全同型（W2 折叠项 D）。
+    {"page": None, "table": "✅ 做对了 (+3)", "table_field": "MistakeDetailStrings.gotItButton",
+     "reason": "v3.3 W2 折叠项 D：规则 6 做对 +3（W1 P0-01 已接 checkIn，points=3），"
+               "gotItButton 徽标随之改为「(+3)」；该值在迁移前页面不存在（旧值是「(+5)」，见下面页面单边登记）"},
+    {"page": None, "table": "❌ 没记住 (+1)", "table_field": "MistakeDetailStrings.missedButton",
+     "reason": "v3.3 W2 折叠项 D：规则 6 没记住按仅复习 +1（points=1），missedButton 徽标随之改为「(+1)」；"
+               "该值在迁移前页面不存在（旧值是「(+2)」，见下面页面单边登记）"},
+    {"page": "✅ 做对了 (+5)", "table": None,
+     "reason": "v3.3 W2 折叠项 D：W1_REV（4d28c8e）ChildMistakeDetailScreen 自评按钮原文「✅ 做对了 (+5)」——"
+               "(+5) 是绕过 bizKey 直提审批的失控分值残留，表侧已改为「(+3)」，按页面单边披露"},
+    {"page": "❌ 没记住 (+2)", "table": None,
+     "reason": "v3.3 W2 折叠项 D：同上，旧原文「❌ 没记住 (+2)」，表侧已改为「(+1)」，按页面单边披露"},
+    # P1-02（指令【P1-02】/§四 状态机/§五 家长端历史口径）：历史卡分值语义 + 二级筛选新写文案。
+    # 这些不是搬运而是**新写**：迁移前 ParentApprovalScreen 历史卡只有 `"+N"`（无汉字、不入集合）
+    # 与逐态状态词（已按 W3 双边登记配对），所以全部登记表侧单边；两语由
+    # ParentPointsCopyTest.parentApprovalCopyDiffers/…InterpolatedCopyPinsBothLanguages 钉死。
+    {"page": None, "table": "0 (打卡已取消)", "table_field": "ParentApprovalStrings.scoreCancelled",
+     "reason": "v3.3 W2 P1-02 新写文案：CANCELLED（未审批撤销，从未计分）的历史卡分值语义，§四 口径；"
+               "迁移前页面无此整串（旧代码对所有非 APPROVED 一律红色 +N，正是指令点名的误导展示）"},
+    {"page": None, "table": "0 (已拒绝)", "table_field": "ParentApprovalStrings.scoreRejected",
+     "reason": "v3.3 W2 P1-02 新写文案：REJECTED（不计分）的历史卡分值语义；同上，迁移前页面无原文可比"},
+    {"page": None, "table": "+%s (待审)" % VALUE, "table_field": "ParentApprovalStrings.scorePending",
+     "reason": "v3.3 W2 P1-02 新写文案：PENDING（不计入余额、仅展示）的历史卡分值语义（函数型字段，"
+               "分值进实参位）；正常历史列表不含 PENDING，穷举 when 分支展示用"},
+    {"page": None, "table": "-%s (已扣回)" % VALUE, "table_field": "ParentApprovalStrings.scoreRevoked",
+     "reason": "v3.3 W2 P1-02 新写文案：REVOKED（审批后撤销，REVERSAL 已扣回、净额 0）的历史卡分值语义；"
+               "撤销扣回词面与 TaskListStrings.revertedClawedBackMessage 的「扣回 N 分」对齐"},
+    {"page": None, "table": "已撤销", "table_field": "ParentApprovalStrings.historyFilterUndone",
+     "reason": "v3.3 W2 P1-02 新写文案：历史二级筛选钮「已撤销」（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）；"
+               "「全部/已通过/已拒绝」复用 TaskListStrings.filterAll 与 statusApproved/statusRejected（已配对），"
+               "此值是撤销族的新短词（statusRevoked 的「已撤销（积分已扣回）」是另一个值、另一处渲染）"},
+    # P2-01（指令【P2-01】/规则 16）：PointRecordType.PENALTY 的类型标签（两页各一槽，不同值）。
+    {"page": None, "table": "未完成扣分", "table_field": "ChildPointsStrings.typePenalty",
+     "reason": "v3.3 W2 P2-01 新写文案：孩子端积分明细页 PENALTY 类型标签（note 为空时回退显示）；"
+               "迁移前页面没有 PENALTY 分支（旧扣分走 ADJUSTMENT），无页面原文可比"},
+    {"page": None, "table": "⚠️ 未完成扣分", "table_field": "ParentPointsStrings.typePenalty",
+     "reason": "v3.3 W2 P2-01 新写文案：家长端积分记录卡 PENALTY 类型标签（本表 type* 槽带 emoji 前缀的既有风格）；"
+               "与孩子端 ChildPointsStrings.typePenalty 是**两个值**（差 ⚠️ 前缀），沿两表 type* 不跨表复用先例"},
 ]
 
 

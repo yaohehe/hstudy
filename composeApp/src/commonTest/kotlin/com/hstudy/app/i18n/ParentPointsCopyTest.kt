@@ -28,6 +28,8 @@ class ParentPointsCopyTest {
             zh.typeAdjustment to en.typeAdjustment,
             zh.typeRewardExchange to en.typeRewardExchange,
             zh.typeReversal to en.typeReversal,
+            // v3.3 W2 P2-01：系统自动扣分 PENALTY 类型标签
+            zh.typePenalty to en.typePenalty,
         )
     }
 
@@ -67,6 +69,10 @@ class ParentPointsCopyTest {
             zh.statusRejected to en.statusRejected,
             zh.statusCancelled to en.statusCancelled,
             zh.statusRevoked to en.statusRevoked,
+            // v3.3 W2 P1-02：历史卡按状态如实展示（CANCELLED/REJECTED 分值、已撤销筛选钮）
+            zh.scoreCancelled to en.scoreCancelled,
+            zh.scoreRejected to en.scoreRejected,
+            zh.historyFilterUndone to en.historyFilterUndone,
         )
     }
 
@@ -88,6 +94,13 @@ class ParentPointsCopyTest {
         assertEquals("✅ Approved: +8 points", en.approvedMessage(8))
         assertEquals("✅ 已通过：+1分", zh.approvedMessage(1))
         assertEquals("✅ Approved: +1 point", en.approvedMessage(1))
+        // v3.3 W2 P1-02：历史卡分值语义（REVOKED 扣回 / PENDING 待审），§四 状态机口径
+        assertEquals("-8 (已扣回)", zh.scoreRevoked(8))
+        assertEquals("-8 points clawed back", en.scoreRevoked(8))
+        assertEquals("-1 point clawed back", en.scoreRevoked(1))
+        assertEquals("+5 (待审)", zh.scorePending(5))
+        assertEquals("+5 points pending", en.scorePending(5))
+        assertEquals("+1 point pending", en.scorePending(1))
     }
 
     @Test

@@ -45,4 +45,13 @@ class AssignmentRepository(private val dao: DailyAssignmentDao) {
         dao.markCompleted(id, Clock.System.now().toEpochMilliseconds())
         onPoints(assignment.points, assignment.title)
     }
+
+    /**
+     * 孩子撤销已完成的布置任务（Antigravity 指令 P1-01，撤销闭环）：
+     * 只回置完成标记；积分侧的取消/扣回由调用方紧接着走
+     * [PointRepository.undoCheckIn]（bizKey=`ASSIGN:id:date`）保持撤销对称（不变量 4）。
+     */
+    suspend fun uncompleteAssignment(id: Long) {
+        dao.markUncompleted(id)
+    }
 }

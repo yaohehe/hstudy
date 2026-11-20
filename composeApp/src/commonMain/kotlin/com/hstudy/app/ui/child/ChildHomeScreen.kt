@@ -590,7 +590,33 @@ fun ChildHomeScreen(
                                             }
                                         }
                                         if (a.isCompleted) {
-                                            Text("✅", style = MaterialTheme.typography.titleMedium)
+                                            // P1-01 撤销闭环（指令【P1-01】目标文件 1）：镜像 ChildTaskListScreen 的
+                                            // undoAndReport 流——回置完成标记 + undoCheckIn(ASSIGN bizKey) 如实反馈
+                                            //（未审批取消 CANCELLED / 已审批写 REVERSAL 扣回）。撤销路径不打埋点（既有裁决）。
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("✅", style = MaterialTheme.typography.titleMedium)
+                                                TextButton(onClick = {
+                                                    scope.launch {
+                                                        val assignDate = com.hstudy.app.data.repository.PointRepository.getTodayString()
+                                                        app.assignmentRepository.uncompleteAssignment(a.id)
+                                                        val clawedBack = app.pointRepository.undoCheckIn(
+                                                            bizKey = "ASSIGN:${a.id}:$assignDate",
+                                                            date = assignDate
+                                                        )
+                                                        snackbarHostState.showSnackbar(
+                                                            if (clawedBack > 0) taskListStrings.revertedClawedBackMessage(
+                                                                localizedPresetText(a.title, displayLanguage), clawedBack
+                                                            )
+                                                            else taskListStrings.revertedPendingApprovalMessage(
+                                                                localizedPresetText(a.title, displayLanguage)
+                                                            )
+                                                        )
+                                                    }
+                                                }) {
+                                                    Text(taskListStrings.undoButton, style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.error)
+                                                }
+                                            }
                                         } else {
                                             Button(onClick = {
                                                 scope.launch {

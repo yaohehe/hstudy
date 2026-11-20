@@ -45,6 +45,19 @@ fun ParentApprovalScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
 
     val strings = LocalStrings.current.parentApproval
+    // P1-02 历史筛选钮「全部」复用 [TaskListStrings.filterAll]（同一中文值一个英文出处）；
+    // 「已通过/已拒绝」复用本表 statusApproved/statusRejected，「已撤销」用新字段 historyFilterUndone。
+    val taskList = LocalStrings.current.taskList
+    // P1-02 历史二级筛选：0=全部 / 1=已通过 / 2=已拒绝 / 3=已撤销（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）
+    var historyFilter by remember { mutableIntStateOf(0) }
+    val filteredHistoryApprovals = historyApprovals.filter { approval ->
+        when (historyFilter) {
+            1 -> approval.status == ApprovalStatus.APPROVED
+            2 -> approval.status == ApprovalStatus.REJECTED
+            3 -> approval.status == ApprovalStatus.REVOKED || approval.status == ApprovalStatus.CANCELLED
+            else -> true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -119,8 +132,21 @@ fun ParentApprovalScreen(
                     }
                 }
             } else {
-                // 历史记录
-                if (historyApprovals.isEmpty()) {
+                // 历史记录：P1-02 二级筛选钮 + 按状态如实展示图标/分值（§四 状态机 / §五 家长端口径）
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(selected = historyFilter == 0, onClick = { historyFilter = 0 },
+                        label = { Text(taskList.filterAll) })
+                    FilterChip(selected = historyFilter == 1, onClick = { historyFilter = 1 },
+                        label = { Text(strings.statusApproved) })
+                    FilterChip(selected = historyFilter == 2, onClick = { historyFilter = 2 },
+                        label = { Text(strings.statusRejected) })
+                    FilterChip(selected = historyFilter == 3, onClick = { historyFilter = 3 },
+                        label = { Text(strings.historyFilterUndone) })
+                }
+                if (filteredHistoryApprovals.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(strings.emptyHistory, style = MaterialTheme.typography.bodyLarge)
                     }
@@ -130,16 +156,35 @@ fun ParentApprovalScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(historyApprovals, key = { it.id }) { approval ->
+                        items(filteredHistoryApprovals, key = { it.id }) { approval ->
+                            // P1-02：状态图标逐态展示（emoji 不受 i18n 约束，RA8）
+                            val statusIcon = when (approval.status) {
+                                ApprovalStatus.APPROVED -> "✅"
+                                ApprovalStatus.REJECTED -> "⛔"
+                                ApprovalStatus.CANCELLED -> "↩️"
+                                ApprovalStatus.REVOKED -> "🔄"
+                                ApprovalStatus.PENDING -> "⏳"
+                            }
+                            // P1-02：分值语义与状态机一致——CANCELLED 从未计分、REVOKED 已扣回、
+                            // REJECTED 不计分、PENDING 未入账，不再对非 APPROVED 一律红色 "+N"。
+                            val (scoreText, scoreColor) = when (approval.status) {
+                                ApprovalStatus.APPROVED ->
+                                    "+${approval.requestedPoints}" to MaterialTheme.colorScheme.primary
+                                ApprovalStatus.REVOKED ->
+                                    strings.scoreRevoked(approval.requestedPoints) to MaterialTheme.colorScheme.error
+                                ApprovalStatus.CANCELLED ->
+                                    strings.scoreCancelled to MaterialTheme.colorScheme.outline
+                                ApprovalStatus.REJECTED ->
+                                    strings.scoreRejected to MaterialTheme.colorScheme.error
+                                ApprovalStatus.PENDING ->
+                                    strings.scorePending(approval.requestedPoints) to MaterialTheme.colorScheme.tertiary
+                            }
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Row(
                                     modifier = Modifier.padding(14.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        if (approval.status == ApprovalStatus.APPROVED) "✅" else "❌",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text(statusIcon, style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(approval.description, style = MaterialTheme.typography.bodyMedium)
@@ -150,11 +195,10 @@ fun ParentApprovalScreen(
                                         )
                                     }
                                     Text(
-                                        "+${approval.requestedPoints}",
+                                        scoreText,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (approval.status == ApprovalStatus.APPROVED)
-                                            MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        color = scoreColor
                                     )
                                 }
                             }

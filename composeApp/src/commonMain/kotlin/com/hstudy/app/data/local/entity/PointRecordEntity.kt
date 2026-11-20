@@ -18,7 +18,8 @@ enum class PointRecordType {
     BONUS,            // 额外奖励（审批通过后写入）
     ADJUSTMENT,       // 父母手动调整
     REWARD_EXCHANGE,  // 兑换奖励消耗
-    REVERSAL          // 撤销冲抵（取消打卡/撤销已发积分时写入的反向记录）
+    REVERSAL,         // 撤销冲抵（取消打卡/撤销已发积分时写入的反向记录）
+    PENALTY           // 系统自动扣分（每日必须任务未完成，Antigravity 指令 P2-01/规则 16）
 }
 
 @Entity(tableName = "point_records")

@@ -242,6 +242,26 @@ class PointRepositoryInvariantTest {
         assertEquals("举一反三思考: 追及问题", approval.description)
         assertTrue(pointDao.records.isEmpty(), "不变量 1：举一反三当场绝不写积分流水")
     }
+
+    // ==================================================================
+    // P2-01（Antigravity 指令 规则 16）：系统自动惩罚扣分必须落 PENALTY 类型，
+    // 与家长手动调整（ADJUSTMENT）在账本上可区分。
+    // TDD：先于实现写入 —— 对现行代码（无 applyPenalty、无 PointRecordType.PENALTY）
+    // 直接编译失败（RED），实现后转绿（GREEN）。Fake DAO 复用本套件既有实现（RA9）。
+    // ==================================================================
+
+    @Test
+    fun applyPenalty_appendsNegativePenaltyRecord(): Unit = runBlocking {
+        val (pointDao, _, repo) = newRepo()
+        repo.applyPenalty(points = 6, note = "每日必须任务未完成自动扣分")
+
+        assertEquals(1, pointDao.records.size, "账本 append-only：扣分只追加一条流水")
+        val penalty = pointDao.records.single()
+        assertEquals(-6, penalty.points, "applyPenalty 必须写入 -points（扣分）")
+        assertEquals(PointRecordType.PENALTY, penalty.type, "P2-01：系统扣分必须是 PENALTY 类型，不得混入 ADJUSTMENT")
+        assertEquals("每日必须任务未完成自动扣分", penalty.note)
+        assertEquals(-6, repo.getTotalPoints().first(), "不变量 5：余额恒等于 SUM(points)")
+    }
 }
 
 /**

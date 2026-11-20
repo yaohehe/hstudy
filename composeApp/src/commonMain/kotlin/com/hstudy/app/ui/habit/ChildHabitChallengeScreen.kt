@@ -38,6 +38,9 @@ fun ChildHabitChallengeScreen(
     windowSizeClass: WindowSizeClass
 ) {
     val strings = LocalStrings.current.childHabitChallenge
+    // P1-01 撤销文案复用 ChildTaskListScreen 的取词路径（RA4：撤销按钮/如实反馈 Snackbar 同一词面），
+    // 不再新建同值字段；撤销路径不打埋点（既有裁决，两处成功分支 CHECKIN 原样保留）。
+    val taskList = LocalStrings.current.taskList
     val app = AppGraph
     val scope = rememberCoroutineScope()
     val activeChallenges by app.habitRepository.getActiveChallenges().collectAsState(initial = emptyList())
@@ -75,6 +78,9 @@ fun ChildHabitChallengeScreen(
                         ChallengeCard(
                             challenge = challenge,
                             isCheckedInToday = app.habitRepository.isCheckedInToday(challenge),
+                            onUndo = {
+                                undoTodayCheckIn(challenge, taskList, app, snackbarHostState, scope)
+                            },
                             onCheckIn = {
                                 scope.launch {
                                     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -127,7 +133,15 @@ fun ChildHabitChallengeScreen(
                     item { Spacer(modifier = Modifier.height(8.dp)) }
                     item { Text(strings.completedSectionTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                     items(completed, key = { it.id }) { challenge ->
-                        ChallengeCard(challenge = challenge, isCheckedInToday = false, onCheckIn = {}, onDelete = {})
+                        ChallengeCard(
+                            challenge = challenge,
+                            isCheckedInToday = app.habitRepository.isCheckedInToday(challenge),
+                            onCheckIn = {},
+                            onUndo = {
+                                undoTodayCheckIn(challenge, taskList, app, snackbarHostState, scope)
+                            },
+                            onDelete = {}
+                        )
                     }
                 }
             }
@@ -159,6 +173,7 @@ private fun ChallengeCard(
     challenge: HabitChallengeEntity,
     isCheckedInToday: Boolean,
     onCheckIn: () -> Unit,
+    onUndo: () -> Unit,
     onDelete: () -> Unit
 ) {
     val strings = LocalStrings.current.childHabitChallenge
@@ -203,15 +218,34 @@ private fun ChallengeCard(
 
                 if (!isCompleted && challenge.isActive) {
                     if (isCheckedInToday) {
-                        Text(strings.checkedInToday, style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                        // P1-01 撤销闭环（指令【P1-01】目标文件 2）：今日已打卡不再是死状态，
+                        // 提供撤销入口（habit 回退 + pointRepository.undoCheckIn(HABIT bizKey)）。
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(strings.checkedInToday, style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = onUndo) {
+                                Text(LocalStrings.current.taskList.undoButton,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     } else {
                         FilledTonalButton(onClick = onCheckIn) {
                             Text(strings.checkInButton)
                         }
                     }
                 } else if (isCompleted) {
-                    Text("🏆", style = MaterialTheme.typography.headlineSmall)
+                    // 完成日那次打卡若就发生在今天，同样允许撤销（undoCheckInChallenge 会重新激活挑战）
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🏆", style = MaterialTheme.typography.headlineSmall)
+                        if (isCheckedInToday) {
+                            TextButton(onClick = onUndo) {
+                                Text(LocalStrings.current.taskList.undoButton,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -221,6 +255,34 @@ private fun ChallengeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+/**
+ * P1-01 撤销今日打卡（指令【P1-01】目标文件 2 的闭环入口）：
+ * habit 侧回退（[HabitRepository.undoCheckInChallenge]）+ 积分侧
+ * [com.hstudy.app.data.repository.PointRepository.undoCheckIn]（bizKey=`HABIT:id:date`），
+ * Snackbar 如实反馈扣回/取消，镜像 ChildTaskListScreen 的 undoAndReport 流（RA4 复用 [TaskListStrings] 取词路径）。
+ * 撤销路径不打埋点（既有裁决），checkIn 成功分支的两条 CHECKIN 埋点原样保留。
+ */
+private fun undoTodayCheckIn(
+    challenge: HabitChallengeEntity,
+    taskList: com.hstudy.app.i18n.TaskListStrings,
+    app: AppGraph,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope
+) {
+    scope.launch {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        app.habitRepository.undoCheckInChallenge(challenge)
+        val clawedBack = app.pointRepository.undoCheckIn(
+            bizKey = "HABIT:${challenge.id}:$today",
+            date = today
+        )
+        snackbarHostState.showSnackbar(
+            if (clawedBack > 0) taskList.revertedClawedBackMessage(challenge.title, clawedBack)
+            else taskList.revertedPendingApprovalMessage(challenge.title)
+        )
     }
 }
 

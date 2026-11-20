@@ -17,6 +17,10 @@ package com.hstudy.app.i18n
  * - 通用按钮词「取消」「删除」不在此表重复：页面复用 `LocalStrings.current.common`
  *   （`cancelButton` / `deleteContentDescription`，阶段 1 已上收）。
  * - `"✅ 已掌握"` / `"⏳ 未掌握"` / `"错题照片"` 复用共享表 [MistakeStrings]。
+ *
+ * v3.3 W2（控制器折叠项 D）：[gotItButton]/[missedButton] 徽标分值由 (+5)/(+2) 修正为 **(+3)/(+1)**，
+ * 与规则 6 实际发放分值（reviewMistake points=3/1，W1 P0-01）一致；旧值 (+5)/(+2) 是绕过统一审批的
+ * 失控分值残留，已在等价闸门 DISCLOSED_RESIDUALS 按页面单边披露。
  */
 data class MistakeDetailStrings(
     val screenTitle: (emoji: String) -> String,
@@ -93,8 +97,8 @@ val MistakeDetailStringsZh = MistakeDetailStrings(
     masteredCard = "✅ 这道题已掌握，真棒！偶尔回顾一下保持记忆。",
     revealButton = "👀 我想好了，显示答案核对",
     selfCheckPrompt = "📝 对照答案，你这次做对了吗？",
-    gotItButton = "✅ 做对了 (+5)",
-    missedButton = "❌ 没记住 (+2)",
+    gotItButton = "✅ 做对了 (+3)",
+    missedButton = "❌ 没记住 (+1)",
     gotItMessage = "🎉 做对了！+3分已提交家长审核",
     missedMessage = "💪 +1分已提交审核，多复习几次就记住了",
     gotItPendingMessage = { points -> "🎉 做对了！+${points}分待家长审核" },
@@ -160,8 +164,8 @@ val MistakeDetailStringsEn = MistakeDetailStrings(
     masteredCard = "✅ You've mastered this one — great job! Review it now and then to keep it fresh.",
     revealButton = "👀 I'm ready — show the answer",
     selfCheckPrompt = "📝 Check your answer — did you get it right?",
-    gotItButton = "✅ Got it right (+5)",
-    missedButton = "❌ Didn't remember (+2)",
+    gotItButton = "✅ Got it right (+3)",
+    missedButton = "❌ Didn't remember (+1)",
     gotItMessage = "🎉 Right! +3 points submitted for parent approval",
     missedMessage = "💪 +1 point submitted for approval — a few more reviews and you'll remember it",
     gotItPendingMessage = { points -> "🎉 Right! +$points ${pointsWord(points)} pending parent approval" },

@@ -298,6 +298,22 @@ class PointRepository(
     }
 
     /**
+     * 系统自动惩罚扣分（Antigravity 指令 P2-01 / 规则 16）：
+     * 每日必须任务未完成的自动扣分专用入口，写 `-points` 且类型为 [PointRecordType.PENALTY]，
+     * 与家长奖惩的 ADJUSTMENT 在账本上可区分。note 沿用落库字面量模式（Ruling 25，不进文案表）。
+     */
+    suspend fun applyPenalty(points: Int, note: String) {
+        pointDao.insertPointRecord(
+            PointRecordEntity(
+                points = -points,
+                type = PointRecordType.PENALTY,
+                note = note,
+                weekStart = getWeekStartTimestamp()
+            )
+        )
+    }
+
+    /**
      * 兑换奖励消耗积分
      */
     suspend fun spendPoints(points: Int, note: String) {

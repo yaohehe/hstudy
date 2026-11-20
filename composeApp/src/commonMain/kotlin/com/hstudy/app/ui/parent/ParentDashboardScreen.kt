@@ -296,6 +296,8 @@ fun ParentDashboardScreen(
                                     PointRecordType.ADJUSTMENT -> "🔧"
                                     PointRecordType.REWARD_EXCHANGE -> "🛒"
                                     PointRecordType.REVERSAL -> "↩️"
+                                    // P2-01：PENALTY 穷举补全（emoji，不受 i18n 约束）
+                                    PointRecordType.PENALTY -> "⚠️"
                                 }
                                 Text(typeEmoji, style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.width(8.dp))
