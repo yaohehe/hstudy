@@ -131,6 +131,8 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "childPoints.balanceTitle",               // "Total points balance"
     "childPoints.recordsTitle",               // "Point history"
     "childPoints.emptyRecords",               // "No point records yet — go check in!"
+    // ---- W4（M3 重设计 指令 §3.3.4-1）积分明细资产看板副标新增 1 条。
+    "childPoints.balanceSubtitle",            // "Points available now"
     // ---- W5 Task 2 每日目标页新增 1 条（英文原文逐条留在行尾注释里）。
     "childDailyTarget.allDoneBonus",          // "🎉 All goals achieved! Bonus +10 points (awaiting approval)"
     // ---- W6 Task 2 心愿两页新增 7 条（英文原文逐条留在行尾注释里）。
@@ -568,6 +570,18 @@ class StringsCopyTest {
         assertEquals("+5 points", AppStringsEn.taskList.pointsEarnedLabel(5))
         assertEquals("奖励+3分", AppStringsZh.taskList.bonusPointsLabel(3))
         assertEquals("Reward +3 points", AppStringsEn.taskList.bonusPointsLabel(3))
+        // W3 卡内预得分值（指令 §3.3.2-3 新写文案；闸门表侧单边已登记）
+        assertEquals("打卡预得 +5分（需审批）", AppStringsZh.taskList.expectedPointsLabel(5))
+        assertEquals("Check in to earn +5 points (pending approval)", AppStringsEn.taskList.expectedPointsLabel(5))
+        // 终审 I-1（指令 §3.3.2-4）撤销二度确认对话框正文（新写文案；闸门表侧单边已登记）
+        assertEquals(
+            "确定要撤销「每日阅读」的打卡吗？已发放的积分会被扣回。",
+            AppStringsZh.taskList.revertConfirmMessage("每日阅读"),
+        )
+        assertEquals(
+            "Undo the check-in for Daily reading? Points already awarded will be removed.",
+            AppStringsEn.taskList.revertConfirmMessage("Daily reading"),
+        )
     }
 
     /**
@@ -605,6 +619,9 @@ class StringsCopyTest {
         assertEquals("+1分", AppStringsZh.taskList.pointsEarnedLabel(1))
         assertEquals("奖励+1分", AppStringsZh.taskList.bonusPointsLabel(1))
         assertEquals("✅ 打卡成功！+1分待家长审核", AppStringsZh.taskList.checkInSuccessMessage(1))
+        // W3 expectedPointsLabel（指令 §3.3.2-3）：英文 1 分单数、中文同形
+        assertEquals("Check in to earn +1 point (pending approval)", AppStringsEn.taskList.expectedPointsLabel(1))
+        assertEquals("打卡预得 +1分（需审批）", AppStringsZh.taskList.expectedPointsLabel(1))
     }
 
     /**
@@ -1449,6 +1466,9 @@ class StringsCopyTest {
             zh.encouragementKickoff to en.encouragementKickoff,
             zh.todayCheckinTitle to en.todayCheckinTitle,
             zh.todayAllDoneBanner to en.todayAllDoneBanner,
+            // W3 M3 重设计（指令 §3.3.1-5）新增的两条 CTA 标题（表侧新写，闸门 DISCLOSED_RESIDUALS 已登记）
+            zh.ctaTodayMustDoTitle to en.ctaTodayMustDoTitle,
+            zh.ctaStartFocusTitle to en.ctaStartFocusTitle,
             zh.difficultyChallengeLevel to en.difficultyChallengeLevel,
             zh.difficultyAdvancedLevel to en.difficultyAdvancedLevel,
             zh.difficultyNormalLevel to en.difficultyNormalLevel,
@@ -1577,6 +1597,11 @@ class StringsCopyTest {
         assertEquals("⏳ 2 requests waiting for parent approval (+12 points, counted once approved)",
             en.pendingApprovalSummary(2, 12))
 
+        // W3 待审进度胶囊（指令 §3.3.1-3 新写文案；详情展开仍用上面的 pendingApprovalSummary）
+        assertEquals("⏳ 2 个打卡正在等家长盖章 (+12分)", zh.pendingApprovalCapsule(2, 12))
+        assertEquals("⏳ 2 check-ins waiting for parent approval (+12 points)",
+            en.pendingApprovalCapsule(2, 12))
+
         assertEquals("✅ 数学作业 +5分", zh.approvedRequestLine("数学作业", 5))
         assertEquals("✅ 数学作业 +5 points", en.approvedRequestLine("数学作业", 5))
 
@@ -1630,6 +1655,8 @@ class StringsCopyTest {
         assertEquals("1 mistake to review today", en.mistakesDueTitle(1))
         assertEquals("⏳ 1 request waiting for parent approval (+1 point, counted once approved)",
             en.pendingApprovalSummary(1, 1))
+        assertEquals("⏳ 1 check-in waiting for parent approval (+1 point)", en.pendingApprovalCapsule(1, 1))
+        assertEquals("⏳ 1 个打卡正在等家长盖章 (+1分)", zh.pendingApprovalCapsule(1, 1))
         assertEquals("✅ 数学作业 +1 point", en.approvedRequestLine("数学作业", 1))
         assertEquals("1 day in a row — what a streak!", en.streakMilestoneTitle(1))
         assertEquals("Milestone reached — claim your +1 point reward!", en.streakMilestoneBonusNote(1))
@@ -1740,6 +1767,9 @@ class StringsCopyTest {
             zh.weeklyChallengeClaimedNote to en.weeklyChallengeClaimedNote,
             zh.parentAssignmentsTitle to en.parentAssignmentsTitle,
             zh.affordableRewardsNote(2) to en.affordableRewardsNote(2),
+            // W3 新增 CTA 两卡：行首 emoji（🎯/🍅）必须留在表内且两表一致（Ruling 17）
+            zh.ctaTodayMustDoTitle to en.ctaTodayMustDoTitle,
+            zh.ctaStartFocusTitle to en.ctaStartFocusTitle,
         ).forEach { (chinese, english) ->
             assertEquals(chinese.substringBefore(' '), english.substringBefore(' '), "行首 emoji 应两表一致")
         }
@@ -1823,6 +1853,14 @@ class StringsCopyTest {
             zh.setupWishAction to en.setupWishAction,
             zh.setupScheduleMissing to en.setupScheduleMissing,
             zh.setupScheduleAction to en.setupScheduleAction,
+            // v3.3 W4 §3.3.5 三层驾驶舱：待办横幅 + Daily Pulse 新指标标签 + 三个分组标题
+            zh.urgentBarTitle to en.urgentBarTitle,
+            zh.urgentProcessButton to en.urgentProcessButton,
+            zh.overviewFocusDuration to en.overviewFocusDuration,
+            zh.overviewMistakesDue to en.overviewMistakesDue,
+            zh.groupDailyTitle to en.groupDailyTitle,
+            zh.groupStudyTitle to en.groupStudyTitle,
+            zh.groupAdvancedTitle to en.groupAdvancedTitle,
         )
         // 三个"去 X"按钮英文必须互不相同：它们同屏并排出现，同译会把四个入口念成同一个动作。
         assertDiffers(
@@ -1857,6 +1895,8 @@ class StringsCopyTest {
             zh.comparePointsLabel to en.comparePointsLabel,
             zh.trendTitle to en.trendTitle,
             zh.noDataLabel to en.noDataLabel,
+            zh.trendSettledLegend to en.trendSettledLegend,
+            zh.trendPendingLegend to en.trendPendingLegend,
             zh.categoryTitle to en.categoryTitle,
             zh.categoryBasicLabel to en.categoryBasicLabel,
             zh.categoryEnhanceLabel to en.categoryEnhanceLabel,
@@ -1872,6 +1912,11 @@ class StringsCopyTest {
         // 四条趋势判词必须互不相同（同一个 when 的四支，两支同值就等于少了一档反馈）
         assertEquals(4, listOf(zh.verdictNewStart, zh.verdictImproved, zh.verdictLevel, zh.verdictDeclined).distinct().size)
         assertEquals(4, listOf(en.verdictNewStart, en.verdictImproved, en.verdictLevel, en.verdictDeclined).distinct().size)
+        // v3.3 W5 §3.4-报表2：趋势图"已结算 / 待审预估"双线图例两语逐字钉死
+        assertEquals("已结算", zh.trendSettledLegend)
+        assertEquals("待审预估", zh.trendPendingLegend)
+        assertEquals("Settled", en.trendSettledLegend)
+        assertEquals("Pending est.", en.trendPendingLegend)
         // Ruling 34 携带项 1：§11"数据看板 = Data dashboard"那行声称本测试保证"菜单入口名与页面顶栏名
         // 同词形"，但跨表比较原本并不存在，这里补上（两行、两侧都查）。
         // 形状与 brief 给的写法**方向相反**，以代码为准：带 emoji 的是**页面顶栏**
@@ -1928,6 +1973,20 @@ class StringsCopyTest {
         assertEquals("Reward store set up (3)", en.setupRewardsConfigured(3))
         assertEquals("Wish Pool set up (2)", en.setupWishConfigured(2))
         assertEquals("Daily schedule set up (5)", en.setupScheduleConfigured(5))
+
+        // v3.3 W4 §3.3.5 待办横幅三条（ZH 不分支只换数字；EN 覆盖 1/other 两支）
+        assertEquals("3 条积分申请待批", zh.urgentTodoApprovals(3))
+        assertEquals("1 条积分申请待批", zh.urgentTodoApprovals(1))
+        assertEquals("2 张证明待审", zh.urgentTodoProofs(2))
+        assertEquals("1 张证明待审", zh.urgentTodoProofs(1))
+        assertEquals("3 条积分申请待批，2 张证明待审", zh.urgentTodoBoth(3, 2))
+        assertEquals("1 条积分申请待批，1 张证明待审", zh.urgentTodoBoth(1, 1))
+        assertEquals("3 point requests await approval", en.urgentTodoApprovals(3))
+        assertEquals("1 point request awaits approval", en.urgentTodoApprovals(1))
+        assertEquals("2 proofs await review", en.urgentTodoProofs(2))
+        assertEquals("1 proof awaits review", en.urgentTodoProofs(1))
+        assertEquals("3 point requests and 2 proofs await review", en.urgentTodoBoth(3, 2))
+        assertEquals("1 point request and 1 proof await review", en.urgentTodoBoth(1, 1))
     }
 
     /**

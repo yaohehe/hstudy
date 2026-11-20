@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
 import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,10 +96,16 @@ fun ParentMistakeReviewScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("$subjectEmoji $subjectName", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(80.dp))
+                                        val animatedRatio by androidx.compose.animation.core.animateFloatAsState(
+                                            targetValue = ratio,
+                                            animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f),
+                                            label = "subjectDistribution"
+                                        )
                                         LinearProgressIndicator(
-                                            progress = ratio,
-                                            modifier = Modifier.weight(1f).height(8.dp),
-                                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                            progress = animatedRatio,
+                                            modifier = Modifier.weight(1f).height(8.dp)
+                                                .clip(MaterialTheme.shapes.small),
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("$count", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(30.dp))

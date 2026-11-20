@@ -12,6 +12,7 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ fun ChildWishGoalScreen(
                 windowSizeClass = windowSizeClass,
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                Column(modifier = Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     // 说明卡片
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -182,7 +183,7 @@ private fun WishGoalCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (isPrimary) 4.dp else 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isPrimary) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant
+                else MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -212,11 +213,12 @@ private fun WishGoalCard(
             }
 
             // 进度条 + 里程碑刻度（25/50/75%，把大目标拆成小里程碑）
-            Box(modifier = Modifier.fillMaxWidth().height(12.dp)) {
+            // 指令 3.4-心愿2：M3 宽轨药丸指示器（16dp 高 + CircleShape 圆轨，动画沿用既有 tween800）
+            Box(modifier = Modifier.fillMaxWidth().height(16.dp)) {
                 LinearProgressIndicator(
                     progress = animatedProgress,
-                    modifier = Modifier.fillMaxWidth().height(12.dp),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    modifier = Modifier.fillMaxWidth().height(16.dp).clip(CircleShape),
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 )
                 listOf(0.25f, 0.5f, 0.75f).forEach { fraction ->
                     Box(
@@ -263,10 +265,10 @@ private fun WishGoalCard(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            // 存入按钮
+            // 存入按钮（儿童端主操作 ≥56dp 触控高度，§3.2.3）
             Button(
                 onClick = onDeposit,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 enabled = currentPoints > 0
             ) {
                 Text(strings.depositButton(currentPoints))

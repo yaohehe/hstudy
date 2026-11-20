@@ -100,6 +100,10 @@ class MistakeCopyTest {
         assertEquals("Mastered: 7", en.masteredBadge(7))
         assertEquals("📖 复习完成！+3分已提交家长审核 明天复习", zh.reviewSuccessMessage("明天复习"))
         assertEquals("📖 Review complete! +3 points submitted for parent approval. Review tomorrow", en.reviewSuccessMessage("Review tomorrow"))
+        // P0-01 快捷复习 pending 文案（规则 6「仅复习 +1」走统一审批后的 §五 形态）：两语逐字钉死
+        assertEquals("📖 复习完成！+1分待家长审核 明天复习", zh.reviewPendingMessage(1, "明天复习"))
+        assertEquals("📖 Review complete! +1 point pending parent approval. Review tomorrow", en.reviewPendingMessage(1, "Review tomorrow"))
+        assertEquals("📖 Review complete! +3 points pending parent approval. Review tomorrow", en.reviewPendingMessage(3, "Review tomorrow"))
         assertEquals("连续复习 6 天", zh.streakTitle(6))
         assertEquals("Review streak: 6 days", en.streakTitle(6))
         assertEquals("Review streak: 1 day", en.streakTitle(1))
@@ -182,6 +186,14 @@ class MistakeCopyTest {
         assertEquals("11-10 +1 point", en.reviewHistoryLine("11-10", 1))
         assertEquals("确定要删除「分数计算」吗？删除后不可恢复。", zh.deleteDialogText("分数计算"))
         assertEquals("Delete “分数计算”? This cannot be undone.", en.deleteDialogText("分数计算"))
+        // P0-01 复习/举一反三 pending 文案（§五「+N 分待家长审核」形态）：两语逐字钉死；
+        // 英文 one/other 由 pointsWord 承担（+1 point / +3 points 各钉一条）。
+        assertEquals("🎉 做对了！+3分待家长审核", zh.gotItPendingMessage(3))
+        assertEquals("🎉 Right! +3 points pending parent approval", en.gotItPendingMessage(3))
+        assertEquals("💪 +1分待家长审核，多复习几次就记住了", zh.missedPendingMessage(1))
+        assertEquals("💪 +1 point pending parent approval — review it a few more times and it will stick", en.missedPendingMessage(1))
+        assertEquals("💡 举一反三完成 +3分待家长审核", zh.variationPendingMessage(3))
+        assertEquals("💡 Variation complete — +3 points pending parent approval", en.variationPendingMessage(3))
         // 15 条举一反三引导问题：逐表逐项钉死
         assertEquals(3, zh.variationPromptsMath.size)
         assertEquals(

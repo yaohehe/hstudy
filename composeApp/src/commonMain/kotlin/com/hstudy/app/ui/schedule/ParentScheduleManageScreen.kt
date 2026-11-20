@@ -183,8 +183,8 @@ private fun ScheduleManageCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (schedule.isEnabled) MaterialTheme.colorScheme.surfaceVariant
-                else MaterialTheme.colorScheme.surface
+            containerColor = if (schedule.isEnabled) MaterialTheme.colorScheme.surfaceContainer
+                else MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
         Row(

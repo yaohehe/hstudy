@@ -199,6 +199,10 @@ class WishCopyTest {
         assertEquals("当前余额 300 分", zh.balanceSub(300))
         assertEquals("Current balance: 300 points", en.balanceSub(300))
         assertEquals("Current balance: 1 point", en.balanceSub(1))
+        // v3.3 W5 §3.4-报表2：已结算余额 + 待审积分预估副标，两语逐字钉死（EN 含 pointsWord 单复数）
+        assertEquals("当前余额 300 分 · 另有 12 分待家长确认", zh.balanceSubPending(300, 12))
+        assertEquals("Current balance: 300 points · plus 12 points awaiting parent approval", en.balanceSubPending(300, 12))
+        assertEquals("Current balance: 1 point · plus 1 point awaiting parent approval", en.balanceSubPending(1, 1))
         assertEquals("1 天", zh.streakValue(1))
         assertEquals("3 天", zh.streakValue(3))
         assertEquals("1 day", en.streakValue(1))

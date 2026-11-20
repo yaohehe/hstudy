@@ -187,10 +187,39 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**v3.2.0 复算**，改登记时必须同时改这里）：表里现在 **184 条**
-# （9 条双侧成对 + 155 条只看页面 + 20 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **178** 条默认组用不到；`--branch` 组碰到 **184 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**终审修复复算**，改登记时必须同时改这里）：表里现在 **238 条**
+# （9 条双侧成对 + 158 条只看页面 + 71 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **232** 条默认组用不到；`--branch` 组碰到 **238 条**、**0** 条"（未用到）"。
 # v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
+# v3.3 W1（Antigravity P0-01）在 184 条上新增错题 pending Snackbar 新写文案 5 条（表侧单边：
+# gotItPendingMessage / missedPendingMessage / variationPendingMessage / reviewPendingMessage /
+# reviewButton「复习+1」）+ 快捷复习旧徽标「复习+3」1 条页面单边 → 184 + 6 = 190（两个组读数实测如上）。
+# v3.3 W2（P1-02/P2-01/折叠项 D）在 190 条上新增表侧单边 9 条（ParentApprovalStrings 的
+# scoreCancelled/scoreRejected/scorePending/scoreRevoked/historyFilterUndone + ChildPointsStrings.
+# typePenalty + ParentPointsStrings.typePenalty + MistakeDetailStrings.gotItButton「(+3)」/
+# missedButton「(+1)」）+ 页面单边 2 条（自评按钮旧徽标「(+5)」「(+2)」）→ 190 + 11 = 201
+# （两个组读数实测如上：默认组仍 6/195，--branch 201 条、0 条未用到）。
+# v3.3 W3（M3 界面重设计 指令 §3.3.1/§3.3.2）在 201 条上新增表侧单边 4 条（ChildHomeStrings.
+# pendingApprovalCapsule/ctaTodayMustDoTitle/ctaStartFocusTitle + TaskListStrings.expectedPointsLabel，
+# 全部为重设计新写文案、两语由 StringsCopyTest 钉死）→ 201 + 4 = 205（两个组读数实测如上：
+# 默认组仍 6/199，--branch 205 条、0 条未用到）。
+# v3.3 W4（家长端 M3 重设计 指令 §3.3.3/§3.3.4/§3.3.5）在 205 条上新增表侧单边 28 条
+# （ParentApprovalStrings 8 条 typeChip* + 4 条看板/批量钮/对话框；ChildPointsStrings 6 条
+# balanceSubtitle/totalEarnedValue/sectionYesterday/sectionWeekEarlier/sectionHistory/tagCheckInUndo；
+# ParentHomeStrings 10 条待办横幅/新指标标签/分组标题。sectionToday=「今天」不新增——值已由
+# MistakeListStrings.forecastLabels 在表侧集合内，同值同译由 crossTableVocabularyPinned 钉死；
+# 家长端两页对 childPoints 新槽全部跨表消费，不重开同值槽）→ 205 + 28 = 233
+# （两个组读数实测如上：默认组仍 6/227，--branch 233 条、0 条未用到）。
+# v3.3 W5（其余 13 页 M3 统一升级 指令 §3.4）在 233 条上新增表侧单边 4 条
+# （ChildRewardStoreStrings.redeemSpendButton「消耗 ⟨$⟩ 积分」兑换钮；ParentDashboardStrings.
+# trendSettledLegend/trendPendingLegend 趋势图双图例；GrowthReportStrings.balanceSubPending
+# 已结算余额+待审预估副标。全部为重设计新写文案、两语由 pin 测试逐字钉死；旧 redeemButton/balanceSub
+# 保留不删，仍与迁移前原文配对）→ 233 + 4 = 237（两个组读数实测如上：默认组仍 6/231，
+# --branch 237 条、0 条未用到）。
+# 终审修复（I-1，指令 §3.3.2-4 撤销二度确认对话框）在 237 条上新增表侧单边 1 条
+# （TaskListStrings.revertConfirmMessage：对话框正文为全新写文案，迁移前页面无此对话框；
+# 标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton，三个槽均已登记、不重开同值槽）
+# → 237 + 1 = 238（两个组读数实测如上：默认组仍 6/232，--branch 238 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -783,6 +812,205 @@ DISCLOSED_RESIDUALS = [
                "「日程提醒」逐字节相同，两语由 W9CopyTest.alarmTitlePinned 钉死。"
                "W9 T3（L-19）：表侧限定到 ScheduleAlarmStrings.alarmTitle——这是这条兜底标题在表里的"
                "唯一槽，限定后其他表再写出同值不会被这条披露吞掉"},
+    # ---- v3.3 W1（Antigravity P0-01）：错题复习/举一反三 pending Snackbar 新写文案（表侧单边）----
+    # 这四条不是"搬运"而是**新写**：规则 6/7 走统一审批 checkIn 后，Snackbar 改为
+    # §五「+N 分待家长审核」形态（分值进实参位，镜像 TaskListStrings.checkInSuccessMessage）。
+    # 迁移前页面没有这些整串（旧文案是静态整串 +3/+1 已提交形态），所以只能登记成表侧单边；
+    # 两语整串由 MistakeCopyTest 的两组 InterpolatedCopyPins 钉死。旧四条静态字段
+    # （gotItMessage / missedMessage / variationDoneMessage / reviewSuccessMessage）**保留不删**，
+    # 仍与迁移前页面原文逐字节配对，不需要任何登记。
+    {"page": None, "table": "🎉 做对了！+%s分待家长审核" % VALUE,
+     "table_field": "MistakeDetailStrings.gotItPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（§五 +N分待家长审核 形态）：MistakeDetailStringsZh.gotItPendingMessage，"
+               "迁移前页面无此整串可比；两语由 MistakeCopyTest.mistakeDetailInterpolatedCopyPinsBothLanguages 钉死"},
+    {"page": None, "table": "💪 +%s分待家长审核，多复习几次就记住了" % VALUE,
+     "table_field": "MistakeDetailStrings.missedPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（同上）：MistakeDetailStringsZh.missedPendingMessage；钉死位置同上"},
+    {"page": None, "table": "💡 举一反三完成 +%s分待家长审核" % VALUE,
+     "table_field": "MistakeDetailStrings.variationPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（规则 7 举一反三 +3 走审批）：MistakeDetailStringsZh.variationPendingMessage；钉死位置同上"},
+    {"page": None, "table": "📖 复习完成！+%s分待家长审核 %s" % (VALUE, VALUE),
+     "table_field": "MistakeListStrings.reviewPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（快捷复习=间隔复习，规则 6 仅复习 +1）："
+               "MistakeListStringsZh.reviewPendingMessage；两语由 "
+               "MistakeCopyTest.mistakeListInterpolatedCopyPinsBothLanguages 钉死。"
+               "旧 reviewSuccessMessage（表侧静态整串）与迁移前页面原文照常配对，不受本条影响"},
+    # 快捷复习分值按规则 6 从「+3」（旧失控直提分值）改为「+1」，按钮徽标同步改词：
+    # 表侧新值「复习+1」迁移前页面没有原文可比（表侧单边），页面旧值「复习+3」在
+    # W1_REV 的 ChildMistakeListScreen 里确有原文、但表侧已不再持有（页面单边）。
+    {"page": None, "table": "复习+1", "table_field": "MistakeListStrings.reviewButton",
+     "reason": "v3.3 W1 P0-01：快捷复习按规则 6「仅复习 +1」发放待审积分，reviewButton 徽标随之改为「复习+1」；"
+               "该值在迁移前页面不存在（旧值是「复习+3」，见下面那条页面单边登记）"},
+    {"page": "复习+3", "table": None,
+     "reason": "v3.3 W1 P0-01：W1_REV（4d28c8e）ChildMistakeListScreen 的快捷复习按钮原文「复习+3」——"
+               "旧分值来自绕过 bizKey 的直提 submitApproval（指令 P0-01 点名的失控链路），"
+               "现表侧 reviewButton 已改为「复习+1」，这条页面原文不再有表侧出处，按页面单边披露"},
+    # ---- v3.3 W2（Antigravity P1-02 / P2-01 / 控制器折叠项 D）----
+    # 错题详情页自评按钮徽标分值按规则 6 修正：(+5)/(+2) 是绕过审批的旧失控分值，
+    # 现与 reviewMistake 实发分值一致改为 (+3)/(+1)。表侧新值与页面旧值各成单边，
+    # 形态与上面「复习+1 / 复习+3」那一对完全同型（W2 折叠项 D）。
+    {"page": None, "table": "✅ 做对了 (+3)", "table_field": "MistakeDetailStrings.gotItButton",
+     "reason": "v3.3 W2 折叠项 D：规则 6 做对 +3（W1 P0-01 已接 checkIn，points=3），"
+               "gotItButton 徽标随之改为「(+3)」；该值在迁移前页面不存在（旧值是「(+5)」，见下面页面单边登记）"},
+    {"page": None, "table": "❌ 没记住 (+1)", "table_field": "MistakeDetailStrings.missedButton",
+     "reason": "v3.3 W2 折叠项 D：规则 6 没记住按仅复习 +1（points=1），missedButton 徽标随之改为「(+1)」；"
+               "该值在迁移前页面不存在（旧值是「(+2)」，见下面页面单边登记）"},
+    {"page": "✅ 做对了 (+5)", "table": None,
+     "reason": "v3.3 W2 折叠项 D：W1_REV（4d28c8e）ChildMistakeDetailScreen 自评按钮原文「✅ 做对了 (+5)」——"
+               "(+5) 是绕过 bizKey 直提审批的失控分值残留，表侧已改为「(+3)」，按页面单边披露"},
+    {"page": "❌ 没记住 (+2)", "table": None,
+     "reason": "v3.3 W2 折叠项 D：同上，旧原文「❌ 没记住 (+2)」，表侧已改为「(+1)」，按页面单边披露"},
+    # P1-02（指令【P1-02】/§四 状态机/§五 家长端历史口径）：历史卡分值语义 + 二级筛选新写文案。
+    # 这些不是搬运而是**新写**：迁移前 ParentApprovalScreen 历史卡只有 `"+N"`（无汉字、不入集合）
+    # 与逐态状态词（已按 W3 双边登记配对），所以全部登记表侧单边；两语由
+    # ParentPointsCopyTest.parentApprovalCopyDiffers/…InterpolatedCopyPinsBothLanguages 钉死。
+    {"page": None, "table": "0 (打卡已取消)", "table_field": "ParentApprovalStrings.scoreCancelled",
+     "reason": "v3.3 W2 P1-02 新写文案：CANCELLED（未审批撤销，从未计分）的历史卡分值语义，§四 口径；"
+               "迁移前页面无此整串（旧代码对所有非 APPROVED 一律红色 +N，正是指令点名的误导展示）"},
+    {"page": None, "table": "0 (已拒绝)", "table_field": "ParentApprovalStrings.scoreRejected",
+     "reason": "v3.3 W2 P1-02 新写文案：REJECTED（不计分）的历史卡分值语义；同上，迁移前页面无原文可比"},
+    {"page": None, "table": "+%s (待审)" % VALUE, "table_field": "ParentApprovalStrings.scorePending",
+     "reason": "v3.3 W2 P1-02 新写文案：PENDING（不计入余额、仅展示）的历史卡分值语义（函数型字段，"
+               "分值进实参位）；正常历史列表不含 PENDING，穷举 when 分支展示用"},
+    {"page": None, "table": "-%s (已扣回)" % VALUE, "table_field": "ParentApprovalStrings.scoreRevoked",
+     "reason": "v3.3 W2 P1-02 新写文案：REVOKED（审批后撤销，REVERSAL 已扣回、净额 0）的历史卡分值语义；"
+               "撤销扣回词面与 TaskListStrings.revertedClawedBackMessage 的「扣回 N 分」对齐"},
+    {"page": None, "table": "撤销与取消", "table_field": "ParentApprovalStrings.historyFilterUndone",
+     "reason": "v3.3 W2 P1-02 新写文案：历史二级筛选钮（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）；"
+               "「全部/已通过/已拒绝」复用 TaskListStrings.filterAll 与 statusApproved/statusRejected（已配对）。"
+               "QA C6 修正：原值「已撤销」与 statusRevoked「已撤销（积分已扣回）」同族碰撞，改为「撤销与取消」"},
+    # P2-01（指令【P2-01】/规则 16）：PointRecordType.PENALTY 的类型标签（两页各一槽，不同值）。
+    {"page": None, "table": "未完成扣分", "table_field": "ChildPointsStrings.typePenalty",
+     "reason": "v3.3 W2 P2-01 新写文案：孩子端积分明细页 PENALTY 类型标签（note 为空时回退显示）；"
+               "迁移前页面没有 PENALTY 分支（旧扣分走 ADJUSTMENT），无页面原文可比"},
+    {"page": None, "table": "⚠️ 未完成扣分", "table_field": "ParentPointsStrings.typePenalty",
+     "reason": "v3.3 W2 P2-01 新写文案：家长端积分记录卡 PENALTY 类型标签（本表 type* 槽带 emoji 前缀的既有风格）；"
+               "与孩子端 ChildPointsStrings.typePenalty 是**两个值**（差 ⚠️ 前缀），沿两表 type* 不跨表复用先例"},
+    # ---- v3.3 W3（M3 界面重设计 指令 §3.3.1/§3.3.2）：孩子首页/任务打卡页新写文案（表侧单边）----
+    # 这四条是重设计的**新写**词面，迁移前页面无对应原文可比；两语由 StringsCopyTest 的
+    # childHomeCopyDiffers / childHomeInterpolatedCopyPinsBothLanguages / taskListInterpolatedCopyPinsBothLanguages
+    # / taskListEnglishPluralsCoverOneAndOther 逐字钉死（视觉重设计不动任何旧配对字段）。
+    {"page": None, "table": "⏳ %s 个打卡正在等家长盖章 (+%s分)" % (VALUE, VALUE),
+     "table_field": "ChildHomeStrings.pendingApprovalCapsule",
+     "reason": "v3.3 W3 §3.3.1-3 新写文案：待审进度胶囊（AssistChip 形态，Hero 正下方）。详情展开仍渲染"
+               "pendingApprovalSummary + approved/rejected 行（均已与迁移前原文配对，信息不删减）；"
+               "胶囊整串在迁移前页面不存在，两语由 childHomeInterpolatedCopyPinsBothLanguages 钉死"},
+    {"page": None, "table": "🎯 今日必做", "table_field": "ChildHomeStrings.ctaTodayMustDoTitle",
+     "reason": "v3.3 W3 §3.3.1-5 新写文案：CTA 快捷行动卡「今日必做」标题（副标题复用 entryStartCheckinSubtitle、"
+               "导航目标 Screen.ChildTaskList 与 4 步引导既有入口一致，不删任何导航点）；ZH≠EN 由 childHomeCopyDiffers 钉死"},
+    {"page": None, "table": "🍅 开始专注", "table_field": "ChildHomeStrings.ctaStartFocusTitle",
+     "reason": "v3.3 W3 §3.3.1-5 新写文案：CTA 快捷行动卡「开始专注」标题（副标题复用 entryPomodoroSubtitle，"
+               "导航目标 Screen.ChildPomodoro 同上）；ZH≠EN 由 childHomeCopyDiffers 钉死"},
+    {"page": None, "table": "打卡预得 +%s分（需审批）" % VALUE,
+     "table_field": "TaskListStrings.expectedPointsLabel",
+     "reason": "v3.3 W3 §3.3.2-3 新写文案：任务卡内预得分值（指令要求「打卡预得 +N 分（需审批）」，避免误读为立即加分）。"
+               "旧 pointsEarnedLabel（`+⟨$⟩分`）**保留不删**——它仍与 Task9 迁移前 ChildHomeScreen 的 `+N分` 原文配对，"
+               "首页布置任务卡继续用；本条两语+英文单复数由 taskListInterpolatedCopyPinsBothLanguages / "
+               "taskListEnglishPluralsCoverOneAndOther 钉死"},
+    # ---- v3.3 W4（家长端 M3 重设计 指令 §3.3.3/§3.3.4/§3.3.5）：审批看板/积分账本/家长驾驶舱新写文案 ----
+    # 以下 28 条都是重设计的**新写**词面（迁移前页面无对应原文），两语由
+    # ParentPointsCopyTest（parentApprovalCopyDiffers / parentApprovalInterpolatedCopyPinsBothLanguages /
+    # crossTableVocabularyPinned）、ChildRewardStoreCopyTest（childPointsCopyDiffers /
+    # childPointsInterpolatedCopyPinsBothLanguages）、StringsCopyTest（parentHomeCopyDiffers /
+    # parentHomeInterpolatedCopyPinsBothLanguages）逐字钉死；旧配对字段一律保留不动。
+    {"page": None, "table": "每日任务", "table_field": "ParentApprovalStrings.typeChipTask",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：ApprovalCard 头部业务类型 SuggestionChip（actionType=TASK_COMPLETE）。"
+               "八条 typeChip* 两两互不相同（中文/英文 distinct=8 由 parentApprovalCopyDiffers 断言）"},
+    {"page": None, "table": "习惯打卡", "table_field": "ParentApprovalStrings.typeChipHabit",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：HABIT_CHECKIN 业务 chip。刻意与 ChildHomeStrings.entryHabitChallengeTitle"
+               "「习惯挑战」**不同值**（不重开同值槽），词面对准提交侧 actionType=HABIT_CHECKIN 的打卡语义"},
+    {"page": None, "table": "家长布置", "table_field": "ParentApprovalStrings.typeChipAssignment",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：ASSIGNMENT 业务 chip"},
+    {"page": None, "table": "每日目标", "table_field": "ParentApprovalStrings.typeChipTarget",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：DAILY_TARGET 业务 chip"},
+    {"page": None, "table": "错题复习", "table_field": "ParentApprovalStrings.typeChipMistake",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：MISTAKE_REVIEW 业务 chip"},
+    {"page": None, "table": "专注番茄钟", "table_field": "ParentApprovalStrings.typeChipFocus",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：FOCUS_COMPLETE 业务 chip"},
+    {"page": None, "table": "一题多解", "table_field": "ParentApprovalStrings.typeChipVariation",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：VARIATION 业务 chip"},
+    {"page": None, "table": "学习打卡", "table_field": "ParentApprovalStrings.typeChipOther",
+     "reason": "v3.3 W4 §3.3.3-2 新写文案：未知 actionType 的兜底业务 chip（when else 支）"},
+    {"page": None, "table": "待审总笔数：%s 笔" % VALUE, "table_field": "ParentApprovalStrings.pendingCountLabel",
+     "reason": "v3.3 W4 §3.3.3-1 新写文案：Tab 下方待审资产看板「待审总笔数」行，N 直接来自 pendingApprovals.size"
+               "（既有 getAllApprovals 流，不新增查询）；两语由 parentApprovalInterpolatedCopyPinsBothLanguages 钉死"},
+    {"page": None, "table": "待发放总积分：+%s 分" % VALUE, "table_field": "ParentApprovalStrings.pendingPointsLabel",
+     "reason": "v3.3 W4 §3.3.3-1 新写文案：看板「待发放总积分」行，M=sumOf requestedPoints（同上，不新增查询）"},
+    {"page": None, "table": "全部通过 (+%s分)" % VALUE, "table_field": "ParentApprovalStrings.approveAllPointsButton",
+     "reason": "v3.3 W4 §3.3.3-1 新写文案：看板批量钮（指令词面「全部通过 (+M分)」）。旧 approveAllButton「全部通过」"
+               "**保留不删**——它仍与迁移前顶栏原文配对，并继续做对话框标题；埋点 APPROVAL_ACTION 三调用点计数不变"},
+    {"page": None, "table": "确认一次通过全部 %s 笔申请，共发放 +%s 分？" % (VALUE, VALUE),
+     "table_field": "ParentApprovalStrings.approveAllDialogMessage",
+     "reason": "v3.3 W4 §3.3.3-1 新写文案：批量确认对话框正文（两个实参进位，沿 W1 双值登记写法）；"
+               "确认/取消钮复用 CommonStrings.confirmButton/cancelButton（双边已配对）"},
+    {"page": None, "table": "当前可用积分", "table_field": "ChildPointsStrings.balanceSubtitle",
+     "reason": "v3.3 W4 §3.3.4-1 新写文案：资产看板余额副标。与 ChildWishGoalStrings 长串「当前可用积分：…」是两个值"
+               "（整串不同形，不构成遮蔽）；家长端 ParentPointsScreen 跨表消费本槽（同一中文值一个英文出处）"},
+    {"page": None, "table": "🌟 累计获得 %s 分" % VALUE, "table_field": "ChildPointsStrings.totalEarnedValue",
+     "reason": "v3.3 W4 §3.3.4-1 新写文案：🌟 累计获得行（账本正分合计，只读展示不参与余额判等）；"
+               "EN 取 Total 词形（Ruling 44「累计 = Total」）；两语由 childPointsInterpolatedCopyPinsBothLanguages 钉死"},
+    {"page": None, "table": "昨天", "table_field": "ChildPointsStrings.sectionYesterday",
+     "reason": "v3.3 W4 §3.3.4-2 新写文案：时间轴分组标题（两页共用，ParentPointsScreen 跨表消费）"},
+    {"page": None, "table": "本周更早", "table_field": "ChildPointsStrings.sectionWeekEarlier",
+     "reason": "v3.3 W4 §3.3.4-2 新写文案：时间轴分组标题（近 7 天滚动窗，与 pointRecordSection 分桶口径一致）"},
+    {"page": None, "table": "🕰️ 历史记录", "table_field": "ChildPointsStrings.sectionHistory",
+     "reason": "v3.3 W4 §3.3.4-2 新写文案：时间轴分组标题。带 🕰️ 前缀与 ParentApprovalStrings.historyTab「历史记录」"
+               "刻意做成**两个值**（不重开同值槽，沿 typePenalty 差前缀先例）；行首 emoji 两表一致（Ruling 17）。"
+               "同组 sectionToday=「今天」不登记——该值已由 MistakeListStrings.forecastLabels 首元素在表侧集合内"
+               "（集合相等比较不重开槽），同值同译由 crossTableVocabularyPinned 钉死"},
+    {"page": None, "table": "打卡撤销", "table_field": "ChildPointsStrings.tagCheckInUndo",
+     "reason": "v3.3 W4 §3.3.4-3 新写文案：REVERSAL 条目 [打卡撤销] 小标签词面（方括号为页面装饰不入表）；"
+               "PENALTY 的 [未完成扣分] 沿用 W2 typePenalty 不新建；家长端 PointRecordCard 跨表消费本槽"},
+    {"page": None, "table": "🔔 待办提醒", "table_field": "ParentHomeStrings.urgentBarTitle",
+     "reason": "v3.3 W4 §3.3.5-1 新写文案：第 1 层紧急待办横幅标题（counts 走本页既有 getPendingCount/"
+               "getPendingProofCount 流）；行首 emoji 两表一致（Ruling 17）"},
+    {"page": None, "table": "立即处理", "table_field": "ParentHomeStrings.urgentProcessButton",
+     "reason": "v3.3 W4 §3.3.5-1 新写文案：横幅「立即处理」钮（直达 Screen.ParentApproval 既有路由）"},
+    {"page": None, "table": "%s 条积分申请待批" % VALUE, "table_field": "ParentHomeStrings.urgentTodoApprovals",
+     "reason": "v3.3 W4 §3.3.5-1 新写文案：仅积分待审时的横幅正文；两语+单复数由 parentHome pin 测试钉死"},
+    {"page": None, "table": "%s 张证明待审" % VALUE, "table_field": "ParentHomeStrings.urgentTodoProofs",
+     "reason": "v3.3 W4 §3.3.5-1 新写文案：仅证明待审时的横幅正文"},
+    {"page": None, "table": "%s 条积分申请待批，%s 张证明待审" % (VALUE, VALUE),
+     "table_field": "ParentHomeStrings.urgentTodoBoth",
+     "reason": "v3.3 W4 §3.3.5-1 新写文案：两类待办同屏时的合并正文（指令原句；两个实参进位）"},
+    {"page": None, "table": "专注时长", "table_field": "ParentHomeStrings.overviewFocusDuration",
+     "reason": "v3.3 W4 §3.3.5-2 新写文案：Daily Pulse 宫格「专注时长」指标标签（数值模板跨表复用 "
+               "ParentDashboardStrings.focusMinutesValue + common.minuteLabel，均已双边配对，本页不重开分钟槽）"},
+    {"page": None, "table": "待复习错题", "table_field": "ParentHomeStrings.overviewMistakesDue",
+     "reason": "v3.3 W4 §3.3.5-2 新写文案：Daily Pulse 宫格「待复习错题」指标标签（计数为 allMistakes × "
+               "SpacedRepetition.isDueForReview 内存过滤，与 ChildHome 同源，不新增查询）"},
+    {"page": None, "table": "日常任务与激励", "table_field": "ParentHomeStrings.groupDailyTitle",
+     "reason": "v3.3 W4 §3.3.5-3 新写文案：第 3 层分组标题 1（2x2 网格：任务管理/布置任务/积分管理/奖励商店）"},
+    {"page": None, "table": "学情追踪与辅导", "table_field": "ParentHomeStrings.groupStudyTitle",
+     "reason": "v3.3 W4 §3.3.5-3 新写文案：第 3 层分组标题 2（2x2 网格：错题分析/成长报告/辅导建议/每日日程）"},
+    {"page": None, "table": "高级与设置", "table_field": "ParentHomeStrings.groupAdvancedTitle",
+     "reason": "v3.3 W4 §3.3.5-3 新写文案：第 3 层横向快捷条标题（完成证明/积分审核/心愿目标/任务模板/数据大屏/周报/设置，"
+               "旧 15 卡导航目标 1:1 全保留）"},
+    # ---- v3.3 W5（其余 13 页 M3 统一升级 指令 §3.4）：商店消耗钮/趋势图例/待审预估副标新写文案 ----
+    # 以下 4 条都是重设计的新写词面（迁移前页面无对应原文），两语由 ChildRewardStoreCopyTest（redeemSpendButton）/
+    # StringsCopyTest.parentDashboardCopyDiffers（trend*Legend）/ WishCopyTest（balanceSubPending）逐字钉死；
+    # 旧配对字段一律保留不动。
+    {"page": None, "table": "消耗 %s 积分" % VALUE, "table_field": "ChildRewardStoreStrings.redeemSpendButton",
+     "reason": "v3.3 W5 §3.4-奖励1 新写文案：兑换网格卡钮显式成本提示「消耗 N 积分」（指令词面，原钮只有「兑换」）。"
+               "旧 redeemButton「兑换」**保留不删**——仍与迁移前 :304 按钮原文配对；EN 单复数由 pin 测试钉死"},
+    {"page": None, "table": "已结算", "table_field": "ParentDashboardStrings.trendSettledLegend",
+     "reason": "v3.3 W5 §3.4-报表2 新写文案：7 日趋势图实线图例（已入账记录流，与待审预估虚线分离）。"
+               "两语由 parentDashboardCopyDiffers 断言互异并逐字钉死"},
+    {"page": None, "table": "待审预估", "table_field": "ParentDashboardStrings.trendPendingLegend",
+     "reason": "v3.3 W5 §3.4-报表2 新写文案：7 日趋势图虚线图例（PENDING 审批单按 date 聚合 requestedPoints，"
+               "只读展示流，与 ParentApprovalScreen 同源查询，不新增写路径）"},
+    {"page": None, "table": "当前余额 %s 分 · 另有 %s 分待家长确认" % (VALUE, VALUE),
+     "table_field": "GrowthReportStrings.balanceSubPending",
+     "reason": "v3.3 W5 §3.4-报表2 新写文案：成长报告 🌟 行在有待审积分时的余额副标（已结算 vs 待审区分；"
+               "无待审时继续走旧 balanceSub，两语由 growthReportInterpolatedCopyPinsBothLanguages 钉死；"
+               "分享文本 reportText 不含该行，保持迁移前逐字节形态）"},
+    # ---- 终审修复（I-1，指令 §3.3.2-4）：任务卡撤销二度确认对话框新写文案（表侧单边）----
+    {"page": None, "table": "确定要撤销「%s」的打卡吗？已发放的积分会被扣回。" % VALUE,
+     "table_field": "TaskListStrings.revertConfirmMessage",
+     "reason": "终审 I-1 §3.3.2-4 新写文案：显式撤销钮的二度确认对话框正文（迁移前页面无此对话框、无原文可比）。"
+               "标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton（均已双边登记，不重开同值槽）；"
+               "字段命名走 revert… 前缀避开存储边界闸门 undo… sink 词根（W9 T1 先例）；"
+               "两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死"},
 ]
 
 

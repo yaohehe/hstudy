@@ -1,16 +1,18 @@
 package com.hstudy.app.ui.mistake
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
 import com.hstudy.app.ui.theme.WindowSizeClass
 import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
@@ -132,13 +134,14 @@ fun ChildMistakeListScreen(
     }
     val onReview: (MistakeEntity) -> Unit = { mistake ->
         scope.launch {
-            app.mistakeRepository.reviewMistake(mistake.id, points = 0, note = "间隔复习")
-            app.pointApprovalRepository.submitApproval("MISTAKE_REVIEW", "复习错题：${mistake.title}", 3)
+            // P0-01（规则 6：仅复习 +1，间隔复习无对错自评）：审批申请由 reviewMistake 内部走统一
+            // checkIn(bizKey=MISTAKE_REV:…) 登记，UI 不再直调 submitApproval（旧直提 +3 是失控分值）
+            app.mistakeRepository.reviewMistake(mistake.id, points = 1, note = "间隔复习")
             app.userPreferences.boostPetMood(2)
             com.hstudy.app.ui.common.AchievementManager.evaluate(app)
             val updated = app.mistakeRepository.getMistakeById(mistake.id)
             val nextLabel = updated?.let { SpacedRepetition.nextReviewLabel(it, displayLanguage) } ?: ""
-            snackbarHostState.showSnackbar(strings.reviewSuccessMessage(nextLabel))
+            snackbarHostState.showSnackbar(strings.reviewPendingMessage(1, nextLabel))
         }
     }
 
@@ -295,7 +298,7 @@ private fun StatusCardsPanel(
                 val reviewedDays = reviewCalendar.count { it }
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -316,7 +319,7 @@ private fun StatusCardsPanel(
                                                 .background(
                                                     if (reviewed) MaterialTheme.colorScheme.primary
                                                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                                                    RoundedCornerShape(3.dp)
+                                                    MaterialTheme.shapes.extraSmall
                                                 )
                                         )
                                     }
@@ -347,10 +350,16 @@ private fun StatusCardsPanel(
                             Text("$masteredCount/$total", style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
+                        // 掌握度进度：M3 弹簧动画 + shapes.small 8dp 圆角轨道（指令 3.4-错题2）
+                        val animatedMastery by animateFloatAsState(
+                            targetValue = progress,
+                            animationSpec = spring(dampingRatio = 0.75f),
+                            label = "masteryProgress"
+                        )
                         LinearProgressIndicator(
-                            progress = progress,
-                            modifier = Modifier.fillMaxWidth().height(10.dp),
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            progress = animatedMastery,
+                            modifier = Modifier.fillMaxWidth().height(10.dp).clip(MaterialTheme.shapes.small),
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                         if (nextMilestone != null) {
                             val need = nextMilestone.first - masteredCount
@@ -370,7 +379,7 @@ private fun StatusCardsPanel(
                 val forecastLabels = strings.forecastLabels
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(strings.forecastTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -383,7 +392,7 @@ private fun StatusCardsPanel(
                                         modifier = Modifier
                                             .width(14.dp)
                                             .height((count * 5 + 4).dp)
-                                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(3.dp))
+                                            .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall)
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(forecastLabels[index], style = MaterialTheme.typography.labelSmall,
@@ -445,7 +454,7 @@ private fun StatusCardsPanel(
             // ===== 每日复习提醒开关（让间隔复习真正落实到日常）=====
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -568,7 +577,7 @@ private fun MistakeListContent(
         }
     } else {
         ResponsiveContent(windowSizeClass = windowSizeClass, modifier = Modifier.fillMaxSize()) {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { Spacer(modifier = Modifier.height(4.dp)) }
                 items(filtered, key = { it.id }) { mistake ->
                     MistakeCard(
@@ -599,7 +608,7 @@ private fun MistakeCard(
         when {
             mistake.isMastered -> MaterialTheme.colorScheme.secondaryContainer
             isDue -> MaterialTheme.colorScheme.tertiaryContainer
-            else -> MaterialTheme.colorScheme.surface
+            else -> MaterialTheme.colorScheme.surfaceContainer
         },
         label = "bg"
     )
@@ -657,19 +666,25 @@ private fun MistakeCard(
                 // 掌握进度条（复习次数/5，达5次即巩固，让复习进度可视化）
                 if (!mistake.isMastered) {
                     Spacer(modifier = Modifier.height(6.dp))
+                    val animatedCardMastery by animateFloatAsState(
+                        targetValue = (mistake.reviewCount / 5f).coerceIn(0f, 1f),
+                        animationSpec = spring(dampingRatio = 0.75f),
+                        label = "cardMasteryProgress"
+                    )
                     LinearProgressIndicator(
-                        progress = (mistake.reviewCount / 5f).coerceIn(0f, 1f),
-                        modifier = Modifier.fillMaxWidth().height(4.dp),
+                        progress = animatedCardMastery,
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(MaterialTheme.shapes.small),
                         color = MaterialTheme.colorScheme.tertiary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                     )
                 }
             }
-            // 复习按钮（未掌握时显示）
+            // 复习按钮（未掌握时显示；触控高度 ≥48dp，§3.2.3）
             if (!mistake.isMastered) {
                 FilledTonalButton(
                     onClick = onReview,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) { Text(strings.reviewButton, style = MaterialTheme.typography.labelMedium) }
                 Spacer(modifier = Modifier.width(4.dp))
             }

@@ -42,6 +42,15 @@ package com.hstudy.app.i18n
  * 心愿存钱罐/许愿池 = Wish Pool、设备配对 = Pairing。本页新增词条（家长管理台 = Parent console、
  * 快速配置助手 = Quick setup assistant、完成证明 = Completion proofs、积分模板 = Points templates）
  * 已同步补进 §11。
+ *
+ * v3.3 W4（指令 §3.3.5 三层驾驶舱）新增 7 个静态 + 3 个函数型字段：
+ * [urgentBarTitle]/[urgentProcessButton]/[urgentTodoApprovals]/[urgentTodoProofs]/[urgentTodoBoth]
+ * 是第 1 层待办横幅（counts 来自本页既有 getPendingCount/getPendingProofCount 流）；
+ * [overviewFocusDuration]/[overviewMistakesDue] 是第 2 层 Daily Pulse 宫格新增的两个指标标签
+ * （打卡率/连续天数复用 [overviewCompletionRate]/[overviewStreak]，专注数值模板跨表复用
+ * [ParentDashboardStrings.focusMinutesValue]，不重开分钟槽）；
+ * [groupDailyTitle]/[groupStudyTitle]/[groupAdvancedTitle] 是第 3 层功能分组标题。
+ * 英文 one/other 分支写在函数体内（与 Ruling 20 例外同处置）。
  */
 data class ParentHomeStrings(
     // ===== 顶栏与孩子今日概览 =====
@@ -110,6 +119,20 @@ data class ParentHomeStrings(
     val setupScheduleConfigured: (count: Int) -> String,
     val setupScheduleMissing: String,
     val setupScheduleAction: String,
+
+    // ===== v3.3 W4 三层驾驶舱（指令 §3.3.5）=====
+    // 第 1 层紧急待办区：标题 + 两种单边待办句 + 双边合并句 + "立即处理"钮。
+    // 专注时长数值走 parentDashboard.focusMinutesValue（单位进实参位，common.minuteLabel），本页不重开分钟槽。
+    val urgentBarTitle: String,
+    val urgentProcessButton: String,
+    val overviewFocusDuration: String,
+    val overviewMistakesDue: String,
+    val groupDailyTitle: String,
+    val groupStudyTitle: String,
+    val groupAdvancedTitle: String,
+    val urgentTodoApprovals: (count: Int) -> String,
+    val urgentTodoProofs: (count: Int) -> String,
+    val urgentTodoBoth: (approvals: Int, proofs: Int) -> String,
 )
 
 val ParentHomeStringsZh = ParentHomeStrings(
@@ -179,6 +202,18 @@ val ParentHomeStringsZh = ParentHomeStrings(
     setupScheduleConfigured = { count -> "每日日程已配置（${count}项）" },        // :321
     setupScheduleMissing = "还没设置每日日程",                                 // :321
     setupScheduleAction = "去设置",                                          // :322
+
+    // ===== v3.3 W4 三层驾驶舱（指令 §3.3.5，全部新写文案）=====
+    urgentBarTitle = "🔔 待办提醒",
+    urgentProcessButton = "立即处理",
+    overviewFocusDuration = "专注时长",
+    overviewMistakesDue = "待复习错题",
+    groupDailyTitle = "日常任务与激励",
+    groupStudyTitle = "学情追踪与辅导",
+    groupAdvancedTitle = "高级与设置",
+    urgentTodoApprovals = { count -> "$count 条积分申请待批" },
+    urgentTodoProofs = { count -> "$count 张证明待审" },
+    urgentTodoBoth = { approvals, proofs -> "$approvals 条积分申请待批，$proofs 张证明待审" },
 )
 
 val ParentHomeStringsEn = ParentHomeStrings(
@@ -258,4 +293,25 @@ val ParentHomeStringsEn = ParentHomeStrings(
     setupScheduleConfigured = { count -> "Daily schedule set up ($count)" },
     setupScheduleMissing = "No daily schedule set yet",
     setupScheduleAction = "Set times",
+
+    // ===== v3.3 W4 three-layer cockpit (all-new redesign copy; EN plurals branch inside the fn bodies) =====
+    urgentBarTitle = "🔔 Needs your attention",
+    urgentProcessButton = "Handle now",
+    overviewFocusDuration = "Focus time",
+    overviewMistakesDue = "To review",
+    groupDailyTitle = "Daily tasks & rewards",
+    groupStudyTitle = "Learning tracking & coaching",
+    groupAdvancedTitle = "Advanced & settings",
+    urgentTodoApprovals = { count ->
+        if (count == 1) "1 point request awaits approval" else "$count point requests await approval"
+    },
+    urgentTodoProofs = { count ->
+        if (count == 1) "1 proof awaits review" else "$count proofs await review"
+    },
+    urgentTodoBoth = { approvals, proofs ->
+        val requestPart =
+            if (approvals == 1) "1 point request" else "$approvals point requests"
+        val proofPart = if (proofs == 1) "1 proof" else "$proofs proofs"
+        "$requestPart and $proofPart await review"
+    },
 )

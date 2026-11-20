@@ -1,8 +1,10 @@
 package com.hstudy.app.ui.parent
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import com.hstudy.app.ui.theme.WindowSizeClass
@@ -10,15 +12,18 @@ import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.data.local.entity.ApprovalStatus
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.data.local.entity.PointRecordType
@@ -26,6 +31,7 @@ import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.common.ResponsiveTwoColumn
+import com.hstudy.app.ui.theme.chartPalette
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
 
@@ -46,6 +52,8 @@ fun ParentDashboardScreen(
     val masteredCount by app.mistakeRepository.getMasteredCount().collectAsState(initial = 0)
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val totalFocusMin by app.focusRepository.getTotalFocusMinutes().collectAsState(initial = 0)
+    // §3.4-报表2：待审积分预估（只读展示流，与 ParentApprovalScreen 同源查询，不新增写路径）
+    val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
 
     // 孩子今日学习表现评分所需数据
     val todayStr = com.hstudy.app.data.repository.PointRepository.getTodayString()
@@ -88,6 +96,11 @@ fun ParentDashboardScreen(
             rDate == dateStr && r.points > 0
         }.sumOf { it.points }
     }
+    // 已结算 vs 待审预估（指令 3.4-报表2）：待审单按 date 归属日聚合 requestedPoints
+    val dailyPending = last7Days.map { dateStr ->
+        allApprovals.filter { it.status == ApprovalStatus.PENDING && it.date == dateStr }.sumOf { it.requestedPoints }
+    }
+    val hasPending = dailyPending.any { it > 0 }
 
     // 分类统计
     val basicTasks = tasks.count { it.category == TaskCategory.BASIC }
@@ -184,20 +197,22 @@ fun ParentDashboardScreen(
                         windowSizeClass = windowSizeClass,
                         leftWeight = 0.55f,
                         left = {
-                            // 7日积分趋势折线图
+                            // 7日积分趋势折线图（指令 3.4-报表：Chart Palette 取色 + 已结算/待审预估双趋势区分）
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(strings.trendTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    if (dailyEarned.all { it == 0 }) {
+                                    if (dailyEarned.all { it == 0 } && dailyPending.all { it == 0 }) {
                                         Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                                             Text(strings.noDataLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     } else {
-                                        val maxVal = dailyEarned.max().toFloat().coerceAtLeast(1f)
-                                        val lineColor = MaterialTheme.colorScheme.primary
-                                        val dotColor = MaterialTheme.colorScheme.tertiary
-                                        val gridColor = MaterialTheme.colorScheme.surfaceVariant
+                                        val palette = chartPalette()
+                                        val maxVal = (dailyEarned + dailyPending).max().toFloat().coerceAtLeast(1f)
+                                        val lineColor = palette.line
+                                        val dotColor = palette.dot
+                                        val gridColor = palette.grid
+                                        val pendingColor = palette.pending
                                         Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
                                             val chartW = size.width - 40f
                                             val chartH = size.height - 30f
@@ -219,6 +234,43 @@ fun ParentDashboardScreen(
                                                 val y = chartH - (value / maxVal * chartH)
                                                 drawCircle(color = dotColor, radius = 5f, center = Offset(x, y))
                                             }
+                                            // 待审预估：虚线弱化，明确"未入账"语义（与实线已结算趋势分离）
+                                            if (hasPending) {
+                                                val pendingPath = Path()
+                                                dailyPending.forEachIndexed { idx, value ->
+                                                    val x = startX + idx * stepX
+                                                    val y = chartH - (value / maxVal * chartH)
+                                                    if (idx == 0) pendingPath.moveTo(x, y) else pendingPath.lineTo(x, y)
+                                                }
+                                                drawPath(
+                                                    pendingPath,
+                                                    color = pendingColor,
+                                                    style = Stroke(
+                                                        width = 2f,
+                                                        cap = StrokeCap.Round,
+                                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Box(modifier = Modifier.size(8.dp).background(lineColor, CircleShape))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(strings.trendSettledLegend, style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            if (hasPending) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Box(modifier = Modifier.size(8.dp).background(pendingColor, CircleShape))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(strings.trendPendingLegend, style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text(last7Days.first().takeLast(5), style = MaterialTheme.typography.labelSmall)
@@ -234,9 +286,11 @@ fun ParentDashboardScreen(
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(strings.categoryTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    CategoryBar(strings.categoryBasicLabel, basicTasks, tasks.size, MaterialTheme.colorScheme.primary)
-                                    CategoryBar(strings.categoryEnhanceLabel, enhanceTasks, tasks.size, MaterialTheme.colorScheme.tertiary)
-                                    CategoryBar(strings.categoryHabitLabel, habitTasks, tasks.size, MaterialTheme.colorScheme.secondary)
+                                    // 分类分布走 chartPalette 系列色（指令 3.4-报表1）
+                                    val catPalette = chartPalette()
+                                    CategoryBar(strings.categoryBasicLabel, basicTasks, tasks.size, catPalette.series[0])
+                                    CategoryBar(strings.categoryEnhanceLabel, enhanceTasks, tasks.size, catPalette.series[1])
+                                    CategoryBar(strings.categoryHabitLabel, habitTasks, tasks.size, catPalette.series[2])
                                 }
                             }
                         }
@@ -296,6 +350,8 @@ fun ParentDashboardScreen(
                                     PointRecordType.ADJUSTMENT -> "🔧"
                                     PointRecordType.REWARD_EXCHANGE -> "🛒"
                                     PointRecordType.REVERSAL -> "↩️"
+                                    // P2-01：PENALTY 穷举补全（emoji，不受 i18n 约束）
+                                    PointRecordType.PENALTY -> "⚠️"
                                 }
                                 Text(typeEmoji, style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -339,7 +395,7 @@ private fun ParentCompareRow(label: String, value: String, delta: Int, unit: Str
         Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(88.dp))
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         val (arrow, color) = when {
-            delta > 0 -> "↑$delta$unit" to Color(0xFF4CAF50)
+            delta > 0 -> "↑$delta$unit" to MaterialTheme.colorScheme.secondary
             delta < 0 -> "↓${-delta}$unit" to MaterialTheme.colorScheme.error
             else -> strings.deltaFlatLabel to MaterialTheme.colorScheme.onSurfaceVariant
         }
@@ -354,8 +410,8 @@ private fun CategoryBar(label: String, count: Int, total: Int, color: Color) {
         Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(70.dp))
         LinearProgressIndicator(
             progress = ratio,
-            modifier = Modifier.weight(1f).height(8.dp),
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.weight(1f).height(8.dp).clip(MaterialTheme.shapes.small),
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             color = color
         )
         Spacer(modifier = Modifier.width(8.dp))

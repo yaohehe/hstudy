@@ -3,17 +3,20 @@ package com.hstudy.app.ui.child
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.*
 import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,7 +92,9 @@ fun ChildTaskListScreen(
                 Snackbar(
                     snackbarData = data,
                     containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    actionColor = MaterialTheme.colorScheme.tertiary
+                    // 暗色审计 D2：tertiary 压在 inverseSurface 上浅色 2.07:1、深色 1.33:1，
+                    // 改用 inversePrimary（浅色 7.85:1 / 深色 4.87:1，与 M3 Snackbar 默认动作角色一致）
+                    actionColor = MaterialTheme.colorScheme.inversePrimary
                 )
             }
         }
@@ -98,7 +103,7 @@ fun ChildTaskListScreen(
             // 氛围漂浮背景（置于内容之下）
             AmbientBackground()
             Column {
-                // 分类筛选 + 今日统计
+                // ===== 首行：分类 FilterChip（指令 §3.3.2-1：筛选与总进度分开两行）=====
                 Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -108,7 +113,24 @@ fun ChildTaskListScreen(
                     FilterChip(selected = selectedCategory == TaskCategory.BASIC, onClick = { selectedCategory = if (selectedCategory == TaskCategory.BASIC) null else TaskCategory.BASIC }, label = { Text(strings.filterBasic) })
                     FilterChip(selected = selectedCategory == TaskCategory.ENHANCEMENT, onClick = { selectedCategory = if (selectedCategory == TaskCategory.ENHANCEMENT) null else TaskCategory.ENHANCEMENT }, label = { Text(strings.filterEnhancement) })
                     FilterChip(selected = selectedCategory == TaskCategory.HABIT, onClick = { selectedCategory = if (selectedCategory == TaskCategory.HABIT) null else TaskCategory.HABIT }, label = { Text(strings.filterHabits) })
-                    Spacer(modifier = Modifier.weight(1f))
+                }
+                // ===== 次行：当前类别打卡完成比率 + 进度条（圆角 shapes.small=8dp、弹簧过渡，§3.3.2-1）=====
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val ratio = if (filteredTasks.isNotEmpty()) filteredCompleted.toFloat() / filteredTasks.size else 0f
+                    val animatedRatio by animateFloatAsState(
+                        targetValue = ratio,
+                        animationSpec = spring(dampingRatio = 0.75f),
+                        label = "taskListProgress"
+                    )
+                    LinearProgressIndicator(
+                        progress = animatedRatio,
+                        modifier = Modifier.weight(1f).height(10.dp).clip(MaterialTheme.shapes.small),
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    )
                     Text(
                         "${filteredCompleted}/${filteredTasks.size}",
                         style = MaterialTheme.typography.titleSmall,
@@ -119,7 +141,7 @@ fun ChildTaskListScreen(
 
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                     ResponsiveContent(windowSizeClass = windowSizeClass, modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             item { Spacer(modifier = Modifier.height(4.dp)) }
                             items(filteredTasks, key = { it.id }) { task ->
                                 val isCompleted = task.id in completedIds
@@ -191,7 +213,28 @@ private fun ChildTaskCard(
     onUploadProof: () -> Unit = {}
 ) {
     val strings = LocalStrings.current.taskList
+    val common = LocalStrings.current.common
     val displayLanguage = LocalDisplayLanguage.current
+    // 终审 I-1（指令 §3.3.2-4 二度确认）：卡右下角显式"撤销"钮改为先弹确认对话框，
+    // 确认后才执行 onUndo（undoTaskCheckIn 闭环）；确认/取消按钮复用 CommonStrings（批量通过对话框先例）。
+    // 打卡钮本身的点击撤销行为保持不变（既有语义，contentDescription 已声明"点击撤销"）。
+    var showUndoConfirm by remember { mutableStateOf(false) }
+    if (showUndoConfirm) {
+        AlertDialog(
+            onDismissRequest = { showUndoConfirm = false },
+            title = { Text(strings.undoButton) },
+            text = { Text(strings.revertConfirmMessage(localizedPresetText(task.title, displayLanguage))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUndoConfirm = false
+                    onUndo()
+                }) { Text(common.confirmButton) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUndoConfirm = false }) { Text(common.cancelButton) }
+            }
+        )
+    }
     // 打卡完成时的弹性缩放动画
     var cardScaleTarget by remember { mutableFloatStateOf(1f) }
     LaunchedEffect(isCompleted) {
@@ -218,37 +261,40 @@ private fun ChildTaskCard(
         TaskCategory.HABIT -> "🏆"
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().scale(scale),
+    // M3 重设计指令 §3.3.2-2：ElevatedCard；未打卡 surface + outlineVariant 描边，
+    // 打卡后 secondaryContainer；左侧 6dp 色条已删除，类别色改由打卡钮/分值标签联动。
+    // （当前 material3 版本的 ElevatedCard 无 border 形参，描边经 Modifier.border 同形状叠加。）
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .then(
+                if (isCompleted) Modifier
+                else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
+            ),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
+        colors = CardDefaults.elevatedCardColors(
             containerColor = if (isCompleted) MaterialTheme.colorScheme.secondaryContainer
-                else MaterialTheme.colorScheme.surface
+                else MaterialTheme.colorScheme.surface,
+            contentColor = if (isCompleted) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onSurface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isCompleted) 1.dp else 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isCompleted) 1.dp else 3.dp),
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            // 左侧类别色条
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .height(88.dp)
-                    .background(
-                        color = if (isCompleted) MaterialTheme.colorScheme.secondary else categoryColor,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)
-                    )
-            )
-
+        Column {
             Row(
-                modifier = Modifier.weight(1f).padding(start = 10.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = if (isCompleted) 4.dp else 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 打卡圆形按钮（更大更有触感）
+                // 56dp 圆形打卡钮（§3.3.2-2 + §3.2.3 触控≥56）：未打卡 surfaceContainerHigh + 类别 Emoji，
+                // 点按经 bouncyClickable 弹簧微缩；完成态 secondary + Icons.Filled.Check（卡片弹跳动画保留）。
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(56.dp)
                         .background(
-                            color = if (isCompleted) MaterialTheme.colorScheme.secondary else categoryColor.copy(alpha = 0.15f),
+                            color = if (isCompleted) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.surfaceContainerHigh,
                             shape = androidx.compose.foundation.shape.CircleShape
                         )
                         .bouncyClickable(
@@ -259,13 +305,13 @@ private fun ChildTaskCard(
                 ) {
                     if (isCompleted) {
                         Icon(
-                            Icons.Filled.CheckCircle,
+                            Icons.Filled.Check,
                             contentDescription = strings.completedContentDescription,
                             tint = MaterialTheme.colorScheme.onSecondary,
-                            modifier = Modifier.size(34.dp)
+                            modifier = Modifier.size(30.dp)
                         )
                     } else {
-                        Text(categoryEmoji, fontSize = 24.sp)
+                        Text(categoryEmoji, fontSize = 26.sp)
                     }
                 }
 
@@ -294,8 +340,11 @@ private fun ChildTaskCard(
                             color = MaterialTheme.colorScheme.error, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(strings.pointsEarnedLabel(task.effectivePoints()), style = MaterialTheme.typography.labelLarge,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = categoryColor)
+                        // 指令 §3.3.2-3：分值明确为"打卡预得 +N 分（需审批）"，不误导为立即到账；
+                        // 颜色与左侧图标/类别联动（代替被删除的色条）。
+                        Text(strings.expectedPointsLabel(task.effectivePoints()), style = MaterialTheme.typography.labelLarge,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = if (isCompleted) MaterialTheme.colorScheme.onSecondaryContainer else categoryColor)
                         if (task.bonusPoints > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(strings.bonusPointsLabel(task.bonusPoints), style = MaterialTheme.typography.labelSmall,
@@ -314,6 +363,32 @@ private fun ChildTaskCard(
                             Text(strings.proofButton, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.tertiary)
                         }
+                    }
+                }
+            }
+
+            // 指令 §3.3.2-4：打卡完成后卡片右下角显式"撤销"微按钮（回退箭头图标）。
+            // 逻辑沿用 W2 的 onUndo（undoTaskCheckIn 撤销闭环 + 如实反馈 Snackbar），此处只是入口外观化；
+            // 打卡钮本身的点击撤销行为保持不变（双重入口、同一回调）。
+            // 终审 I-1：本钮是波次新增的显式入口，按 §3.3.2-4 加二度确认对话框，撤销仅在确认后执行。
+            if (isCompleted) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(end = 8.dp, bottom = 6.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { showUndoConfirm = true },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Undo,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(strings.undoButton, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error)
                     }
                 }
             }

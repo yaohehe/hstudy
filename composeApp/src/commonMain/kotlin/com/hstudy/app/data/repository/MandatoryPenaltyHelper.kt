@@ -78,7 +78,9 @@ object MandatoryPenaltyHelper {
             val currentTotal = app.pointRepository.getTotalPoints().first()
             val deducted = totalPenalty.coerceAtMost(currentTotal.coerceAtLeast(0))
             if (deducted > 0) {
-                app.pointRepository.adjustPoints(-deducted, "每日必须任务未完成自动扣分")
+                // P2-01（规则 16）：系统自动扣分走 PENALTY 专用入口，不再混入 ADJUSTMENT；
+                // note 字面量保持原样（历史数据一致，Ruling 25 落库原文不进文案表）。
+                app.pointRepository.applyPenalty(deducted, "每日必须任务未完成自动扣分")
             }
         }
 

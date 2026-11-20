@@ -1,20 +1,20 @@
 package com.hstudy.app.ui.parent
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import com.hstudy.app.ui.theme.WindowSizeClass
-import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
@@ -22,9 +22,24 @@ import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.ui.mistake.SpacedRepetition
 import com.hstudy.app.ui.navigation.Screen
 import kotlinx.coroutines.launch
 
+/**
+ * 家长首页（指令 §3.3.5：家长驾驶舱，三层信息架构，告别超长列表）。
+ *
+ * v3.3 W4 重构（RA7：只动视觉层与布局结构，业务回调/导航/写库入口全部保留）：
+ * - **第 1 层 紧急待办区**：待审积分或待审证明 >0 时置顶警示卡（counts 走本页既有
+ *   pointApprovalRepository.getPendingCount / habitRepository.getPendingProofCount 流），
+ *   "立即处理"直达审批页；证明待审仍保留直达证明页的既有按钮（15 卡功能 1:1 映射，不删）。
+ * - **第 2 层 Daily Pulse**：删除硬编码浅蓝渐变色值（旧 Color 十六进制三件套），改 ElevatedCard +
+ *   2x2 宫格：今日打卡率（completedIds/tasks）、连续天数（getCurrentStreak）、
+ *   今日专注分钟（focusRepository.getTotalFocusMinutesForDate，模板复用 ParentDashboardStrings）、
+ *   待复习错题（allMistakes × SpacedRepetition.isDueForReview，全部既有 API，不新增查询）。
+ * - **第 3 层 分组功能台**：原 15 张纵向菜单卡 → 日常任务与激励 2x2 + 学情追踪与辅导 2x2 +
+ *   高级与设置横向快捷条（含指令未点名的心愿目标/积分审核/周报总览，导航目标一个不少）。
+ */
 @Composable
 fun ParentHomeScreen(
     onNavigate: (String) -> Unit,
@@ -33,6 +48,8 @@ fun ParentHomeScreen(
 ) {
     val app = AppGraph
     val strings = LocalStrings.current.parentHome
+    val common = LocalStrings.current.common
+    val dashboardCopy = LocalStrings.current.parentDashboard
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val today = com.hstudy.app.data.repository.PointRepository.getTodayString()
@@ -41,6 +58,8 @@ fun ParentHomeScreen(
     val pendingApprovalCount by app.pointApprovalRepository.getPendingCount().collectAsState(initial = 0)
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val masteredCount by app.mistakeRepository.getMasteredCount().collectAsState(initial = 0)
+    // Daily Pulse 专注时长：既有 FocusRepository 当日分钟流（ParentDashboard 同源，不新增查询）
+    val todayFocusMinutes by app.focusRepository.getTotalFocusMinutesForDate(today).collectAsState(initial = 0)
     // 配置状态（快速配置助手用）
     val rewards by app.rewardRepository.getAllActiveRewards().collectAsState(initial = emptyList())
     val wishGoals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
@@ -53,11 +72,12 @@ fun ParentHomeScreen(
     var streak by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { streak = app.pointRepository.getCurrentStreak() }
 
-    val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     val todayCompleted = completedIds.size
     val todayTotal = tasks.size
     val completionRate = if (todayTotal > 0) (todayCompleted * 100 / todayTotal) else 0
     val unmasteredMistakes = allMistakes.size - masteredCount
+    // 待复习错题：与 ChildHome 同一到期判定（纯内存过滤既有 allMistakes，不新增 DB 查询）
+    val dueMistakeCount = remember(allMistakes) { allMistakes.count { SpacedRepetition.isDueForReview(it) } }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -86,59 +106,105 @@ fun ParentHomeScreen(
             ) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // ===== 孩子今日概览卡片（冷色渐变，区分家长端）=====
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-                ) {
-                    Box(
-                        modifier = Modifier.background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFDCEBFF),
-                                    Color(0xFFC3DCFF),
-                                    Color(0xFFAECFFF)
-                                )
-                            )
-                        )
+                // ===== 第 1 层：紧急待办处理区（指令 §3.3.5-1）=====
+                if (pendingApprovalCount > 0 || pendingProofCount > 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
-                            Text(strings.childTodayOverviewTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                OverviewStat(strings.overviewCheckin, "${todayCompleted}/${todayTotal}")
-                                OverviewStat(strings.overviewCompletionRate, "${completionRate}%")
-                                OverviewStat(strings.overviewStreak, strings.streakDaysValue(streak))
-                                OverviewStat(strings.overviewPendingProofs, "${pendingProofCount}")
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.NotificationsActive,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(strings.urgentBarTitle, style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                                    Text(
+                                        when {
+                                            pendingApprovalCount > 0 && pendingProofCount > 0 ->
+                                                strings.urgentTodoBoth(pendingApprovalCount, pendingProofCount)
+                                            pendingApprovalCount > 0 -> strings.urgentTodoApprovals(pendingApprovalCount)
+                                            else -> strings.urgentTodoProofs(pendingProofCount)
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                // 一键直达审批页（既有路由，审批闭环入口不变）
+                                Button(
+                                    onClick = { onNavigate(Screen.ParentApproval.route) },
+                                    shape = MaterialTheme.shapes.medium,
+                                    modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+                                ) { Text(strings.urgentProcessButton) }
                             }
+                            // 证明待审保留既有直达入口（pendingProofsButton 原文案不动，功能 1:1）
+                            if (pendingProofCount > 0) {
+                                OutlinedButton(
+                                    onClick = { onNavigate(Screen.ParentProofReview.route) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(strings.pendingProofsButton(pendingProofCount))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
+                // ===== 第 2 层：今日学情概览 Daily Pulse（指令 §3.3.5-2，硬编码渐变已删除）=====
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(strings.childTodayOverviewTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            PulseStatCell(
+                                label = strings.overviewCompletionRate,
+                                value = "$completionRate%",
+                                note = "$todayCompleted/$todayTotal",
+                                modifier = Modifier.weight(1f)
+                            )
+                            PulseStatCell(
+                                label = strings.overviewStreak,
+                                value = strings.streakDaysValue(streak),
+                                note = null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            PulseStatCell(
+                                label = strings.overviewFocusDuration,
+                                // 分钟模板跨表复用 ParentDashboardStrings.focusMinutesValue（单位进实参位）
+                                value = dashboardCopy.focusMinutesValue(todayFocusMinutes, common.minuteLabel),
+                                note = null,
+                                modifier = Modifier.weight(1f)
+                            )
+                            PulseStatCell(
+                                label = strings.overviewMistakesDue,
+                                value = "$dueMistakeCount",
+                                note = null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                         if (completionRate == 100 && todayTotal > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
                             Text(strings.todayAllDoneBanner, style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
-
-                        if (pendingProofCount > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = { onNavigate(Screen.ParentProofReview.route) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(strings.pendingProofsButton(pendingProofCount))
-                            }
-                        }
-
                         if (unmasteredMistakes > 5) {
-                            Spacer(modifier = Modifier.height(4.dp))
                             Text(strings.unmasteredMistakesNote(unmasteredMistakes),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -172,7 +238,7 @@ fun ParentHomeScreen(
                     }
                     if (syncDaysAgo > 7) {
                         Card(
-                            onClick = { onNavigate(com.hstudy.app.ui.navigation.Screen.ParentSettings.route) },
+                            onClick = { onNavigate(Screen.ParentSettings.route) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                         ) {
@@ -198,80 +264,160 @@ fun ParentHomeScreen(
                     }
                 }
 
-                // ===== 功能菜单 =====
-                val items = listOf(
-                    MenuAction(strings.menuTaskManageTitle, strings.menuTaskManageSubtitle, Icons.Filled.Task, Screen.ParentTaskManage.route),
-                    MenuAction(strings.menuAssignTaskTitle, strings.menuAssignTaskSubtitle, Icons.Filled.Assignment, Screen.ParentAssignTask.route),
-                    MenuAction(strings.menuTemplateTitle, strings.menuTemplateSubtitle, Icons.Filled.AutoAwesome, Screen.ParentTaskTemplate.route),
-                    MenuAction(strings.menuPointsTitle, strings.menuPointsSubtitle, Icons.Filled.Stars, Screen.ParentPoints.route),
-                    MenuAction(strings.menuRewardStoreTitle, strings.menuRewardStoreSubtitle, Icons.Filled.CardGiftcard, Screen.ParentRewardManage.route),
-                    MenuAction(strings.menuWishGoalTitle, strings.menuWishGoalSubtitle, Icons.Filled.Star, Screen.ParentWishGoalManage.route),
-                    MenuAction(strings.menuScheduleTitle, strings.menuScheduleSubtitle, Icons.Filled.Schedule, Screen.ParentScheduleManage.route),
-                    MenuAction(strings.menuProofTitle, strings.menuProofSubtitle, Icons.Filled.Verified, Screen.ParentProofReview.route, pendingProofCount),
-                    MenuAction(strings.menuApprovalTitle, strings.menuApprovalSubtitle, Icons.Filled.Approval, Screen.ParentApproval.route, pendingApprovalCount),
-                    MenuAction(strings.menuMistakeAnalysisTitle, strings.menuMistakeAnalysisSubtitle, Icons.Filled.MenuBook, Screen.ParentMistakeReview.route),
-                    MenuAction(strings.menuCoachingTitle, strings.menuCoachingSubtitle, Icons.Filled.Psychology, Screen.ParentTutoringAdvice.route),
-                    MenuAction(strings.menuDashboardTitle, strings.menuDashboardSubtitle, Icons.Filled.Dashboard, Screen.ParentDashboard.route),
-                    MenuAction(strings.menuGrowthReportTitle, strings.menuGrowthReportSubtitle, Icons.Filled.EmojiEvents, Screen.ParentGrowthReport.route),
-                    MenuAction(strings.menuWeeklyReportTitle, strings.menuWeeklyReportSubtitle, Icons.Filled.CalendarViewWeek, Screen.ParentWeeklyReport.route),
-                    MenuAction(strings.menuSettingsTitle, strings.menuSettingsSubtitle, Icons.Filled.Settings, Screen.ParentSettings.route),
+                // ===== 第 3 层：分组功能控制台（指令 §3.3.5-3；15 个旧菜单卡 1:1 映射，全部保留）=====
+
+                // 分组 1：日常任务与激励（2x2）
+                GroupHeader(strings.groupDailyTitle)
+                ControlTileRow(
+                    listOf(
+                        ControlSpec(strings.menuTaskManageTitle, strings.menuTaskManageSubtitle, Icons.Filled.Task, Screen.ParentTaskManage.route, 0),
+                        ControlSpec(strings.menuAssignTaskTitle, strings.menuAssignTaskSubtitle, Icons.Filled.Assignment, Screen.ParentAssignTask.route, 0),
+                    ),
+                    onNavigate = onNavigate
+                )
+                ControlTileRow(
+                    listOf(
+                        ControlSpec(strings.menuPointsTitle, strings.menuPointsSubtitle, Icons.Filled.Stars, Screen.ParentPoints.route, 0),
+                        ControlSpec(strings.menuRewardStoreTitle, strings.menuRewardStoreSubtitle, Icons.Filled.CardGiftcard, Screen.ParentRewardManage.route, 0),
+                    ),
+                    onNavigate = onNavigate
                 )
 
-                if (isTablet) {
-                    val columns = if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded) 3 else 2
-                    val rows = items.chunked(columns)
-                    rows.forEach { rowItems ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        ) {
-                            rowItems.forEach { item ->
-                                HomeMenuCard(
-                                    title = item.title,
-                                    subtitle = item.subtitle,
-                                    badge = item.badge,
-                                    icon = { Icon(item.icon, contentDescription = null, modifier = Modifier.size(40.dp)) },
-                                    onClick = { onNavigate(item.route) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            repeat(columns - rowItems.size) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
-                } else {
-                    items.forEach { item ->
-                        HomeMenuCard(
-                            title = item.title,
-                            subtitle = item.subtitle,
-                            badge = item.badge,
-                            icon = { Icon(item.icon, contentDescription = null, modifier = Modifier.size(36.dp)) },
-                            onClick = { onNavigate(item.route) },
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
+                // 分组 2：学情追踪与辅导（2x2；"作息管理"= 每日日程入口）
+                GroupHeader(strings.groupStudyTitle)
+                ControlTileRow(
+                    listOf(
+                        ControlSpec(strings.menuMistakeAnalysisTitle, strings.menuMistakeAnalysisSubtitle, Icons.Filled.MenuBook, Screen.ParentMistakeReview.route, 0),
+                        ControlSpec(strings.menuGrowthReportTitle, strings.menuGrowthReportSubtitle, Icons.Filled.EmojiEvents, Screen.ParentGrowthReport.route, 0),
+                    ),
+                    onNavigate = onNavigate
+                )
+                ControlTileRow(
+                    listOf(
+                        ControlSpec(strings.menuCoachingTitle, strings.menuCoachingSubtitle, Icons.Filled.Psychology, Screen.ParentTutoringAdvice.route, 0),
+                        ControlSpec(strings.menuScheduleTitle, strings.menuScheduleSubtitle, Icons.Filled.Schedule, Screen.ParentScheduleManage.route, 0),
+                    ),
+                    onNavigate = onNavigate
+                )
+
+                // 分组 3：高级与设置（横向快捷条；指令未点名的 心愿目标/积分审核/周报总览 也归入此条，不删功能）
+                GroupHeader(strings.groupAdvancedTitle)
+                val stripItems = listOf(
+                    ControlSpec(strings.menuApprovalTitle, strings.menuApprovalSubtitle, Icons.Filled.Approval, Screen.ParentApproval.route, pendingApprovalCount),
+                    ControlSpec(strings.menuProofTitle, strings.menuProofSubtitle, Icons.Filled.Verified, Screen.ParentProofReview.route, pendingProofCount),
+                    ControlSpec(strings.menuWishGoalTitle, strings.menuWishGoalSubtitle, Icons.Filled.Star, Screen.ParentWishGoalManage.route, 0),
+                    ControlSpec(strings.menuTemplateTitle, strings.menuTemplateSubtitle, Icons.Filled.AutoAwesome, Screen.ParentTaskTemplate.route, 0),
+                    ControlSpec(strings.menuDashboardTitle, strings.menuDashboardSubtitle, Icons.Filled.Dashboard, Screen.ParentDashboard.route, 0),
+                    ControlSpec(strings.menuWeeklyReportTitle, strings.menuWeeklyReportSubtitle, Icons.Filled.CalendarViewWeek, Screen.ParentWeeklyReport.route, 0),
+                    ControlSpec(strings.menuSettingsTitle, strings.menuSettingsSubtitle, Icons.Filled.Settings, Screen.ParentSettings.route, 0),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    stripItems.forEach { spec ->
+                        ControlTile(spec, onNavigate = onNavigate, modifier = Modifier.width(180.dp))
                     }
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
 }
 
-private data class MenuAction(
+/** 分组功能台的渲染模型（仅进 Text/Icon/onClick，不落库、不参与判等——ParentHomeStrings KDoc 同口径） */
+private data class ControlSpec(
     val title: String,
     val subtitle: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val icon: ImageVector,
     val route: String,
-    val badge: Int = 0
+    val badge: Int
 )
 
 @Composable
-private fun OverviewStat(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer)
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer)
+private fun GroupHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun ControlTileRow(specs: List<ControlSpec>, onNavigate: (String) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+    ) {
+        specs.forEach { spec ->
+            ControlTile(spec, onNavigate = onNavigate, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * 功能台小卡（指令 §3.3.5-2 卡片标准）：OutlinedCard + 28dp 图标置于 primary 浅色圆形容器，
+ * 待办角标沿用旧 Badge 语义（证明/审核计数）。
+ */
+@Composable
+private fun ControlTile(spec: ControlSpec, onNavigate: (String) -> Unit, modifier: Modifier = Modifier) {
+    OutlinedCard(
+        onClick = { onNavigate(spec.route) },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(spec.icon, contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (spec.badge > 0) {
+                    Badge(containerColor = MaterialTheme.colorScheme.error) {
+                        Text("${spec.badge}", color = MaterialTheme.colorScheme.onError)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(spec.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            }
+            Text(spec.subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        }
+    }
+}
+
+/** Daily Pulse 宫格单元：surfaceContainerHigh 小面板（数值 displayLarge 梯 headlineMedium + 注 + 标签） */
+@Composable
+private fun PulseStatCell(label: String, value: String, note: String?, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary)
+            if (note != null) {
+                Text(note, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(label, style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -349,49 +495,6 @@ private fun SetupRow(ok: Boolean, okText: String, missingText: String, actionLab
             ) {
                 Text(actionLabel, style = MaterialTheme.typography.labelMedium)
             }
-        }
-    }
-}
-
-@Composable
-private fun HomeMenuCard(
-    title: String,
-    subtitle: String,
-    badge: Int = 0,
-    icon: @Composable () -> Unit,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(
-                modifier = Modifier.size(56.dp).padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                icon()
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, style = MaterialTheme.typography.titleLarge)
-                    if (badge > 0) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Badge(containerColor = MaterialTheme.colorScheme.error) {
-                            Text("${badge}", color = MaterialTheme.colorScheme.onError)
-                        }
-                    }
-                }
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

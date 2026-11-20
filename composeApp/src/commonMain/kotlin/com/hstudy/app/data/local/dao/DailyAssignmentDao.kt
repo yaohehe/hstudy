@@ -27,4 +27,7 @@ interface DailyAssignmentDao {
 
     @Query("UPDATE daily_assignments SET isCompleted = 1, completedAt = :completedAt WHERE id = :id")
     suspend fun markCompleted(id: Long, completedAt: Long)
+
+    @Query("UPDATE daily_assignments SET isCompleted = 0, completedAt = NULL WHERE id = :id")
+    suspend fun markUncompleted(id: Long)
 }

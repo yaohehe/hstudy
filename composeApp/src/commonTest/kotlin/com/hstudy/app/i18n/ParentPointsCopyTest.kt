@@ -28,6 +28,8 @@ class ParentPointsCopyTest {
             zh.typeAdjustment to en.typeAdjustment,
             zh.typeRewardExchange to en.typeRewardExchange,
             zh.typeReversal to en.typeReversal,
+            // v3.3 W2 P2-01：系统自动扣分 PENALTY 类型标签
+            zh.typePenalty to en.typePenalty,
         )
     }
 
@@ -67,7 +69,29 @@ class ParentPointsCopyTest {
             zh.statusRejected to en.statusRejected,
             zh.statusCancelled to en.statusCancelled,
             zh.statusRevoked to en.statusRevoked,
+            // v3.3 W2 P1-02：历史卡按状态如实展示（CANCELLED/REJECTED 分值、已撤销筛选钮）
+            zh.scoreCancelled to en.scoreCancelled,
+            zh.scoreRejected to en.scoreRejected,
+            zh.historyFilterUndone to en.historyFilterUndone,
+            // v3.3 W4 §3.3.3-2：ApprovalCard 头部业务类型 chip（8 个 when 支必须互不相同，
+            // 两支同值等于两类业务念成同一个标签）
+            zh.typeChipTask to en.typeChipTask,
+            zh.typeChipHabit to en.typeChipHabit,
+            zh.typeChipAssignment to en.typeChipAssignment,
+            zh.typeChipTarget to en.typeChipTarget,
+            zh.typeChipMistake to en.typeChipMistake,
+            zh.typeChipFocus to en.typeChipFocus,
+            zh.typeChipVariation to en.typeChipVariation,
+            zh.typeChipOther to en.typeChipOther,
         )
+        assertEquals(8, listOf(
+            zh.typeChipTask, zh.typeChipHabit, zh.typeChipAssignment, zh.typeChipTarget,
+            zh.typeChipMistake, zh.typeChipFocus, zh.typeChipVariation, zh.typeChipOther,
+        ).distinct().size, "八类业务 chip 中文词面必须互不相同")
+        assertEquals(8, listOf(
+            en.typeChipTask, en.typeChipHabit, en.typeChipAssignment, en.typeChipTarget,
+            en.typeChipMistake, en.typeChipFocus, en.typeChipVariation, en.typeChipOther,
+        ).distinct().size, "八类业务 chip 英文词面必须互不相同")
     }
 
     @Test
@@ -88,6 +112,29 @@ class ParentPointsCopyTest {
         assertEquals("✅ Approved: +8 points", en.approvedMessage(8))
         assertEquals("✅ 已通过：+1分", zh.approvedMessage(1))
         assertEquals("✅ Approved: +1 point", en.approvedMessage(1))
+        // v3.3 W2 P1-02：历史卡分值语义（REVOKED 扣回 / PENDING 待审），§四 状态机口径
+        assertEquals("-8 (已扣回)", zh.scoreRevoked(8))
+        assertEquals("-8 points removed", en.scoreRevoked(8))
+        assertEquals("-1 point removed", en.scoreRevoked(1))
+        assertEquals("+5 (待审)", zh.scorePending(5))
+        assertEquals("+5 points pending", en.scorePending(5))
+        assertEquals("+1 point pending", en.scorePending(1))
+        // v3.3 W4 §3.3.3-1：待审看板两行 + 批量钮 + 确认对话框（中文侧只换数字、不分支）
+        assertEquals("待审总笔数：3 笔", zh.pendingCountLabel(3))
+        assertEquals("待审总笔数：1 笔", zh.pendingCountLabel(1))
+        assertEquals("3 requests pending review", en.pendingCountLabel(3))
+        assertEquals("1 request pending review", en.pendingCountLabel(1))
+        assertEquals("待发放总积分：+12 分", zh.pendingPointsLabel(12))
+        assertEquals("+12 points to award", en.pendingPointsLabel(12))
+        assertEquals("+1 point to award", en.pendingPointsLabel(1))
+        assertEquals("全部通过 (+12分)", zh.approveAllPointsButton(12))
+        assertEquals("Approve all (+12 points)", en.approveAllPointsButton(12))
+        assertEquals("Approve all (+1 point)", en.approveAllPointsButton(1))
+        assertEquals("确认一次通过全部 3 笔申请，共发放 +12 分？", zh.approveAllDialogMessage(3, 12))
+        assertEquals("确认一次通过全部 1 笔申请，共发放 +1 分？", zh.approveAllDialogMessage(1, 1))
+        assertEquals("Approve all 3 pending requests and award +12 points now?", en.approveAllDialogMessage(3, 12))
+        assertEquals("Approve your only pending request and award +1 point now?", en.approveAllDialogMessage(1, 1))
+        assertEquals("Approve all 3 pending requests and award +5 points now?", en.approveAllDialogMessage(3, 5))
     }
 
     @Test
@@ -169,5 +216,13 @@ class ParentPointsCopyTest {
         assertEquals("+3 points", AppStringsEn.taskList.pointsEarnedLabel(3))
         assertEquals("+1分", AppStringsZh.taskList.pointsEarnedLabel(1))
         assertEquals("+1 point", AppStringsEn.taskList.pointsEarnedLabel(1))
+        // v3.3 W4 §3.3.4：时间轴分组「今天」与错题预测首元素同值同译（Today，一个英文出处两个消费页）
+        assertEquals("今天", AppStringsZh.mistakeList.forecastLabels.first())
+        assertEquals(AppStringsZh.mistakeList.forecastLabels.first(), AppStringsZh.childPoints.sectionToday)
+        assertEquals(AppStringsEn.mistakeList.forecastLabels.first(), AppStringsEn.childPoints.sectionToday)
+        // v3.3 W4 §3.3.4：家长端积分管理页看板/分组/标签跨表消费 childPoints 槽（不重开同值槽），
+        // PENALTY 标签用无 emoji 前缀的孩子端词面（家长端 typePenalty 带 ⚠️ 前缀是两个值）
+        assertEquals("打卡撤销", AppStringsZh.childPoints.tagCheckInUndo)
+        assertEquals("Check-in undo", AppStringsEn.childPoints.tagCheckInUndo)
     }
 }

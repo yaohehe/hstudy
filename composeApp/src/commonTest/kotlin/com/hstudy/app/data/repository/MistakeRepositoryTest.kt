@@ -90,7 +90,9 @@ class MistakeRepositoryTest {
 
     private fun newRepo(): Pair<FakeMistakeDao, MistakeRepository> {
         val dao = FakeMistakeDao()
-        return dao to MistakeRepository(dao)
+        // P0-01 后 MistakeRepository 依赖 PointRepository（复习/举一反三走统一审批 checkIn）；
+        // Fake DAO 见 PointRepositoryInvariantTest.kt，本组旧用例只断言错题侧落库行为。
+        return dao to MistakeRepository(dao, PointRepository(FakePointDao(), FakePointApprovalDao()))
     }
 
     private fun makeMistake(

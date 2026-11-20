@@ -12,6 +12,8 @@ package com.hstudy.app.i18n
  * 记录卡 `record.note` 是积分账本备注（spec §1：写入时语言冻结的动态数据），原样渲染不入表。
  * 类型标签词汇与既有表对齐：撤销 = check-in undo/reversal（[TaskListStrings.revertedClawedBackMessage]），
  * 兑换 = redeem/redemption（[RoleStrings.childDesc] EN "Redeem rewards"）。
+ * v3.3 W2 P2-01：typePenalty = 系统自动扣分（PointRecordType.PENALTY，每日必须任务未完成），
+ * 与手动调整的 typeAdjustment 在账本上区分；页面渲染用警示色（error）。
  */
 data class ParentPointsStrings(
     val adjustContentDescription: String,
@@ -27,6 +29,7 @@ data class ParentPointsStrings(
     val typeAdjustment: String,
     val typeRewardExchange: String,
     val typeReversal: String,
+    val typePenalty: String,
     val netValue: (net: Int) -> String,
     val taskFallbackTitle: (taskId: Long) -> String,
     val timesCount: (count: Int) -> String,
@@ -46,6 +49,7 @@ val ParentPointsStringsZh = ParentPointsStrings(
     typeAdjustment = "✏️ 手动调整",                                            // :187
     typeRewardExchange = "🛒 兑换消耗",                                        // :188
     typeReversal = "↩️ 撤销扣回",                                              // :189
+    typePenalty = "⚠️ 未完成扣分",
     netValue = { net -> "净$net" },                                           // :88
     taskFallbackTitle = { taskId -> "任务#$taskId" },                          // :100
     timesCount = { count -> "${count}次" },                                   // :116
@@ -65,6 +69,7 @@ val ParentPointsStringsEn = ParentPointsStrings(
     typeAdjustment = "✏️ Manual adjustment",
     typeRewardExchange = "🛒 Reward redemption",
     typeReversal = "↩️ Check-in reversal",
+    typePenalty = "⚠️ Daily-task penalty",
     netValue = { net -> "Net $net" },
     taskFallbackTitle = { taskId -> "Task #$taskId" },
     timesCount = { count -> "$count ${timesWord(count)}" },

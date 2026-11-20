@@ -251,10 +251,14 @@ class PointRepository(
         }
 
         // 1) 已有待审申请 → 复用，仅同步分数与描述，绝不新建（防止取消后重打卡产生第二条）
+        // 终审 M-2（积分不降级）：复用 PENDING 时分值取 max(已挂起, 本次请求)——
+        // 同一 bizKey 先 +3（做对）后 +1（快捷复习）不得把已挂起的高分值改低，
+        // 孩子已挣到的待审分值只升不降；审批仍只按最终 requestedPoints 入账一次（不变量 3）。
         val pending = approvalDao.getPendingByBizKey(bizKey)
         if (pending != null) {
-            if (pending.requestedPoints != points || pending.description != description) {
-                approvalDao.update(pending.copy(requestedPoints = points, description = description))
+            val syncedPoints = maxOf(pending.requestedPoints, points)
+            if (pending.requestedPoints != syncedPoints || pending.description != description) {
+                approvalDao.update(pending.copy(requestedPoints = syncedPoints, description = description))
             }
             return CheckInResult.ALREADY_PENDING
         }
@@ -293,6 +297,22 @@ class PointRepository(
                 type = PointRecordType.ADJUSTMENT,
                 note = note,
                 weekStart = weekStart
+            )
+        )
+    }
+
+    /**
+     * 系统自动惩罚扣分（Antigravity 指令 P2-01 / 规则 16）：
+     * 每日必须任务未完成的自动扣分专用入口，写 `-points` 且类型为 [PointRecordType.PENALTY]，
+     * 与家长奖惩的 ADJUSTMENT 在账本上可区分。note 沿用落库字面量模式（Ruling 25，不进文案表）。
+     */
+    suspend fun applyPenalty(points: Int, note: String) {
+        pointDao.insertPointRecord(
+            PointRecordEntity(
+                points = -points,
+                type = PointRecordType.PENALTY,
+                note = note,
+                weekStart = getWeekStartTimestamp()
             )
         )
     }
@@ -364,5 +384,13 @@ class PointRepository(
 
     companion object {
         fun getTodayString(): String = todayString()
+
+        /**
+         * 终审 M-1：把完成时间戳换算成打卡日期串（yyyy-MM-dd，本地时区，与 [todayString] 同格式）。
+         * 撤销侧必须用**完成当时**的日期构造 bizKey，而不是点击撤销时的今天——跨午夜后
+         * 用今天构造 `ASSIGN:id:今天` 会查不到昨天的申请，撤销对称（不变量 4）在该窗口漏。
+         * 公开薄封装（内部复用 internal dateStringOf，UI 跨包不可见 internal），不改任何写库/比较语义。
+         */
+        fun completionDateStringOf(timeMillis: Long): String = dateStringOf(timeMillis)
     }
 }

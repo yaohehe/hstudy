@@ -11,6 +11,7 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -223,7 +224,7 @@ fun ChildPetScreen(
                                             }
                                         }
                                     },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                                 ) { Text(strings.feedButton(10)) }
                                 Button(
                                     onClick = {
@@ -239,7 +240,7 @@ fun ChildPetScreen(
                                             }
                                         }
                                     },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                                 ) { Text(strings.playButton(5)) }
                             }
                             Text(strings.careTip,
@@ -265,10 +266,16 @@ fun ChildPetScreen(
                                     Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 }
+                                val animatedEvolution by animateFloatAsState(
+                                    targetValue = progress,
+                                    animationSpec = spring(dampingRatio = 0.75f),
+                                    label = "evolutionProgress"
+                                )
                                 LinearProgressIndicator(
-                                    progress = progress,
-                                    modifier = Modifier.fillMaxWidth().height(12.dp),
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    progress = animatedEvolution,
+                                    modifier = Modifier.fillMaxWidth().height(12.dp)
+                                        .clip(MaterialTheme.shapes.small),
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                                 )
                                 Text(strings.nextStage(pointsToNext, nextStage!!.emoji, localizedPetStageName(stageIndex + 1, displayLanguage)),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -290,8 +297,8 @@ fun ChildPetScreen(
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
                                     isCurrent -> MaterialTheme.colorScheme.secondaryContainer
-                                    unlocked -> MaterialTheme.colorScheme.surfaceVariant
-                                    else -> MaterialTheme.colorScheme.surface
+                                    unlocked -> MaterialTheme.colorScheme.surfaceContainer
+                                    else -> MaterialTheme.colorScheme.surfaceContainerLow
                                 }
                             )
                         ) {
@@ -339,7 +346,7 @@ fun ChildPetScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (equipped) MaterialTheme.colorScheme.secondaryContainer
-                                    else MaterialTheme.colorScheme.surfaceVariant
+                                    else MaterialTheme.colorScheme.surfaceContainer
                             )
                         ) {
                             Row(
@@ -360,6 +367,7 @@ fun ChildPetScreen(
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     owned -> FilledTonalButton(
                                         onClick = { scope.launch { app.userPreferences.setEquippedScene(scene.id) } },
+                                        modifier = Modifier.heightIn(min = 48.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                     ) { Text(strings.equipButton, style = MaterialTheme.typography.labelMedium) }
                                     else -> Button(
@@ -375,6 +383,7 @@ fun ChildPetScreen(
                                                 }
                                             }
                                         },
+                                        modifier = Modifier.heightIn(min = 48.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                     ) { Text(strings.buyButton, style = MaterialTheme.typography.labelMedium) }
                                 }
@@ -389,16 +398,31 @@ fun ChildPetScreen(
     }
 }
 
-/** 照料状态条：标签 + 进度条 + 数值 */
+/**
+ * 照料状态条：M3 药丸形状进度胶囊（指令 3.4-宠物1）。
+ * 外层 shapes.small 胶囊容器 + 内层 extraLarge 全圆角进度轨 + 弹簧动画。
+ */
 @Composable
 private fun CareStatBar(label: String, value: Int, color: androidx.compose.ui.graphics.Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    val animatedValue by animateFloatAsState(
+        targetValue = value / 100f,
+        animationSpec = spring(dampingRatio = 0.75f),
+        label = "careStatProgress"
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
         Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(80.dp))
         LinearProgressIndicator(
-            progress = value / 100f,
-            modifier = Modifier.weight(1f).height(10.dp),
+            progress = animatedValue,
+            modifier = Modifier.weight(1f).height(12.dp).clip(MaterialTheme.shapes.extraLarge),
             color = color,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text("$value", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,

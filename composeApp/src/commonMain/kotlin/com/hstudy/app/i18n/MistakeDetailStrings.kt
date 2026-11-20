@@ -17,6 +17,10 @@ package com.hstudy.app.i18n
  * - 通用按钮词「取消」「删除」不在此表重复：页面复用 `LocalStrings.current.common`
  *   （`cancelButton` / `deleteContentDescription`，阶段 1 已上收）。
  * - `"✅ 已掌握"` / `"⏳ 未掌握"` / `"错题照片"` 复用共享表 [MistakeStrings]。
+ *
+ * v3.3 W2（控制器折叠项 D）：[gotItButton]/[missedButton] 徽标分值由 (+5)/(+2) 修正为 **(+3)/(+1)**，
+ * 与规则 6 实际发放分值（reviewMistake points=3/1，W1 P0-01）一致；旧值 (+5)/(+2) 是绕过统一审批的
+ * 失控分值残留，已在等价闸门 DISCLOSED_RESIDUALS 按页面单边披露。
  */
 data class MistakeDetailStrings(
     val screenTitle: (emoji: String) -> String,
@@ -43,6 +47,15 @@ data class MistakeDetailStrings(
     val missedButton: String,
     val gotItMessage: String,
     val missedMessage: String,
+    // ---- P0-01（v3.3 W1）：复习/举一反三积分改走统一审批 checkIn 后的 Snackbar 反馈。
+    // §五 展示口径「+N 分待家长审核」形态（与 TaskListStrings.checkInSuccessMessage /
+    // ChildHabitChallengeStrings.checkInSuccessMessage 同模式：分值是实参不是写死的字面量，
+    // 规则 6 做对 +3 / 没记住 +1、规则 7 举一反三 +3 都由 points 承担）。
+    // 上面三条迁移前整串静态文案（gotItMessage / missedMessage / variationDoneMessage）按
+    // 等价闸门"白名单会过期"教义保留不删（scripts/i18n_template_diff.py 的 --branch 组仍按
+    // 迁移前页面原文逐字节配对它们），页面不再调用；新字段为表侧单边，登记见该脚本。
+    val gotItPendingMessage: (points: Int) -> String,
+    val missedPendingMessage: (points: Int) -> String,
     val reviewDoneCard: String,
     val variationTitle: String,
     val variationDone: String,
@@ -55,6 +68,7 @@ data class MistakeDetailStrings(
     val variationNotesHeading: String,
     val variationInputLabel: String,
     val variationDoneMessage: String,
+    val variationPendingMessage: (points: Int) -> String,
     val variationButton: String,
     val reviewHistoryTitle: (count: Int) -> String,
     val reviewHistoryLine: (date: String, points: Int) -> String,
@@ -83,10 +97,12 @@ val MistakeDetailStringsZh = MistakeDetailStrings(
     masteredCard = "✅ 这道题已掌握，真棒！偶尔回顾一下保持记忆。",
     revealButton = "👀 我想好了，显示答案核对",
     selfCheckPrompt = "📝 对照答案，你这次做对了吗？",
-    gotItButton = "✅ 做对了 (+5)",
-    missedButton = "❌ 没记住 (+2)",
+    gotItButton = "✅ 做对了 (+3)",
+    missedButton = "❌ 没记住 (+1)",
     gotItMessage = "🎉 做对了！+3分已提交家长审核",
     missedMessage = "💪 +1分已提交审核，多复习几次就记住了",
+    gotItPendingMessage = { points -> "🎉 做对了！+${points}分待家长审核" },
+    missedPendingMessage = { points -> "💪 +${points}分待家长审核，多复习几次就记住了" },
     reviewDoneCard = "✅ 本次复习完成！系统会按遗忘曲线自动安排下次复习时间。",
     variationTitle = "💡 举一反三",
     variationDone = "✅ 已完成",
@@ -119,6 +135,7 @@ val MistakeDetailStringsZh = MistakeDetailStrings(
     variationNotesHeading = "📝 我的举一反三笔记：",
     variationInputLabel = "写下你的思考/变式题（可选）",
     variationDoneMessage = "💡 举一反三完成 +3分已提交家长审核",
+    variationPendingMessage = { points -> "💡 举一反三完成 +${points}分待家长审核" },
     variationButton = "💡 完成举一反三思考 (+3分)",
     reviewHistoryTitle = { count -> "复习记录 ($count)" },
     reviewHistoryLine = { date, points -> "$date +${points}分" },
@@ -147,10 +164,14 @@ val MistakeDetailStringsEn = MistakeDetailStrings(
     masteredCard = "✅ You've mastered this one — great job! Review it now and then to keep it fresh.",
     revealButton = "👀 I'm ready — show the answer",
     selfCheckPrompt = "📝 Check your answer — did you get it right?",
-    gotItButton = "✅ Got it right (+5)",
-    missedButton = "❌ Didn't remember (+2)",
+    gotItButton = "✅ Got it right (+3)",
+    missedButton = "❌ Didn't remember (+1)",
     gotItMessage = "🎉 Right! +3 points submitted for parent approval",
     missedMessage = "💪 +1 point submitted for approval — a few more reviews and you'll remember it",
+    gotItPendingMessage = { points -> "🎉 Right! +$points ${pointsWord(points)} pending parent approval" },
+    missedPendingMessage = { points ->
+        "💪 +$points ${pointsWord(points)} pending parent approval — review it a few more times and it will stick"
+    },
     reviewDoneCard = "✅ Review complete! The next review is scheduled on the forgetting curve.",
     variationTitle = "💡 Variation",
     variationDone = "✅ Done",
@@ -183,6 +204,9 @@ val MistakeDetailStringsEn = MistakeDetailStrings(
     variationNotesHeading = "📝 My variation notes:",
     variationInputLabel = "Write your thoughts or a variation question (optional)",
     variationDoneMessage = "💡 Variation complete — +3 points submitted for parent approval",
+    variationPendingMessage = { points ->
+        "💡 Variation complete — +$points ${pointsWord(points)} pending parent approval"
+    },
     variationButton = "💡 Complete variation thinking (+3 points)",
     reviewHistoryTitle = { count -> "Review history ($count)" },
     reviewHistoryLine = { date, points -> "$date +$points ${pointsWord(points)}" },

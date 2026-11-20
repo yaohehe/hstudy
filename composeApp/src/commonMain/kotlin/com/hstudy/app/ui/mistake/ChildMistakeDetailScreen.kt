@@ -176,7 +176,7 @@ fun ChildMistakeDetailScreen(
 
             // 题目内容
             if (m.content.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(strings.contentHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
@@ -263,12 +263,13 @@ fun ChildMistakeDetailScreen(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    app.mistakeRepository.reviewMistake(mistakeId, points = 0, note = "主动回忆-做对")
-                                    app.pointApprovalRepository.submitApproval("MISTAKE_REVIEW", "错题复习做对: ${m.title}", 3)
+                                    // P0-01（规则 6：做对 +3）：审批申请由 reviewMistake 内部走统一
+                                    // checkIn(bizKey=MISTAKE_REV:…) 登记，UI 不再直调 submitApproval
+                                    app.mistakeRepository.reviewMistake(mistakeId, points = 3, note = "主动回忆-做对")
                                     app.userPreferences.boostPetMood(2) // 复习让宠物开心
                                     com.hstudy.app.ui.common.AchievementManager.evaluate(app)
                                     reviewDone = true
-                                    snackbarHostState.showSnackbar(strings.gotItMessage)
+                                    snackbarHostState.showSnackbar(strings.gotItPendingMessage(3))
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -276,10 +277,10 @@ fun ChildMistakeDetailScreen(
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
-                                    app.mistakeRepository.reviewMistake(mistakeId, points = 0, note = "主动回忆-没记住")
-                                    app.pointApprovalRepository.submitApproval("MISTAKE_REVIEW", "错题复习: ${m.title}", 1)
+                                    // P0-01（规则 6：没记住按仅复习 +1）：审批改走 reviewMistake 的统一 checkIn
+                                    app.mistakeRepository.reviewMistake(mistakeId, points = 1, note = "主动回忆-没记住")
                                     reviewDone = true
-                                    snackbarHostState.showSnackbar(strings.missedMessage)
+                                    snackbarHostState.showSnackbar(strings.missedPendingMessage(1))
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -303,7 +304,7 @@ fun ChildMistakeDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = if (m.hasVariation) MaterialTheme.colorScheme.secondaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        else MaterialTheme.colorScheme.surfaceContainer
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -342,10 +343,10 @@ fun ChildMistakeDetailScreen(
                         Button(
                             onClick = {
                                 scope.launch {
+                                    // P0-01（规则 7：举一反三 +3）：审批改走 saveVariation 的统一 checkIn
                                     app.mistakeRepository.saveVariation(m, variationInput)
-                                    app.pointApprovalRepository.submitApproval("VARIATION", "举一反三思考: ${m.title}", 3)
                                     mistake = app.mistakeRepository.getMistakeById(mistakeId)
-                                    snackbarHostState.showSnackbar(strings.variationDoneMessage)
+                                    snackbarHostState.showSnackbar(strings.variationPendingMessage(3))
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()

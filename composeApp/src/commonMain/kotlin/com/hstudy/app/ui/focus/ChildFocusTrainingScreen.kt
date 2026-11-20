@@ -3,7 +3,6 @@ package com.hstudy.app.ui.focus
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
@@ -109,9 +107,9 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center)
 
-            // 用时显示
+            // 用时显示（指令 3.4-专注1：displayLarge 排版槽替代裸字号）
             Text(strings.elapsedValue(com.hstudy.app.ui.dt.strFormat("%.1f", elapsedMs / 1000f)),
-                fontSize = 40.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.primary)
             // 个人最佳记录（自我竞赛目标）
             if (bestMs > 0L) {
                 Text(strings.personalBestValue(com.hstudy.app.ui.dt.strFormat("%.1f", bestMs / 1000f)),
@@ -164,7 +162,7 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
                                 val isDone = num < nextExpected
                                 val isNext = num == nextExpected && running
                                 val bg = when {
-                                    isDone -> MaterialTheme.colorScheme.surfaceVariant
+                                    isDone -> MaterialTheme.colorScheme.surfaceContainerHigh
                                     isNext -> MaterialTheme.colorScheme.primaryContainer
                                     else -> MaterialTheme.colorScheme.secondaryContainer
                                 }
@@ -172,14 +170,13 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
                                     modifier = Modifier
                                         .weight(1f)
                                         .aspectRatio(1f)
-                                        .background(bg, RoundedCornerShape(10.dp))
+                                        .background(bg, MaterialTheme.shapes.medium)
                                         .clickable { onCellClick(num) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         "$num",
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.headlineSmall,
                                         color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant
                                             else MaterialTheme.colorScheme.onSurface
                                     )
