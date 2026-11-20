@@ -1,5 +1,22 @@
 # HStudy 版本更新记录
 
+## v3.2.1 (2026-11-20)
+**签名密钥轮换：v2（debug 签名）设备可不卸载直接覆盖升级到 v3 正式签名包**
+
+> **发布状态**：tag `v3.2.1`；Release 工作流在正式签名之外附加 APK Signature Scheme v3
+> 轮换 lineage（v2 原始 debug key → 现正式 key），并按 SDK 区间双块签名。
+
+- 签名结构：v1/v2 块用旧 debug key（Android 8.x 的 v2 设备凭签名一致直接升级）；
+  v3 块用正式 key + lineage（Android 9+ 的 v2 设备凭轮换授权升级，已装 v3.x 设备直接匹配）。
+  `--rotation-min-sdk-version 28`：默认值只把新 key 放进 v3.1（Android 13+），会断掉
+  Android 9–12 已装 v3.x 设备的升级，本地实证后显式设为 28。
+- 已知例外（设计内代价）：Android 8.x 且已装 v3.0.0–v3.2.0（正式 key）的设备无法直接
+  升级本版（v2 块回到 debug key），需导出备份→卸载→安装→恢复。
+- release.yml：新增 debug keystore 解码（secret ANDROID_DEBUG_KEYSTORE_BASE64）、
+  apksigner rotate + 双 signer 重签步骤；签名验证升级为按 SDK 区间断言两枚证书指纹。
+- README 双语新增「从 v2 升级 / Upgrading from v2」说明；发布说明同步更新。
+- 业务代码零改动；versionCode 30201 / versionName 3.2.1（四处版本戳同步）。
+
 ## v3.2.0 (2026-11-19)
 
 - Analytics：集成 Google Analytics for Firebase（GA4），Android + iOS 双平台匿名使用统计
