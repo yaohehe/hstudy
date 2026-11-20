@@ -187,9 +187,9 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**v3.3 W4 复算**，改登记时必须同时改这里）：表里现在 **233 条**
-# （9 条双侧成对 + 158 条只看页面 + 66 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **227** 条默认组用不到；`--branch` 组碰到 **233 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**v3.3 W5 复算**，改登记时必须同时改这里）：表里现在 **237 条**
+# （9 条双侧成对 + 158 条只看页面 + 70 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **231** 条默认组用不到；`--branch` 组碰到 **237 条**、**0** 条"（未用到）"。
 # v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
 # v3.3 W1（Antigravity P0-01）在 184 条上新增错题 pending Snackbar 新写文案 5 条（表侧单边：
 # gotItPendingMessage / missedPendingMessage / variationPendingMessage / reviewPendingMessage /
@@ -210,6 +210,12 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # MistakeListStrings.forecastLabels 在表侧集合内，同值同译由 crossTableVocabularyPinned 钉死；
 # 家长端两页对 childPoints 新槽全部跨表消费，不重开同值槽）→ 205 + 28 = 233
 # （两个组读数实测如上：默认组仍 6/227，--branch 233 条、0 条未用到）。
+# v3.3 W5（其余 13 页 M3 统一升级 指令 §3.4）在 233 条上新增表侧单边 4 条
+# （ChildRewardStoreStrings.redeemSpendButton「消耗 ⟨$⟩ 积分」兑换钮；ParentDashboardStrings.
+# trendSettledLegend/trendPendingLegend 趋势图双图例；GrowthReportStrings.balanceSubPending
+# 已结算余额+待审预估副标。全部为重设计新写文案、两语由 pin 测试逐字钉死；旧 redeemButton/balanceSub
+# 保留不删，仍与迁移前原文配对）→ 233 + 4 = 237（两个组读数实测如上：默认组仍 6/231，
+# --branch 237 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -976,6 +982,24 @@ DISCLOSED_RESIDUALS = [
     {"page": None, "table": "高级与设置", "table_field": "ParentHomeStrings.groupAdvancedTitle",
      "reason": "v3.3 W4 §3.3.5-3 新写文案：第 3 层横向快捷条标题（完成证明/积分审核/心愿目标/任务模板/数据大屏/周报/设置，"
                "旧 15 卡导航目标 1:1 全保留）"},
+    # ---- v3.3 W5（其余 13 页 M3 统一升级 指令 §3.4）：商店消耗钮/趋势图例/待审预估副标新写文案 ----
+    # 以下 4 条都是重设计的新写词面（迁移前页面无对应原文），两语由 ChildRewardStoreCopyTest（redeemSpendButton）/
+    # StringsCopyTest.parentDashboardCopyDiffers（trend*Legend）/ WishCopyTest（balanceSubPending）逐字钉死；
+    # 旧配对字段一律保留不动。
+    {"page": None, "table": "消耗 %s 积分" % VALUE, "table_field": "ChildRewardStoreStrings.redeemSpendButton",
+     "reason": "v3.3 W5 §3.4-奖励1 新写文案：兑换网格卡钮显式成本提示「消耗 N 积分」（指令词面，原钮只有「兑换」）。"
+               "旧 redeemButton「兑换」**保留不删**——仍与迁移前 :304 按钮原文配对；EN 单复数由 pin 测试钉死"},
+    {"page": None, "table": "已结算", "table_field": "ParentDashboardStrings.trendSettledLegend",
+     "reason": "v3.3 W5 §3.4-报表2 新写文案：7 日趋势图实线图例（已入账记录流，与待审预估虚线分离）。"
+               "两语由 parentDashboardCopyDiffers 断言互异并逐字钉死"},
+    {"page": None, "table": "待审预估", "table_field": "ParentDashboardStrings.trendPendingLegend",
+     "reason": "v3.3 W5 §3.4-报表2 新写文案：7 日趋势图虚线图例（PENDING 审批单按 date 聚合 requestedPoints，"
+               "只读展示流，与 ParentApprovalScreen 同源查询，不新增写路径）"},
+    {"page": None, "table": "当前余额 %s 分 · 另有 %s 分待家长确认" % (VALUE, VALUE),
+     "table_field": "GrowthReportStrings.balanceSubPending",
+     "reason": "v3.3 W5 §3.4-报表2 新写文案：成长报告 🌟 行在有待审积分时的余额副标（已结算 vs 待审区分；"
+               "无待审时继续走旧 balanceSub，两语由 growthReportInterpolatedCopyPinsBothLanguages 钉死；"
+               "分享文本 reportText 不含该行，保持迁移前逐字节形态）"},
 ]
 
 

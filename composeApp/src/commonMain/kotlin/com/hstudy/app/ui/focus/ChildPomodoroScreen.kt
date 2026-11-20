@@ -122,7 +122,7 @@ fun ChildPomodoroScreen(
                         modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = if (isGoldenNow) MaterialTheme.colorScheme.tertiaryContainer
-                                else MaterialTheme.colorScheme.surfaceVariant
+                                else MaterialTheme.colorScheme.surfaceContainer
                         )
                     ) {
                         Text(
@@ -261,7 +261,7 @@ fun ChildPomodoroScreen(
                 // 积分说明
                 Card(
                     modifier = Modifier.padding(horizontal = 32.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(strings.pointsRulesTitle, style = MaterialTheme.typography.titleSmall)

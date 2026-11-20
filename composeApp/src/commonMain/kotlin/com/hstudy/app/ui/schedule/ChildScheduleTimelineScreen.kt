@@ -1,5 +1,11 @@
 package com.hstudy.app.ui.schedule
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -126,11 +132,24 @@ private fun TimelineItem(
 ) {
     val displayLanguage = LocalDisplayLanguage.current
     val strings = LocalStrings.current.childScheduleTimeline
+    // 时间轴节律点层次（指令 3.4-作息1）：PAST=outline 灰化、CURRENT=primary、UPCOMING=tertiary
     val (dotColor, cardColor) = when (state) {
-        TimelineState.PAST -> MaterialTheme.colorScheme.outline to MaterialTheme.colorScheme.surfaceVariant
-        TimelineState.CURRENT -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.primaryContainer
-        TimelineState.UPCOMING -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.surface
+        TimelineState.PAST -> MaterialTheme.colorScheme.outline to MaterialTheme.colorScheme.surfaceContainerLow
+        TimelineState.CURRENT -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.surfaceContainerHigh
+        TimelineState.UPCOMING -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.surfaceContainer
     }
+    // 进行中任务发光脉冲边框（指令 3.4-作息2）：语义 primary 色透明度脉冲，替代死板色块；
+    // 只动颜色不做整卡缩放（避免 3.1-4 视觉疲劳问题复发）
+    val pulseTransition = rememberInfiniteTransition(label = "timelinePulse")
+    val pulseAlpha by pulseTransition.animateFloat(
+        initialValue = 0.30f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "pulseAlpha"
+    )
+    val glowColor = if (state == TimelineState.CURRENT)
+        MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha)
+    else Color.Transparent
 
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         // 时间轴
@@ -142,7 +161,28 @@ private fun TimelineItem(
                 fontWeight = FontWeight.Bold, color = dotColor)
             Spacer(modifier = Modifier.height(4.dp))
             Box(
-                modifier = Modifier.size(14.dp).background(dotColor, CircleShape)
+                modifier = Modifier.size(14.dp).background(dotColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (state == TimelineState.CURRENT) {
+                    // 节点外圈光晕：与卡片边框同相位脉冲
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .background(glowColor.copy(alpha = glowColor.alpha * 0.28f), CircleShape)
+                    )
+                }
+            }
+            // 轴线段：已过节点用 outlineVariant，进行中/未来用当前节点色淡显
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(28.dp)
+                    .background(
+                        if (state == TimelineState.PAST) MaterialTheme.colorScheme.outlineVariant
+                        else dotColor.copy(alpha = 0.45f)
+                    )
             )
         }
 
@@ -152,6 +192,7 @@ private fun TimelineItem(
         Card(
             modifier = Modifier.weight(1f),
             colors = CardDefaults.cardColors(containerColor = cardColor),
+            border = if (state == TimelineState.CURRENT) BorderStroke(2.dp, glowColor) else null,
             elevation = CardDefaults.cardElevation(defaultElevation = if (state == TimelineState.CURRENT) 4.dp else 1.dp)
         ) {
             Row(

@@ -29,6 +29,7 @@ data class ChildRewardStoreStrings(
     val redeemSuccess: (name: String) -> String,
     val insufficientPoints: String,
     val redeemButton: String,
+    val redeemSpendButton: (cost: Int) -> String,
     val shortBy: (diff: Int) -> String,
     val priceLabel: (cost: Int) -> String,
 )
@@ -48,6 +49,7 @@ val ChildRewardStoreStringsZh = ChildRewardStoreStrings(
     redeemSuccess = { name -> "🎉 兑换成功！$name" },                                          // :227
     insufficientPoints = "积分不足哦，继续加油！💪",                                           // :230
     redeemButton = "兑换",                                                                     // :304
+    redeemSpendButton = { cost -> "消耗 $cost 积分" },                                          // v3.3 W5 §3.4-奖励1
     shortBy = { diff -> "还差 $diff 分" },                                                     // :304
     priceLabel = { cost -> "⭐ $cost 积分" },                                                  // :295
 )
@@ -69,6 +71,7 @@ val ChildRewardStoreStringsEn = ChildRewardStoreStrings(
     redeemSuccess = { name -> "🎉 Redeemed! $name" },
     insufficientPoints = "Not enough points yet — keep going! 💪",
     redeemButton = "Redeem",
+    redeemSpendButton = { cost -> "Spend $cost ${pointsWord(cost)}" },
     shortBy = { diff -> "$diff ${pointsWord(diff)} short" },
     priceLabel = { cost -> "⭐ $cost ${pointsWord(cost)}" },
 )

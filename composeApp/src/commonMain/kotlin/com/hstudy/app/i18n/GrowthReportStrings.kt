@@ -30,6 +30,7 @@ data class GrowthReportStrings(
     val wishesLabel: String,
     val lifetimeValue: (n: Int) -> String,
     val balanceSub: (n: Int) -> String,
+    val balanceSubPending: (n: Int, pending: Int) -> String,
     val streakValue: (n: Int) -> String,
     val streakSubPositive: String,
     val streakSubZero: String,
@@ -66,6 +67,7 @@ val GrowthReportStringsZh = GrowthReportStrings(
     wishesLabel = "已达成心愿",                                                   // :101
     lifetimeValue = { n -> "$n 分" },                                            // :96
     balanceSub = { n -> "当前余额 $n 分" },                                      // :96
+    balanceSubPending = { n, pending -> "当前余额 $n 分 · 另有 $pending 分待家长确认" },
     streakValue = { n -> "$n 天" },                                              // :97
     streakSubPositive = "坚持就是胜利！",                                          // :97
     streakSubZero = "今天开始打卡吧",                                              // :97
@@ -105,6 +107,7 @@ val GrowthReportStringsEn = GrowthReportStrings(
     wishesLabel = "Wishes achieved",
     lifetimeValue = { n -> "$n ${pointsWord(n)}" },
     balanceSub = { n -> "Current balance: $n ${pointsWord(n)}" },
+    balanceSubPending = { n, pending -> "Current balance: $n ${pointsWord(n)} · $pending more ${pointsWord(pending)} awaiting parent approval" },
     streakValue = { n -> "$n ${if (n == 1) "day" else "days"}" },
     streakSubPositive = "Persistence is victory!",
     streakSubZero = "Start checking in today",

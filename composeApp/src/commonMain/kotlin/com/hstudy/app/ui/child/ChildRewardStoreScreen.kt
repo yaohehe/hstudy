@@ -10,6 +10,7 @@ import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +61,7 @@ fun ChildRewardStoreScreen(
                 windowSizeClass = windowSizeClass,
                 modifier = Modifier.fillMaxSize()
             ) {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item { Spacer(modifier = Modifier.height(8.dp)) }
 
                     // 激励横幅：告诉孩子现在能兑换几个、距离下一个目标还差多少，激发主动性
@@ -83,10 +84,16 @@ fun ChildRewardStoreScreen(
                                         Text(strings.nextGoalMessage(need, nextGoal.iconEmoji, localizedPresetText(nextGoal.name, displayLanguage)),
                                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         val progress = (totalPoints.toFloat() / nextGoal.pointsCost).coerceIn(0f, 1f)
+                                        val animatedGoal by androidx.compose.animation.core.animateFloatAsState(
+                                            targetValue = progress,
+                                            animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f),
+                                            label = "nextGoalProgress"
+                                        )
                                         LinearProgressIndicator(
-                                            progress = progress,
-                                            modifier = Modifier.fillMaxWidth().height(8.dp),
-                                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                            progress = animatedGoal,
+                                            modifier = Modifier.fillMaxWidth().height(10.dp)
+                                                .clip(MaterialTheme.shapes.small),
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
                                         )
                                     }
                                 }
@@ -120,39 +127,21 @@ fun ChildRewardStoreScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
-                            if (isTablet) {
-                                // 平板：网格显示
-                                val rows = catRewards.chunked(2)
-                                items(rows) { rowRewards ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        rowRewards.forEach { reward ->
-                                            RewardStoreCard(
-                                                reward = reward,
-                                                currentPoints = totalPoints,
-                                                onExchange = { showExchangeDialog = reward },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-                                        if (rowRewards.size < 2) {
-                                            repeat(2 - rowRewards.size) { Spacer(modifier = Modifier.weight(1f)) }
-                                        }
+                            // 兑换商品统一网格布局（指令 3.4-奖励1）：手机 2 列 / 平板 3 列，
+                            // 用 chunked 行实现（LazyColumn 内不再嵌 LazyRow/网格，避免嵌套滚动约束）
+                            val perRow = if (isTablet) 3 else 2
+                            items(catRewards.chunked(perRow)) { rowRewards ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    rowRewards.forEach { reward ->
+                                        RewardStoreCard(
+                                            reward = reward,
+                                            currentPoints = totalPoints,
+                                            onExchange = { showExchangeDialog = reward },
+                                            modifier = Modifier.weight(1f)
+                                        )
                                     }
-                                }
-                            } else {
-                                // 手机：横向滚动卡片
-                                item {
-                                    androidx.compose.foundation.lazy.LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        contentPadding = PaddingValues(vertical = 4.dp)
-                                    ) {
-                                        items(catRewards, key = { it.id }) { reward ->
-                                            RewardStoreCard(
-                                                reward = reward,
-                                                currentPoints = totalPoints,
-                                                onExchange = { showExchangeDialog = reward },
-                                                modifier = Modifier.width(160.dp)
-                                            )
-                                        }
+                                    if (rowRewards.size < perRow) {
+                                        repeat(perRow - rowRewards.size) { Spacer(modifier = Modifier.weight(1f)) }
                                     }
                                 }
                             }
@@ -288,7 +277,7 @@ private fun RewardStoreCard(
                     .size(64.dp)
                     .background(
                         color = if (canAfford) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant,
+                            else MaterialTheme.colorScheme.surfaceContainerHighest,
                         shape = androidx.compose.foundation.shape.CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -311,9 +300,10 @@ private fun RewardStoreCard(
             Button(
                 onClick = onExchange,
                 enabled = canAfford,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
-                Text(if (canAfford) strings.redeemButton else strings.shortBy(reward.pointsCost - currentPoints))
+                // 按钮显式提示「消耗 N 积分」（指令 3.4-奖励1）；积分不足时保留差额提示原文案
+                Text(if (canAfford) strings.redeemSpendButton(reward.pointsCost) else strings.shortBy(reward.pointsCost - currentPoints))
             }
         }
     }

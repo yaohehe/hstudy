@@ -11,6 +11,7 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -157,10 +158,17 @@ private fun GoalManageCard(
                 }
             }
             if (goal.isActive) {
+                // 指令 3.4-心愿2：宽轨药丸进度（与儿童端同形）
+                val animatedGoal by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = progress,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f),
+                    label = "wishManageProgress"
+                )
                 LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    progress = animatedGoal,
+                    modifier = Modifier.fillMaxWidth().height(12.dp)
+                        .clip(MaterialTheme.shapes.small),
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 )
             }
         }

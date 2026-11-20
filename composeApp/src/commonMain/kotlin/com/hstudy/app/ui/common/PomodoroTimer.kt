@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.AnalyticsEvent
 import com.hstudy.app.platform.AnalyticsReporter
@@ -171,7 +170,8 @@ fun PomodoroTimer(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         if (breathIn) strings.breatheIn else strings.breatheOut,
-                        fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                        // displayMedium=28sp Bold：与原裸字号同值，改走排版槽（§3.2 排版节奏）
+                        style = MaterialTheme.typography.displayMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -179,8 +179,8 @@ fun PomodoroTimer(
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-            // 背景圆环
-            val trackColor = MaterialTheme.colorScheme.surfaceVariant
+            // 背景圆环（轨道用语义容器层，指令 3.4-专注1）
+            val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             val progressColor = if (isBreak)
                 MaterialTheme.colorScheme.tertiary
             else
@@ -215,14 +215,13 @@ fun PomodoroTimer(
                 )
             }
 
-            // 中间文字
+            // 中间文字：计时表盘居中 + displayLarge 排版槽（指令 3.4-专注1，去裸字号）
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 val minutes = remainingSeconds / 60
                 val seconds = remainingSeconds % 60
                 Text(
                     text = com.hstudy.app.ui.dt.strFormat("%02d:%02d", minutes, seconds),
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.displayLarge,
                     color = progressColor
                 )
                 Text(

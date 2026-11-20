@@ -44,6 +44,11 @@ fun GrowthReportScreen(
 
     val lifetimePoints by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
+    // §3.4-报表2：已结算余额之外，展示待家长审批的积分预估（只读流，与审批页同源查询）
+    val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
+    val pendingPoints = allApprovals
+        .filter { it.status == com.hstudy.app.data.local.entity.ApprovalStatus.PENDING }
+        .sumOf { it.requestedPoints }
     val goals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
     val exchanges by app.rewardRepository.getAllExchanges().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
@@ -84,7 +89,9 @@ fun GrowthReportScreen(
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             ReportStat(
                                 "🌟", strings.lifetimeLabel,
-                                strings.lifetimeValue(lifetimePoints), strings.balanceSub(totalPoints)
+                                strings.lifetimeValue(lifetimePoints),
+                                if (pendingPoints > 0) strings.balanceSubPending(totalPoints, pendingPoints)
+                                else strings.balanceSub(totalPoints)
                             )
                             ReportStat(
                                 "🔥", strings.streakLabel, strings.streakValue(streak),
@@ -126,9 +133,9 @@ fun GrowthReportScreen(
                                 mimeType = "text/plain"
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     ) {
-                        Text(strings.shareButton, modifier = Modifier.padding(vertical = 6.dp))
+                        Text(strings.shareButton)
                     }
                     Text(strings.shareHint, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,

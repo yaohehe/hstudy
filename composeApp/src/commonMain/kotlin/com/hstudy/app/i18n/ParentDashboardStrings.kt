@@ -104,6 +104,8 @@ data class ParentDashboardStrings(
     // ===== 图表与分类 =====
     val trendTitle: String,
     val noDataLabel: String,
+    val trendSettledLegend: String,
+    val trendPendingLegend: String,
     val categoryTitle: String,
     val categoryBasicLabel: String,
     val categoryEnhanceLabel: String,
@@ -158,6 +160,8 @@ val ParentDashboardStringsZh = ParentDashboardStrings(
     // ===== 图表与分类 =====
     trendTitle = "📈 7日积分获取趋势",                                         // :185
     noDataLabel = "暂无数据",                                                // :189
+    trendSettledLegend = "已结算",
+    trendPendingLegend = "待审预估",
     categoryTitle = "📋 任务分类分布",                                         // :230
     categoryBasicLabel = "📝 基础",                                           // :232
     categoryEnhanceLabel = "📈 提升",                                         // :233
@@ -217,6 +221,8 @@ val ParentDashboardStringsEn = ParentDashboardStrings(
     // ===== 图表与分类 =====
     trendTitle = "📈 Points earned over 7 days",
     noDataLabel = "No data yet",
+    trendSettledLegend = "Settled",
+    trendPendingLegend = "Pending est.",
     categoryTitle = "📋 Task categories",
     categoryBasicLabel = "📝 Basic",
     categoryEnhanceLabel = "📈 Advanced",

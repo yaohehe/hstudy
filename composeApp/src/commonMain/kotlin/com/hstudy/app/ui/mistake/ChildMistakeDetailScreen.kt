@@ -176,7 +176,7 @@ fun ChildMistakeDetailScreen(
 
             // 题目内容
             if (m.content.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(strings.contentHeading, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
@@ -304,7 +304,7 @@ fun ChildMistakeDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = if (m.hasVariation) MaterialTheme.colorScheme.secondaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        else MaterialTheme.colorScheme.surfaceContainer
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

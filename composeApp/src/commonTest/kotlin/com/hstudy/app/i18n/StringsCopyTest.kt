@@ -1886,6 +1886,8 @@ class StringsCopyTest {
             zh.comparePointsLabel to en.comparePointsLabel,
             zh.trendTitle to en.trendTitle,
             zh.noDataLabel to en.noDataLabel,
+            zh.trendSettledLegend to en.trendSettledLegend,
+            zh.trendPendingLegend to en.trendPendingLegend,
             zh.categoryTitle to en.categoryTitle,
             zh.categoryBasicLabel to en.categoryBasicLabel,
             zh.categoryEnhanceLabel to en.categoryEnhanceLabel,
@@ -1901,6 +1903,11 @@ class StringsCopyTest {
         // 四条趋势判词必须互不相同（同一个 when 的四支，两支同值就等于少了一档反馈）
         assertEquals(4, listOf(zh.verdictNewStart, zh.verdictImproved, zh.verdictLevel, zh.verdictDeclined).distinct().size)
         assertEquals(4, listOf(en.verdictNewStart, en.verdictImproved, en.verdictLevel, en.verdictDeclined).distinct().size)
+        // v3.3 W5 §3.4-报表2：趋势图"已结算 / 待审预估"双线图例两语逐字钉死
+        assertEquals("已结算", zh.trendSettledLegend)
+        assertEquals("待审预估", zh.trendPendingLegend)
+        assertEquals("Settled", en.trendSettledLegend)
+        assertEquals("Pending est.", en.trendPendingLegend)
         // Ruling 34 携带项 1：§11"数据看板 = Data dashboard"那行声称本测试保证"菜单入口名与页面顶栏名
         // 同词形"，但跨表比较原本并不存在，这里补上（两行、两侧都查）。
         // 形状与 brief 给的写法**方向相反**，以代码为准：带 emoji 的是**页面顶栏**

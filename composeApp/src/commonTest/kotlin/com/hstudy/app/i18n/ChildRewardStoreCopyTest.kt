@@ -49,6 +49,10 @@ class ChildRewardStoreCopyTest {
         assertEquals("🎉 Redeemed! Movies", en.redeemSuccess("Movies"))
         assertEquals("还差 20 分", zh.shortBy(20))
         assertEquals("1 point short", en.shortBy(1))
+        // v3.3 W5 §3.4-奖励1：兑换钮「消耗 N 积分」显式成本提示（指令词面），两语逐字钉死
+        assertEquals("消耗 20 积分", zh.redeemSpendButton(20))
+        assertEquals("Spend 1 point", en.redeemSpendButton(1))
+        assertEquals("Spend 300 points", en.redeemSpendButton(300))
         assertEquals("⭐ 300 积分", zh.priceLabel(300))
         assertEquals("⭐ 1 point", en.priceLabel(1))
     }
