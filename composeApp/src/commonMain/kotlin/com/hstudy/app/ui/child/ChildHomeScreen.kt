@@ -145,8 +145,8 @@ fun ChildHomeScreen(
 
     // M3 重设计指令 §3.3.1-1：原"积分卡片呼吸缩放"（无限循环 animateFloat + 整卡 scale）
     // 已删除——常驻缩放造成文字边缘抖动、分散儿童注意力，违背 M3 动效的克制原则。
-    // 指令 §3.3.1-3：待审进度胶囊的详情展开态（点击胶囊=原来的审批详情卡，信息不删减）。
-    var approvalDetailsExpanded by remember { mutableStateOf(false) }
+    // 终审 M-4：原 §3.3.1-3 的"点击胶囊展开审批详情卡"本地状态已删除——
+    // 已通过/已拒绝回顾不再藏在这次额外点击之后，详情/回顾卡常驻渲染在胶囊正下方。
 
     val levelInfo = LevelSystem.getLevelInfo(totalPoints)
 
@@ -233,10 +233,11 @@ fun ChildHomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // ===== 待审进度胶囊（指令 §3.3.1-3：原底部审批状态卡上移至 Hero 正下方、精简为胶囊）=====
-                // 点击展开的详情与旧卡完全同源（pendingApprovalSummary + 最近通过/拒绝行），只搬位置不改数据流。
+                // 终审 M-4：已通过/已拒绝回顾不再藏在胶囊的点击展开之后——有待审时回顾卡直接渲染在胶囊正下方，
+                // 与 W3 重构前底部审批卡同源同数据流（pendingApprovalSummary + 最近通过/拒绝行），信息零删减。
                 if (pendingApprovalCount > 0) {
                     AssistChip(
-                        onClick = { approvalDetailsExpanded = !approvalDetailsExpanded },
+                        onClick = {}, // 胶囊降级为状态展示：回顾已平铺在下方，点击不再承担唯一展开职责（M-4）
                         label = {
                             Text(
                                 strings.pendingApprovalCapsule(pendingApprovalCount, pendingApprovalPoints),
@@ -249,27 +250,25 @@ fun ChildHomeScreen(
                             labelColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     )
-                    if (approvalDetailsExpanded) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                            )
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(strings.myApprovalRequestsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text(strings.pendingApprovalSummary(pendingApprovalCount, pendingApprovalPoints),
-                                    style = MaterialTheme.typography.bodySmall,
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(strings.myApprovalRequestsTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(strings.pendingApprovalSummary(pendingApprovalCount, pendingApprovalPoints),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer)
+                            recentApproved.forEach { a ->
+                                Text(strings.approvedRequestLine(a.description, a.requestedPoints), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                recentApproved.forEach { a ->
-                                    Text(strings.approvedRequestLine(a.description, a.requestedPoints), style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                }
-                                recentRejected.forEach { a ->
-                                    Text(strings.rejectedRequestLine(a.description), style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error)
-                                }
+                            }
+                            recentRejected.forEach { a ->
+                                Text(strings.rejectedRequestLine(a.description), style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
