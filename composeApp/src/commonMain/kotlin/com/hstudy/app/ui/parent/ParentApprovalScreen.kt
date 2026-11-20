@@ -59,9 +59,10 @@ fun ParentApprovalScreen(
     val strings = LocalStrings.current.parentApproval
     val common = LocalStrings.current.common
     // P1-02 历史筛选钮「全部」复用 [TaskListStrings.filterAll]（同一中文值一个英文出处）；
-    // 「已通过/已拒绝」复用本表 statusApproved/statusRejected，「已撤销」用新字段 historyFilterUndone。
+    // 「已通过/已拒绝」复用本表 statusApproved/statusRejected，末位钮用 historyFilterUndone
+    // （QA C6 起 ZH=「撤销与取消」，覆盖 REVOKED+CANCELLED 两类终态，避免与 statusRevoked 词面碰撞）。
     val taskList = LocalStrings.current.taskList
-    // P1-02 历史二级筛选：0=全部 / 1=已通过 / 2=已拒绝 / 3=已撤销（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）
+    // P1-02 历史二级筛选：0=全部 / 1=已通过 / 2=已拒绝 / 3=撤销与取消（REVOKED+CANCELLED）
     var historyFilter by remember { mutableIntStateOf(0) }
     // 终审 M-3：先按状态筛选**全量**历史，再 take(20) 截断——原实现先截断后筛选，
     // 20 条之外的旧记录会被截掉，导致"已拒绝/已撤销"芯片显示"暂无审核记录"的假空态。
