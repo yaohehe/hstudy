@@ -132,13 +132,14 @@ fun ChildMistakeListScreen(
     }
     val onReview: (MistakeEntity) -> Unit = { mistake ->
         scope.launch {
-            app.mistakeRepository.reviewMistake(mistake.id, points = 0, note = "间隔复习")
-            app.pointApprovalRepository.submitApproval("MISTAKE_REVIEW", "复习错题：${mistake.title}", 3)
+            // P0-01（规则 6：仅复习 +1，间隔复习无对错自评）：审批申请由 reviewMistake 内部走统一
+            // checkIn(bizKey=MISTAKE_REV:…) 登记，UI 不再直调 submitApproval（旧直提 +3 是失控分值）
+            app.mistakeRepository.reviewMistake(mistake.id, points = 1, note = "间隔复习")
             app.userPreferences.boostPetMood(2)
             com.hstudy.app.ui.common.AchievementManager.evaluate(app)
             val updated = app.mistakeRepository.getMistakeById(mistake.id)
             val nextLabel = updated?.let { SpacedRepetition.nextReviewLabel(it, displayLanguage) } ?: ""
-            snackbarHostState.showSnackbar(strings.reviewSuccessMessage(nextLabel))
+            snackbarHostState.showSnackbar(strings.reviewPendingMessage(1, nextLabel))
         }
     }
 

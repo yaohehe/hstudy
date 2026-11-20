@@ -101,7 +101,8 @@ object AppGraph {
         taskRepository = TaskRepository(database.taskDao())
         pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao())
         rewardRepository = RewardRepository(database.rewardDao())
-        mistakeRepository = MistakeRepository(database.mistakeDao())
+        // P0-01（Antigravity 指令）：错题复习/举一反三走统一审批 checkIn，注入 PointRepository
+        mistakeRepository = MistakeRepository(database.mistakeDao(), pointRepository)
         focusRepository = FocusRepository(database.focusDao())
         habitRepository = HabitRepository(database.habitDao())
         proofRepository = ProofRepository(database.habitDao())

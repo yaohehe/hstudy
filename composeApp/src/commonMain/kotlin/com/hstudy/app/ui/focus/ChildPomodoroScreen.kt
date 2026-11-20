@@ -179,9 +179,21 @@ fun ChildPomodoroScreen(
                         scope.launch {
                             // 记录专注时长（每5分钟=1分，积分待家长审核）
                             val points = minutes / 5
-                            app.focusRepository.recordFocusSession(minutes, focusTarget, 0)
+                            // P0-02（Antigravity 指令，规则 8）：专注积分改走权威入口
+                            // PointRepository.checkIn（bizKey 按专注会话 id 唯一，防重进页面/重放
+                            // 产生重复待审单），不再直调 pointApprovalRepository.submitApproval。
+                            // recordFocusSession 返回 Long（会话 id，FocusRepository.kt:12 实证）。
+                            val sessionId = app.focusRepository.recordFocusSession(minutes, focusTarget, 0)
                             if (points > 0) {
-                                app.pointApprovalRepository.submitApproval("FOCUS_COMPLETE", CanonicalFocusText.recordDescription(focusTarget, minutes), points)
+                                // 日期在回调时刻重取（同 ChildHomeScreen 的 ASSIGN 口径），避免跨零点用旧 todayStr
+                                val checkInDate = com.hstudy.app.data.repository.PointRepository.getTodayString()
+                                app.pointRepository.checkIn(
+                                    bizKey = "FOCUS:$sessionId:$checkInDate",
+                                    actionType = "FOCUS_COMPLETE",
+                                    description = CanonicalFocusText.recordDescription(focusTarget, minutes),
+                                    points = points,
+                                    date = checkInDate
+                                )
                             }
                             app.userPreferences.boostPetMood(3)
                             app.userPreferences.incrementPomodoroTodayCount()

@@ -19,6 +19,10 @@ data class MistakeListStrings(
     val masteredBadge: (count: Int) -> String,
     val addContentDescription: String,
     val reviewSuccessMessage: (nextReviewLabel: String) -> String,
+    // ---- P0-01（v3.3 W1）：快捷复习（间隔复习）按规则 6「仅复习 +1」走统一审批 checkIn 后，
+    // Snackbar 反馈改带实参分值（§五「+N 分待家长审核」形态，同 MistakeDetailStrings 三条 pending 文案；
+    // 上一条整串静态文案保留供等价闸门按迁移前原文配对，页面不再调用）。
+    val reviewPendingMessage: (points: Int, nextReviewLabel: String) -> String,
     val streakTitle: (days: Int) -> String,
     val streakEncouragementHigh: String,
     val streakEncouragementMid: String,
@@ -65,6 +69,7 @@ val MistakeListStringsZh = MistakeListStrings(
     masteredBadge = { count -> "已掌握 $count" },
     addContentDescription = "添加错题",
     reviewSuccessMessage = { nextReviewLabel -> "📖 复习完成！+3分已提交家长审核 $nextReviewLabel" },
+    reviewPendingMessage = { points, nextReviewLabel -> "📖 复习完成！+${points}分待家长审核 $nextReviewLabel" },
     streakTitle = { days -> "连续复习 $days 天" },
     streakEncouragementHigh = "太棒了！坚持复习一周以上，记忆超牢固！",
     streakEncouragementMid = "坚持得不错！每天复习，遗忘远离你！",
@@ -102,7 +107,9 @@ val MistakeListStringsZh = MistakeListStrings(
     filterDue = { dueCount -> "今日待复习${if (dueCount > 0) " $dueCount" else ""}" },
     emptyState = "还没有错题记录，点击下方 + 添加",
     dueBadge = "🔔待复习",
-    reviewButton = "复习+3",
+    // P0-01：快捷复习=间隔复习，无对错自评，按规则 6「仅复习 +1」发放待审积分（原页面宣传 +3
+    // 是绕过审批链路的旧失控分值）；旧表值「复习+3」在迁移前页面原文里由等价闸门按页面单边登记复验。
+    reviewButton = "复习+1",
     markMasteredContentDescription = "标记掌握",
 )
 
@@ -112,6 +119,9 @@ val MistakeListStringsEn = MistakeListStrings(
     addContentDescription = "Add mistake",
     reviewSuccessMessage = { nextReviewLabel ->
         "📖 Review complete! +3 points submitted for parent approval. $nextReviewLabel"
+    },
+    reviewPendingMessage = { points, nextReviewLabel ->
+        "📖 Review complete! +$points ${pointsWord(points)} pending parent approval. $nextReviewLabel"
     },
     streakTitle = { days -> "Review streak: $days ${daysWord(days)}" },
     streakEncouragementHigh = "Amazing! Over a week of daily review — your memory is getting rock solid!",
@@ -158,6 +168,6 @@ val MistakeListStringsEn = MistakeListStrings(
     filterDue = { dueCount -> "Due today${if (dueCount > 0) " $dueCount" else ""}" },
     emptyState = "No mistakes yet — tap + below to add one",
     dueBadge = "🔔 Due",
-    reviewButton = "Review +3",
+    reviewButton = "Review +1",
     markMasteredContentDescription = "Mark as mastered",
 )

@@ -187,10 +187,13 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**v3.2.0 复算**，改登记时必须同时改这里）：表里现在 **184 条**
-# （9 条双侧成对 + 155 条只看页面 + 20 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **178** 条默认组用不到；`--branch` 组碰到 **184 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**v3.3 W1 复算**，改登记时必须同时改这里）：表里现在 **190 条**
+# （9 条双侧成对 + 156 条只看页面 + 25 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **184** 条默认组用不到；`--branch` 组碰到 **190 条**、**0** 条"（未用到）"。
 # v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
+# v3.3 W1（Antigravity P0-01）在 184 条上新增错题 pending Snackbar 新写文案 5 条（表侧单边：
+# gotItPendingMessage / missedPendingMessage / variationPendingMessage / reviewPendingMessage /
+# reviewButton「复习+1」）+ 快捷复习旧徽标「复习+3」1 条页面单边 → 184 + 6 = 190（两个组读数实测如上）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -783,6 +786,39 @@ DISCLOSED_RESIDUALS = [
                "「日程提醒」逐字节相同，两语由 W9CopyTest.alarmTitlePinned 钉死。"
                "W9 T3（L-19）：表侧限定到 ScheduleAlarmStrings.alarmTitle——这是这条兜底标题在表里的"
                "唯一槽，限定后其他表再写出同值不会被这条披露吞掉"},
+    # ---- v3.3 W1（Antigravity P0-01）：错题复习/举一反三 pending Snackbar 新写文案（表侧单边）----
+    # 这四条不是"搬运"而是**新写**：规则 6/7 走统一审批 checkIn 后，Snackbar 改为
+    # §五「+N 分待家长审核」形态（分值进实参位，镜像 TaskListStrings.checkInSuccessMessage）。
+    # 迁移前页面没有这些整串（旧文案是静态整串 +3/+1 已提交形态），所以只能登记成表侧单边；
+    # 两语整串由 MistakeCopyTest 的两组 InterpolatedCopyPins 钉死。旧四条静态字段
+    # （gotItMessage / missedMessage / variationDoneMessage / reviewSuccessMessage）**保留不删**，
+    # 仍与迁移前页面原文逐字节配对，不需要任何登记。
+    {"page": None, "table": "🎉 做对了！+%s分待家长审核" % VALUE,
+     "table_field": "MistakeDetailStrings.gotItPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（§五 +N分待家长审核 形态）：MistakeDetailStringsZh.gotItPendingMessage，"
+               "迁移前页面无此整串可比；两语由 MistakeCopyTest.mistakeDetailInterpolatedCopyPinsBothLanguages 钉死"},
+    {"page": None, "table": "💪 +%s分待家长审核，多复习几次就记住了" % VALUE,
+     "table_field": "MistakeDetailStrings.missedPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（同上）：MistakeDetailStringsZh.missedPendingMessage；钉死位置同上"},
+    {"page": None, "table": "💡 举一反三完成 +%s分待家长审核" % VALUE,
+     "table_field": "MistakeDetailStrings.variationPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（规则 7 举一反三 +3 走审批）：MistakeDetailStringsZh.variationPendingMessage；钉死位置同上"},
+    {"page": None, "table": "📖 复习完成！+%s分待家长审核 %s" % (VALUE, VALUE),
+     "table_field": "MistakeListStrings.reviewPendingMessage",
+     "reason": "v3.3 W1 P0-01 新写文案（快捷复习=间隔复习，规则 6 仅复习 +1）："
+               "MistakeListStringsZh.reviewPendingMessage；两语由 "
+               "MistakeCopyTest.mistakeListInterpolatedCopyPinsBothLanguages 钉死。"
+               "旧 reviewSuccessMessage（表侧静态整串）与迁移前页面原文照常配对，不受本条影响"},
+    # 快捷复习分值按规则 6 从「+3」（旧失控直提分值）改为「+1」，按钮徽标同步改词：
+    # 表侧新值「复习+1」迁移前页面没有原文可比（表侧单边），页面旧值「复习+3」在
+    # W1_REV 的 ChildMistakeListScreen 里确有原文、但表侧已不再持有（页面单边）。
+    {"page": None, "table": "复习+1", "table_field": "MistakeListStrings.reviewButton",
+     "reason": "v3.3 W1 P0-01：快捷复习按规则 6「仅复习 +1」发放待审积分，reviewButton 徽标随之改为「复习+1」；"
+               "该值在迁移前页面不存在（旧值是「复习+3」，见下面那条页面单边登记）"},
+    {"page": "复习+3", "table": None,
+     "reason": "v3.3 W1 P0-01：W1_REV（4d28c8e）ChildMistakeListScreen 的快捷复习按钮原文「复习+3」——"
+               "旧分值来自绕过 bizKey 的直提 submitApproval（指令 P0-01 点名的失控链路），"
+               "现表侧 reviewButton 已改为「复习+1」，这条页面原文不再有表侧出处，按页面单边披露"},
 ]
 
 
