@@ -573,6 +573,15 @@ class StringsCopyTest {
         // W3 卡内预得分值（指令 §3.3.2-3 新写文案；闸门表侧单边已登记）
         assertEquals("打卡预得 +5分（需审批）", AppStringsZh.taskList.expectedPointsLabel(5))
         assertEquals("Check in to earn +5 points (needs approval)", AppStringsEn.taskList.expectedPointsLabel(5))
+        // 终审 I-1（指令 §3.3.2-4）撤销二度确认对话框正文（新写文案；闸门表侧单边已登记）
+        assertEquals(
+            "确定要撤销「每日阅读」的打卡吗？已发放的积分会被扣回。",
+            AppStringsZh.taskList.revertConfirmMessage("每日阅读"),
+        )
+        assertEquals(
+            "Undo the check-in for Daily reading? Points already awarded will be clawed back.",
+            AppStringsEn.taskList.revertConfirmMessage("Daily reading"),
+        )
     }
 
     /**

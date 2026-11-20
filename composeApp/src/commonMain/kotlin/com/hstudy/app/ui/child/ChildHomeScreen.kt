@@ -676,7 +676,13 @@ fun ChildHomeScreen(
                                                 Text("✅", style = MaterialTheme.typography.titleMedium)
                                                 TextButton(onClick = {
                                                     scope.launch {
-                                                        val assignDate = com.hstudy.app.data.repository.PointRepository.getTodayString()
+                                                        // 终审 M-1：撤销 bizKey 的日期取**完成时刻** completedAt（markCompleted 落的时间戳），
+                                                        // 不再用点击撤销时的今天——页面跨午夜未关时，用今天构造的 ASSIGN:id:今天
+                                                        // 查不到昨天的申请，只会回置完成标记而 PENDING/APPROVED 原样残留（不变量 4 对称漏洞）。
+                                                        // completedAt 缺失的历史行回退今天（与旧行为一致）；无需新增 DAO 查询（Ruling 25 写路径不动）。
+                                                        val assignDate = a.completedAt?.let {
+                                                            com.hstudy.app.data.repository.PointRepository.completionDateStringOf(it)
+                                                        } ?: com.hstudy.app.data.repository.PointRepository.getTodayString()
                                                         app.assignmentRepository.uncompleteAssignment(a.id)
                                                         val clawedBack = app.pointRepository.undoCheckIn(
                                                             bizKey = "ASSIGN:${a.id}:$assignDate",

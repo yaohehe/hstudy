@@ -211,7 +211,28 @@ private fun ChildTaskCard(
     onUploadProof: () -> Unit = {}
 ) {
     val strings = LocalStrings.current.taskList
+    val common = LocalStrings.current.common
     val displayLanguage = LocalDisplayLanguage.current
+    // 终审 I-1（指令 §3.3.2-4 二度确认）：卡右下角显式"撤销"钮改为先弹确认对话框，
+    // 确认后才执行 onUndo（undoTaskCheckIn 闭环）；确认/取消按钮复用 CommonStrings（批量通过对话框先例）。
+    // 打卡钮本身的点击撤销行为保持不变（既有语义，contentDescription 已声明"点击撤销"）。
+    var showUndoConfirm by remember { mutableStateOf(false) }
+    if (showUndoConfirm) {
+        AlertDialog(
+            onDismissRequest = { showUndoConfirm = false },
+            title = { Text(strings.undoButton) },
+            text = { Text(strings.revertConfirmMessage(localizedPresetText(task.title, displayLanguage))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUndoConfirm = false
+                    onUndo()
+                }) { Text(common.confirmButton) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUndoConfirm = false }) { Text(common.cancelButton) }
+            }
+        )
+    }
     // 打卡完成时的弹性缩放动画
     var cardScaleTarget by remember { mutableFloatStateOf(1f) }
     LaunchedEffect(isCompleted) {
@@ -347,13 +368,14 @@ private fun ChildTaskCard(
             // 指令 §3.3.2-4：打卡完成后卡片右下角显式"撤销"微按钮（回退箭头图标）。
             // 逻辑沿用 W2 的 onUndo（undoTaskCheckIn 撤销闭环 + 如实反馈 Snackbar），此处只是入口外观化；
             // 打卡钮本身的点击撤销行为保持不变（双重入口、同一回调）。
+            // 终审 I-1：本钮是波次新增的显式入口，按 §3.3.2-4 加二度确认对话框，撤销仅在确认后执行。
             if (isCompleted) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(end = 8.dp, bottom = 6.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(
-                        onClick = onUndo,
+                        onClick = { showUndoConfirm = true },
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Icon(

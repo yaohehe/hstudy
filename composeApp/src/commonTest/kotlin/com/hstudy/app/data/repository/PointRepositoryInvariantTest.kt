@@ -250,6 +250,37 @@ class PointRepositoryInvariantTest {
     // 直接编译失败（RED），实现后转绿（GREEN）。Fake DAO 复用本套件既有实现（RA9）。
     // ==================================================================
 
+    // ==================================================================
+    // 终审 M-2（同日复习分值不降级）：ensureApproval 复用 PENDING 时分值只升不降。
+    // 场景：同一天先"做对 +3"挂 PENDING，再走列表页快捷复习 +1（同 bizKey）——
+    // 已挂起的 3 分必须保持 3（取 max），审批通过后 +3 恰好入账一次。
+    // ==================================================================
+
+    @Test
+    fun reviewMistake_sameDayLowerPoints_keepsPendingMaxAndAwardsOnce(): Unit = runBlocking {
+        val mistakeDao = FakeMistakeDao()
+        val pointDao = FakePointDao()
+        val approvalDao = FakePointApprovalDao()
+        val pointRepo = PointRepository(pointDao, approvalDao)
+        val repo = MistakeRepository(mistakeDao, pointRepo)
+        val mistakeId = repo.addMistake(MistakeEntity(subject = MistakeSubject.MATH, title = "单位换算"))
+
+        repo.reviewMistake(mistakeId, points = 3, note = "主动回忆-做对")
+        repo.reviewMistake(mistakeId, points = 1, note = "间隔复习")
+
+        val pending = approvalDao.approvals.filter { it.status == ApprovalStatus.PENDING }
+        assertEquals(1, pending.size, "不变量 2：同日重复复习仍只有一条待审申请")
+        assertEquals(
+            3, pending.single().requestedPoints,
+            "终审 M-2：同日低分值复习不得把已挂起的 +3 待审申请改低（分值只升不降）"
+        )
+
+        val awarded = pointRepo.approveAndAward(pending.single().id)
+        assertEquals(3, awarded, "审批按挂起的 3 分发放")
+        assertEquals(listOf(3), pointDao.records.map { it.points }, "审批后只 +3 恰好入账一次")
+        assertEquals(3, pointRepo.getTotalPoints().first(), "不变量 5：余额 = SUM = 3")
+    }
+
     @Test
     fun applyPenalty_appendsNegativePenaltyRecord(): Unit = runBlocking {
         val (pointDao, _, repo) = newRepo()

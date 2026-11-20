@@ -51,7 +51,8 @@ fun ParentApprovalScreen(
 
     val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
     val pendingApprovals = allApprovals.filter { it.status == ApprovalStatus.PENDING }
-    val historyApprovals = allApprovals.filter { it.status != ApprovalStatus.PENDING }.take(20)
+    // 终审 M-3：历史列表保留全量非 PENDING（截断下移到状态筛选之后，见 filteredHistoryApprovals）
+    val historyApprovals = allApprovals.filter { it.status != ApprovalStatus.PENDING }
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -62,6 +63,8 @@ fun ParentApprovalScreen(
     val taskList = LocalStrings.current.taskList
     // P1-02 历史二级筛选：0=全部 / 1=已通过 / 2=已拒绝 / 3=已撤销（覆盖 REVOKED+CANCELLED 两种孩子撤销终态）
     var historyFilter by remember { mutableIntStateOf(0) }
+    // 终审 M-3：先按状态筛选**全量**历史，再 take(20) 截断——原实现先截断后筛选，
+    // 20 条之外的旧记录会被截掉，导致"已拒绝/已撤销"芯片显示"暂无审核记录"的假空态。
     val filteredHistoryApprovals = historyApprovals.filter { approval ->
         when (historyFilter) {
             1 -> approval.status == ApprovalStatus.APPROVED
@@ -69,7 +72,7 @@ fun ParentApprovalScreen(
             3 -> approval.status == ApprovalStatus.REVOKED || approval.status == ApprovalStatus.CANCELLED
             else -> true
         }
-    }
+    }.take(20)
 
     // W4 §3.3.3-1 看板数据：笔数与待发放总分都直接来自 pendingApprovals（不新增查询）
     val pendingCount = pendingApprovals.size

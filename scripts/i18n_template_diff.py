@@ -187,9 +187,9 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 现在规则改成"两侧都在本次范围 → 两侧都要在；一侧不在本次范围 → 提示但不失败"
 # （范围由 [_global_sets] 给出：整枝组的全部页面 / 全部表），于是这一条命令可以长期为绿。
 #
-# 登记表的当前实况读数（**v3.3 W5 复算**，改登记时必须同时改这里）：表里现在 **237 条**
-# （9 条双侧成对 + 158 条只看页面 + 70 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
-# "单边在范围"），另外 **231** 条默认组用不到；`--branch` 组碰到 **237 条**、**0** 条"（未用到）"。
+# 登记表的当前实况读数（**终审修复复算**，改登记时必须同时改这里）：表里现在 **238 条**
+# （9 条双侧成对 + 158 条只看页面 + 71 条只看表侧）。默认组碰到 **6** 条（3 条双侧命中 + 3 条
+# "单边在范围"），另外 **232** 条默认组用不到；`--branch` 组碰到 **238 条**、**0** 条"（未用到）"。
 # v3.2.0 在 W9 Task 4 的 182 条上新增 Analytics 开关 2 条表侧单边登记 → 182 + 2 = 184。
 # v3.3 W1（Antigravity P0-01）在 184 条上新增错题 pending Snackbar 新写文案 5 条（表侧单边：
 # gotItPendingMessage / missedPendingMessage / variationPendingMessage / reviewPendingMessage /
@@ -216,6 +216,10 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 已结算余额+待审预估副标。全部为重设计新写文案、两语由 pin 测试逐字钉死；旧 redeemButton/balanceSub
 # 保留不删，仍与迁移前原文配对）→ 233 + 4 = 237（两个组读数实测如上：默认组仍 6/231，
 # --branch 237 条、0 条未用到）。
+# 终审修复（I-1，指令 §3.3.2-4 撤销二度确认对话框）在 237 条上新增表侧单边 1 条
+# （TaskListStrings.revertConfirmMessage：对话框正文为全新写文案，迁移前页面无此对话框；
+# 标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton，三个槽均已登记、不重开同值槽）
+# → 237 + 1 = 238（两个组读数实测如上：默认组仍 6/232，--branch 238 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -1000,6 +1004,13 @@ DISCLOSED_RESIDUALS = [
      "reason": "v3.3 W5 §3.4-报表2 新写文案：成长报告 🌟 行在有待审积分时的余额副标（已结算 vs 待审区分；"
                "无待审时继续走旧 balanceSub，两语由 growthReportInterpolatedCopyPinsBothLanguages 钉死；"
                "分享文本 reportText 不含该行，保持迁移前逐字节形态）"},
+    # ---- 终审修复（I-1，指令 §3.3.2-4）：任务卡撤销二度确认对话框新写文案（表侧单边）----
+    {"page": None, "table": "确定要撤销「%s」的打卡吗？已发放的积分会被扣回。" % VALUE,
+     "table_field": "TaskListStrings.revertConfirmMessage",
+     "reason": "终审 I-1 §3.3.2-4 新写文案：显式撤销钮的二度确认对话框正文（迁移前页面无此对话框、无原文可比）。"
+               "标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton（均已双边登记，不重开同值槽）；"
+               "字段命名走 revert… 前缀避开存储边界闸门 undo… sink 词根（W9 T1 先例）；"
+               "两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死"},
 ]
 
 

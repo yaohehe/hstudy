@@ -20,6 +20,8 @@ package com.hstudy.app.i18n
  * 7 个函数型字段（[revertedClawedBackMessage]、[revertedPendingApprovalMessage]、[achievementUnlockedMessage]、
  * [checkInSuccessMessage]、[revertCheckInPrompt]、[pointsEarnedLabel]、[bonusPointsLabel]）：
  * **v3.3 W3 新增第 8 个函数型字段 [expectedPointsLabel]**（指令 §3.3.2-3 新写文案，见表内注释）。
+ * **终审 I-1 新增第 9 个函数型字段 [revertConfirmMessage]**（指令 §3.3.2-4 撤销二度确认对话框正文，
+ * 命名沿用 revert… 前缀避开存储边界闸门 undo… sink 词根，同 W9 T1 改名先例）。
  * 前三个原名 `undoClawedBackMessage` / `undoPendingApprovalMessage` / `checkInUndoPrompt`，
  * 调用头以 `undo…`/`checkIn…` 开头会撞存储边界闸门的 sink 词根（`PointRepository.undoCheckIn` 等），
  * 渲染点传入 `localizedPresetText(...)` 时会被误判"文案进写库"。W9 T1 修复按 W4/W6 改名先例改为
@@ -58,6 +60,11 @@ data class TaskListStrings(
     // 已在 scripts/i18n_template_diff.py DISCLOSED_RESIDUALS 登记表侧单边；两语由
     // StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages / taskListEnglishPluralsCoverOneAndOther 钉死。
     val expectedPointsLabel: (points: Int) -> String,
+    // 终审 I-1（指令 §3.3.2-4）：任务卡显式"撤销"按钮的二度确认对话框正文（防孩子误触的新写文案）。
+    // 对话框标题复用 [undoButton]、按钮复用 CommonStrings.confirmButton/cancelButton（同审批页批量确认先例）。
+    // 命名走 revert… 前缀：`undo…` 是存储边界闸门的 sink 词根（PointRepository.undoCheckIn），
+    // 调用头传标题实参会被误判"文案进写库"（W9 T1 改名先例，闸门不放宽）。
+    val revertConfirmMessage: (title: String) -> String,
 )
 
 val TaskListStringsZh = TaskListStrings(
@@ -78,6 +85,7 @@ val TaskListStringsZh = TaskListStrings(
     pointsEarnedLabel = { points -> "+${points}分" },
     bonusPointsLabel = { points -> "奖励+${points}分" },
     expectedPointsLabel = { points -> "打卡预得 +${points}分（需审批）" },
+    revertConfirmMessage = { title -> "确定要撤销「$title」的打卡吗？已发放的积分会被扣回。" },
 )
 
 val TaskListStringsEn = TaskListStrings(
@@ -105,4 +113,5 @@ val TaskListStringsEn = TaskListStrings(
     pointsEarnedLabel = { points -> "+$points ${pointsWord(points)}" },
     bonusPointsLabel = { points -> "Reward +$points ${pointsWord(points)}" },
     expectedPointsLabel = { points -> "Check in to earn +$points ${pointsWord(points)} (needs approval)" },
+    revertConfirmMessage = { title -> "Undo the check-in for $title? Points already awarded will be clawed back." },
 )
