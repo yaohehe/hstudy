@@ -55,6 +55,17 @@
 
 修复轮后全量证据：testDebugUnitTest 248/0（--rerun 强制重跑）、assembleDebug OK、analytics 20 checks、存储边界+双 selftest+template --branch 全 0、秘密扫描 0 命中。分支 828f1f0..bc2e503 = 8 commits。
 
+## QA 修复轮（copy+contrast 审计 DEFECT D1–D5，本 commit）
+审计底稿：`.superpowers/sdd/2026-11-21-m3-ui-points-hardening/qa-copy-contrast-audit.md`。
+
+| 缺陷 | 修复 | 说明与实证（python 逐值复算，非引用审计数） |
+| :--- | :--- | :--- |
+| D1/D2 主色对比 | `M3Primary` 0xFFEF6C00 → **0xFFA65100** | **指令偏差（有意）**：指令 §3.2.1 给的 0xFFEF6C00 实为 M3 tone-50，白字仅 3.08:1、作文字/线条对 Surface 仅 2.93:1，双项不过 WCAG AA。同色相降至 tone-40 级暖橙后：白钮文字 5.53:1、主色作文字对 Surface 5.26:1（均 ≥4.5）、对 container 层级作非文字 4.27–5.00:1（≥3）。PrimaryContainer/OnPrimaryContainer 复测 13.30:1，保持不变。站点全部经 `colorScheme.primary` 继承（审批页 +N 分值、兑换值、趋势线），零逐点改动 |
+| D3/D4 错误色对比 | `M3Error` 0xFFE53935 → **0xFFC62828** | 原值白字 4.23:1、正文 3.82–4.03:1，不过 AA。tone-40 同色相后：白字 5.62:1、对 Surface/ContainerLow 作正文 5.35/5.08:1（≥4.5）；errorContainer/onErrorContainer 复测 13.26:1 保持不变 |
+| D5 英文撤销术语 | `ParentApprovalStrings.scoreRevoked`、`TaskListStrings.revertConfirmMessage` 的 "clawed back" → **"…removed"** | 归一到 KDoc 钉死的 "points removed" 术语族（与 `statusRevoked` "Revoked (points removed)"、`revertedClawedBackMessage` "$points points removed" 同族）；中文侧不动，ZH≠EN 仍成立；同步更新两处 EN copy-pin（ParentPointsCopyTest、StringsCopyTest），中文 pin 未动 |
+
+修复轮后全量证据：`:composeApp:testDebugUnitTest` **248/0/0**、`:composeApp:assembleDebug` OK、`analytics_call_sites.py` ANALYTICS_GATE_OK（20 checks）、`i18n_storage_boundary.py` + 双 selftest + `i18n_template_diff.py --branch` 全部 exit 0。
+
 ## 真机视觉与行为签核清单（用户设备执行，逐项打勾）
 安装 `composeApp/build/outputs/apk/debug/HStudy-v3.2.1-debug.apk`（Android 9+ 即可；本包未升版本号，属预发布验证）：
 1. [ ] 孩子首页：无全屏呼吸抖动；待审胶囊与"已通过/已拒绝"回顾**同时可见**；Hero/CTA 为暖橙语义色板

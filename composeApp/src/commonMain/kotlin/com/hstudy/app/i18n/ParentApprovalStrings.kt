@@ -142,7 +142,7 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     pendingTab = { count -> if (count > 0) "Pending ($count)" else "Pending" },
     approvedMessage = { points -> "✅ Approved: +$points ${pointsWord(points)}" },
     scorePending = { points -> "+$points ${pointsWord(points)} pending" },
-    scoreRevoked = { points -> "-$points ${pointsWord(points)} clawed back" },
+    scoreRevoked = { points -> "-$points ${pointsWord(points)} removed" },
     // W4 §3.3.3-1: pending dashboard rows, batch button and its confirm dialog
     pendingCountLabel = { count ->
         if (count == 1) "1 request pending review" else "$count requests pending review"

@@ -579,7 +579,7 @@ class StringsCopyTest {
             AppStringsZh.taskList.revertConfirmMessage("每日阅读"),
         )
         assertEquals(
-            "Undo the check-in for Daily reading? Points already awarded will be clawed back.",
+            "Undo the check-in for Daily reading? Points already awarded will be removed.",
             AppStringsEn.taskList.revertConfirmMessage("Daily reading"),
         )
     }

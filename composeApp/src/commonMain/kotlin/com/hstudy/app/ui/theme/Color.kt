@@ -9,7 +9,11 @@ import androidx.compose.ui.graphics.Color
 // ============================================================================
 
 // ===== Primary（活力暖橙 · 孩子端主色）=====
-val M3Primary = Color(0xFFEF6C00)
+// QA 审计 D1/D2：指令值 0xFFEF6C00 为 M3 tone-50，白字对比仅 3.08:1、作文字/线条
+// 对 Surface 仅 2.93:1，双项不达 WCAG AA。落地值降为 tone-40 级同色相暖橙（Google M3
+// 工具链本身即生成 tone-40 primary）：白字 5.52:1≥4.5；对 Surface 5.26:1≥4.5；
+// 对 surfaceContainerLow/…/Highest 4.10–4.88:1，非文字 3:1 全过。
+val M3Primary = Color(0xFFA65100)
 val M3OnPrimary = Color(0xFFFFFFFF)
 val M3PrimaryContainer = Color(0xFFFFDCC2)
 val M3OnPrimaryContainer = Color(0xFF2E1500)
@@ -27,8 +31,10 @@ val M3OnTertiary = Color(0xFFFFFFFF)
 val M3TertiaryContainer = Color(0xFFC7E7FF)
 val M3OnTertiaryContainer = Color(0xFF001E2E)
 
-// ===== Error（指令未给新值，沿用原 Red40 并补齐 M3 角色）=====
-val M3Error = Color(0xFFE53935)
+// ===== Error（QA 审计 D3/D4：原 Red40 0xFFE53935 白字 4.23:1、正文色 3.82–4.03:1
+// 均不达 WCAG AA，降为 Material Red tone-40 #C62828：白字 5.62:1；对 Surface 及
+// container 层级作正文 4.98–5.35:1 全过；errorContainer/onErrorContainer 保持 13.26:1 不动）=====
+val M3Error = Color(0xFFC62828)
 val M3OnError = Color(0xFFFFFFFF)
 val M3ErrorContainer = Color(0xFFFFDAD6)
 val M3OnErrorContainer = Color(0xFF410002)

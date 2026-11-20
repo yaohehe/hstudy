@@ -114,8 +114,8 @@ class ParentPointsCopyTest {
         assertEquals("✅ Approved: +1 point", en.approvedMessage(1))
         // v3.3 W2 P1-02：历史卡分值语义（REVOKED 扣回 / PENDING 待审），§四 状态机口径
         assertEquals("-8 (已扣回)", zh.scoreRevoked(8))
-        assertEquals("-8 points clawed back", en.scoreRevoked(8))
-        assertEquals("-1 point clawed back", en.scoreRevoked(1))
+        assertEquals("-8 points removed", en.scoreRevoked(8))
+        assertEquals("-1 point removed", en.scoreRevoked(1))
         assertEquals("+5 (待审)", zh.scorePending(5))
         assertEquals("+5 points pending", en.scorePending(5))
         assertEquals("+1 point pending", en.scorePending(1))
