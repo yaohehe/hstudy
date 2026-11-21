@@ -1,5 +1,6 @@
 package com.hstudy.app
 
+import com.hstudy.app.data.focus.PomodoroFocusSettlement
 import com.hstudy.app.data.local.AppDatabase
 import com.hstudy.app.data.local.getAppDatabase
 import com.hstudy.app.data.preferences.UserPreferences
@@ -182,6 +183,20 @@ object AppGraph {
                         title = weekly.title, body = weekly.body,
                         dayOfWeek = 7
                     )
+                )
+            }
+        }
+        // D-05/07（v3.3.1 指令 §4.2）番茄钟跨进程补结算：启动时检查持久化会话——
+        // FOCUS 段到期未结算 → 走与页面完成**同一条**结算路径（claim CAS + sessionId/bizKey 幂等，
+        // 双触发只入账一笔）；BREAK 过期 → 静默清；仍在计时（now < deadline）→ 原样保留，
+        // 进页面继续倒数（要求 3"保持运行态"）。runCatching：补结算失败绝不阻断启动。
+        appScope.launch {
+            runCatching {
+                PomodoroFocusSettlement.recoverStaleSession(
+                    userPreferences = userPreferences,
+                    focusRepository = focusRepository,
+                    pointRepository = pointRepository,
+                    nowMs = com.hstudy.app.ui.dt.nowMillis(),
                 )
             }
         }

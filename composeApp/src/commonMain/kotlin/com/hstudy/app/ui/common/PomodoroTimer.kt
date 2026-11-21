@@ -19,13 +19,21 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.hstudy.app.AppGraph
+import com.hstudy.app.data.focus.PomodoroFocusSettlement
+import com.hstudy.app.data.focus.PomodoroSessionPhase
+import com.hstudy.app.data.focus.PomodoroSessionState
+import com.hstudy.app.data.focus.PomodoroSettlementResult
+import com.hstudy.app.i18n.CanonicalFocusText
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.AnalyticsEvent
 import com.hstudy.app.platform.AnalyticsReporter
+import com.hstudy.app.platform.KeepScreenOn
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.feedback
-import com.hstudy.app.ui.dt.monotonicMillis
+import com.hstudy.app.ui.dt.nowMillis
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class PomodoroState {
     IDLE, BREATHING, RUNNING, PAUSED, BREAK, READY_NEXT
@@ -33,31 +41,61 @@ enum class PomodoroState {
 
 /**
  * 番茄钟组件 - 显示倒计时圆环和控制按钮
- * @param focusMinutes 专注时长（分钟）
+ *
+ * v3.3.1 D-05/07（指令 §4.2）：计时状态改由**时间戳锚定的持久化会话**驱动——
+ * 唯一权威状态源是 `AppGraph.userPreferences.pomodoroSession`（DataStore，
+ * [PomodoroSessionState]），倒计时的显示值每次由 `deadline - now` 派生，组件内**不存"剩余秒数"**
+ * （remainingSeconds/totalSeconds 只是每 tick 的展示缓存，进程内派生值，不是状态源）。
+ * 按返回销毁页面、系统杀进程都不再丢计时：重进组合从持久化会话无缝续倒数（含休息段）；
+ * 到期未结算的专注段由结算路径（与宿主页完成回调共用
+ * [PomodoroFocusSettlement.settleFocusSession]）认领入账，双触发只结算一笔（要求 4）。
+ *
+ * @param focusMinutes 专注时长（分钟，IDLE 起锚时用；已在计时中以持久化会话为准）
  * @param breakMinutes 休息时长（分钟）
- * @param onComplete 完成一个番茄钟时的回调
+ * @param focusTarget 专注目标（规范值，写入会话并随结算进 taskTitle/description）
+ * @param onComplete 专注段到期时回调结算产物；null = 认领被并发触发者赢走（本次不入账，仅完成埋点语义）
  */
 @Composable
 fun PomodoroTimer(
     focusMinutes: Int = 25,
     breakMinutes: Int = 5,
     skipBreathing: Boolean = false,
-    onComplete: (Int) -> Unit = {},
+    focusTarget: String = CanonicalFocusText.TARGET_FREE_STUDY,
+    onComplete: (PomodoroSettlementResult?) -> Unit = {},
     onActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val app = AppGraph
     val strings = LocalStrings.current.pomodoro
     val currentStrings by rememberUpdatedState(strings)
-    var state by remember { mutableStateOf(PomodoroState.IDLE) }
+    val scope = rememberCoroutineScope()
+
+    // ===== 权威状态源：持久化会话（跨导航/跨进程从这里恢复）=====
+    val session by app.userPreferences.pomodoroSession.collectAsState(initial = null)
+
+    // 会话之外的三段局部态：IDLE / BREATHING（呼吸引导是起锚前仪式，不持久化）/ READY_NEXT。
+    // 会话非空时显示态完全由会话派生，本变量不出场。
+    var idlePhase by remember { mutableStateOf(PomodoroState.IDLE) }
+
+    // 显示态由会话派生（RUNNING/PAUSED/BREAK 不再可能是"只活在内存里"的状态）
+    val state = when {
+        session == null -> idlePhase
+        session!!.phase == PomodoroSessionPhase.FOCUS ->
+            if (session!!.isPaused) PomodoroState.PAUSED else PomodoroState.RUNNING
+        else -> PomodoroState.BREAK
+    }
+
+    // 展示缓存（每 tick 由 deadline - now 派生；初值仅为 IDLE 首帧观感）
     var remainingSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
     var totalSeconds by remember { mutableIntStateOf(focusMinutes * 60) }
     var completedPomodoros by remember { mutableIntStateOf(0) }
-    // 目标结束时间戳（基于 [monotonicMillis] 单调时钟，息屏/后台期间仍持续计时）
-    var endTimeMillis by remember { mutableLongStateOf(0L) }
 
     // 通知父组件计时器是否活跃（用于禁用时长设置等）
     val isActive = state != PomodoroState.IDLE
     LaunchedEffect(isActive) { onActiveChange(isActive) }
+
+    // D-06：计时中（专注/休息段）屏幕常亮；暂停、结束、离开页面（组合销毁）自动释放。
+    KeepScreenOn(enabled = state == PomodoroState.RUNNING || state == PomodoroState.BREAK)
 
     // ===== 专注前呼吸引导（帮助孩子平静心神、快速进入专注状态）=====
     val totalBreathCycles = 3
@@ -69,9 +107,11 @@ fun PomodoroTimer(
         label = "breathScale"
     )
 
-    // 呼吸引导流程：吸气4秒→呼气4秒为一个循环，完成后自动开始专注
-    LaunchedEffect(state) {
-        if (state == PomodoroState.BREATHING) {
+    // 呼吸引导流程：吸气4秒→呼气4秒为一个循环，完成后自动**写入持久化专注会话**起锚。
+    // key 带上 session：计时中（含"跳过呼吸"按钮刚写完会话）本效果重启后条件不成立，
+    // 循环被取消，不会再覆盖已开始的会话起点。
+    LaunchedEffect(idlePhase, session) {
+        if (idlePhase == PomodoroState.BREATHING && session == null) {
             breathCycle = 0
             breathIn = true
             while (breathCycle < totalBreathCycles) {
@@ -81,56 +121,74 @@ fun PomodoroTimer(
                 delay(4000)
                 breathCycle++
             }
-            // 呼吸完成，自动进入专注
+            // 呼吸完成，自动进入专注：起锚点=墙钟 now，倒计时之后全靠派生
             totalSeconds = focusMinutes * 60
             remainingSeconds = totalSeconds
-            endTimeMillis = monotonicMillis() + totalSeconds * 1000L
-            state = PomodoroState.RUNNING
+            app.userPreferences.savePomodoroSession(
+                PomodoroSessionState.startFocus(nowMillis(), focusMinutes, focusTarget)
+            )
             AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_START))
         }
     }
 
-    // 计时器核心逻辑：基于时间戳计算剩余时间，避免息屏后 delay 被挂起导致停表
-    LaunchedEffect(state) {
-        if (state == PomodoroState.RUNNING || state == PomodoroState.BREAK) {
-            var notifCounter = 0
-            while (true) {
-                val remaining = ((endTimeMillis - monotonicMillis()) / 1000L).toInt()
-                remainingSeconds = if (remaining > 0) remaining else 0
-                if (remainingSeconds <= 0) break
-                // 每15秒更新一次常驻进度通知（让孩子息屏后也能看进度）
-                notifCounter++
-                if (notifCounter % 60 == 1) { // 250ms * 60 = 15s
-                    val min = remainingSeconds / 60
-                    val sec = remainingSeconds % 60
-                    Platform.feedback.showRunningNotification(
-                        title = if (state == PomodoroState.BREAK) currentStrings.phaseBreak else currentStrings.phaseFocus,
-                        text = currentStrings.remainTime(min, sec),
-                        progressPercent = if (totalSeconds > 0) (totalSeconds - remainingSeconds) * 100 / totalSeconds else 0
-                    )
-                }
-                delay(250) // 高频刷新，息屏恢复后能立即追上正确时间
-            }
-            // 时间到
-            Platform.feedback.cancelRunningNotification()
-            if (state == PomodoroState.RUNNING) {
-                completedPomodoros++
-                onComplete(focusMinutes)
-                // 完成提示音+震动（让孩子知道专注结束了）
-                playCompletionAlert()
-                // 切换到休息
-                state = PomodoroState.BREAK
-                totalSeconds = breakMinutes * 60
-                remainingSeconds = totalSeconds
-                endTimeMillis = monotonicMillis() + totalSeconds * 1000L
-            } else if (state == PomodoroState.BREAK) {
-                // 休息结束→过渡引导状态（而非直接回IDLE，给孩子一个明确的下一步）
-                playCompletionAlert()
-                state = PomodoroState.READY_NEXT
-            }
-        } else {
+    // 计时核心：会话（或其暂停/到期变化）一变就重挂循环；每个显示值都由
+    // `deriveRemainingMs(now)` 从持久化锚点现场派生——息屏、后台、导航销毁都追得上真实时间。
+    LaunchedEffect(session) {
+        val s = session
+        if (s == null) {
             // 非计时状态时取消通知
             Platform.feedback.cancelRunningNotification()
+            return@LaunchedEffect
+        }
+        totalSeconds = s.plannedMinutes * 60
+        remainingSeconds = (s.deriveRemainingMs(nowMillis()) / 1000L).toInt()
+        if (s.isPaused) {
+            // 暂停 = 冻结：deriveRemainingMs 在暂停期间对任意 now 恒定，无需挂循环计时
+            Platform.feedback.cancelRunningNotification()
+            return@LaunchedEffect
+        }
+        var notifCounter = 0
+        while (true) {
+            val remaining = (s.deriveRemainingMs(nowMillis()) / 1000L).toInt()
+            remainingSeconds = if (remaining > 0) remaining else 0
+            if (remainingSeconds <= 0) break
+            // 每15秒更新一次常驻进度通知（让孩子息屏后也能看进度）
+            notifCounter++
+            if (notifCounter % 60 == 1) { // 250ms * 60 = 15s
+                val min = remainingSeconds / 60
+                val sec = remainingSeconds % 60
+                Platform.feedback.showRunningNotification(
+                    title = if (s.phase == PomodoroSessionPhase.BREAK) currentStrings.phaseBreak else currentStrings.phaseFocus,
+                    text = currentStrings.remainTime(min, sec),
+                    progressPercent = if (totalSeconds > 0) (totalSeconds - remainingSeconds) * 100 / totalSeconds else 0
+                )
+            }
+            delay(250) // 高频刷新，息屏恢复后能立即追上正确时间
+        }
+        // 时间到
+        Platform.feedback.cancelRunningNotification()
+        if (s.phase == PomodoroSessionPhase.FOCUS) {
+            completedPomodoros++
+            // 结算走与启动补结算**同一条**共用路径：先 CAS 认领（今日番茄数/宠物心情随认领
+            // 一次性入账），再 recordFocusSession → FOCUS bizKey checkIn，最后把会话原地转成
+            // 休息段（nextSession，避免"会话为空"的闪烁帧）。埋点 POMODORO_COMPLETE 仍只在
+            // 宿主页完成回调里打点（要求 6：数量与位置语义不变）。
+            val result = PomodoroFocusSettlement.settleFocusSession(
+                userPreferences = app.userPreferences,
+                focusRepository = app.focusRepository,
+                pointRepository = app.pointRepository,
+                session = s,
+                nowMs = nowMillis(),
+                nextSession = s.focusCompletedToBreak(nowMillis(), breakMinutes),
+            )
+            onComplete(result)
+            // 完成提示音+震动（让孩子知道专注结束了）
+            playCompletionAlert()
+        } else {
+            // 休息结束→过渡引导状态（而非直接回IDLE，给孩子一个明确的下一步）
+            playCompletionAlert()
+            app.userPreferences.savePomodoroSession(null)
+            idlePhase = PomodoroState.READY_NEXT
         }
     }
 
@@ -310,15 +368,18 @@ fun PomodoroTimer(
                 PomodoroState.IDLE -> {
                     FilledTonalButton(onClick = {
                         if (skipBreathing) {
-                            // 跳过呼吸，直接开始专注
+                            // 跳过呼吸，直接起锚开始专注（写入持久化会话）
                             totalSeconds = focusMinutes * 60
                             remainingSeconds = totalSeconds
-                            endTimeMillis = monotonicMillis() + totalSeconds * 1000L
-                            state = PomodoroState.RUNNING
+                            scope.launch {
+                                app.userPreferences.savePomodoroSession(
+                                    PomodoroSessionState.startFocus(nowMillis(), focusMinutes, focusTarget)
+                                )
+                            }
                             AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_START))
                         } else {
                             // 先进入专注前呼吸引导，帮助平静心神
-                            state = PomodoroState.BREATHING
+                            idlePhase = PomodoroState.BREATHING
                         }
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
@@ -328,26 +389,37 @@ fun PomodoroTimer(
                 }
                 PomodoroState.BREATHING -> {
                     TextButton(onClick = {
-                        // 跳过呼吸引导，直接开始专注
+                        // 跳过呼吸引导，直接起锚开始专注（会话落盘后本效果自动让位）
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
-                        endTimeMillis = monotonicMillis() + totalSeconds * 1000L
-                        state = PomodoroState.RUNNING
+                        scope.launch {
+                            app.userPreferences.savePomodoroSession(
+                                PomodoroSessionState.startFocus(nowMillis(), focusMinutes, focusTarget)
+                            )
+                        }
                         AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_START))
                     }) {
                         Text(strings.skipBreathingButton)
                     }
                 }
                 PomodoroState.RUNNING -> {
-                    OutlinedButton(onClick = { state = PomodoroState.PAUSED }) {
+                    OutlinedButton(onClick = {
+                        // 暂停 = 在会话上记暂停锚点（deadline 随 now 顺延 → 剩余冻结）
+                        val s = session
+                        if (s != null) scope.launch {
+                            app.userPreferences.savePomodoroSession(s.paused(nowMillis()))
+                        }
+                    }) {
                         Icon(Icons.Filled.Pause, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(strings.pauseButton)
                     }
                     TextButton(onClick = {
-                        state = PomodoroState.IDLE
+                        // 放弃本轮：清会话、不结算（与原"停止即丢"口径一致，孩子主动放弃不补分）
+                        idlePhase = PomodoroState.IDLE
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
+                        scope.launch { app.userPreferences.savePomodoroSession(null) }
                     }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -356,18 +428,21 @@ fun PomodoroTimer(
                 }
                 PomodoroState.PAUSED -> {
                     FilledTonalButton(onClick = {
-                        // 从暂停恢复：以当前剩余时间重设结束时间戳
-                        endTimeMillis = monotonicMillis() + remainingSeconds * 1000L
-                        state = PomodoroState.RUNNING
+                        // 从暂停恢复：累计暂停毫秒固化，deadline 顺延（剩余秒数不落地，纯派生）
+                        val s = session
+                        if (s != null) scope.launch {
+                            app.userPreferences.savePomodoroSession(s.resumed(nowMillis()))
+                        }
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(strings.resumeButton)
                     }
                     TextButton(onClick = {
-                        state = PomodoroState.IDLE
+                        idlePhase = PomodoroState.IDLE
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
+                        scope.launch { app.userPreferences.savePomodoroSession(null) }
                     }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -376,7 +451,9 @@ fun PomodoroTimer(
                 }
                 PomodoroState.BREAK -> {
                     TextButton(onClick = {
-                        state = PomodoroState.READY_NEXT
+                        // 跳过休息：清会话进入过渡态（休息不产生结算）
+                        idlePhase = PomodoroState.READY_NEXT
+                        scope.launch { app.userPreferences.savePomodoroSession(null) }
                     }) {
                         Text(strings.skipBreakButton)
                     }
@@ -384,14 +461,14 @@ fun PomodoroTimer(
                 PomodoroState.READY_NEXT -> {
                     // 休息结束过渡引导：明确告诉孩子下一步
                     FilledTonalButton(onClick = {
-                        state = PomodoroState.BREATHING
+                        idlePhase = PomodoroState.BREATHING
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(strings.startNextRoundButton)
                     }
                     TextButton(onClick = {
-                        state = PomodoroState.IDLE
+                        idlePhase = PomodoroState.IDLE
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
                     }) {

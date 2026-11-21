@@ -53,6 +53,15 @@ fun ChildPomodoroScreen(
     var focusTarget by remember { mutableStateOf(CanonicalFocusText.TARGET_FREE_STUDY) }
     var targetExpanded by remember { mutableStateOf(false) }
 
+    // D-05/07（v3.3.1 指令 §4.2）：持久化会话是计时中的唯一权威状态源——返回再进来时，
+    // 时长/目标芯片按会话渲染（焦点不再落回内存默认值）；计时判定全部由组件按时间戳派生。
+    val pomodoroSession by app.userPreferences.pomodoroSession.collectAsState(initial = null)
+    val runningFocusSession = pomodoroSession?.takeIf {
+        it.phase == com.hstudy.app.data.focus.PomodoroSessionPhase.FOCUS
+    }
+    val effectiveFocusMinutes = runningFocusSession?.plannedMinutes ?: focusMinutes
+    val effectiveFocusTarget = runningFocusSession?.focusTarget ?: focusTarget
+
     // 黄金专注时段：根据历史专注数据找出效率最高的时段，引导把难题安排在最佳时间
     val allSessions by app.focusRepository.getAllSessions().collectAsState(initial = emptyList())
     val goldenHour = remember(allSessions) {
@@ -93,7 +102,7 @@ fun ChildPomodoroScreen(
                         onExpandedChange = { targetExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = strings.targetLabel(localizedPresetText(focusTarget, displayLanguage)),
+                            value = strings.targetLabel(localizedPresetText(effectiveFocusTarget, displayLanguage)),
                             onValueChange = {},
                             readOnly = true,
                             singleLine = true,
@@ -107,7 +116,13 @@ fun ChildPomodoroScreen(
                             allTargets.forEach { target ->
                                 DropdownMenuItem(
                                     text = { Text(strings.targetLabel(localizedPresetText(target, displayLanguage))) },
-                                    onClick = { focusTarget = target; targetExpanded = false }
+                                    onClick = {
+                                        // 计时中锁定：会话里的目标才是结算口径（D-05 会话权威）
+                                        if (!isTimerActive) {
+                                            focusTarget = target
+                                        }
+                                        targetExpanded = false
+                                    }
                                 )
                             }
                         }
@@ -168,36 +183,23 @@ fun ChildPomodoroScreen(
                     }
                 }
 
-                // 番茄钟主体
+                // 番茄钟主体（计时中状态由持久化会话驱动：跨导航连续、杀进程可补结算，D-05/07）
                 PomodoroTimer(
-                    focusMinutes = focusMinutes,
+                    focusMinutes = effectiveFocusMinutes,
                     breakMinutes = breakMinutes,
                     skipBreathing = skipBreathing,
+                    focusTarget = effectiveFocusTarget,
                     onActiveChange = { isTimerActive = it },
-                    onComplete = { minutes ->
+                    onComplete = { result ->
+                        // P0-02 口径不变：recordFocusSession → sessionId → FOCUS bizKey → checkIn 仍走
+                        // PointRepository.checkIn 权威入口；v3.3.1 D-05/07 起该段抽为共用函数
+                        // PomodoroFocusSettlement.settleFocusSession（组件到点与启动补结算同一条路径，
+                        // claim CAS 保证双触发只入账一笔）。本回调只剩埋点与 snackbar（要求 6）。
                         AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.POMODORO_COMPLETE))
-                        scope.launch {
-                            // 记录专注时长（每5分钟=1分，积分待家长审核）
-                            val points = minutes / 5
-                            // P0-02（Antigravity 指令，规则 8）：专注积分改走权威入口
-                            // PointRepository.checkIn（bizKey 按专注会话 id 唯一，防重进页面/重放
-                            // 产生重复待审单），不再直调 pointApprovalRepository.submitApproval。
-                            // recordFocusSession 返回 Long（会话 id，FocusRepository.kt:12 实证）。
-                            val sessionId = app.focusRepository.recordFocusSession(minutes, focusTarget, 0)
-                            if (points > 0) {
-                                // 日期在回调时刻重取（同 ChildHomeScreen 的 ASSIGN 口径），避免跨零点用旧 todayStr
-                                val checkInDate = com.hstudy.app.data.repository.PointRepository.getTodayString()
-                                app.pointRepository.checkIn(
-                                    bizKey = "FOCUS:$sessionId:$checkInDate",
-                                    actionType = "FOCUS_COMPLETE",
-                                    description = CanonicalFocusText.recordDescription(focusTarget, minutes),
-                                    points = points,
-                                    date = checkInDate
-                                )
+                        if (result != null) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(strings.focusDoneSnackbar(strings.targetLabel(localizedPresetText(result.focusTarget, displayLanguage)), result.points))
                             }
-                            app.userPreferences.boostPetMood(3)
-                            app.userPreferences.incrementPomodoroTodayCount()
-                            snackbarHostState.showSnackbar(strings.focusDoneSnackbar(strings.targetLabel(localizedPresetText(focusTarget, displayLanguage)), points))
                         }
                     }
                 )
@@ -213,7 +215,7 @@ fun ChildPomodoroScreen(
                         color = if (isTimerActive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                     listOf(15, 25, 30, 45).forEach { min ->
                         FilterChip(
-                            selected = focusMinutes == min,
+                            selected = effectiveFocusMinutes == min,
                             onClick = { if (!isTimerActive) focusMinutes = min },
                             enabled = !isTimerActive,
                             label = { Text(strings.durationChip(min, common.minuteLabel)) }

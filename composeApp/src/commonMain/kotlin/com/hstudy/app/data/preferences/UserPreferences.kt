@@ -3,8 +3,11 @@ package com.hstudy.app.data.preferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.hstudy.app.data.focus.PomodoroSessionPhase
+import com.hstudy.app.data.focus.PomodoroSessionState
 import com.hstudy.app.data.repository.todayString
 import com.hstudy.app.i18n.AppLanguage
+import com.hstudy.app.i18n.CanonicalFocusText
 import com.hstudy.app.platform.Platform
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -62,6 +65,17 @@ class UserPreferences {
         val SYNC_REMINDER_ENABLED = booleanPreferencesKey("sync_reminder_enabled") // 定期同步提醒开关
         val LAST_MANDATORY_PENALTY_DATE = stringPreferencesKey("last_mandatory_penalty_date") // 已处理每日必须扣分的最后日期
         val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled") // 分享使用数据开关，缺省 true
+        // ===== 番茄钟时间戳锚定会话（v3.3.1 D-05/07，指令 §4.2；键名沿用指令的 pomodoro_active_* 前缀） =====
+        // 唯一权威状态源 = 下面这组键（跨导航/跨进程都从这里恢复，绝不存"剩余秒数"）。
+        val POMODORO_SESSION_START = longPreferencesKey("pomodoro_active_start_time") // 本段起点（epoch ms）
+        val POMODORO_SESSION_PLANNED_MIN = intPreferencesKey("pomodoro_active_duration_min") // 本段计划分钟数
+        val POMODORO_SESSION_TARGET = stringPreferencesKey("pomodoro_active_target") // 专注目标（规范值）
+        val POMODORO_SESSION_PHASE = stringPreferencesKey("pomodoro_active_phase") // FOCUS | BREAK
+        val POMODORO_SESSION_PAUSED_ACCUM_MS = longPreferencesKey("pomodoro_active_paused_accum_ms") // 累计暂停毫秒
+        val POMODORO_SESSION_PAUSE_STARTED_AT = longPreferencesKey("pomodoro_active_pause_start_time") // 0=未暂停
+        val POMODORO_SESSION_SETTLED = booleanPreferencesKey("pomodoro_active_settled") // 结算认领已赢（先置位后入账）
+        val POMODORO_SESSION_FOCUS_RECORD_ID = longPreferencesKey("pomodoro_active_focus_record_id") // 已落 focus_sessions 行 id
+        val POMODORO_SESSION_SETTLE_DATE = stringPreferencesKey("pomodoro_active_settle_date") // 结算日（bizKey 日期段）
     }
 
     val currentRole: Flow<String?> = dataStore.data.map { it[ROLE_KEY] }
@@ -351,6 +365,104 @@ class UserPreferences {
     /** 设置是否跳过专注前呼吸引导 */
     suspend fun setPomodoroSkipBreathing(skip: Boolean) {
         dataStore.edit { it[POMODORO_SKIP_BREATHING] = skip }
+    }
+
+    // ===== 番茄钟时间戳锚定会话持久化（v3.3.1 D-05/07：跨导航恢复 + 跨进程补结算的唯一状态源） =====
+
+    /**
+     * 当前持久化会话；null = 无进行中会话（键组整体缺失或起点<=0）。
+     * 页面与 bootstrap 恢复都读这条流；"剩余多少"永远由 [PomodoroSessionState.deriveRemainingMs] 派生。
+     */
+    val pomodoroSession: Flow<PomodoroSessionState?> = dataStore.data.map { readPomodoroSession(it) }
+
+    private fun readPomodoroSession(prefs: Preferences): PomodoroSessionState? {
+        val start = prefs[POMODORO_SESSION_START] ?: return null
+        if (start <= 0L) return null
+        val planned = prefs[POMODORO_SESSION_PLANNED_MIN] ?: return null
+        return PomodoroSessionState(
+            sessionStartEpochMs = start,
+            plannedMinutes = planned,
+            phase = if (prefs[POMODORO_SESSION_PHASE] == PomodoroSessionPhase.BREAK.name)
+                PomodoroSessionPhase.BREAK else PomodoroSessionPhase.FOCUS,
+            focusTarget = prefs[POMODORO_SESSION_TARGET] ?: CanonicalFocusText.TARGET_FREE_STUDY,
+            pausedAccumMs = prefs[POMODORO_SESSION_PAUSED_ACCUM_MS] ?: 0L,
+            pauseStartedAtEpochMs = (prefs[POMODORO_SESSION_PAUSE_STARTED_AT] ?: 0L).takeIf { it > 0L },
+            settled = prefs[POMODORO_SESSION_SETTLED] ?: false,
+            recordedSessionId = prefs[POMODORO_SESSION_FOCUS_RECORD_ID] ?: 0L,
+            settleDate = prefs[POMODORO_SESSION_SETTLE_DATE] ?: "",
+        )
+    }
+
+    /** 整组写入/整组清除（null=清会话；结算完成、停止、过期 BREAK 静默清都走这里）。 */
+    suspend fun savePomodoroSession(state: PomodoroSessionState?) {
+        dataStore.edit { prefs ->
+            if (state == null) {
+                prefs.remove(POMODORO_SESSION_START)
+                prefs.remove(POMODORO_SESSION_PLANNED_MIN)
+                prefs.remove(POMODORO_SESSION_TARGET)
+                prefs.remove(POMODORO_SESSION_PHASE)
+                prefs.remove(POMODORO_SESSION_PAUSED_ACCUM_MS)
+                prefs.remove(POMODORO_SESSION_PAUSE_STARTED_AT)
+                prefs.remove(POMODORO_SESSION_SETTLED)
+                prefs.remove(POMODORO_SESSION_FOCUS_RECORD_ID)
+                prefs.remove(POMODORO_SESSION_SETTLE_DATE)
+            } else {
+                prefs[POMODORO_SESSION_START] = state.sessionStartEpochMs
+                prefs[POMODORO_SESSION_PLANNED_MIN] = state.plannedMinutes
+                prefs[POMODORO_SESSION_TARGET] = state.focusTarget
+                prefs[POMODORO_SESSION_PHASE] = state.phase.name
+                prefs[POMODORO_SESSION_PAUSED_ACCUM_MS] = state.pausedAccumMs
+                prefs[POMODORO_SESSION_PAUSE_STARTED_AT] = state.pauseStartedAtEpochMs ?: 0L
+                prefs[POMODORO_SESSION_SETTLED] = state.settled
+                prefs[POMODORO_SESSION_FOCUS_RECORD_ID] = state.recordedSessionId
+                prefs[POMODORO_SESSION_SETTLE_DATE] = state.settleDate
+            }
+        }
+    }
+
+    /**
+     * 结算认领 CAS（要求 4，先置位后入账，形态同 [tryClaimStreakMilestone]）：
+     * 读取-判定-写入在同一个 `dataStore.edit` 事务内完成（DataStore 串行化 edit 块），
+     * 双触发（页面内到点 + 启动补结算）恰好第一次赢。
+     *
+     * 判定条件：会话存在、FOCUS 段、未结算、起锚点与调用方读取到的会话一致（防止把
+     * **新**会话误认成旧会话结算）、deadline（含暂停顺延）已过。赢下认领的同一段临界区里
+     * 一并落"结算日 + 今日番茄数 +1 + 宠物心情 +3"——这三件事随认领恰好发生一次，
+     * 崩溃重放不会再重复加分之外的统计（入账本身由 sessionId/bizKey 幂等兜底）。
+     */
+    suspend fun tryClaimPomodoroFocusSettle(expectedStartEpochMs: Long, nowMs: Long): Boolean {
+        var claimed = false
+        dataStore.edit { prefs ->
+            val session = readPomodoroSession(prefs)
+            if (session != null &&
+                session.phase == PomodoroSessionPhase.FOCUS &&
+                !session.settled &&
+                session.sessionStartEpochMs == expectedStartEpochMs &&
+                session.deriveRemainingMs(nowMs) <= 0L
+            ) {
+                val today = todayString()
+                prefs[POMODORO_SESSION_SETTLED] = true
+                prefs[POMODORO_SESSION_SETTLE_DATE] = today
+                val raw = prefs[POMODORO_TODAY_COUNT] ?: ""
+                val current = if (raw.startsWith("$today:")) raw.substringAfter(":").toIntOrNull() ?: 0 else 0
+                prefs[POMODORO_TODAY_COUNT] = "$today:${current + 1}"
+                prefs[PET_MOOD] = ((prefs[PET_MOOD] ?: 80) + 3).coerceIn(0, 100)
+                claimed = true
+            }
+        }
+        return claimed
+    }
+
+    /**
+     * 落盘已写入的 focus_sessions 行 id（仅当会话起锚点仍是同一段时）。
+     * 崩溃续跑据此用**同一条** `FOCUS:$sessionId:$date` bizKey 补 checkIn，不产生第二笔待审单。
+     */
+    suspend fun markPomodoroFocusRecordId(expectedStartEpochMs: Long, recordId: Long) {
+        dataStore.edit { prefs ->
+            if (prefs[POMODORO_SESSION_START] == expectedStartEpochMs) {
+                prefs[POMODORO_SESSION_FOCUS_RECORD_ID] = recordId
+            }
+        }
     }
 
     // ===== 设备间数据同步追踪（配对后持续同步） =====
