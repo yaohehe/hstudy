@@ -96,3 +96,12 @@ val M3DarkOutlineVariant = Color(0xFF53443C)
 val M3DarkInverseSurface = Color(0xFFF7EFEA)
 val M3DarkInverseOnSurface = Color(0xFF342E2A)
 val M3DarkInversePrimary = Color(0xFFA65100)
+
+// 回审 P2-1：RoleSelectScreen 角色卡装饰渐变与卡上文字色——纯插图调色板，从页面收口至 theme
+// （保持裁决 RA7"零视觉变化"：数值与原页面逐字节一致，仅迁移位置）。
+val RoleCardParentGradientStart = Color(0xFF90CAF9)
+val RoleCardParentGradientEnd = Color(0xFF42A5F5)
+val RoleCardChildGradientStart = Color(0xFFFFCC80)
+val RoleCardChildGradientEnd = Color(0xFFFF9800)
+val RoleCardTitleText = Color(0xFF2B2320)
+val RoleCardSubtitleText = Color(0xFF4A3F35)

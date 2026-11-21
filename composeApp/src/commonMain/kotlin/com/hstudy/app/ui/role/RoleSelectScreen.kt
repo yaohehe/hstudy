@@ -4,6 +4,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import com.hstudy.app.ui.theme.RoleCardChildGradientEnd
+import com.hstudy.app.ui.theme.RoleCardChildGradientStart
+import com.hstudy.app.ui.theme.RoleCardParentGradientEnd
+import com.hstudy.app.ui.theme.RoleCardParentGradientStart
+import com.hstudy.app.ui.theme.RoleCardSubtitleText
+import com.hstudy.app.ui.theme.RoleCardTitleText
 import com.hstudy.app.ui.theme.WindowSizeClass
 import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
@@ -99,7 +105,7 @@ fun RoleSelectScreen(
                             emoji = "👨‍👩‍👧",
                             title = strings.parentEntry,
                             subtitle = strings.parentDesc,
-                            gradient = listOf(Color(0xFF90CAF9), Color(0xFF42A5F5)),
+                            gradient = listOf(RoleCardParentGradientStart, RoleCardParentGradientEnd),
                             onClick = onParentSelected,
                             modifier = Modifier.weight(1f)
                         )
@@ -107,7 +113,7 @@ fun RoleSelectScreen(
                             emoji = "🧒",
                             title = strings.childEntry,
                             subtitle = strings.childDesc,
-                            gradient = listOf(Color(0xFFFFCC80), Color(0xFFFF9800)),
+                            gradient = listOf(RoleCardChildGradientStart, RoleCardChildGradientEnd),
                             onClick = onChildSelected,
                             modifier = Modifier.weight(1f)
                         )
@@ -118,14 +124,14 @@ fun RoleSelectScreen(
                             emoji = "👨‍👩‍👧",
                             title = strings.parentEntry,
                             subtitle = strings.parentDesc,
-                            gradient = listOf(Color(0xFF90CAF9), Color(0xFF42A5F5)),
+                            gradient = listOf(RoleCardParentGradientStart, RoleCardParentGradientEnd),
                             onClick = onParentSelected
                         )
                         RoleCard(
                             emoji = "🧒",
                             title = strings.childEntry,
                             subtitle = strings.childDesc,
-                            gradient = listOf(Color(0xFFFFCC80), Color(0xFFFF9800)),
+                            gradient = listOf(RoleCardChildGradientStart, RoleCardChildGradientEnd),
                             onClick = onChildSelected
                         )
                     }
@@ -166,14 +172,14 @@ private fun RoleCard(
                     title,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF2B2320)
+                    color = RoleCardTitleText
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF4A3F35)
+                    color = RoleCardSubtitleText
                 )
             }
         }

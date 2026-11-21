@@ -508,7 +508,7 @@ private fun WeekCompareRow(label: String, value: String, delta: Int, unit: Strin
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(96.dp))
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         val (arrow, color) = when {
-            delta > 0 -> "↑$delta$unit" to Color(0xFF4CAF50)
+            delta > 0 -> "↑$delta$unit" to MaterialTheme.colorScheme.secondary
             delta < 0 -> "↓${-delta}$unit" to MaterialTheme.colorScheme.error
             else -> strings.deltaFlat to MaterialTheme.colorScheme.onSurfaceVariant
         }
