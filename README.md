@@ -71,7 +71,7 @@ HStudy is free. If it helps your family, you can support development via
 ### Versioning & data compatibility
 
 `versionCode = MAJOR*10000 + MINOR*100 + PATCH` (see [docs/VERSIONING.md](docs/VERSIONING.md));
-history in [version_history.md](version_history.md). Room schema v12 with v1→v12 migrations;
+history in [version_history.md](version_history.md). Room schema v13 with v1→v13 migrations;
 upgrades preserve all existing data.
 
 **Upgrading from v2 (v3.2.1+):** releases since v3.2.1 carry a signing-key rotation
@@ -138,7 +138,7 @@ HStudy 免费。如果它对您的家庭有帮助，欢迎通过
 ### 版本与数据兼容
 
 `versionCode = MAJOR*10000 + MINOR*100 + PATCH`（见 [docs/VERSIONING.md](docs/VERSIONING.md)）；
-历史见 [version_history.md](version_history.md)。Room schema v12，含 v1→v12 迁移，升级保留全部数据。
+历史见 [version_history.md](version_history.md)。Room schema v13，含 v1→v13 迁移，升级保留全部数据。
 
 **从 v2 升级（v3.2.1 起）**：v3.2.1 起的发布包含签名密钥轮换（v2 原始 debug key → 现正式 key，
 APK Signature Scheme v3 lineage）。装有 v2（debug 签名）或 v3.x（Android 9+）的设备可

@@ -1,5 +1,40 @@
 # HStudy 版本更新记录
 
+## v3.3.1 (2026-11-22)
+**真机签核缺陷修复波（D-01~D-11，Antigravity v3.3.1 指令）——全流程业务审计与稳定性强化**
+
+> **发布状态**：待发布（用户闸门；不打 tag、不 push，发布动作由用户决定）。验收报告见
+> `docs/acceptance-v331-hardening.md`，指令书见 `docs/antigravity-v331-directives.md`。
+
+- D-01（P0，错题本）：窄屏 Compact 分支废弃无滚动 Column 嵌套，改单一顶层 `LazyColumn`，
+  状态面板/筛选栏作前置 Item——压瘪为 0dp 的错题卡恢复可触达，复习打卡链路打通（`9903f2d`）。
+- D-02（P0，任务库）：覆盖升级冷启动盲插导致预设任务成对重复、可双倍冒领——新增 Room
+  `MIGRATION_12_13` 按 title 去重（保留 `MIN(id)`，其余软删保历史可追溯）+ `initDefaultTasks`
+  按 title 幂等 + `AppGraph` 首启改"表空才播种"（`45be645`）。
+- D-08（P0，心愿存钱罐）：存入积分错记 `ADJUSTMENT` 且删除心愿已存积分蒸发——存入改走权威入口
+  `spendPoints`（`REWARD_EXCHANGE`），删除时 `savedPoints>0` 原路退还并弹窗预告；note 只存
+  `wish_deposit:<id>`/`wish_refund:<id>` 业务键，展示文案 UI 派生（Ruling 25 存储边界）（`500e456`）。
+- D-03（P1，任务打卡）：静态"需审批"标签不反映真实审批流——任务卡按当日 bizKey 审批记录联动
+  渲染 ⏳待审 / ✅已到账 / ⛔已拒绝（errorContainer 告警）/ ↩️已取消 / 🔄已撤销，拒绝后可重新打卡（`bb9c4cf`）。
+- D-05/06/07（P1，番茄钟）：计时纯内存态，退出/息屏/被杀丢失不结算且无常亮——起始时间戳锚定
+  持久化（`PomodoroSessionState` 纯函数状态机）+ 跨导航无缝续时 + 跨进程被杀启动自动补结算
+  （DataStore CAS 幂等，恰好一笔入账）+ 平台 `KeepScreenOn` expect/actual（Android
+  FLAG_KEEP_SCREEN_ON / iOS idleTimerDisabled）（`a3edb21`）。
+- D-09（P1，首页激励）：系统奖励先加分后置位、无防连击——三处领取改"原子 CAS 先置位、再入账"
+  （`tryClaim*` 读-判-写同一 `dataStore.edit` 事务）+ `BonusClaimGuard` in-flight 互斥
+  （`Mutex.tryLock` 当场拒绝不排队），狂点双击仅入账一次（`09a4f21`）。
+- D-10（P1，家长审批）：误通过后无撤回入口——审批历史 `APPROVED` 卡增设「撤回通过」→ 二次确认
+  → `revokeApproval`（复用 `undoCheckIn`，REVERSAL 对称冲抵、状态转 REVOKED），徽章如实翻「🔄 已撤销」
+  ；埋点登记表 20→21 项（`0ea99fd`）。
+- D-04（P2，家长首页）：底部 7 卡横滚长滑——改断点自适应网格：Compact/中等宽度双列、Expanded
+  四列，Daily Pulse 宽屏 4×1，功能入口 1:1 零增减（`e19fc8f`）。
+- D-11（P2，审批系统）：超 30 天待审永久挂起、冻结分虚高——看板提示条 + 一键清理，逐条走
+  `revokeApproval` 对称闭环置 CANCELLED（零扣回、禁裸批量 UPDATE）；review fix：清理循环先按 id
+  复读、仅真置 CANCELLED 才计数，防同 bizKey 新单误伤（`e19fc8f` + `c7aa445`）。
+- 单测 252→302 全绿；静态闸门全绿（埋点接线 21 项 / i18n 存储边界 + selftest / 模板等价 diff
+  默认 + `--branch` 双模）；Room schema v12→v13。
+- versionCode 30301 / versionName 3.3.1（build.gradle.kts、Info.plist、pbxproj 四处版本戳同步）。
+
 ## v3.3.0 (2026-11-21)
 **Material 3 全应用改版 + 积分审批生命周期强化（Antigravity 指令波，回审全项达标）**
 
