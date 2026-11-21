@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.ApprovalStatus
 import com.hstudy.app.data.local.entity.PointApprovalEntity
+import com.hstudy.app.data.repository.PointRepository
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.ParentApprovalStrings
 import com.hstudy.app.platform.AnalyticsEvent
@@ -37,8 +38,19 @@ import com.hstudy.app.ui.dt.*
  *   主体内容+时间+加粗大号分值、底部 FilledTonalButton(通过)/OutlinedButton(拒绝) 6:4、间距 12dp；
  * - 历史区保留 W2 P1-02 的**按状态如实展示**（statusIcon/scoreText 语义不动），徽章容器换成
  *   M3 tonal 四色（绿/橙/灰/红，RA8：徽章文案仍走 Strings）。
- * 埋点约束：APPROVAL_ACTION 埋点三个调用点（单条通过 / 拒绝 / 全部通过）位置随各自的
- * onClick 处理器迁移，**条数恒为 3**（analytics_call_sites.py 闸门复核）。
+ * 埋点约束：APPROVAL_ACTION 埋点**四个**调用点（单条通过 / 拒绝 / 全部通过 / 家长撤回（D-10）），
+ * 前三处位置随各自的 onClick 处理器迁移，第四处随撤回确认对话框的确认按钮落地；
+ * 条数与登记表由 analytics_call_sites.py 闸门复核（该文件 min=4 + 撤回入口 wiring 各钉一条）。
+ *
+ * v3.3.1 D-10（指令 §4.4）：历史 Tab 的 APPROVED 卡右侧新增「撤回通过」TextButton →
+ * 二次确认 AlertDialog（扣回分值来自 approval.requestedPoints）→ [com.hstudy.app.data.repository.PointRepository.revokeApproval]
+ * （委托 undoCheckIn，REVERSAL 对称冲抵 + REVOKED，与孩子端撤销同一闭环）。
+ * 终态（REVOKED/CANCELLED/REJECTED）卡不显示按钮；bizKey 为空的历史遗留行同样不显示
+ * （统一撤销按 bizKey 锚定，口径与仓库层 revokeApproval 的保守拒绝一致）。
+ *
+ * v3.3.1 D-11（指令 §5.2）：待审看板卡下方新增**超期提示条**（stalePendingCount>0 才渲染）→
+ * 「清理超期申请」→ 二次确认 AlertDialog → [com.hstudy.app.data.repository.PointRepository.expireStalePendingApprovals]
+ * （逐条 undoCheckIn 对称闭环置 CANCELLED）。清理入口零新增埋点调用点（上方四计数不动）。
  */
 @Composable
 fun ParentApprovalScreen(
@@ -79,6 +91,17 @@ fun ParentApprovalScreen(
     val pendingCount = pendingApprovals.size
     val pendingTotalPoints = pendingApprovals.sumOf { it.requestedPoints }
     var showApproveAllDialog by remember { mutableStateOf(false) }
+    // D-10：历史 APPROVED 卡「撤回通过」的二次确认目标（null=不弹窗）
+    var revokeTarget by remember { mutableStateOf<PointApprovalEntity?>(null) }
+    // D-11（指令 §5.2）：超期待审提示条读数——threshold 只在此处换算，30 天口径的唯一出处
+    // 是 PointRepository.STALE_PENDING_MILLIS（清理入口在仓库层用同一常量重筛，UI 判据不会漂移）。
+    // 终审 Minor-4（选最小方案）：本 threshold 是组合期一次算好的快照，长驻页面读数会偏旧；
+    // 执行路径 expireStalePendingApprovals() 在仓库层按**执行时刻**重筛（现状即正确），
+    // 故不改流形态，只在确认弹窗文案注明"实际笔数以执行时为准"（ParentApprovalStrings.staleConfirmMessage）。
+    val staleThreshold = remember { nowMillis() - PointRepository.STALE_PENDING_MILLIS }
+    val stalePendingCount by app.pointRepository.getStalePendingApprovalCount(staleThreshold)
+        .collectAsState(initial = 0)
+    var showStaleCleanDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -136,6 +159,35 @@ fun ParentApprovalScreen(
                                         Icon(Icons.Filled.Approval, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(strings.approveAllPointsButton(pendingTotalPoints))
+                                    }
+                                }
+                            }
+                        }
+                        // ===== D-11 超期待审提示条（看板卡下方，仅当超期笔数>0；文案全走 Strings）=====
+                        if (stalePendingCount > 0) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = MaterialTheme.shapes.large,
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            // ⏰ 图标与 ParentHome 同步过期提醒同形（emoji 不受 i18n 约束，RA8）
+                                            Text("⏰", style = MaterialTheme.typography.titleMedium)
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(strings.stalePendingNote(stalePendingCount),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.weight(1f))
+                                        }
+                                        Button(
+                                            onClick = { showStaleCleanDialog = true },
+                                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+                                            shape = MaterialTheme.shapes.medium
+                                        ) {
+                                            Text(strings.staleCleanButton)
+                                        }
                                     }
                                 }
                             }
@@ -264,6 +316,20 @@ fun ParentApprovalScreen(
                                         fontWeight = FontWeight.Bold,
                                         color = scoreColor
                                     )
+                                    // D-10（指令 §4.4）：仅 APPROVED 且 bizKey 可锚定的卡提供撤回入口；
+                                    // REVOKED/CANCELLED/REJECTED 终态不显示按钮（幂等由仓库层兜底）。
+                                    if (approval.status == ApprovalStatus.APPROVED &&
+                                        approval.bizKey.isNotEmpty()
+                                    ) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        TextButton(
+                                            onClick = { revokeTarget = approval },
+                                            modifier = Modifier.defaultMinSize(minHeight = 40.dp)
+                                        ) {
+                                            Text(strings.revokeApprovalButton,
+                                                style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -292,6 +358,58 @@ fun ParentApprovalScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showApproveAllDialog = false }) { Text(common.cancelButton) }
+            }
+        )
+    }
+
+    // ===== D-10 家长撤回审批二次确认（指令 §4.4）=====
+    // 确认后走 PointRepository.revokeApproval —— 它委托 undoCheckIn（孩子端撤销同一闭环），
+    // APPROVED→REVOKED+REVERSAL 扣回、终态幂等拒绝（返回 0）；snackbar 按实际扣回数如实反馈。
+    revokeTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { revokeTarget = null },
+            title = { Text(strings.revokeConfirmTitle) },
+            text = { Text(strings.revokeConfirmMessage(target.requestedPoints)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    revokeTarget = null
+                    scope.launch {
+                        val clawedBack = app.pointRepository.revokeApproval(target.id)
+                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.APPROVAL_ACTION))
+                        snackbarHostState.showSnackbar(
+                            if (clawedBack > 0) strings.revokeSuccessMessage(clawedBack)
+                            else strings.revokeTerminalMessage
+                        )
+                    }
+                }) { Text(common.confirmButton) }
+            },
+            dismissButton = {
+                TextButton(onClick = { revokeTarget = null }) { Text(common.cancelButton) }
+            }
+        )
+    }
+
+    // ===== D-11 超期待审清理二次确认（指令 §5.2）=====
+    // 确认后走 PointRepository.expireStalePendingApprovals —— 逐条复用 undoCheckIn 对称闭环置
+    // CANCELLED（未审批本就零分：账本与余额分毫不动），snackbar 按实际清理笔数如实反馈
+    // （二次清理竞态返回 0 也照样报 0，不另开终态文案槽）。
+    // 埋点红线：本入口**不新增** APPROVAL_ACTION 调用点——登记条数（4）与全局调用点总数不变。
+    if (showStaleCleanDialog) {
+        AlertDialog(
+            onDismissRequest = { showStaleCleanDialog = false },
+            title = { Text(strings.staleConfirmTitle) },
+            text = { Text(strings.staleConfirmMessage(stalePendingCount)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showStaleCleanDialog = false
+                    scope.launch {
+                        val cleaned = app.pointRepository.expireStalePendingApprovals()
+                        snackbarHostState.showSnackbar(strings.staleCleanedMessage(cleaned))
+                    }
+                }) { Text(common.confirmButton) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStaleCleanDialog = false }) { Text(common.cancelButton) }
             }
         )
     }

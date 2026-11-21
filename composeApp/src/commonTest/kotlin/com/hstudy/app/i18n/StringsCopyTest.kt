@@ -117,6 +117,7 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "parentApproval.emptyPendingNote",        // "Point requests appear here after your child completes study activities"
     "parentApproval.alreadyProcessedMessage", // "Already handled — points were not added again"
     "parentApproval.statusRevoked",           // "Revoked (points removed)"
+    "parentApproval.revokeTerminalMessage",   // "Already final (…) — no points removed"（v3.3.1 D-10 终态如实反馈）
     // ---- W3 Task 3 奖励编辑页新增 2 条（英文原文逐条留在行尾注释里）。
     "parentRewardEdit.presetHint",            // "… adjust their point costs there …"
     "parentRewardEdit.costLabel",             // "Points required"
@@ -183,6 +184,13 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     // analyticsNote 的 "point details" 是**否定句里的积分名词**（不采集积分明细），词形仍是
     // §11 的 points/point，闭集按词形登记，语义由 analyticsCopyDiffers 与本行注释承担。
     "settings.analyticsNote",                 // "No names, task content or point details."
+    // ---- v3.3.1 D-03（指令 §4.1 P1-01）任务卡审批态小标新增 2 条静态含 point 槽
+    // （英文原文逐条留在行尾注释里）。approvalPendingBadge/approvalApprovedBadge 是函数型字段
+    // （Ruling 20-b 进不了 toString），两语整串由 taskListInterpolatedCopyPinsBothLanguages /
+    // taskListEnglishPluralsCoverOneAndOther 钉住；approvalCancelledBadge "↩️ Check-in cancelled" 与
+    // recheckInButton "Check in again" 不含 point，不登记。
+    "taskList.approvalRejectedBadge",         // "⛔ Rejected (no points)"
+    "taskList.approvalRevokedBadge",          // "🔄 Revoked (points removed)"
 )
 
 /**
@@ -520,6 +528,11 @@ class StringsCopyTest {
             zh.completedContentDescription to en.completedContentDescription,
             zh.mandatoryBadge to en.mandatoryBadge,
             zh.proofButton to en.proofButton,
+            // v3.3.1 D-03（指令 §4.1）：审批态小标里的 3 个静态槽 + 重新打卡引导钮
+            zh.approvalRejectedBadge to en.approvalRejectedBadge,
+            zh.approvalCancelledBadge to en.approvalCancelledBadge,
+            zh.approvalRevokedBadge to en.approvalRevokedBadge,
+            zh.recheckInButton to en.recheckInButton,
         )
     }
 
@@ -582,6 +595,20 @@ class StringsCopyTest {
             "Undo the check-in for Daily reading? Points already awarded will be removed.",
             AppStringsEn.taskList.revertConfirmMessage("Daily reading"),
         )
+        // v3.3.1 D-03（指令 §4.1 P1-01）当日审批态小标（新写文案；闸门表侧单边已登记）
+        assertEquals("⏳ 待家长审核 (+5分)", AppStringsZh.taskList.approvalPendingBadge(5))
+        assertEquals("⏳ Pending approval (+5 points)", AppStringsEn.taskList.approvalPendingBadge(5))
+        assertEquals("✅ 积分已到账 (+5分)", AppStringsZh.taskList.approvalApprovedBadge(5))
+        assertEquals("✅ Approved: +5 points", AppStringsEn.taskList.approvalApprovedBadge(5))
+        // 终审 Minor-3：REJECTED 态撤销专用 snackbar（不再误用"尚未审批"文案；闸门表侧单边已登记）
+        assertEquals(
+            "↩️ 已撤销 每日阅读（该申请已被拒绝，撤销不产生积分变动）",
+            AppStringsZh.taskList.revertedRejectedMessage("每日阅读"),
+        )
+        assertEquals(
+            "↩️ Check-in undone for Daily reading (this request was rejected, so undoing changes no points)",
+            AppStringsEn.taskList.revertedRejectedMessage("Daily reading"),
+        )
     }
 
     /**
@@ -622,6 +649,11 @@ class StringsCopyTest {
         // W3 expectedPointsLabel（指令 §3.3.2-3）：英文 1 分单数、中文同形
         assertEquals("Check in to earn +1 point (pending approval)", AppStringsEn.taskList.expectedPointsLabel(1))
         assertEquals("打卡预得 +1分（需审批）", AppStringsZh.taskList.expectedPointsLabel(1))
+        // D-03 审批态小标（指令 §4.1）：英文 1 分单数、中文同形
+        assertEquals("⏳ Pending approval (+1 point)", AppStringsEn.taskList.approvalPendingBadge(1))
+        assertEquals("✅ Approved: +1 point", AppStringsEn.taskList.approvalApprovedBadge(1))
+        assertEquals("⏳ 待家长审核 (+1分)", AppStringsZh.taskList.approvalPendingBadge(1))
+        assertEquals("✅ 积分已到账 (+1分)", AppStringsZh.taskList.approvalApprovedBadge(1))
     }
 
     /**

@@ -102,6 +102,8 @@ class WishCopyTest {
             zh.descLabel to en.descLabel,
             zh.targetPointsLabel to en.targetPointsLabel,
             zh.iconPickerLabel to en.iconPickerLabel,
+            // v3.3.1 D-08：删除确认弹窗标题（字段名刻意以 remove 开头，理由见该表 KDoc）
+            zh.removeDialogTitle to en.removeDialogTitle,
         )
     }
 
@@ -114,6 +116,46 @@ class WishCopyTest {
         assertEquals("进行中 · 200/800分", zh.activeLine(200, 800))
         assertEquals("In progress · 200/800 points", en.activeLine(200, 800))
         assertEquals("In progress · 1/1 point", en.activeLine(1, 1))
+        // v3.3.1 D-08：删除确认两行（退还承诺那句是函数型字段，按 Ruling 20-b 逐字钉双语 + 英文单复数）
+        assertEquals("确定删除「一个小玩具」吗？", zh.removeConfirmMessage("一个小玩具"))
+        assertEquals("Delete “一个小玩具”?", en.removeConfirmMessage("一个小玩具"))
+        assertEquals(
+            "该心愿已存入 200 积分，删除后将自动退还至孩子积分余额。",
+            zh.removeRefundNotice(200)
+        )
+        assertEquals(
+            "This wish already holds 200 points. They will be refunded to your child's balance automatically.",
+            en.removeRefundNotice(200)
+        )
+        assertEquals(
+            "This wish already holds 1 point. They will be refunded to your child's balance automatically.",
+            en.removeRefundNotice(1)
+        )
+    }
+
+    /**
+     * D-08 的字段名形状守卫：本表**新增的删除确认三槽**不得以存储边界闸门的 sink 词根开头。
+     *
+     * 为什么钉名字而不是钉内容：闸门 `CALL_HEAD` 按词根前缀认写库调用（`delete\w*(` 也算），
+     * 于是 `strings.deletedNotice(...)` 渲染在 Text 里会被判成"文案进入删除调用"（W4 Ruling 6 /
+     * W5 Ruling 15，`removedMessage` 当年就是这么改名的）。将来有人把这三条重命名回 `delete*`，
+     * 报错的是 python 闸门而不是本测试，定位成本高得多 —— 这里提前把命名口径钉住。
+     * 只断言**新增**的三条：`deleteContentDescription` 住在 [CommonStrings]，不在本表，
+     * 把它搬进来会变成跨表同值槽（本仓明确禁止）。
+     */
+    @Test
+    fun parentWishGoalDeleteConfirmSlotsAreNotSinkShaped() {
+        val forbiddenRoots = listOf("delete", "insert", "update", "save", "add", "set", "mark", "record", "adjust", "spend")
+        listOf(
+            "removeDialogTitle",
+            "removeConfirmMessage",
+            "removeRefundNotice",
+        ).forEach { slot ->
+            assertTrue(
+                forbiddenRoots.none { slot.startsWith(it) },
+                "parentWishGoal.$slot 的名字会被存储边界闸门当成写库调用，请改成 remove*/confirm* 形状"
+            )
+        }
     }
 
     @Test

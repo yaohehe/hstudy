@@ -113,6 +113,9 @@ class ChildRewardStoreCopyTest {
             zh.sectionWeekEarlier to en.sectionWeekEarlier,
             zh.sectionHistory to en.sectionHistory,
             zh.tagCheckInUndo to en.tagCheckInUndo,
+            // v3.3.1 D-08：心愿流水的通用兜底标签（心愿已删除、回查不到名字时用）
+            zh.wishDepositGeneric to en.wishDepositGeneric,
+            zh.wishRefundGeneric to en.wishRefundGeneric,
         )
         // 四个分组标题两两互不相同（when 分桶的 0..3 支同值等于两段流水念成同一段）
         assertEquals(4, listOf(zh.sectionToday, zh.sectionYesterday, zh.sectionWeekEarlier, zh.sectionHistory).distinct().size)
@@ -134,6 +137,16 @@ class ChildRewardStoreCopyTest {
         assertEquals("🌟 累计获得 1 分", zh.totalEarnedValue(1))
         assertEquals("🌟 Total earned: 40 points", en.totalEarnedValue(40))
         assertEquals("🌟 Total earned: 1 point", en.totalEarnedValue(1))
+        // v3.3.1 D-08：明细页由 note 业务键派生的心愿流水文案（账本里不再有中文，英文界面全靠这两条槽）。
+        // 名字实参是页面已经包过 localizedPresetText 的显示名，表函数只负责包句式（与心愿两页同口径）。
+        assertEquals("存入心愿「一台新平板」", zh.wishDeposit("一台新平板"))
+        assertEquals("Saved into wish “A new tablet”", en.wishDeposit("A new tablet"))
+        assertEquals("心愿退回「一台新平板」", zh.wishRefund("一台新平板"))
+        assertEquals("Wish refund for “A new tablet”", en.wishRefund("A new tablet"))
+        assertEquals("存入心愿", zh.wishDepositGeneric)
+        assertEquals("Wish deposit", en.wishDepositGeneric)
+        assertEquals("心愿退回", zh.wishRefundGeneric)
+        assertEquals("Wish refund", en.wishRefundGeneric)
     }
 
     @Test

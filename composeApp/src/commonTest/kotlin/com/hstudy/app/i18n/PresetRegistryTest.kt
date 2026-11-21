@@ -282,6 +282,7 @@ class PresetRegistryTest {
 private class UnusedTaskDao : TaskDao {
     override fun getAllActiveTasks(): Flow<List<TaskEntity>> = throw UnsupportedOperationException()
     override suspend fun getActiveTaskCount(): Int = throw UnsupportedOperationException()
+    override suspend fun getActiveTaskByTitle(title: String): TaskEntity? = throw UnsupportedOperationException()
     override suspend fun getAllActiveTasksSnapshot(): List<TaskEntity> = throw UnsupportedOperationException()
     override fun getTasksByCategory(category: TaskCategory): Flow<List<TaskEntity>> = throw UnsupportedOperationException()
     override suspend fun getTaskById(id: Long): TaskEntity? = throw UnsupportedOperationException()

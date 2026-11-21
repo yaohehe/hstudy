@@ -8,6 +8,8 @@ import com.hstudy.app.data.local.entity.PointRecordEntity
 import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.TaskCompletionEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
@@ -35,6 +37,14 @@ enum class CheckInResult {
  * 4. **撤销对称**：未审批撤销 → 申请置 CANCELLED（本就没分，无残留）；
  *    已审批撤销 → 追加 REVERSAL 反向记录冲抵，净额归零且保留审计轨迹。
  * 5. **账本 append-only**：积分记录只增不改不删，余额 = SUM(points)。
+ * 6. **消耗只有一个入口**（D-08）：孩子自主消耗（商店兑换、喂养宠物、存入心愿存钱罐）一律走
+ *    [spendPoints] → REWARD_EXCHANGE；退款走 [refundSpentPoints] 追加正向记录。
+ *    [adjustPoints] 只表达"家长手动奖惩"，任何自动业务都不得借它入账。
+ *
+ * **note 列的边界（Ruling 25）**：note 是账本数据，不得写界面文案。仓库里现存两种合规形态——
+ * ① 用户自己输入的自由备注（家长调整备注、任务名等 canonical 存储值）；
+ * ② 纯 ASCII 业务键（心愿存入/退回用 `wish_deposit:<goalId>` / `wish_refund:<goalId>`，
+ *    见 [WishGoalRepository]），展示文案由明细页按 `type + note` 派生。
  */
 class PointRepository(
     private val pointDao: PointDao,
@@ -217,12 +227,98 @@ class PointRepository(
         approvalDao.updateReview(approvalId, ApprovalStatus.REJECTED, null)
     }
 
+    /**
+     * 家长撤回已审批申请（v3.3.1 D-10）：**委托 [undoCheckIn]，与孩子端撤销走同一条函数**，
+     * 保证不变量 4（撤销对称）在家长侧同样成立——APPROVED → 追加 REVERSAL 冲抵并置 REVOKED；
+     * PENDING → CANCELLED；REJECTED / CANCELLED / REVOKED 等终态幂等拒绝（返回 0、零写入）。
+     *
+     * 本方法只做入口适配（approvalId → 该单自己的 bizKey/taskId/date），**不含任何扣回逻辑**；
+     * 扣回口径、审计轨迹与返回值语义完全以 [undoCheckIn] 为准，孩子端调用零行为变化。
+     *
+     * 保守拒绝：`bizKey` 为空的历史数据（v2 迁移遗留，[approveAndAward] 的防重同样跳过它们）
+     * 无法被 bizKey 锚定的统一撤销定位，直接返回 0 不做任何写入——绝不凭 `getLatestByBizKey("")`
+     * 的"最后一条空 bizKey"误伤别的记录。
+     *
+     * **终审 Minor-1（D-10 同构竞态，防护同款于 D-11 review fix `c7aa445`）**：[undoCheckIn] 按
+     * bizKey 锚定"最新一条"判半区，确认弹窗停留期间孩子撤销+重打卡会留下**新的同 bizKey PENDING**，
+     * 裸委托会误伤它。因此入口先按 id 复读本次撤回目标：① 仍在可撤销半区（PENDING/APPROVED，
+     * 终态 REVOKED/CANCELLED/REJECTED 幂等拒绝）且 ② 仍是其 bizKey 的最新一条才委托闭环；
+     * 否则返回 0 零写入——UI 既有 `revokeTerminalMessage`"已终态"分支如实反馈。
+     * （①取 PENDING/APPROVED 两态而非仅 APPROVED：[expireStalePendingApprovals] 对 bizKey 锚定
+     * PENDING 行的复用路径依赖半区可达，且家长端 PENDING 撤回与 D-10 终态语义同形。）
+     *
+     * @return 实际扣回的积分数（正数；0 表示未扣回：终态、查无此单、空 bizKey 或已被并发撤销/重打卡顶替）
+     */
+    suspend fun revokeApproval(approvalId: Long): Int {
+        val approval = approvalDao.getById(approvalId) ?: return 0
+        if (approval.bizKey.isEmpty()) return 0
+        // 终审 Minor-1：按 id 复读撤回目标——弹窗停留期间孩子撤销+重打卡后，这一条要么已进终态，
+        // 要么已不是 bizKey 的最新一条（新 PENDING 顶替），两种都必须整单跳过，防误伤新单。
+        if (approval.status != ApprovalStatus.PENDING && approval.status != ApprovalStatus.APPROVED) return 0
+        if (approvalDao.getLatestByBizKey(approval.bizKey)?.id != approvalId) return 0
+        return undoCheckIn(bizKey = approval.bizKey, taskId = approval.taskId, date = approval.date)
+    }
+
     /** 批量通过：逐条走幂等发放，返回实际发放总积分 */
     suspend fun approveAllAndAward(): Int {
         val pending = approvalDao.getPendingList()
         var total = 0
         pending.forEach { total += approveAndAward(it.id) }
         return total
+    }
+
+    // ==================================================================
+    // v3.3.1 D-11（指令 §5.2）—— 超期滞留待审申请清理
+    // ==================================================================
+
+    /** D-11 提示条读数流：PENDING 且 requestedAt **严格早于** threshold 的笔数（边界值不算超期） */
+    fun getStalePendingApprovalCount(threshold: Long): Flow<Int> =
+        approvalDao.getStalePendingCount(threshold)
+
+    /**
+     * 超期待审一键清理（指令 §5.2）：把在 `now - [STALE_PENDING_MILLIS]` 之前提交、仍挂 PENDING 的
+     * 申请逐条取消，释放虚高滞留的待审分。
+     *
+     * **禁止裸批量 UPDATE**：有 bizKey 的行逐条走 [revokeApproval]——即 [undoCheckIn] 同一条闭环——
+     * PENDING 半区语义恰好是"未审批撤销 → 置 CANCELLED、零扣回"（不变量 4 对称 / 不变量 5
+     * append-only：不写任何积分记录，余额分毫不动）。任务类 PENDING 行同时清掉当日完成记录，
+     * 与孩子端撤销未审批打卡完全同形（复用既有闭环，不新写清理逻辑）。
+     *
+     * 空 bizKey 的 v2 遗留行无法被统一撤销锚定（[revokeApproval] 会保守拒绝返回 0），而清理
+     * 必须能收敛：这类行已在查询侧精确筛出（PENDING + 超期、按 id 定位），直接 updateStatus
+     * 置 CANCELLED 兜底——不涉扣回，与闭环 PENDING 半区终态一致（报告已披露此兜底）。
+     *
+     * **D-11 review fix（防 bizKey 新单误伤）**：快照列表逐条处理前先按 id 复读该 approval，
+     * 仅当 ① 仍 PENDING（防清理瞬间被家长并发通过/拒绝后落错半区）且 ② 仍是其 bizKey 的
+     * 最新一条（[PointApprovalDao.getLatestByBizKey]，防 v2 遗留同 bizKey 重复行让闭环命中
+     * 更新的 APPROVED 行而追加 REVERSAL 扣回，违背弹窗"余额不变"承诺）时才执行撤销；
+     * 否则整行跳过、**不计入 cleaned**，snackbar 笔数与实际置 CANCELLED 的行严格一致。
+     *
+     * @param now 判定基准时刻（测试注入固定时钟以钉 30 天边界）
+     * @return 实际清理笔数（只计真正置 CANCELLED 的行；0 = 无超期单 / 二次清理 / 全部被跳过，UI snackbar 如实反馈）
+     */
+    suspend fun expireStalePendingApprovals(now: Long = Clock.System.now().toEpochMilliseconds()): Int {
+        val stale = approvalDao.getStalePendingList(now - STALE_PENDING_MILLIS)
+        var cleaned = 0
+        for (approval in stale) {
+            // 按 id 复读快照行：并发审批/拒绝会让这一条早已不在 PENDING 半区
+            val fresh = approvalDao.getById(approval.id) ?: continue
+            if (fresh.status != ApprovalStatus.PENDING) continue
+            if (fresh.bizKey.isNotEmpty()) {
+                // bizKey 锚定行必须仍是该业务最新一条才可撤销：undoCheckIn 按 bizKey 取
+                // "最新一条"判半区，若同 bizKey 存在更新记录（v2 遗留重复或并发新单），
+                // 清理会命中更新的 APPROVED 行触发 REVERSAL 扣回——跳过并留待看板按真实态处理。
+                if (approvalDao.getLatestByBizKey(fresh.bizKey)?.id != fresh.id) continue
+                revokeApproval(fresh.id)
+            } else {
+                // 空 bizKey 兜底：updateStatus 只写 status/reviewedAt 两列，不改 awardedRecordId——
+                // PENDING 行从未发放、该列本就是 null，与闭环 PENDING 半区 updateReview(…, null) 终态一致。
+                approvalDao.updateStatus(fresh.id, ApprovalStatus.CANCELLED)
+            }
+            // 仅对真正落库 CANCELLED 的行计数（防御性复读，cleaned 与账本/状态变更严格对齐）
+            if (approvalDao.getById(fresh.id)?.status == ApprovalStatus.CANCELLED) cleaned++
+        }
+        return cleaned
     }
 
     /**
@@ -318,9 +414,25 @@ class PointRepository(
     }
 
     /**
-     * 兑换奖励消耗积分
+     * 兑换奖励消耗积分 —— **REWARD_EXCHANGE 的唯一权威写入口**。
+     *
+     * D-08（v3.3.1 / 指令 §3.3）：心愿存钱罐的"存入"过去直接 `pointDao.insertPointRecord(ADJUSTMENT)`，
+     * 同一种"孩子自主消耗"在账本里记成了家长调整。现在它走本函数，与商店消耗同一口径。
+     *
+     * 新增的 [requireSufficientBalance] 是给这类**内部自主扣减**的调用方用的：余额校验写在扣减点内部，
+     * 于是"校验 + 落账"只有一处、一个口径，调用方不必自己先 `getTotalPoints().first()` 再决定要不要扣
+     * （那会在仓库外形成第二处校验点，两边对"余额"的读法一旦分叉就会出现扣成负数的窗口）。
+     * **默认 false —— 商店/宠物四处调用点（ChildRewardStoreScreen.kt:220、
+     * ChildPetScreen.kt:219/235/379）的既有语义与字节行为完全不变**（D-08 红线）。
+     *
+     * 诚实说明：本仓库没有把这两步包进 Room 事务，所以"读余额"与"写流水"之间仍有极窄的并发窗口
+     * （单用户本地应用，且 UI 侧同一时刻只有一个扣减入口）；包事务需要给仓库注入事务执行器，
+     * 超出 D-08 范围，记此备忘。
+     *
+     * @return true = 已写入消耗流水；false = 校验未通过（余额不足或金额非正），**未写任何记录**
      */
-    suspend fun spendPoints(points: Int, note: String) {
+    suspend fun spendPoints(points: Int, note: String, requireSufficientBalance: Boolean = false): Boolean {
+        if (requireSufficientBalance && (points <= 0 || getTotalPoints().first() < points)) return false
         val weekStart = getWeekStartTimestamp()
         pointDao.insertPointRecord(
             PointRecordEntity(
@@ -328,6 +440,33 @@ class PointRepository(
                 type = PointRecordType.REWARD_EXCHANGE,
                 note = note,
                 weekStart = weekStart
+            )
+        )
+        return true
+    }
+
+    /**
+     * 原路退还一笔已经消耗掉的积分（D-08 删除心愿闭环）：
+     * **新增**一条正向 REWARD_EXCHANGE 记录冲抵，绝不 UPDATE/DELETE 当初那条消耗记录。
+     *
+     * 为什么不用 [adjustPoints]：退款是孩子自己资金的往返，不是家长的奖惩动作。
+     * 记成 ADJUSTMENT 会把这笔钱混进"家长调整"报表口径（D-08 根因 1 的镜像错误）；
+     * 记成 REWARD_EXCHANGE 的正向记录，则与当初那条负向消耗同进同出，
+     * 净额守恒仍由不变量 5（append-only、余额 = SUM(points)）如实托住。
+     *
+     * 与 [undoCheckIn] 的 REVERSAL 区别开：REVERSAL 的语义是"撤销一次已审批的**获得**"，
+     * 且必须挂 approvalId 溯源；本函数没有任何审批单，撤销打卡的账目不能凭空多出一条 REVERSAL。
+     *
+     * @param note 只许写纯 ASCII 业务键（如 `wish_refund:12`），不得写展示文案（Ruling 25 存储边界）
+     */
+    suspend fun refundSpentPoints(points: Int, note: String) {
+        if (points <= 0) return
+        pointDao.insertPointRecord(
+            PointRecordEntity(
+                points = points,
+                type = PointRecordType.REWARD_EXCHANGE,
+                note = note,
+                weekStart = getWeekStartTimestamp()
             )
         )
     }
@@ -342,6 +481,27 @@ class PointRepository(
 
     fun getCompletedTaskIdsForDate(date: String): Flow<List<Long>> =
         pointDao.getCompletedTaskIdsForDate(date)
+
+    /**
+     * D-03（指令 §4.1 P1-01）：某一天任务打卡的**真实审批态**：taskId → 该任务当日 bizKey
+     * （`TASK:<taskId>:<date>`，见 [checkInForTask]）对应的最新一条申请的 [ApprovalStatus]。
+     *
+     * 契约（由 PointRepositoryTaskApprovalStateTest 钉死）：
+     * - **单查询**取当日全部 task 类审批（[PointApprovalDao.getTaskApprovalsForDate]），不逐卡 N+1；
+     * - 同一 bizKey 多条（拒绝后重打卡会追加新行）取 **id 最大**一条的状态；
+     * - 跨日不串：只认 date 列（与 bizKey 日期尾巴同源同值）等于 [date] 的行；
+     * - 非 `TASK:` 前缀（布置任务/习惯/错题复习等）不混入。
+     *
+     * 只读展示流：不写库、不参与任何 bizKey 判等/幂等逻辑（展示需求不改比较语义，D-03 红线）。
+     */
+    fun getTaskApprovalStates(date: String): Flow<Map<Long, ApprovalStatus>> =
+        approvalDao.getTaskApprovalsForDate(date).map { rows ->
+            rows.groupBy { it.bizKey }
+                .values
+                .mapNotNull { group -> group.maxByOrNull { it.id } }
+                .mapNotNull { approval -> approval.taskId?.let { taskId -> taskId to approval.status } }
+                .toMap()
+        }
 
     fun getCompletionsByDate(date: String): Flow<List<TaskCompletionEntity>> =
         pointDao.getCompletionsByDate(date)
@@ -384,6 +544,12 @@ class PointRepository(
 
     companion object {
         fun getTodayString(): String = todayString()
+
+        /**
+         * D-11（指令 §5.2）超期待审判定窗口：申请提交后超过 30 天仍未审核即视为陈旧。
+         * 30 天口径唯一出处——清理入口与看板提示条（threshold = now - 本常量）共用，禁止各写各的。
+         */
+        const val STALE_PENDING_MILLIS: Long = 30L * 24 * 60 * 60 * 1000
 
         /**
          * 终审 M-1：把完成时间戳换算成打卡日期串（yyyy-MM-dd，本地时区，与 [todayString] 同格式）。

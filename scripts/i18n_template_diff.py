@@ -220,6 +220,38 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # （TaskListStrings.revertConfirmMessage：对话框正文为全新写文案，迁移前页面无此对话框；
 # 标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton，三个槽均已登记、不重开同值槽）
 # → 237 + 1 = 238（两个组读数实测如上：默认组仍 6/232，--branch 238 条、0 条未用到）。
+# v3.3.1 D-08（心愿存钱罐账本修复 指令 §3.3）在 238 条上新增表侧单边 7 条
+# （ChildPointsStrings 4 条：wishDeposit/wishRefund + 两条通用兜底，是"note 只存业务键、文案在明细页
+# 派生"的派生槽；ParentWishGoalStrings 3 条：删除确认弹窗标题/正文/退还承诺——旧实现裸删、没有弹窗，
+# 所以迁移前页面对这三条没有原文）→ 238 + 7 = 245（两个组读数实测如上：默认组仍 6/239，
+# --branch 245 条、0 条未用到）。
+# v3.3.1 D-03（任务卡动态审批态 指令 §4.1 P1-01）在 245 条上新增表侧单边 6 条
+# （TaskListStrings：approvalPendingBadge/approvalApprovedBadge 函数型分值小标 + approvalRejectedBadge/
+# approvalCancelledBadge/approvalRevokedBadge 三个态词面 + recheckInButton 重打卡引导钮——全部为修复
+# 新写，迁移前页面（TASK8_REV）没有这些控件）→ 245 + 6 = 251（两个组读数实测：默认组仍 6/245，
+# --branch 251 条、0 条未用到）。
+# v3.3.1 D-10（家长撤回审批闭环 指令 §4.4）在 251 条上新增表侧单边 5 条
+# （ParentApprovalStrings：revokeApprovalButton/revokeConfirmTitle/revokeTerminalMessage 三条静态 +
+# revokeConfirmMessage/revokeSuccessMessage 两条函数型（扣回分值进实参位）——历史 APPROVED 卡的撤回
+# 钮/弹窗/snackbar 全部为修复新写，修复前页面只读、迁移前后都没有原文可比；两语由
+# ParentPointsCopyTest.parentApprovalCopyDiffers / parentApprovalInterpolatedCopyPinsBothLanguages
+# 逐字钉死；revokeTerminalMessage 的 EN 提到 points，同步登记进 StringsCopyTest 的
+# EN_STATIC_POINTS_MENTIONS 闭集）→ 251 + 5 = 256（两个组读数实测如上：默认组仍 6/250，
+# --branch 256 条、0 条未用到）。
+# v3.3.1 D-11（超期待审一键清理 指令 §5.2）在 256 条上新增表侧单边 5 条
+# （ParentApprovalStrings：staleCleanButton/staleConfirmTitle 两条静态 + stalePendingNote/
+# staleConfirmMessage/staleCleanedMessage 三条函数型（笔数进实参位）——看板下方超期提示条/清理钮/
+# 二次确认/snackbar 全部为修复新写，修复前页面没有该控件、迁移前后都没有原文可比；静态两条由
+# ParentPointsCopyTest.parentApprovalCopyDiffers 断言 ZH≠EN，函数三条由
+# parentApprovalInterpolatedCopyPinsBothLanguages 逐字双语钉死（含 EN 单复数）。两条 EN 静态槽
+# 不提 points，不进 EN_STATIC_POINTS_MENTIONS 闭集。字段命名统一 stale… 前缀：undo… 是存储边界
+# 闸门 sink 词根，文案槽避让（沿 D-10 revoke… / W9 T1 revert… 先例））→ 256 + 5 = 261
+# （默认组读数按上文规律为 6/255，--branch 261 条、0 条未用到；实数以闸门运行为准）。
+# v3.3.1 终审修复批（Minor-3，REJECTED 撤销词面）在 261 条上新增表侧单边 1 条
+# （TaskListStrings.revertedRejectedMessage：REJECTED 态撤销专用 snackbar，本批新写、迁移前页面
+# 无原文可比；两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死。同批
+# Minor-4 只改 staleConfirmMessage 词面（追加「实际笔数以执行时为准」），登记条目 table 串同步
+# 更新、条数不增）→ 261 + 1 = 262（实数以闸门运行为准）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -1011,6 +1043,120 @@ DISCLOSED_RESIDUALS = [
                "标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton（均已双边登记，不重开同值槽）；"
                "字段命名走 revert… 前缀避开存储边界闸门 undo… sink 词根（W9 T1 先例）；"
                "两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死"},
+    # ---- v3.3.1 D-08（指令 §3.3 / P0-03）：心愿账本修复的新写文案（表侧单边 7 条）----
+    # 这批全是"账本 note 不再存文案 → 文案改由明细页派生"与"删除要如实承诺退还"新写出来的词面，
+    # 迁移前页面里没有对应原文（旧形态是硬编码中文直写 DB，本来就不在文案表里，见
+    # docs/antigravity-v331-directives.md §3.3 工程师复核补充 2）。两语由
+    # ChildRewardStoreCopyTest.childPoints* 与 WishCopyTest.parentWishGoal* 逐字钉死。
+    {"page": None, "table": "存入心愿「%s」" % VALUE,
+     "table_field": "ChildPointsStrings.wishDeposit",
+     "reason": "v3.3.1 D-08-4 新写文案：明细页按 note 业务键 `wish_deposit:<goalId>` 派生的条目行，"
+               "实位是回查 wish_goals 后包 localizedPresetText 的心愿显示名"
+               "（ChildPointsScreen / ParentPointsScreen / ParentDashboardScreen 三个消费面共用本槽）"},
+    {"page": None, "table": "心愿退回「%s」" % VALUE,
+     "table_field": "ChildPointsStrings.wishRefund",
+     "reason": "v3.3.1 D-08-4 新写文案：`wish_refund:<goalId>` 正向退款流水的条目行（同上门派生）"},
+    {"page": None, "table": "存入心愿",
+     "table_field": "ChildPointsStrings.wishDepositGeneric",
+     "reason": "v3.3.1 D-08-4 新写文案：心愿已删除、回查不到名字时的通用兜底行"
+               "（append-only 账本只留 id，退款流水必然查不到已删除心愿，故需要这一条）"},
+    {"page": None, "table": "心愿退回",
+     "table_field": "ChildPointsStrings.wishRefundGeneric",
+     "reason": "v3.3.1 D-08-4 新写文案：退款流水的通用兜底行（同上）"},
+    {"page": None, "table": "删除心愿",
+     "table_field": "ParentWishGoalStrings.removeDialogTitle",
+     "reason": "v3.3.1 D-08-3 新写文案：家长端删除确认弹窗标题（旧实现点一下裸删、没有弹窗，"
+               "故迁移前页面无此原文）。字段名走 remove… 前缀避开存储边界闸门 delete… sink 词根"
+               "（沿 ParentWishGoalStrings.removedMessage 先例）；确认/取消钮复用 "
+               "CommonStrings.confirmButton/cancelButton（均已双边登记，不重开同值槽）"},
+    {"page": None, "table": "确定删除「%s」吗？" % VALUE,
+     "table_field": "ParentWishGoalStrings.removeConfirmMessage",
+     "reason": "v3.3.1 D-08-3 新写文案：删除确认正文，实位是本地化后的心愿显示名"},
+    {"page": None, "table": "该心愿已存入 %s 积分，删除后将自动退还至孩子积分余额。" % VALUE,
+     "table_field": "ParentWishGoalStrings.removeRefundNotice",
+     "reason": "v3.3.1 D-08-3 新写文案：退还承诺行（只在 isActive && savedPoints>0 时渲染，"
+               "与 WishGoalRepository.deleteGoal 的退款条件同源）；英文单复数走 pointsWord，"
+               "两语由 WishCopyTest.parentWishGoalInterpolatedCopyPinsBothLanguages 钉死"},
+    # ---- v3.3.1 D-03（任务卡动态审批态 指令 §4.1 P1-01）：已打卡卡状态小标 + 重新打卡引导（表侧单边 6 条）----
+    # 这批是 D-03 修复的**新写**词面：迁移前页面（TASK8_REV 2304fa7）只有静态"打卡成功/N分"原文，
+    # 审批态小标与引导钮在本缺陷修复前根本不存在（旧卡拒绝后外观不变，正是指令点名要修的形态）。
+    # 词面同源 ParentApprovalScreen 历史标签（status* 槽各自已双边登记；本表槽都带 emoji/括号差值，
+    # 与之**不同串**、不构成遮蔽）。两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages /
+    # taskListEnglishPluralsCoverOneAndOther / taskListCopyDiffers 逐字钉死。
+    {"page": None, "table": "⏳ 待家长审核 (+%s分)" % VALUE, "table_field": "TaskListStrings.approvalPendingBadge",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：已打卡卡当日 bizKey 最新态 PENDING 小标（指令词面"
+               "「⏳ 待家长审核 (+{0}分)」，分值进实参位）；两语钉死见本节头注释"},
+    {"page": None, "table": "✅ 积分已到账 (+%s分)" % VALUE, "table_field": "TaskListStrings.approvalApprovedBadge",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：APPROVED 小标（「✅ 积分已到账 (+{0}分)」）；同上"},
+    {"page": None, "table": "⛔ 家长已拒绝 (未计分)", "table_field": "TaskListStrings.approvalRejectedBadge",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：REJECTED 小标（不计分，分值不进句子）。与 "
+               "ParentApprovalStrings.statusRejected「已拒绝」同源口径、不同串，不重开同值槽"},
+    {"page": None, "table": "↩️ 打卡已取消", "table_field": "TaskListStrings.approvalCancelledBadge",
+     "reason": "v3.3.1 D-03 新写文案：CANCELLED 小标（指令词面「↩️ 打卡已取消」，图标口径同 "
+               "ParentApprovalScreen.kt statusIcon 的 CANCELLED「↩️」）。与 statusCancelled"
+               "「已取消打卡（未计分）」、scoreCancelled「0 (打卡已取消)」均为不同串"},
+    {"page": None, "table": "🔄 已撤销（积分已扣回）", "table_field": "TaskListStrings.approvalRevokedBadge",
+     "reason": "v3.3.1 D-03 新写文案：REVOKED 小标。brief 要求 CANCELLED 与 REVOKED **词面分开**，"
+               "词面逐字节取 ParentApprovalStrings.statusRevoked 加 🔄 图标前缀（图标口径同该页 "
+               "statusIcon 的 REVOKED「🔄」），与不带前缀的原槽是两个值、不构成遮蔽"},
+    {"page": None, "table": "重新打卡", "table_field": "TaskListStrings.recheckInButton",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：REJECTED 态「重新打卡」引导钮（checkInForTask 对 "
+               "REJECTED 天然新建 PENDING，本槽只是把该路径做成可见入口）；整枝表组内该中文值唯一持有者"},
+    # ---- v3.3.1 D-10（家长撤回审批闭环 指令 §4.4）：历史 APPROVED 卡撤回钮/弹窗/snackbar 新写文案（表侧单边 5 条）----
+    # 这批是 D-10 修复的**新写**词面：迁移前页面（W3_REV aae364e 与现工作区）历史卡只读、没有撤回
+    # 控件，所以五条都没有页面原文可比。静态三条由 ParentPointsCopyTest.parentApprovalCopyDiffers
+    # 断言 ZH≠EN，函数两条由 parentApprovalInterpolatedCopyPinsBothLanguages 逐字双语钉死（含 EN 单复数）。
+    # 字段命名统一 revoke… 前缀：undo… 是存储边界闸门 sink 词根（沿 W9 T1 revert… 避让先例）。
+    {"page": None, "table": "撤回通过", "table_field": "ParentApprovalStrings.revokeApprovalButton",
+     "reason": "v3.3.1 D-10 指令 §4.4-1 新写文案：历史 APPROVED 卡「撤回通过」钮面（终态卡与空 bizKey "
+               "遗留行不渲染本钮）。与 statusRevoked「已撤销（积分已扣回）」、historyFilterUndone"
+               "「撤销与取消」都是不同串，不构成遮蔽"},
+    {"page": None, "table": "确认撤回审批？", "table_field": "ParentApprovalStrings.revokeConfirmTitle",
+     "reason": "v3.3.1 D-10 指令 §4.4-1 新写文案：撤回二次确认对话框标题（确认/取消钮复用 "
+               "CommonStrings.confirmButton/cancelButton，均已双边登记，不重开同值槽）"},
+    {"page": None, "table": "该申请已是终态（可能已被孩子端撤销），未扣回积分",
+     "table_field": "ParentApprovalStrings.revokeTerminalMessage",
+     "reason": "v3.3.1 D-10 新写文案：撤回入口点击后仓库层返回 0（终态/空 bizKey 幂等拒绝）时的"
+               "如实 snackbar（brief 要求「已被孩子端撤销则提示已终态」）"},
+    {"page": None, "table": "撤回后将扣回已发放的 %s 积分，并将申请状态置为已撤销。" % VALUE,
+     "table_field": "ParentApprovalStrings.revokeConfirmMessage",
+     "reason": "v3.3.1 D-10 指令 §4.4-1 新写文案：确认对话框正文（指令整句词面，扣回分值进实参位）；"
+               "「扣回」口径与 scoreRevoked「-⟨$⟩ (已扣回)」同族、整串不同形"},
+    {"page": None, "table": "🔄 已撤回审批，扣回 %s 分" % VALUE,
+     "table_field": "ParentApprovalStrings.revokeSuccessMessage",
+     "reason": "v3.3.1 D-10 新写文案：撤回成功 snackbar（🔄 与历史卡 REVOKED statusIcon 图标口径一致，"
+               "emoji 不受 i18n 约束 RA8；EN 单复数走 pointsWord，两语由 pin 测试钉死）"},
+    # ---- v3.3.1 D-11（超期待审一键清理 指令 §5.2）：看板下方提示条/清理钮/二次确认/snackbar 新写文案（表侧单边 5 条）----
+    # 这批是 D-11 修复的**新写**词面：修复前待审看板只有批量通过钮、没有超期清理控件，五条均无页面原文可比。
+    # 静态两条（钮面/弹窗标题）由 parentApprovalCopyDiffers 断言 ZH≠EN；函数三条由
+    # parentApprovalInterpolatedCopyPinsBothLanguages 逐字双语钉死（EN 单复数手写分支，沿 pendingCountLabel 先例）。
+    {"page": None, "table": "%s 笔申请已超过 30 天未审核" % VALUE,
+     "table_field": "ParentApprovalStrings.stalePendingNote",
+     "reason": "v3.3.1 D-11 指令 §5.2-2 新写文案：超期待审提示条读数行（仅 stalePendingCount>0 渲染；"
+               "30 天口径出自 PointRepository.STALE_PENDING_MILLIS，量词 笔 与 pendingCountLabel 同族）"},
+    {"page": None, "table": "清理超期申请", "table_field": "ParentApprovalStrings.staleCleanButton",
+     "reason": "v3.3.1 D-11 指令 §5.2-2 新写文案：提示条上的清理钮面（触发二次确认，不直接写库）"},
+    {"page": None, "table": "确认清理超期申请？", "table_field": "ParentApprovalStrings.staleConfirmTitle",
+     "reason": "v3.3.1 D-11 新写文案：清理二次确认对话框标题（确认/取消钮复用 CommonStrings.confirmButton/"
+               "cancelButton，均已双边登记，不重开同值槽）"},
+    {"page": None, "table": "将把 %s 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变；实际笔数以执行时为准。" % VALUE,
+     "table_field": "ParentApprovalStrings.staleConfirmMessage",
+     "reason": "v3.3.1 D-11 新写文案：确认对话框正文（笔数进实参位；如实承诺「从未发放积分/余额不变」，"
+               "与仓库层 undoCheckIn PENDING 半区零扣回语义一致）。终审 Minor-4 词面追加「实际笔数以"
+               "执行时为准」——提示条读数出自组合期 threshold 快照，长驻页面偏旧时以仓库层执行时重筛"
+               "为准（清理路径现状即正确，最小方案只披露不重构），钉死串同步更新"},
+    {"page": None, "table": "🧹 已清理 %s 笔超期申请" % VALUE,
+     "table_field": "ParentApprovalStrings.staleCleanedMessage",
+     "reason": "v3.3.1 D-11 新写文案：清理结果 snackbar（按实际清理笔数如实反馈，二次清理竞态报 0；"
+               "🧹 emoji 不受 i18n 约束 RA8）"},
+    # ---- v3.3.1 终审修复批 Minor-3（REJECTED 撤销词面）：表侧单边 1 条 ----
+    # 修复前 REJECTED 单撤销与 PENDING 共用「尚未审批，无积分变动」文案；新槽为本批新写，
+    # 迁移前页面无原文可比。两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages
+    # 逐字钉死；命名沿用 revert… 前缀避让存储边界闸门 undo… sink 词根（W9 T1 先例）。
+    {"page": None, "table": "↩️ 已撤销 %s（该申请已被拒绝，撤销不产生积分变动）" % VALUE,
+     "table_field": "TaskListStrings.revertedRejectedMessage",
+     "reason": "终审 Minor-3 新写文案：REJECTED 态撤销专用 snackbar（ChildTaskListScreen 按渲染点"
+               "当日审批态分流；撤销只清完成记录、零积分变动，与 undoCheckIn REJECTED 半区语义一致）"},
 ]
 
 

@@ -14,6 +14,9 @@ interface TaskDao {
     @Query("SELECT COUNT(*) FROM tasks WHERE isActive = 1")
     suspend fun getActiveTaskCount(): Int
 
+    @Query("SELECT * FROM tasks WHERE title = :title AND isActive = 1 LIMIT 1")
+    suspend fun getActiveTaskByTitle(title: String): TaskEntity?
+
     @Query("SELECT * FROM tasks WHERE isActive = 1 ORDER BY category, sortOrder")
     suspend fun getAllActiveTasksSnapshot(): List<TaskEntity>
 

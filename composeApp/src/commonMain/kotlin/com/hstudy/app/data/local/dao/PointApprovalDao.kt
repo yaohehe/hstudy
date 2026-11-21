@@ -59,6 +59,23 @@ interface PointApprovalDao {
         reviewedAt: Long = Clock.System.now().toEpochMilliseconds()
     )
 
+    /**
+     * D-03（指令 §4.1 P1-01）：某一天的全部任务类审批申请——**单查询**，任务卡逐卡取态由此一次
+     * 流式读取，禁止按卡 N+1。
+     *
+     * 口径与 `PointRepository.checkInForTask` 的 bizKey 生成逻辑逐字对齐（以代码为准）：
+     * - 前缀：`bizKey = "TASK:" + taskId + ":" + date`，所以任务类判据就是 `bizKey LIKE 'TASK:%'`
+     *   （ASSIGN/HABIT/MISTAKE_REV/VARIATION 等其它前缀天然不混入）；
+     * - 日期编码：bizKey 里的日期是本地时区 `yyyy-MM-dd`（todayString()），与 [PointApprovalEntity.date]
+     *   列**同源同值**（ensureApproval 用同一个 today 同时写 bizKey 尾巴与 date 列），因此按
+     *   `date = :date` 过滤即精确等价于"当日 bizKey 尾巴"，不需要（也刻意不复刻）时区运算推
+     *   requestedAt 的 dayStart 时间戳。
+     * - 同一 bizKey 的多条（拒绝后重打卡产生新行）由仓库层取 id 最大一条，这里只 ORDER BY id，
+     *   不改动任何 bizKey 比较/写库语义。
+     */
+    @Query("SELECT * FROM point_approvals WHERE bizKey LIKE 'TASK:%' AND date = :date ORDER BY id ASC")
+    fun getTaskApprovalsForDate(date: String): Flow<List<PointApprovalEntity>>
+
     /** 当前待审核申请列表（用于批量审批，在仓库层逐条幂等发放） */
     @Query("SELECT * FROM point_approvals WHERE status = 'PENDING' ORDER BY requestedAt ASC")
     suspend fun getPendingList(): List<PointApprovalEntity>
@@ -66,4 +83,17 @@ interface PointApprovalDao {
     /** 待审核积分总额——展示用，绝不计入可用余额 */
     @Query("SELECT COALESCE(SUM(requestedPoints), 0) FROM point_approvals WHERE status = 'PENDING'")
     fun getPendingPoints(): Flow<Int>
+
+    // ===== v3.3.1 D-11（指令 §5.2）：超期待审申请清理 =====
+    // 口径：PENDING 且 requestedAt **严格早于** threshold（now-30d）；边界值本身不算超期。
+    // 只做查询，不改状态——清理必须回到 PointRepository.expireStalePendingApprovals
+    // 逐条走 undoCheckIn 对称闭环（禁止裸批量 UPDATE 绕开不变量 4）。
+
+    /** D-11：超期（requestedAt < threshold）待审笔数——审批看板提示条读数 */
+    @Query("SELECT COUNT(*) FROM point_approvals WHERE status = 'PENDING' AND requestedAt < :threshold")
+    fun getStalePendingCount(threshold: Long): Flow<Int>
+
+    /** D-11：超期待审列表（清理入口逐条走撤销闭环用，requestedAt 升序=最陈旧优先） */
+    @Query("SELECT * FROM point_approvals WHERE status = 'PENDING' AND requestedAt < :threshold ORDER BY requestedAt ASC")
+    suspend fun getStalePendingList(threshold: Long): List<PointApprovalEntity>
 }

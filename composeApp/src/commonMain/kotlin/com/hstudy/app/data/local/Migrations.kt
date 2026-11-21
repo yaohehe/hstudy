@@ -312,9 +312,28 @@ object Migrations {
         }
     }
 
+    /**
+     * v12 -> v13：任务表历史重复行治理（D-02）。
+     *
+     * 根因：v2 老用户覆盖升级 v3 时 hasOnboarded 缺省 false，首启分支盲插预设任务，
+     * 与旧同名任务并存（每卡×2），重复任务可分别打卡刷双倍审批分。
+     * 修复：同名（title）活跃任务仅保留 MIN(id) 一条，其余置 isActive=0——软删而非物理删，
+     * 保留 tasks 外键与历史 task_completions 的可追溯性（与 MIGRATION_11_12 去重同款 GROUP BY/MIN 语义）。
+     */
+    val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """UPDATE tasks SET isActive = 0
+                   WHERE isActive = 1 AND id NOT IN (
+                       SELECT MIN(id) FROM tasks WHERE isActive = 1 GROUP BY title
+                   )""".trimIndent()
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-        MIGRATION_11_12
+        MIGRATION_11_12, MIGRATION_12_13
     )
 }

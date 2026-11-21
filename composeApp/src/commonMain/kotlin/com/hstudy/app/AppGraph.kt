@@ -1,5 +1,6 @@
 package com.hstudy.app
 
+import com.hstudy.app.data.focus.PomodoroFocusSettlement
 import com.hstudy.app.data.local.AppDatabase
 import com.hstudy.app.data.local.getAppDatabase
 import com.hstudy.app.data.preferences.UserPreferences
@@ -107,7 +108,9 @@ object AppGraph {
         habitRepository = HabitRepository(database.habitDao())
         proofRepository = ProofRepository(database.habitDao())
         assignmentRepository = AssignmentRepository(database.dailyAssignmentDao())
-        wishGoalRepository = WishGoalRepository(database.wishGoalDao(), database.pointDao())
+        // D-08（v3.3.1）：心愿存入/退款是积分账本的一部分，必须走 PointRepository 权威入口，
+        // 所以这里注入的是 pointRepository 而不是裸 pointDao（旧形状让心愿仓库自己 insertPointRecord）。
+        wishGoalRepository = WishGoalRepository(database.wishGoalDao(), pointRepository)
         scheduleRepository = ScheduleRepository(database.dailyScheduleDao())
         pointApprovalRepository = PointApprovalRepository(database.pointApprovalDao())
         userPreferences = UserPreferences()
@@ -149,8 +152,11 @@ object AppGraph {
         }
         appScope.launch {
             if (!userPreferences.hasOnboarded.first()) {
-                taskRepository.initDefaultTasks()
-                rewardRepository.initDefaultRewards()
+                // D-02 首启改为"表空才播种"：v2 老用户覆盖升级至 v3 时 hasOnboarded 是 v3 新增键、
+                // 缺省 false，会误走此分支。改为先查活跃任务数——>0 视为已有数据、只补标记引导不插入；
+                // =0 才播种（initDefaultTasks 现亦按 title 幂等），杜绝同名重复任务卡与双倍审批分刷取。
+                taskRepository.ensureDefaultTasks()
+                rewardRepository.ensureDefaultRewards()
                 userPreferences.setOnboarded(true)
             } else {
                 taskRepository.ensureDefaultTasks()
@@ -177,6 +183,20 @@ object AppGraph {
                         title = weekly.title, body = weekly.body,
                         dayOfWeek = 7
                     )
+                )
+            }
+        }
+        // D-05/07（v3.3.1 指令 §4.2）番茄钟跨进程补结算：启动时检查持久化会话——
+        // FOCUS 段到期未结算 → 走与页面完成**同一条**结算路径（claim CAS + sessionId/bizKey 幂等，
+        // 双触发只入账一笔）；BREAK 过期 → 静默清；仍在计时（now < deadline）→ 原样保留，
+        // 进页面继续倒数（要求 3"保持运行态"）。runCatching：补结算失败绝不阻断启动。
+        appScope.launch {
+            runCatching {
+                PomodoroFocusSettlement.recoverStaleSession(
+                    userPreferences = userPreferences,
+                    focusRepository = focusRepository,
+                    pointRepository = pointRepository,
+                    nowMs = com.hstudy.app.ui.dt.nowMillis(),
                 )
             }
         }

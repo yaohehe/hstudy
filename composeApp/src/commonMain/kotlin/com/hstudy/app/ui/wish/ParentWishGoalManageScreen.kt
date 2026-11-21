@@ -26,6 +26,12 @@ import kotlinx.coroutines.launch
 
 /**
  * 家长端 - 心愿目标管理：创建/编辑/删除心愿存钱罐目标
+ *
+ * v3.3.1 D-08（指令 §3.3-3）：删除走二次确认。旧实现是点一下删除按钮直接裸删，
+ * 孩子已经存进该心愿的积分随 `DELETE FROM wish_goals` 静默蒸发、账本零流水。
+ * 现在：`savedPoints > 0` 的进行中心愿在弹窗里明确承诺"删除后自动退还至孩子积分余额"，
+ * 退还本身由 [com.hstudy.app.data.repository.WishGoalRepository.deleteGoal] 落一笔正向流水完成。
+ * 提示条件（`isActive && savedPoints > 0`）与仓库里退款的条件同源 —— 不承诺不会发生的退还。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -35,6 +41,7 @@ fun ParentWishGoalManageScreen(
 ) {
     val app = AppGraph
     val strings = LocalStrings.current.parentWishGoal
+    val common = LocalStrings.current.common
     val displayLanguage = LocalDisplayLanguage.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -42,6 +49,8 @@ fun ParentWishGoalManageScreen(
 
     // 编辑对话框（null=关闭，0=新建，>0=编辑该id）
     var editingGoalId by remember { mutableStateOf<Long?>(null) }
+    // D-08：待删除的心愿（null=弹窗关闭）
+    var pendingRemoveGoal by remember { mutableStateOf<WishGoalEntity?>(null) }
 
     Scaffold(
         topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) },
@@ -102,12 +111,8 @@ fun ParentWishGoalManageScreen(
                         GoalManageCard(
                             goal = goal,
                             onEdit = { editingGoalId = goal.id },
-                            onDelete = {
-                                scope.launch {
-                                    app.wishGoalRepository.deleteGoal(goal.id)
-                                    snackbarHostState.showSnackbar(strings.removedMessage(localizedPresetText(goal.name, displayLanguage)))
-                                }
-                            }
+                            // D-08：不再裸删，先进确认弹窗（已存积分要如实告知会退还）
+                            onDelete = { pendingRemoveGoal = goal }
                         )
                     }
                 }
@@ -123,6 +128,42 @@ fun ParentWishGoalManageScreen(
             onSaved = {
                 editingGoalId = null
                 scope.launch { snackbarHostState.showSnackbar(strings.savedMessage) }
+            }
+        )
+    }
+
+    // D-08：删除确认弹窗（进行中的心愿若已有已存积分，明确告知会自动退还至孩子积分余额）
+    pendingRemoveGoal?.let { goal ->
+        val refundable = goal.isActive && goal.savedPoints > 0
+        AlertDialog(
+            onDismissRequest = { pendingRemoveGoal = null },
+            title = { Text(strings.removeDialogTitle) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(strings.removeConfirmMessage(localizedPresetText(goal.name, displayLanguage)))
+                    if (refundable) {
+                        Text(
+                            strings.removeRefundNotice(goal.savedPoints),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingRemoveGoal = null
+                    scope.launch {
+                        // 退还本身在仓库里完成（deleteGoal → 正向 REWARD_EXCHANGE 流水），页面只负责删
+                        app.wishGoalRepository.deleteGoal(goal.id)
+                        snackbarHostState.showSnackbar(
+                            strings.removedMessage(localizedPresetText(goal.name, displayLanguage))
+                        )
+                    }
+                }) { Text(common.confirmButton) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoveGoal = null }) { Text(common.cancelButton) }
             }
         )
     }

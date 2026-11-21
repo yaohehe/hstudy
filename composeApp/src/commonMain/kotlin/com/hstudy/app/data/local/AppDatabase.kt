@@ -26,7 +26,7 @@ import com.hstudy.app.data.local.entity.*
         DailyScheduleEntity::class,
         PointApprovalEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @ConstructedBy(AppDatabaseConstructor::class)

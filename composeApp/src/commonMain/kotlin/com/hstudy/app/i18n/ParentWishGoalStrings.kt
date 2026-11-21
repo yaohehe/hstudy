@@ -10,7 +10,12 @@ package com.hstudy.app.i18n
  * （示例译出、家长自建未命中原样），[removedMessage] 的 name 实参同样是本地化后的显示名。
  * [removedMessage] 刻意**不以 `delete` 开头**：存储边界闸门按词根前缀认 sink（`delete\w*(`），
  * 若沿用 `deletedMessage` 这个名字会被判成"文案进入删除写库调用"（W4 Ruling 6 / W5 Ruling 15 先例）；
- * 语义仍是"已删除"。
+ * 语义仍是"已删除"。v3.3.1 D-08 新增的删除确认三槽沿用同一形状（`removeDialogTitle` /
+ * [removeConfirmMessage] / [removeRefundNotice]），命名口径由 `WishCopyTest` 钉住。
+ *
+ * **v3.3.1 D-08**：[removeRefundNotice] 是"删除会退还已存积分"这句承诺，只在
+ * `goal.isActive && goal.savedPoints > 0` 时渲染 —— 与 `WishGoalRepository.deleteGoal` 真正退款的
+ * 条件同源。文案进本表（双语），**不进账本**：账本那侧只写 `wish_refund:<goalId>` 业务键。
  */
 data class ParentWishGoalStrings(
     val title: String,
@@ -31,6 +36,10 @@ data class ParentWishGoalStrings(
     val descLabel: String,
     val targetPointsLabel: String,
     val iconPickerLabel: String,
+    // v3.3.1 D-08 删除确认弹窗（savedPoints>0 时追加"已存积分将自动退还"一行）
+    val removeDialogTitle: String,
+    val removeConfirmMessage: (name: String) -> String,
+    val removeRefundNotice: (saved: Int) -> String,
 )
 
 val ParentWishGoalStringsZh = ParentWishGoalStrings(
@@ -52,6 +61,10 @@ val ParentWishGoalStringsZh = ParentWishGoalStrings(
     descLabel = "描述（可选）",                                                 // :198
     targetPointsLabel = "目标积分",                                             // :200
     iconPickerLabel = "选择图标",                                               // :201
+    // D-08：删除确认（旧实现是点一下直接裸删，孩子已存积分静默蒸发）
+    removeDialogTitle = "删除心愿",
+    removeConfirmMessage = { name -> "确定删除「$name」吗？" },
+    removeRefundNotice = { saved -> "该心愿已存入 $saved 积分，删除后将自动退还至孩子积分余额。" },
 )
 
 val ParentWishGoalStringsEn = ParentWishGoalStrings(
@@ -73,4 +86,10 @@ val ParentWishGoalStringsEn = ParentWishGoalStrings(
     descLabel = "Description (optional)",
     targetPointsLabel = "Target points",
     iconPickerLabel = "Choose an icon",
+    // D-08: delete confirmation (the old code deleted on a single tap and the saved points vanished)
+    removeDialogTitle = "Delete wish",
+    removeConfirmMessage = { name -> "Delete “$name”?" },
+    removeRefundNotice = { saved ->
+        "This wish already holds $saved ${pointsWord(saved)}. They will be refunded to your child's balance automatically."
+    },
 )

@@ -39,8 +39,24 @@
   G 插值文案    —— 字符串字面量里的 `${strings.x}` / `$taintedVar` **算文案**（9b 审查 Critical 1：
                     双语迁移最常产出的复合说明就长这样；空白化时必须保留插值区，见
                     blank_string_contents）；fixture InterpolationCopy.kt / InterpolationNoFp.kt
+  H note 业务键 —— **仓库级对账**（v3.3.1 D-08）：`point_records.note` 里允许出现的自动写入键
+                    登记在 NOTE_BIZKEY_PREFIXES，闸门两头钉：① 登记表里的键必须是纯 ASCII；
+                    ② 每条都必须在扫描根里以字符串字面量前缀真实出现（防"注释里说要写、代码里没写"
+                    的空头登记表）。A~G 抓的是"文案表引用流入 sink"，抓不到**硬编码中文字面量**
+                    （`spendPoints(n, "兑换：${reward.name}")` 这种不在文案表里的存量形态），
+                    H 因此是新增自动写入的**正向约束**：要往 note 写机器键就得进登记表（纯 ASCII），
+                    不进登记表的中文键不会被 H 抓到 → 仍靠 A~G + 人工复核（见"已知边界"）。
+                    默认只在未改写的扫描根上跑（逐通道 fixture 每次只扫一个文件，仓库级对账在那里
+                    必然缺键）；自测 5b 用 `I18N_BOUNDARY_NOTE_CHECK=1` 在临时目录里逼它红一次。
 
 已知边界（诚实声明，勿据此以为闸门覆盖了这些形态）：
+  - **通道 H 只钉"登记表里的键存在且纯 ASCII"，不禁止往 note 写中文**（v3.3.1 D-08 补）：
+    ChildRewardStoreScreen.kt:220 `"兑换：${reward.name}"`、ChildPetScreen.kt:219/235/379
+    `"喂养宠物"`/`"陪宠物玩耍"`/`"购买宠物场景：…"`、PointRepository.kt:102 `"完成任务：$note"`、
+    :166 `"撤销打卡扣回：…"` 这批**存量**硬编码中文直写 `point_records.note`，英文界面会看到中文。
+    它们不在文案表里，A~G 天生看不见（文案表引用才是 A~G 的猎物），把它们判红会一次性产出 5 处
+    存量红、挡住 D-08 的增量收口，因此本轮只做**正向白名单**：新写入必须登记为 ASCII 业务键。
+    存量清单人工核查结论见 `.superpowers/sdd/2026-11-22-v331-hardening/task-3-report.md`；
   - 只做**同文件**赋值/委托追踪，没有跨文件数据流；下列三种形态至今仍然漏抓，Task 10/11 需人工确认：
       · 函数返回值：`fun buildNote() = strings.x` 之后 `adjustPoints(1, buildNote())`；
       · 字段赋值：`task.note = strings.x` 之后 `updateTask(task)`（污点集只记**变量名**，不记属性）；
@@ -108,6 +124,10 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(REPO_ROOT, "composeApp", "src", "commonMain", "kotlin", "com", "hstudy", "app")
 # 仅自测使用：把扫描根换到 fixture 目录（也用来验证"空目录必须非零退出"那一条）
 SRC = os.environ.get("I18N_BOUNDARY_SRC", SRC)
+# 通道 H（仓库级对账）默认只在**未改写的扫描根**上跑：自测的逐通道 fixture 每次只扫一个文件，
+# 在那种目录里"登记表里的键查无写入点"必然成立，会把 A~G 的退出码污染成假红。
+# 自测要单独证明 H 会红时，显式设 I18N_BOUNDARY_NOTE_CHECK=1（见 selftest 第 5b 节）。
+RUN_NOTE_CHECK = "I18N_BOUNDARY_SRC" not in os.environ or os.environ.get("I18N_BOUNDARY_NOTE_CHECK") == "1"
 
 # ---------------------------------------------------------------------------
 # sink 名单（Task 9b 全部重写；旧注释"来自实际调用点，勿凭想象增删"当时并不成立）
@@ -146,16 +166,19 @@ SINK_STEMS = [
                     # PointApprovalDao.kt:28 updateStatus、RewardDao.kt:25 updateReward、
                     # MistakeDao.kt:38 updateReviewProgress、DailyScheduleDao.kt:14 update
     "delete",       # 删除路径同样决定业务键；MistakeRepository.kt:25 deleteMistake、
-                    # WishGoalRepository.kt:26 deleteGoal、软删除见 softDelete
+                    # WishGoalRepository.kt:56 deleteGoal（v3.3.1 D-08：删除前先落一笔退还流水）、
+                    # 软删除见 softDelete
     "softDelete",   # RewardDao.kt:28 softDeleteReward
     "save",         # MistakeRepository.kt:64 saveVariation(mistake, note)、
                     # UserPreferences.kt:233 saveDailyReflection(date, stars, tags)
     "mark",         # DailyAssignmentDao.kt:29 / WishGoalDao.kt:32 markCompleted
     "record",       # FocusRepository.kt:12 recordFocusSession(durationMinutes, taskTitle, points)
     "submit",       # PointApprovalRepository.kt:28 submitApproval（description 参与幂等比较）
-    "adjust",       # PointRepository.kt:288 adjustPoints(points, note) → point_records.note
-    "spend",        # PointRepository.kt:303 spendPoints(points, note)：**与 adjustPoints 同表同列**；
-                    # 调用点 ChildRewardStoreScreen.kt:222、ChildPetScreen.kt:210/225/361
+    "adjust",       # PointRepository.kt:301 adjustPoints(points, note) → point_records.note
+    "spend",        # PointRepository.kt:347 spendPoints(points, note, requireSufficientBalance)
+                    # → point_records.note：**与 adjustPoints 同表同列**；
+                    # 调用点 ChildRewardStoreScreen.kt:220、ChildPetScreen.kt:219/235/379、
+                    # 以及 v3.3.1 D-08 起 WishGoalRepository.kt:74（存入心愿走同一入口，note 是业务键）
     "exchange",     # RewardRepository.kt:29 exchangeReward(rewardId, pointsSpent, note)
     "assign",       # AssignmentRepository.kt:12 assignTask（调用点 ParentAssignTaskScreen.kt:98）
     "undo",         # PointRepository.kt:138/146 undoCheckIn(bizKey, …) → bizKey 参与幂等读取
@@ -175,7 +198,7 @@ RESERVED_STEMS = [
 # 真实树取证（9b 审查 Critical 2 的六条 + set 家族抽样，全部是 DAO/Repository/Preferences 写路径）：
 #   addMistake   MistakeRepository.kt:21      → mistakeDao.insert(mistake)（题干列）
 #   addTask      TaskRepository.kt:29         → taskDao.insert(task)（标题列）
-#   addGoal      WishGoalRepository.kt:22     → wishGoalDao.insert(goal)（目标名）
+#   addGoal      WishGoalRepository.kt:43     → wishGoalDao.insert(goal)（目标名）
 #   addReward    RewardRepository.kt:23       → rewardDao.insertReward(reward)（奖品名）
 #   addChallenge HabitRepository.kt:11        → habitDao.insertChallenge(challenge)（挑战标题）
 #   addSchedule  ScheduleRepository.kt:18     → scheduleDao.insert(schedule)（日程标题）
@@ -206,6 +229,41 @@ SINK_EXTRA = [
     "setDeviceName",    # UserPreferences.kt:138（DataStore 落盘；调用点 ParentSettingsScreen.kt:301）
     "setPairedDevice",  # UserPreferences.kt:142
 ]
+
+# ---------------------------------------------------------------------------
+# 通道 H：`point_records.note` 允许自动写入的**业务键**登记表（v3.3.1 D-08）
+#
+# 取证（commonMain 写入点，改名要一并改这里）：
+#   wish_deposit:  WishGoalRepository.kt:95 WISH_DEPOSIT_NOTE_PREFIX
+#                  → depositPoints 经 PointRepository.spendPoints 落 REWARD_EXCHANGE 记录
+#   wish_refund:   WishGoalRepository.kt:98 WISH_REFUND_NOTE_PREFIX
+#                  → deleteGoal 退还已存积分，经 PointRepository.refundSpentPoints 落正向记录
+# 完整形态是"前缀 + 纯数字 id"（`wish_deposit:42`），解析形状由
+# WishGoalRepository.parseWishNoteKey 钉死、WishGoalRepositoryLedgerTest 回归；
+# 明细页（ChildPointsScreen / ParentPointsScreen → ui/common/PointRecordWishNote.kt）据此派生文案。
+# ---------------------------------------------------------------------------
+NOTE_BIZKEY_PREFIXES = [
+    "wish_deposit:",
+    "wish_refund:",
+]
+
+
+def check_note_bizkeys(root):
+    """通道 H 的双向对账。返回 (非 ASCII 的键, 扫描根里查无写入点的键)。
+
+    匹配的是**源码里的字面量前缀** `"wish_deposit:"`（引号 + 键），所以注释里口头提一句不算数；
+    Kotlin 侧插值写法 `"wish_deposit:$goalId"` 的开头正好是这个字面量，天然命中。
+    """
+    seen = set()
+    for path in iter_kt_files(root):
+        with io.open(path, encoding="utf-8") as handle:
+            body = handle.read()
+        for key in NOTE_BIZKEY_PREFIXES:
+            if ('"%s' % key) in body:
+                seen.add(key)
+    non_ascii = [k for k in NOTE_BIZKEY_PREFIXES if not all(ord(c) < 128 for c in k)]
+    unused = [k for k in NOTE_BIZKEY_PREFIXES if k not in seen]
+    return non_ascii, unused
 
 CALL_HEAD = re.compile(
     r"\b("
@@ -702,19 +760,32 @@ def main():
         print("  这不是「干净」，是「什么都没扫」。请检查路径，以及是否残留了 I18N_BOUNDARY_SRC "
               "环境变量（正常跑闸门不应该设置它）。")
         return 2
-    if not found:
+    non_ascii, unused_keys = ([], [])
+    if RUN_NOTE_CHECK:
+        non_ascii, unused_keys = check_note_bizkeys(SRC)
+    if not found and not non_ascii and not unused_keys:
         print("存储边界守卫通过：没有文案表字符串（含经由变量传入）出现在写库/业务键调用参数里")
         print("（已扫描 %d 个 .kt 文件，扫描根：%s）" % (scanned, SRC))
         print("（跨行调用已纳入匹配：Ruling 28 的行级盲区于 Task 9 修掉，见本文件 CALL_HEAD 一节）")
         print("（赋值污点/污点链/sink 词根/别名句柄于 Task 9b 加固，插值文案/add·set 大写后缀/"
               "形状句柄于 9b 审查 round 1 补上，自证见 "
               "scripts/tests/i18n_storage_boundary_selftest.py）")
+        if RUN_NOTE_CHECK:
+            print("（通道 H：point_records.note 业务键登记表 %d 条 —— %s —— 全部纯 ASCII 且各有一个写入点）"
+                  % (len(NOTE_BIZKEY_PREFIXES), ", ".join(NOTE_BIZKEY_PREFIXES)))
         return 0
-    print("发现 %d 处疑似「界面文案进入存储或业务键」（扫描 %d 个 .kt 文件）：" % (len(found), scanned))
-    for rel, span, sink, text, why in found:
-        print("  %s:%s  %s(...)  [%s]\n      %s" % (rel, span, sink, why, text[:170]))
-    print("\n处置要求：改为写入规范值（迁移前的原始文本或稳定 key），只在渲染时本地化；"
-          "若该值参与业务判等（如 bizKey 的 description 比较），一律不本地化。")
+    if found:
+        print("发现 %d 处疑似「界面文案进入存储或业务键」（扫描 %d 个 .kt 文件）：" % (len(found), scanned))
+        for rel, span, sink, text, why in found:
+            print("  %s:%s  %s(...)  [%s]\n      %s" % (rel, span, sink, why, text[:170]))
+        print("\n处置要求：改为写入规范值（迁移前的原始文本或稳定 key），只在渲染时本地化；"
+              "若该值参与业务判等（如 bizKey 的 description 比较），一律不本地化。")
+    if non_ascii:
+        print("通道 H 违规：NOTE_BIZKEY_PREFIXES 的键必须纯 ASCII（note 是账本数据，不是文案）：%s"
+              % ", ".join(non_ascii))
+    if unused_keys:
+        print("通道 H 违规：登记表里的 note 业务键在本扫描根查无写入点（键已改名/删除就要同步登记表，"
+              "并把新键的展示派生一并搬过去）：%s" % ", ".join(unused_keys))
     return 1
 
 
