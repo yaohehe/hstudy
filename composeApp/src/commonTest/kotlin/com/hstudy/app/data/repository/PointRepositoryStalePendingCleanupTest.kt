@@ -160,4 +160,26 @@ class PointRepositoryStalePendingCleanupTest {
         assertTrue(pointDao.records.isEmpty(), "兜底同样零扣回、零入账")
         assertEquals(0, repo.getTotalPoints().first())
     }
+
+    @Test
+    fun expireStalePendingApprovals_stalePendingShadowedByNewerApprovedSameBizKey_isSkippedWithoutReversal(): Unit = runBlocking {
+        // D-11 review fix：清理按 id 复读、仅当陈旧行仍是其 bizKey 的最新一条才撤销。
+        // v2 遗留重复：同 bizKey 陈旧 PENDING（id 小）+ 更新 APPROVED（id 大）并存时，
+        // 旧实现会经 getLatestByBizKey 命中 APPROVED 半区追加 REVERSAL 扣回——
+        // 新实现整行跳过：不动账本、不动新单、cleaned=0，陈旧行保持 PENDING（跳过语义）。
+        val (pointDao, approvalDao, repo) = newRepo()
+        val now = 100_000L * day
+        val staleDupId = insertPending(approvalDao, "BIZ:DUP", requestedAt = now - 40 * day, points = 5)
+        val newerApprovedId = insertPending(approvalDao, "BIZ:DUP", requestedAt = now - 10 * day, points = 5,
+            status = ApprovalStatus.APPROVED)
+        val ledgerBefore = pointDao.records.toList()
+
+        val cleaned = repo.expireStalePendingApprovals(now)
+
+        assertEquals(0, cleaned, "陈旧行不是 bizKey 最新一条：跳过且不计入 cleaned，snackbar 不虚报")
+        assertEquals(ApprovalStatus.PENDING, approvalDao.getById(staleDupId)?.status, "跳过语义：陈旧行原样保留")
+        assertEquals(ApprovalStatus.APPROVED, approvalDao.getById(newerApprovedId)?.status, "更新单绝不误伤")
+        assertEquals(ledgerBefore, pointDao.records.toList(), "零写入：不产生 REVERSAL，余额与'余额不变'承诺一致")
+        assertEquals(0, repo.getTotalPoints().first(), "不变量 5：余额分毫不动")
+    }
 }

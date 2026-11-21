@@ -276,19 +276,35 @@ class PointRepository(
      * 必须能收敛：这类行已在查询侧精确筛出（PENDING + 超期、按 id 定位），直接 updateStatus
      * 置 CANCELLED 兜底——不涉扣回，与闭环 PENDING 半区终态一致（报告已披露此兜底）。
      *
+     * **D-11 review fix（防 bizKey 新单误伤）**：快照列表逐条处理前先按 id 复读该 approval，
+     * 仅当 ① 仍 PENDING（防清理瞬间被家长并发通过/拒绝后落错半区）且 ② 仍是其 bizKey 的
+     * 最新一条（[PointApprovalDao.getLatestByBizKey]，防 v2 遗留同 bizKey 重复行让闭环命中
+     * 更新的 APPROVED 行而追加 REVERSAL 扣回，违背弹窗"余额不变"承诺）时才执行撤销；
+     * 否则整行跳过、**不计入 cleaned**，snackbar 笔数与实际置 CANCELLED 的行严格一致。
+     *
      * @param now 判定基准时刻（测试注入固定时钟以钉 30 天边界）
-     * @return 实际清理笔数（0 = 无超期单 / 二次清理，UI snackbar 如实反馈）
+     * @return 实际清理笔数（只计真正置 CANCELLED 的行；0 = 无超期单 / 二次清理 / 全部被跳过，UI snackbar 如实反馈）
      */
     suspend fun expireStalePendingApprovals(now: Long = Clock.System.now().toEpochMilliseconds()): Int {
         val stale = approvalDao.getStalePendingList(now - STALE_PENDING_MILLIS)
         var cleaned = 0
         for (approval in stale) {
-            if (approval.bizKey.isNotEmpty()) {
-                revokeApproval(approval.id)
+            // 按 id 复读快照行：并发审批/拒绝会让这一条早已不在 PENDING 半区
+            val fresh = approvalDao.getById(approval.id) ?: continue
+            if (fresh.status != ApprovalStatus.PENDING) continue
+            if (fresh.bizKey.isNotEmpty()) {
+                // bizKey 锚定行必须仍是该业务最新一条才可撤销：undoCheckIn 按 bizKey 取
+                // "最新一条"判半区，若同 bizKey 存在更新记录（v2 遗留重复或并发新单），
+                // 清理会命中更新的 APPROVED 行触发 REVERSAL 扣回——跳过并留待看板按真实态处理。
+                if (approvalDao.getLatestByBizKey(fresh.bizKey)?.id != fresh.id) continue
+                revokeApproval(fresh.id)
             } else {
-                approvalDao.updateStatus(approval.id, ApprovalStatus.CANCELLED)
+                // 空 bizKey 兜底：updateStatus 只写 status/reviewedAt 两列，不改 awardedRecordId——
+                // PENDING 行从未发放、该列本就是 null，与闭环 PENDING 半区 updateReview(…, null) 终态一致。
+                approvalDao.updateStatus(fresh.id, ApprovalStatus.CANCELLED)
             }
-            cleaned++
+            // 仅对真正落库 CANCELLED 的行计数（防御性复读，cleaned 与账本/状态变更严格对齐）
+            if (approvalDao.getById(fresh.id)?.status == ApprovalStatus.CANCELLED) cleaned++
         }
         return cleaned
     }
