@@ -180,13 +180,22 @@ class UserPreferences {
     }
 
     // ===== 连续打卡里程碑 =====
-    /** 领取一个连续打卡里程碑（记录已领取的天数） */
-    suspend fun claimStreakMilestone(days: Int) {
+    /**
+     * D-09（v3.3.1 指令 §4.3）：原子领取一个连续打卡里程碑。
+     *
+     * 读取-判定-写入在同一个 `dataStore.edit` 事务内完成（DataStore 串行化 edit 块），
+     * 并发/重复领取同一 [days] 时**恰好第一次**返回 true。调用方仅在返回 true 后才允许
+     * 入账（先置位、后入账）；入账失败不回滚本置位——与账本 append-only 口径一致。
+     * 原 `claimStreakMilestone`（无条件写入、无判定结果）已由本函数取代。
+     */
+    suspend fun tryClaimStreakMilestone(days: Int): Boolean {
+        var claimedNow = false
         dataStore.edit { prefs ->
             val current = prefs[STREAK_MILESTONES_CLAIMED]?.split(",")?.mapNotNull { it.trim().toIntOrNull() }?.toMutableSet() ?: mutableSetOf()
-            current.add(days)
-            prefs[STREAK_MILESTONES_CLAIMED] = current.joinToString(",")
+            claimedNow = current.add(days)
+            if (claimedNow) prefs[STREAK_MILESTONES_CLAIMED] = current.joinToString(",")
         }
+        return claimedNow
     }
 
     // ===== 宠物场景装饰 =====
@@ -205,9 +214,17 @@ class UserPreferences {
     }
 
     // ===== 每周挑战 =====
-    /** 领取每周挑战（记录领取的周起始日，每周只能领一次） */
-    suspend fun claimWeeklyChallenge(weekStartStr: String) {
-        dataStore.edit { it[WEEKLY_CHALLENGE_CLAIMED_WEEK] = weekStartStr }
+    /**
+     * D-09（v3.3.1 指令 §4.3）：原子领取每周挑战。语义与 [tryClaimStreakMilestone] 相同：
+     * 读取-判定-写入在同一 edit 事务内完成，同一 [weekStartStr] 并发/重复领取只有第一次返回 true。
+     */
+    suspend fun tryClaimWeeklyChallenge(weekStartStr: String): Boolean {
+        var claimedNow = false
+        dataStore.edit { prefs ->
+            claimedNow = prefs[WEEKLY_CHALLENGE_CLAIMED_WEEK] != weekStartStr
+            if (claimedNow) prefs[WEEKLY_CHALLENGE_CLAIMED_WEEK] = weekStartStr
+        }
+        return claimedNow
     }
 
     // ===== 每日学习目标（自我调节学习）=====
@@ -259,9 +276,18 @@ class UserPreferences {
     // ===== 每日学习表现优秀奖励（激励打卡+专注+复习全面卓越）=====
     val dailyExcellentBonusDate: Flow<String> = dataStore.data.map { it[DAILY_EXCELLENT_BONUS_DATE] ?: "" }
 
-    /** 记录学习表现优秀奖励的领取日期（每天只领一次） */
-    suspend fun setDailyExcellentBonusDate(date: String) {
-        dataStore.edit { it[DAILY_EXCELLENT_BONUS_DATE] = date }
+    /**
+     * D-09（v3.3.1 指令 §4.3）：原子领取当日学习表现优秀奖励。语义与
+     * [tryClaimStreakMilestone] 相同：读取-判定-写入在同一 edit 事务内完成，
+     * 同一 [date] 并发/重复领取只有第一次返回 true（换日即新一轮领取窗口）。
+     */
+    suspend fun tryClaimDailyExcellentBonus(date: String): Boolean {
+        var claimedNow = false
+        dataStore.edit { prefs ->
+            claimedNow = prefs[DAILY_EXCELLENT_BONUS_DATE] != date
+            if (claimedNow) prefs[DAILY_EXCELLENT_BONUS_DATE] = date
+        }
+        return claimedNow
     }
 
     // ===== 舒尔特方格专注训练个人最佳记录（自我竞赛，激发反复练习）=====

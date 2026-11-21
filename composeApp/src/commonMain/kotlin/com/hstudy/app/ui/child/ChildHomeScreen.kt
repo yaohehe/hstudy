@@ -46,6 +46,10 @@ fun ChildHomeScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isSyncing by remember { mutableStateOf(false) }
+    // D-09（指令 §4.3）：三处系统奖励（连续打卡里程碑/每周挑战/学习表现优秀）共用一把
+    // in-flight 互斥。领取时序统一为"先原子置 claimed（UserPreferences CAS）、再入账"，
+    // 按钮 enabled 读 guard.isClaimingBonus——视觉禁用与防抖同一状态源（要求 3）。
+    val bonusClaimGuard = remember { BonusClaimGuard() }
 
     // 接收家长设置：跨平台改用 Platform.fileSharer 文本选择器（替代 OpenDocument ActivityResult）
     val importControlLauncher: () -> Unit = {
@@ -433,12 +437,18 @@ fun ChildHomeScreen(
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        app.pointRepository.adjustPoints(2, CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
-                                        app.userPreferences.setDailyExcellentBonusDate(today)
-                                        com.hstudy.app.ui.common.AchievementManager.evaluate(app)
-                                        snackbarHostState.showSnackbar(strings.excellentBonusMessage)
+                                        // D-09：先原子置 claimed，赢下置位的那次协程才 adjustPoints 入账。
+                                        bonusClaimGuard.claim(
+                                            tryClaim = { app.userPreferences.tryClaimDailyExcellentBonus(today) },
+                                            onClaimed = {
+                                                app.pointRepository.adjustPoints(2, CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
+                                                com.hstudy.app.ui.common.AchievementManager.evaluate(app)
+                                                snackbarHostState.showSnackbar(strings.excellentBonusMessage)
+                                            }
+                                        )
                                     }
                                 },
+                                enabled = !bonusClaimGuard.isClaimingBonus,
                                 modifier = Modifier.fillMaxWidth()
                             ) { Text(strings.claimExcellentBonusButton) }
                         } else if (learningScore.total >= 85) {
@@ -566,13 +576,21 @@ fun ChildHomeScreen(
                                 Text(strings.streakMilestoneBonusNote(bonus), style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
-                            Button(onClick = {
-                                scope.launch {
-                                    app.pointRepository.adjustPoints(bonus, CanonicalChildHomeText.streakMilestoneNote(days))
-                                    app.userPreferences.claimStreakMilestone(days)
-                                    snackbarHostState.showSnackbar(strings.streakMilestoneClaimedMessage(bonus))
-                                }
-                            }) { Text(strings.claimBonusButton) }
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        // D-09：先原子置 claimed，赢下置位的那次协程才 adjustPoints 入账。
+                                        bonusClaimGuard.claim(
+                                            tryClaim = { app.userPreferences.tryClaimStreakMilestone(days) },
+                                            onClaimed = {
+                                                app.pointRepository.adjustPoints(bonus, CanonicalChildHomeText.streakMilestoneNote(days))
+                                                snackbarHostState.showSnackbar(strings.streakMilestoneClaimedMessage(bonus))
+                                            }
+                                        )
+                                    }
+                                },
+                                enabled = !bonusClaimGuard.isClaimingBonus
+                            ) { Text(strings.claimBonusButton) }
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -602,13 +620,21 @@ fun ChildHomeScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         when {
-                            weeklyChallengeClaimable -> Button(onClick = {
-                                scope.launch {
-                                    app.pointRepository.adjustPoints(5, CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE)
-                                    app.userPreferences.claimWeeklyChallenge(weekStartStr)
-                                    snackbarHostState.showSnackbar(strings.weeklyChallengeClaimMessage)
-                                }
-                            }) { Text(strings.claimButton) }
+                            weeklyChallengeClaimable -> Button(
+                                onClick = {
+                                    scope.launch {
+                                        // D-09：先原子置 claimed，赢下置位的那次协程才 adjustPoints 入账。
+                                        bonusClaimGuard.claim(
+                                            tryClaim = { app.userPreferences.tryClaimWeeklyChallenge(weekStartStr) },
+                                            onClaimed = {
+                                                app.pointRepository.adjustPoints(5, CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE)
+                                                snackbarHostState.showSnackbar(strings.weeklyChallengeClaimMessage)
+                                            }
+                                        )
+                                    }
+                                },
+                                enabled = !bonusClaimGuard.isClaimingBonus
+                            ) { Text(strings.claimButton) }
                             weeklyChallengeClaimed -> Text(strings.weeklyChallengeClaimedNote, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
                             else -> Text(strings.weeklyChallengeInProgressNote, style = MaterialTheme.typography.labelSmall,
