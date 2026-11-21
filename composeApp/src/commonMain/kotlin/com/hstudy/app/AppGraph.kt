@@ -107,7 +107,9 @@ object AppGraph {
         habitRepository = HabitRepository(database.habitDao())
         proofRepository = ProofRepository(database.habitDao())
         assignmentRepository = AssignmentRepository(database.dailyAssignmentDao())
-        wishGoalRepository = WishGoalRepository(database.wishGoalDao(), database.pointDao())
+        // D-08（v3.3.1）：心愿存入/退款是积分账本的一部分，必须走 PointRepository 权威入口，
+        // 所以这里注入的是 pointRepository 而不是裸 pointDao（旧形状让心愿仓库自己 insertPointRecord）。
+        wishGoalRepository = WishGoalRepository(database.wishGoalDao(), pointRepository)
         scheduleRepository = ScheduleRepository(database.dailyScheduleDao())
         pointApprovalRepository = PointApprovalRepository(database.pointApprovalDao())
         userPreferences = UserPreferences()

@@ -8,6 +8,7 @@ import com.hstudy.app.data.local.entity.PointRecordEntity
 import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.TaskCompletionEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
@@ -35,6 +36,14 @@ enum class CheckInResult {
  * 4. **撤销对称**：未审批撤销 → 申请置 CANCELLED（本就没分，无残留）；
  *    已审批撤销 → 追加 REVERSAL 反向记录冲抵，净额归零且保留审计轨迹。
  * 5. **账本 append-only**：积分记录只增不改不删，余额 = SUM(points)。
+ * 6. **消耗只有一个入口**（D-08）：孩子自主消耗（商店兑换、喂养宠物、存入心愿存钱罐）一律走
+ *    [spendPoints] → REWARD_EXCHANGE；退款走 [refundSpentPoints] 追加正向记录。
+ *    [adjustPoints] 只表达"家长手动奖惩"，任何自动业务都不得借它入账。
+ *
+ * **note 列的边界（Ruling 25）**：note 是账本数据，不得写界面文案。仓库里现存两种合规形态——
+ * ① 用户自己输入的自由备注（家长调整备注、任务名等 canonical 存储值）；
+ * ② 纯 ASCII 业务键（心愿存入/退回用 `wish_deposit:<goalId>` / `wish_refund:<goalId>`，
+ *    见 [WishGoalRepository]），展示文案由明细页按 `type + note` 派生。
  */
 class PointRepository(
     private val pointDao: PointDao,
@@ -318,9 +327,25 @@ class PointRepository(
     }
 
     /**
-     * 兑换奖励消耗积分
+     * 兑换奖励消耗积分 —— **REWARD_EXCHANGE 的唯一权威写入口**。
+     *
+     * D-08（v3.3.1 / 指令 §3.3）：心愿存钱罐的"存入"过去直接 `pointDao.insertPointRecord(ADJUSTMENT)`，
+     * 同一种"孩子自主消耗"在账本里记成了家长调整。现在它走本函数，与商店消耗同一口径。
+     *
+     * 新增的 [requireSufficientBalance] 是给这类**内部自主扣减**的调用方用的：余额校验写在扣减点内部，
+     * 于是"校验 + 落账"只有一处、一个口径，调用方不必自己先 `getTotalPoints().first()` 再决定要不要扣
+     * （那会在仓库外形成第二处校验点，两边对"余额"的读法一旦分叉就会出现扣成负数的窗口）。
+     * **默认 false —— 商店/宠物四处调用点（ChildRewardStoreScreen.kt:220、
+     * ChildPetScreen.kt:219/235/379）的既有语义与字节行为完全不变**（D-08 红线）。
+     *
+     * 诚实说明：本仓库没有把这两步包进 Room 事务，所以"读余额"与"写流水"之间仍有极窄的并发窗口
+     * （单用户本地应用，且 UI 侧同一时刻只有一个扣减入口）；包事务需要给仓库注入事务执行器，
+     * 超出 D-08 范围，记此备忘。
+     *
+     * @return true = 已写入消耗流水；false = 校验未通过（余额不足或金额非正），**未写任何记录**
      */
-    suspend fun spendPoints(points: Int, note: String) {
+    suspend fun spendPoints(points: Int, note: String, requireSufficientBalance: Boolean = false): Boolean {
+        if (requireSufficientBalance && (points <= 0 || getTotalPoints().first() < points)) return false
         val weekStart = getWeekStartTimestamp()
         pointDao.insertPointRecord(
             PointRecordEntity(
@@ -328,6 +353,33 @@ class PointRepository(
                 type = PointRecordType.REWARD_EXCHANGE,
                 note = note,
                 weekStart = weekStart
+            )
+        )
+        return true
+    }
+
+    /**
+     * 原路退还一笔已经消耗掉的积分（D-08 删除心愿闭环）：
+     * **新增**一条正向 REWARD_EXCHANGE 记录冲抵，绝不 UPDATE/DELETE 当初那条消耗记录。
+     *
+     * 为什么不用 [adjustPoints]：退款是孩子自己资金的往返，不是家长的奖惩动作。
+     * 记成 ADJUSTMENT 会把这笔钱混进"家长调整"报表口径（D-08 根因 1 的镜像错误）；
+     * 记成 REWARD_EXCHANGE 的正向记录，则与当初那条负向消耗同进同出，
+     * 净额守恒仍由不变量 5（append-only、余额 = SUM(points)）如实托住。
+     *
+     * 与 [undoCheckIn] 的 REVERSAL 区别开：REVERSAL 的语义是"撤销一次已审批的**获得**"，
+     * 且必须挂 approvalId 溯源；本函数没有任何审批单，撤销打卡的账目不能凭空多出一条 REVERSAL。
+     *
+     * @param note 只许写纯 ASCII 业务键（如 `wish_refund:12`），不得写展示文案（Ruling 25 存储边界）
+     */
+    suspend fun refundSpentPoints(points: Int, note: String) {
+        if (points <= 0) return
+        pointDao.insertPointRecord(
+            PointRecordEntity(
+                points = points,
+                type = PointRecordType.REWARD_EXCHANGE,
+                note = note,
+                weekStart = getWeekStartTimestamp()
             )
         )
     }

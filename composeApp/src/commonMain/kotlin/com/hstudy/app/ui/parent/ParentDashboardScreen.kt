@@ -31,6 +31,7 @@ import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.common.ResponsiveTwoColumn
+import com.hstudy.app.ui.common.wishNoteDisplayText
 import com.hstudy.app.ui.theme.chartPalette
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
@@ -46,6 +47,11 @@ fun ParentDashboardScreen(
     val displayLanguage = LocalDisplayLanguage.current
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val records by app.pointRepository.getAllRecords().collectAsState(initial = emptyList())
+    // D-08（v3.3.1）：账本 note 只剩业务键，本页「最近积分变动」是第三个消费 note 的面板
+    // （指令 §3.3 只点了积分明细两页，这页漏了就会把 `wish_deposit:3` 直接念给家长看），
+    // 所以同样回查 wish_goals 走 [wishNoteDisplayText] 派生。
+    val wishGoals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
+    val wishNamesById = remember(wishGoals) { wishGoals.associate { it.id to it.name } }
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val rewards by app.rewardRepository.getAllActiveRewards().collectAsState(initial = emptyList())
     val exchanges by app.rewardRepository.getAllExchanges().collectAsState(initial = emptyList())
@@ -356,7 +362,10 @@ fun ParentDashboardScreen(
                                 Text(typeEmoji, style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(record.note.ifEmpty { strings.changeFallbackLabel }, style = MaterialTheme.typography.bodyMedium)
+                                    // D-08：心愿业务键 → 派生文案；其余 note 原样；空 note → 兜底标签
+                                    Text(wishNoteDisplayText(record, wishNamesById)
+                                        ?: record.note.ifEmpty { strings.changeFallbackLabel },
+                                        style = MaterialTheme.typography.bodyMedium)
                                     Text(dateFormat.format(Date(record.date)), style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }

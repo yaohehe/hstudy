@@ -26,7 +26,7 @@
   sink 双向对账：词根/精确名 ↔ fixture 调用点，**并且** ↔ commonMain 里的真实 `fun` 声明；
         RESERVED_STEMS 走反向规则（当前必须无真实声明，一有就要搬进 SINK_STEMS）
   正则级断言：Canonical 豁免、句柄两级不算文案/三级算、形状句柄登记、插值保留与嵌套串空白化、
-        TAINT_ASSIGN 的换行上限、污点链迭代轮数、strip_comments 与 blank_string_contents 的对比
+        TAINT_ASSIGN 换行上限、污点链轮数、strip_comments 与 blank_string_contents 对比、6b 通道 H 红绿两半
 """
 import io
 import os
@@ -531,6 +531,71 @@ def main():
     check("剥完注释再空白化，污点集干净（CommentedSinkNoFp.kt 必须绿的机理）",
           not ({"commentedNote", "commentedHop", "strings", "common"} & tainted_commented),
           "实际污点集 %s" % sorted(tainted_commented))
+
+    print("\n== 6b) 通道 H：point_records.note 业务键登记表（v3.3.1 D-08）==")
+    # H 是**仓库级对账**，不是逐文件形状检测，所以它没有 fixtures/ 条目：登记一条 fixture 要在
+    # EXPECTED_CASES 里插行，会把本文件 26 / 313-314 两段**被闸门 docstring 按坐标引用**的行推成
+    # 假引用（闸门 docstring 自己就写着这条耦合）。改用临时目录现场造探针，红绿两半各跑一次。
+    check("NOTE_BIZKEY_PREFIXES 非空（note 业务键白名单本身是 D-08 的交付物）",
+          bool(gate.NOTE_BIZKEY_PREFIXES), "登记表是空的")
+    check("登记表每条键纯 ASCII 且带 `:` 分隔（note 是账本数据，键里不许有文案）",
+          all(all(ord(c) < 128 for c in key) and ":" in key for key in gate.NOTE_BIZKEY_PREFIXES),
+          "不合规的键：%s" % [k for k in gate.NOTE_BIZKEY_PREFIXES
+                              if not all(ord(c) < 128 for c in k) or ":" not in k])
+    real_code, real_out = run_gate(src_dir=None, expect_cwd=REPO_ROOT)
+    check("真实树 exit 0 且通道 H 确实参与了这一轮（未改写扫描根 → 默认启用）",
+          real_code == 0 and "通道 H" in real_out,
+          "退出码 %d / 输出：%s" % (real_code, real_out[-500:]))
+    check("登记表与 WishGoalRepository 的字面量同源（两侧任一方改名都要同步）",
+          all(('"%s' % key) in io.open(os.path.join(REAL_SRC, "data", "repository",
+                                                    "WishGoalRepository.kt"), encoding="utf-8").read()
+              for key in gate.NOTE_BIZKEY_PREFIXES),
+          "WishGoalRepository.kt 里找不到登记表的某条键字面量：%s" % gate.NOTE_BIZKEY_PREFIXES)
+    # 反向半侧：键在代码里消失了（改名/删除而没同步登记表）必须红 —— 空头登记表比没有登记表更糟。
+    with tempfile.TemporaryDirectory(prefix="i18n-boundary-notekey-") as tmp:
+        stale = os.path.join(tmp, "StaleNoteKey.kt")
+        with io.open(stale, "w", encoding="utf-8") as handle:
+            handle.write(
+                "class StaleRepo {\n"
+                "    // 只剩一条业务键还在写，另一条已被改名 —— H 必须点名缺的那条\n"
+                '    private val depositNote = "wish_deposit:1"\n'
+                "}\n"
+            )
+        # 这里不走 run_gate()：它没有 extra_env 形参，而给它加一行会把本文件 313-314（闸门 docstring
+        # 按坐标引用的那两行）推下去。H 需要的 I18N_BOUNDARY_NOTE_CHECK 只有这一段用得着。
+        env = dict(os.environ)
+        env["I18N_BOUNDARY_SRC"] = tmp
+        env["I18N_BOUNDARY_NOTE_CHECK"] = "1"  # 显式在改写过的扫描根上启用 H（默认它是关的）
+        env["PYTHONIOENCODING"] = "utf-8"
+        proc = subprocess.run([sys.executable, GATE], cwd=REPO_ROOT, env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out = proc.stdout.decode("utf-8", "replace")
+    check("登记表里有键查无写入点 → 退出码 1 且点名通道 H（通道不是装饰）",
+          proc.returncode == 1 and "通道 H" in out and "wish_refund:" in out,
+          "退出码 %d / 输出：%s" % (proc.returncode, out[-500:]))
+    # 同一机理的绿的一半：两条键都在、且是纯 ASCII 字面量插值 → A~H 全部不得误报
+    # （D-08 的新写入形状 `spendPoints(n, "wish_deposit:$goalId")` 必须能被写出来）
+    with tempfile.TemporaryDirectory(prefix="i18n-boundary-notekey-ok-") as tmp2:
+        with io.open(os.path.join(tmp2, "BothNoteKeys.kt"), "w", encoding="utf-8") as handle:
+            handle.write(
+                "class BothRepo(private val pointRepository: PointRepository) {\n"
+                '    suspend fun deposit(goalId: Long, amount: Int) {\n'
+                '        pointRepository.spendPoints(amount, "wish_deposit:$goalId", requireSufficientBalance = true)\n'
+                '        pointRepository.refundSpentPoints(amount, "wish_refund:$goalId")\n'
+                "    }\n"
+                "}\n"
+            )
+        env2 = dict(os.environ)
+        env2["I18N_BOUNDARY_SRC"] = tmp2
+        env2["I18N_BOUNDARY_NOTE_CHECK"] = "1"
+        env2["PYTHONIOENCODING"] = "utf-8"
+        proc2 = subprocess.run([sys.executable, GATE], cwd=REPO_ROOT, env=env2,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out2 = proc2.stdout.decode("utf-8", "replace")
+    check("两条键齐全 + ASCII 业务键进 spendPoints → 退出码 0（新形状不是误报）",
+          proc2.returncode == 0 and "通道 H" in out2,
+          "退出码 %d / 输出：%s" % (proc2.returncode, out2[-500:]))
+
 
     print("\n== 7) 旧缺陷的实测复现（信息，不作断言） ==")
     for rel in ["ui" + os.sep + "child" + os.sep + "ChildHomeScreen.kt",

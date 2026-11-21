@@ -220,6 +220,11 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # （TaskListStrings.revertConfirmMessage：对话框正文为全新写文案，迁移前页面无此对话框；
 # 标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton，三个槽均已登记、不重开同值槽）
 # → 237 + 1 = 238（两个组读数实测如上：默认组仍 6/232，--branch 238 条、0 条未用到）。
+# v3.3.1 D-08（心愿存钱罐账本修复 指令 §3.3）在 238 条上新增表侧单边 7 条
+# （ChildPointsStrings 4 条：wishDeposit/wishRefund + 两条通用兜底，是"note 只存业务键、文案在明细页
+# 派生"的派生槽；ParentWishGoalStrings 3 条：删除确认弹窗标题/正文/退还承诺——旧实现裸删、没有弹窗，
+# 所以迁移前页面对这三条没有原文）→ 238 + 7 = 245（两个组读数实测如上：默认组仍 6/239，
+# --branch 245 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -1011,6 +1016,40 @@ DISCLOSED_RESIDUALS = [
                "标题复用 undoButton、按钮复用 CommonStrings.confirmButton/cancelButton（均已双边登记，不重开同值槽）；"
                "字段命名走 revert… 前缀避开存储边界闸门 undo… sink 词根（W9 T1 先例）；"
                "两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死"},
+    # ---- v3.3.1 D-08（指令 §3.3 / P0-03）：心愿账本修复的新写文案（表侧单边 7 条）----
+    # 这批全是"账本 note 不再存文案 → 文案改由明细页派生"与"删除要如实承诺退还"新写出来的词面，
+    # 迁移前页面里没有对应原文（旧形态是硬编码中文直写 DB，本来就不在文案表里，见
+    # docs/antigravity-v331-directives.md §3.3 工程师复核补充 2）。两语由
+    # ChildRewardStoreCopyTest.childPoints* 与 WishCopyTest.parentWishGoal* 逐字钉死。
+    {"page": None, "table": "存入心愿「%s」" % VALUE,
+     "table_field": "ChildPointsStrings.wishDeposit",
+     "reason": "v3.3.1 D-08-4 新写文案：明细页按 note 业务键 `wish_deposit:<goalId>` 派生的条目行，"
+               "实位是回查 wish_goals 后包 localizedPresetText 的心愿显示名"
+               "（ChildPointsScreen / ParentPointsScreen / ParentDashboardScreen 三个消费面共用本槽）"},
+    {"page": None, "table": "心愿退回「%s」" % VALUE,
+     "table_field": "ChildPointsStrings.wishRefund",
+     "reason": "v3.3.1 D-08-4 新写文案：`wish_refund:<goalId>` 正向退款流水的条目行（同上门派生）"},
+    {"page": None, "table": "存入心愿",
+     "table_field": "ChildPointsStrings.wishDepositGeneric",
+     "reason": "v3.3.1 D-08-4 新写文案：心愿已删除、回查不到名字时的通用兜底行"
+               "（append-only 账本只留 id，退款流水必然查不到已删除心愿，故需要这一条）"},
+    {"page": None, "table": "心愿退回",
+     "table_field": "ChildPointsStrings.wishRefundGeneric",
+     "reason": "v3.3.1 D-08-4 新写文案：退款流水的通用兜底行（同上）"},
+    {"page": None, "table": "删除心愿",
+     "table_field": "ParentWishGoalStrings.removeDialogTitle",
+     "reason": "v3.3.1 D-08-3 新写文案：家长端删除确认弹窗标题（旧实现点一下裸删、没有弹窗，"
+               "故迁移前页面无此原文）。字段名走 remove… 前缀避开存储边界闸门 delete… sink 词根"
+               "（沿 ParentWishGoalStrings.removedMessage 先例）；确认/取消钮复用 "
+               "CommonStrings.confirmButton/cancelButton（均已双边登记，不重开同值槽）"},
+    {"page": None, "table": "确定删除「%s」吗？" % VALUE,
+     "table_field": "ParentWishGoalStrings.removeConfirmMessage",
+     "reason": "v3.3.1 D-08-3 新写文案：删除确认正文，实位是本地化后的心愿显示名"},
+    {"page": None, "table": "该心愿已存入 %s 积分，删除后将自动退还至孩子积分余额。" % VALUE,
+     "table_field": "ParentWishGoalStrings.removeRefundNotice",
+     "reason": "v3.3.1 D-08-3 新写文案：退还承诺行（只在 isActive && savedPoints>0 时渲染，"
+               "与 WishGoalRepository.deleteGoal 的退款条件同源）；英文单复数走 pointsWord，"
+               "两语由 WishCopyTest.parentWishGoalInterpolatedCopyPinsBothLanguages 钉死"},
 ]
 
 

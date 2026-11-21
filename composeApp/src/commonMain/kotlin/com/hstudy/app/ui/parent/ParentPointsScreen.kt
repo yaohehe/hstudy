@@ -25,6 +25,7 @@ import com.hstudy.app.ui.child.pointRecordSection
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.ui.common.wishNoteDisplayText
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
@@ -50,6 +51,9 @@ fun ParentPointsScreen(
     val pendingPoints by app.pointRepository.getPendingApprovalPoints().collectAsState(initial = 0)
     val records by app.pointRepository.getAllRecords().collectAsState(initial = emptyList())
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
+    // D-08：心愿存入/退回流水的 note 只有业务键，心愿名回查 wish_goals 后派生（词面沿用 childPoints 槽）
+    val wishGoals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
+    val wishNamesById = remember(wishGoals) { wishGoals.associate { it.id to it.name } }
 
     // 近7天打卡记录（用于任务积分排行）
     val sevenDaysAgoMillis = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }.timeInMillis }
@@ -200,7 +204,7 @@ fun ParentPointsScreen(
                                 )
                             }
                             items(sectionRecords) { record ->
-                                PointRecordCard(record = record)
+                                PointRecordCard(record = record, wishNamesById = wishNamesById)
                             }
                         }
                     }
@@ -261,11 +265,18 @@ fun ParentPointsScreen(
  * 记录卡（指令 §3.3.4-3）：左圆角类型徽章 / 中类型+备注+时间 / 右大号带符号分值。
  * 数值语义与孩子端一致：获得=secondary 绿、兑换=primary 橙、撤销/PENALTY=error 警示并附小标签
  * （[打卡撤销] 词面跨表复用 ChildPointsStrings.tagCheckInUndo；[未完成扣分] 沿用 W2 typePenalty）。
+ *
+ * D-08：备注行的心愿业务键按 [wishNoteDisplayText] 派生成"存入心愿/心愿退回 + 心愿名"，
+ * 类型行仍如实是账本类型（REWARD_EXCHANGE = 兑换消耗），旧记录的 note 原样显示、不改写。
  */
 @Composable
-private fun PointRecordCard(record: PointRecordEntity) {
+private fun PointRecordCard(
+    record: PointRecordEntity,
+    wishNamesById: Map<Long, String>
+) {
     val strings = LocalStrings.current.parentPoints
     val pointsDetail = LocalStrings.current.childPoints
+    val wishNoteText = wishNoteDisplayText(record, wishNamesById)
     val typeLabel = when (record.type) {
         PointRecordType.TASK_COMPLETE -> strings.typeTaskComplete
         PointRecordType.BONUS -> strings.typeBonus
@@ -289,7 +300,10 @@ private fun PointRecordCard(record: PointRecordEntity) {
         PointRecordType.ADJUSTMENT -> MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val valueColor = when {
-        record.type == PointRecordType.REWARD_EXCHANGE -> MaterialTheme.colorScheme.primary
+        // D-08：REWARD_EXCHANGE 第一次可能有正向记录（删除心愿的原路退还）→ 按符号走绿；
+        // 存量消耗记录全是负数，橙色不变。
+        record.type == PointRecordType.REWARD_EXCHANGE ->
+            if (record.points >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
         record.type == PointRecordType.REVERSAL || record.type == PointRecordType.PENALTY -> MaterialTheme.colorScheme.error
         record.points >= 0 -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.error
@@ -318,8 +332,9 @@ private fun PointRecordCard(record: PointRecordEntity) {
                 Text(typeLabel, style = MaterialTheme.typography.titleSmall,
                     color = if (record.type == PointRecordType.PENALTY)
                         MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                if (record.note.isNotEmpty()) {
-                    Text(record.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (record.note.isNotEmpty() || wishNoteText != null) {
+                    // D-08：业务键 → 派生文案；其余 note 原样（心愿名不再从库里读中文）
+                    Text(wishNoteText ?: record.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(dateFormat.format(Date(record.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

@@ -8,6 +8,11 @@ package com.hstudy.app.i18n
  * 六条类型标签（与家长端 ParentPointsStrings.type* 文案不同值，不跨表复用；v3.3 W2 P2-01 增 typePenalty）。
  * 数量词一律 [pointsWord]。
  *
+ * **v3.3.1 D-08 新增的第四种形态**：note 是纯 ASCII 业务键（`wish_deposit:<id>` / `wish_refund:<id>`）时，
+ * 既不原样显示也不回退类型标签，而由 [wishDeposit]/[wishRefund] 派生"存入心愿/心愿退回 + 心愿名"，
+ * 心愿已删除（回查不到名字）时用 [wishDepositGeneric]/[wishRefundGeneric]。
+ * 库里的 note 从此不含展示文案，英文用户不会在孩子账本里看到中文。
+ *
  * v3.3 W4（指令 §3.3.4）新增**资产看板 + 时间轴分组 + 条目语义标签**文案，家长端积分管理页
  * （ParentPointsScreen）跨表复用同一批字段（同一中文值一个英文出处，沿 balanceTitle/菜单标题复用先例）：
  * - [balanceSubtitle]：余额大数字下的"当前可用积分"副标（与 ChildWishGoalStrings 的长串"当前可用积分：…"
@@ -40,6 +45,11 @@ data class ChildPointsStrings(
     val sectionHistory: String,
     // W4 §3.3.4-3 REVERSAL 条目 [打卡撤销] 标签词面
     val tagCheckInUndo: String,
+    // v3.3.1 D-08：心愿存入/退回流水的派生文案（note 只有业务键，文案在库里 → 已禁止）
+    val wishDeposit: (goalName: String) -> String,
+    val wishRefund: (goalName: String) -> String,
+    val wishDepositGeneric: String,
+    val wishRefundGeneric: String,
 )
 
 val ChildPointsStringsZh = ChildPointsStrings(
@@ -62,6 +72,11 @@ val ChildPointsStringsZh = ChildPointsStrings(
     sectionWeekEarlier = "本周更早",
     sectionHistory = "🕰️ 历史记录",
     tagCheckInUndo = "打卡撤销",
+    // D-08：心愿两型流水（goalName 由明细页回查 wish_goals 后包 localizedPresetText 传入）
+    wishDeposit = { goalName -> "存入心愿「$goalName」" },
+    wishRefund = { goalName -> "心愿退回「$goalName」" },
+    wishDepositGeneric = "存入心愿",
+    wishRefundGeneric = "心愿退回",
 )
 
 val ChildPointsStringsEn = ChildPointsStrings(
@@ -84,4 +99,10 @@ val ChildPointsStringsEn = ChildPointsStrings(
     sectionWeekEarlier = "Earlier this week",
     sectionHistory = "🕰️ History",
     tagCheckInUndo = "Check-in undo",
+    // D-08：心愿两型流水（goalName 由明细页回查 wish_goals、包 localizedPresetText 后传入；
+    // 心愿已删除时回查不到，落到下面两条通用文案）
+    wishDeposit = { goalName -> "Saved into wish “$goalName”" },
+    wishRefund = { goalName -> "Wish refund for “$goalName”" },
+    wishDepositGeneric = "Wish deposit",
+    wishRefundGeneric = "Wish refund",
 )
