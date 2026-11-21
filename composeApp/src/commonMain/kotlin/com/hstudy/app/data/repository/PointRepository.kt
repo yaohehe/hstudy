@@ -227,6 +227,26 @@ class PointRepository(
         approvalDao.updateReview(approvalId, ApprovalStatus.REJECTED, null)
     }
 
+    /**
+     * 家长撤回已审批申请（v3.3.1 D-10）：**委托 [undoCheckIn]，与孩子端撤销走同一条函数**，
+     * 保证不变量 4（撤销对称）在家长侧同样成立——APPROVED → 追加 REVERSAL 冲抵并置 REVOKED；
+     * PENDING → CANCELLED；REJECTED / CANCELLED / REVOKED 等终态幂等拒绝（返回 0、零写入）。
+     *
+     * 本方法只做入口适配（approvalId → 该单自己的 bizKey/taskId/date），**不含任何扣回逻辑**；
+     * 扣回口径、审计轨迹与返回值语义完全以 [undoCheckIn] 为准，孩子端调用零行为变化。
+     *
+     * 保守拒绝：`bizKey` 为空的历史数据（v2 迁移遗留，[approveAndAward] 的防重同样跳过它们）
+     * 无法被 bizKey 锚定的统一撤销定位，直接返回 0 不做任何写入——绝不凭 `getLatestByBizKey("")`
+     * 的"最后一条空 bizKey"误伤别的记录。
+     *
+     * @return 实际扣回的积分数（正数；0 表示未扣回：终态、查无此单或空 bizKey）
+     */
+    suspend fun revokeApproval(approvalId: Long): Int {
+        val approval = approvalDao.getById(approvalId) ?: return 0
+        if (approval.bizKey.isEmpty()) return 0
+        return undoCheckIn(bizKey = approval.bizKey, taskId = approval.taskId, date = approval.date)
+    }
+
     /** 批量通过：逐条走幂等发放，返回实际发放总积分 */
     suspend fun approveAllAndAward(): Int {
         val pending = approvalDao.getPendingList()

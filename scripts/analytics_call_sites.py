@@ -26,7 +26,11 @@ SITES = [
     ("ui/child/ChildLuckyDrawScreen.kt", "Feature.LUCKY_DRAW", 1),
     ("ui/pet/ChildPetScreen.kt", "Feature.PET_CARE", 2),
     ("ui/wish/ChildWishGoalScreen.kt", "Feature.WISH_SUBMIT", 1),
-    ("ui/parent/ParentApprovalScreen.kt", "Feature.APPROVAL_ACTION", 3),
+    # v3.3.1 D-10：撤回审批是第 4 个 APPROVAL_ACTION 调用点，计数 3→4；
+    # 登记表 20→21 条：下一条把"撤回确认按钮 → revokeApproval 入口 + 埋点同块 wiring"单独钉住，
+    # 删掉整个撤回块时两条通道都会亮，而不是只靠计数。
+    ("ui/parent/ParentApprovalScreen.kt", "Feature.APPROVAL_ACTION", 4),
+    ("ui/parent/ParentApprovalScreen.kt", "pointRepository.revokeApproval(", 1),
     ("ui/parent/ParentSettingsScreen.kt", "AnalyticsEvent.BackupExported", 1),
     ("ui/mistake/ReviewReminderReceiver.kt", "AnalyticsEvent.ReminderScheduled", 1),
     ("ui/parent/WeeklyReportReceiver.kt", "AnalyticsEvent.ReminderScheduled", 1),

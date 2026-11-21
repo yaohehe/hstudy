@@ -83,6 +83,10 @@ class ParentPointsCopyTest {
             zh.typeChipFocus to en.typeChipFocus,
             zh.typeChipVariation to en.typeChipVariation,
             zh.typeChipOther to en.typeChipOther,
+            // v3.3.1 D-10 家长撤回审批：钮面 / 弹窗标题 / 终态如实反馈三条静态槽
+            zh.revokeApprovalButton to en.revokeApprovalButton,
+            zh.revokeConfirmTitle to en.revokeConfirmTitle,
+            zh.revokeTerminalMessage to en.revokeTerminalMessage,
         )
         assertEquals(8, listOf(
             zh.typeChipTask, zh.typeChipHabit, zh.typeChipAssignment, zh.typeChipTarget,
@@ -135,6 +139,21 @@ class ParentPointsCopyTest {
         assertEquals("Approve all 3 pending requests and award +12 points now?", en.approveAllDialogMessage(3, 12))
         assertEquals("Approve your only pending request and award +1 point now?", en.approveAllDialogMessage(1, 1))
         assertEquals("Approve all 3 pending requests and award +5 points now?", en.approveAllDialogMessage(3, 5))
+        // v3.3.1 D-10 家长撤回审批：确认正文与成功 snackbar（指令 §4.4 词面；EN 单复数走 pointsWord）
+        assertEquals("撤回后将扣回已发放的 8 积分，并将申请状态置为已撤销。", zh.revokeConfirmMessage(8))
+        assertEquals("撤回后将扣回已发放的 1 积分，并将申请状态置为已撤销。", zh.revokeConfirmMessage(1))
+        assertEquals(
+            "Revoking removes 8 points already awarded and marks the request as revoked.",
+            en.revokeConfirmMessage(8)
+        )
+        assertEquals(
+            "Revoking removes 1 point already awarded and marks the request as revoked.",
+            en.revokeConfirmMessage(1)
+        )
+        assertEquals("🔄 已撤回审批，扣回 8 分", zh.revokeSuccessMessage(8))
+        assertEquals("🔄 已撤回审批，扣回 1 分", zh.revokeSuccessMessage(1))
+        assertEquals("🔄 Approval revoked — 8 points removed", en.revokeSuccessMessage(8))
+        assertEquals("🔄 Approval revoked — 1 point removed", en.revokeSuccessMessage(1))
     }
 
     @Test

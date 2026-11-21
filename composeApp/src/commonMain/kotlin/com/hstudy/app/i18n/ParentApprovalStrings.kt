@@ -27,6 +27,13 @@ package com.hstudy.app.i18n
  * - typeChip*：ApprovalCard 头部 SuggestionChip 的业务类型词（actionType → 词面映射在页面侧做；
  *   「习惯挑战」在 [ChildHomeStrings.entryHabitChallengeTitle] 已有同值槽，故本表 chip 用
  *   "习惯打卡"（HABIT_CHECKIN 的准确口径）重开**不同值**槽，沿 W2 typePenalty 差前缀先例。
+ *
+ * v3.3.1 D-10（指令 §4.4 家长撤回审批闭环）新增历史卡撤回文案 5 槽：
+ * [revokeApprovalButton]/[revokeConfirmTitle]/[revokeTerminalMessage] 是静态钮面、弹窗标题与
+ * 终态如实反馈；[revokeConfirmMessage]/[revokeSuccessMessage] 是函数型（扣回分值进实参位，
+ * EN 单复数走 [pointsWord]）。字段命名统一走 `revoke…` 前缀——`undo…` 是存储边界闸门的
+ * sink 词根（PointRepository.undoCheckIn），文案槽沿用 W9 T1 revert… 的避让先例。
+ * 「扣回 N 分」词面与 [statusRevoked] / TaskListStrings.revertedClawedBackMessage 口径对齐。
  */
 data class ParentApprovalStrings(
     val title: String,
@@ -66,6 +73,12 @@ data class ParentApprovalStrings(
     val pendingPointsLabel: (points: Int) -> String,
     val approveAllPointsButton: (points: Int) -> String,
     val approveAllDialogMessage: (count: Int, points: Int) -> String,
+    // v3.3.1 D-10 家长撤回审批（历史 APPROVED 卡钮 / 二次确认弹窗 / snackbar 如实反馈）
+    val revokeApprovalButton: String,
+    val revokeConfirmTitle: String,
+    val revokeTerminalMessage: String,
+    val revokeConfirmMessage: (points: Int) -> String,
+    val revokeSuccessMessage: (points: Int) -> String,
 )
 
 val ParentApprovalStringsZh = ParentApprovalStrings(
@@ -107,6 +120,13 @@ val ParentApprovalStringsZh = ParentApprovalStrings(
     pendingPointsLabel = { points -> "待发放总积分：+$points 分" },
     approveAllPointsButton = { points -> "全部通过 (+${points}分)" },
     approveAllDialogMessage = { count, points -> "确认一次通过全部 $count 笔申请，共发放 +$points 分？" },
+    // v3.3.1 D-10：家长撤回审批（指令 §4.4 词面；「扣回 N 分」口径与 statusRevoked/
+    // TaskListStrings.revertedClawedBackMessage 对齐，中文侧只换数字、不分支）
+    revokeApprovalButton = "撤回通过",
+    revokeConfirmTitle = "确认撤回审批？",
+    revokeTerminalMessage = "该申请已是终态（可能已被孩子端撤销），未扣回积分",
+    revokeConfirmMessage = { points -> "撤回后将扣回已发放的 $points 积分，并将申请状态置为已撤销。" },
+    revokeSuccessMessage = { points -> "🔄 已撤回审批，扣回 $points 分" },
 )
 
 val ParentApprovalStringsEn = ParentApprovalStrings(
@@ -156,5 +176,15 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
         } else {
             "Approve all $count pending requests and award +$points ${pointsWord(points)} now?"
         }
+    },
+    // v3.3.1 D-10: parent-side revoke on history APPROVED cards (button, confirm dialog, honest snackbars)
+    revokeApprovalButton = "Revoke",
+    revokeConfirmTitle = "Revoke this approval?",
+    revokeTerminalMessage = "Already final (your child may have undone it) — no points removed",
+    revokeConfirmMessage = { points ->
+        "Revoking removes $points ${pointsWord(points)} already awarded and marks the request as revoked."
+    },
+    revokeSuccessMessage = { points ->
+        "🔄 Approval revoked — $points ${pointsWord(points)} removed"
     },
 )

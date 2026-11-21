@@ -230,6 +230,14 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # approvalCancelledBadge/approvalRevokedBadge 三个态词面 + recheckInButton 重打卡引导钮——全部为修复
 # 新写，迁移前页面（TASK8_REV）没有这些控件）→ 245 + 6 = 251（两个组读数实测：默认组仍 6/245，
 # --branch 251 条、0 条未用到）。
+# v3.3.1 D-10（家长撤回审批闭环 指令 §4.4）在 251 条上新增表侧单边 5 条
+# （ParentApprovalStrings：revokeApprovalButton/revokeConfirmTitle/revokeTerminalMessage 三条静态 +
+# revokeConfirmMessage/revokeSuccessMessage 两条函数型（扣回分值进实参位）——历史 APPROVED 卡的撤回
+# 钮/弹窗/snackbar 全部为修复新写，修复前页面只读、迁移前后都没有原文可比；两语由
+# ParentPointsCopyTest.parentApprovalCopyDiffers / parentApprovalInterpolatedCopyPinsBothLanguages
+# 逐字钉死；revokeTerminalMessage 的 EN 提到 points，同步登记进 StringsCopyTest 的
+# EN_STATIC_POINTS_MENTIONS 闭集）→ 251 + 5 = 256（两个组读数实测如上：默认组仍 6/250，
+# --branch 256 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -1080,6 +1088,30 @@ DISCLOSED_RESIDUALS = [
     {"page": None, "table": "重新打卡", "table_field": "TaskListStrings.recheckInButton",
      "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：REJECTED 态「重新打卡」引导钮（checkInForTask 对 "
                "REJECTED 天然新建 PENDING，本槽只是把该路径做成可见入口）；整枝表组内该中文值唯一持有者"},
+    # ---- v3.3.1 D-10（家长撤回审批闭环 指令 §4.4）：历史 APPROVED 卡撤回钮/弹窗/snackbar 新写文案（表侧单边 5 条）----
+    # 这批是 D-10 修复的**新写**词面：迁移前页面（W3_REV aae364e 与现工作区）历史卡只读、没有撤回
+    # 控件，所以五条都没有页面原文可比。静态三条由 ParentPointsCopyTest.parentApprovalCopyDiffers
+    # 断言 ZH≠EN，函数两条由 parentApprovalInterpolatedCopyPinsBothLanguages 逐字双语钉死（含 EN 单复数）。
+    # 字段命名统一 revoke… 前缀：undo… 是存储边界闸门 sink 词根（沿 W9 T1 revert… 避让先例）。
+    {"page": None, "table": "撤回通过", "table_field": "ParentApprovalStrings.revokeApprovalButton",
+     "reason": "v3.3.1 D-10 指令 §4.4-1 新写文案：历史 APPROVED 卡「撤回通过」钮面（终态卡与空 bizKey "
+               "遗留行不渲染本钮）。与 statusRevoked「已撤销（积分已扣回）」、historyFilterUndone"
+               "「撤销与取消」都是不同串，不构成遮蔽"},
+    {"page": None, "table": "确认撤回审批？", "table_field": "ParentApprovalStrings.revokeConfirmTitle",
+     "reason": "v3.3.1 D-10 指令 §4.4-1 新写文案：撤回二次确认对话框标题（确认/取消钮复用 "
+               "CommonStrings.confirmButton/cancelButton，均已双边登记，不重开同值槽）"},
+    {"page": None, "table": "该申请已是终态（可能已被孩子端撤销），未扣回积分",
+     "table_field": "ParentApprovalStrings.revokeTerminalMessage",
+     "reason": "v3.3.1 D-10 新写文案：撤回入口点击后仓库层返回 0（终态/空 bizKey 幂等拒绝）时的"
+               "如实 snackbar（brief 要求「已被孩子端撤销则提示已终态」）"},
+    {"page": None, "table": "撤回后将扣回已发放的 %s 积分，并将申请状态置为已撤销。" % VALUE,
+     "table_field": "ParentApprovalStrings.revokeConfirmMessage",
+     "reason": "v3.3.1 D-10 指令 §4.4-1 新写文案：确认对话框正文（指令整句词面，扣回分值进实参位）；"
+               "「扣回」口径与 scoreRevoked「-⟨$⟩ (已扣回)」同族、整串不同形"},
+    {"page": None, "table": "🔄 已撤回审批，扣回 %s 分" % VALUE,
+     "table_field": "ParentApprovalStrings.revokeSuccessMessage",
+     "reason": "v3.3.1 D-10 新写文案：撤回成功 snackbar（🔄 与历史卡 REVOKED statusIcon 图标口径一致，"
+               "emoji 不受 i18n 约束 RA8；EN 单复数走 pointsWord，两语由 pin 测试钉死）"},
 ]
 
 

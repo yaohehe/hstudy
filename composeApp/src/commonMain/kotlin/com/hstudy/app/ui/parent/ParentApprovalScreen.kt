@@ -37,8 +37,15 @@ import com.hstudy.app.ui.dt.*
  *   主体内容+时间+加粗大号分值、底部 FilledTonalButton(通过)/OutlinedButton(拒绝) 6:4、间距 12dp；
  * - 历史区保留 W2 P1-02 的**按状态如实展示**（statusIcon/scoreText 语义不动），徽章容器换成
  *   M3 tonal 四色（绿/橙/灰/红，RA8：徽章文案仍走 Strings）。
- * 埋点约束：APPROVAL_ACTION 埋点三个调用点（单条通过 / 拒绝 / 全部通过）位置随各自的
- * onClick 处理器迁移，**条数恒为 3**（analytics_call_sites.py 闸门复核）。
+ * 埋点约束：APPROVAL_ACTION 埋点**四个**调用点（单条通过 / 拒绝 / 全部通过 / 家长撤回（D-10）），
+ * 前三处位置随各自的 onClick 处理器迁移，第四处随撤回确认对话框的确认按钮落地；
+ * 条数与登记表由 analytics_call_sites.py 闸门复核（该文件 min=4 + 撤回入口 wiring 各钉一条）。
+ *
+ * v3.3.1 D-10（指令 §4.4）：历史 Tab 的 APPROVED 卡右侧新增「撤回通过」TextButton →
+ * 二次确认 AlertDialog（扣回分值来自 approval.requestedPoints）→ [com.hstudy.app.data.repository.PointRepository.revokeApproval]
+ * （委托 undoCheckIn，REVERSAL 对称冲抵 + REVOKED，与孩子端撤销同一闭环）。
+ * 终态（REVOKED/CANCELLED/REJECTED）卡不显示按钮；bizKey 为空的历史遗留行同样不显示
+ * （统一撤销按 bizKey 锚定，口径与仓库层 revokeApproval 的保守拒绝一致）。
  */
 @Composable
 fun ParentApprovalScreen(
@@ -79,6 +86,8 @@ fun ParentApprovalScreen(
     val pendingCount = pendingApprovals.size
     val pendingTotalPoints = pendingApprovals.sumOf { it.requestedPoints }
     var showApproveAllDialog by remember { mutableStateOf(false) }
+    // D-10：历史 APPROVED 卡「撤回通过」的二次确认目标（null=不弹窗）
+    var revokeTarget by remember { mutableStateOf<PointApprovalEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -264,6 +273,20 @@ fun ParentApprovalScreen(
                                         fontWeight = FontWeight.Bold,
                                         color = scoreColor
                                     )
+                                    // D-10（指令 §4.4）：仅 APPROVED 且 bizKey 可锚定的卡提供撤回入口；
+                                    // REVOKED/CANCELLED/REJECTED 终态不显示按钮（幂等由仓库层兜底）。
+                                    if (approval.status == ApprovalStatus.APPROVED &&
+                                        approval.bizKey.isNotEmpty()
+                                    ) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        TextButton(
+                                            onClick = { revokeTarget = approval },
+                                            modifier = Modifier.defaultMinSize(minHeight = 40.dp)
+                                        ) {
+                                            Text(strings.revokeApprovalButton,
+                                                style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -292,6 +315,33 @@ fun ParentApprovalScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showApproveAllDialog = false }) { Text(common.cancelButton) }
+            }
+        )
+    }
+
+    // ===== D-10 家长撤回审批二次确认（指令 §4.4）=====
+    // 确认后走 PointRepository.revokeApproval —— 它委托 undoCheckIn（孩子端撤销同一闭环），
+    // APPROVED→REVOKED+REVERSAL 扣回、终态幂等拒绝（返回 0）；snackbar 按实际扣回数如实反馈。
+    revokeTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { revokeTarget = null },
+            title = { Text(strings.revokeConfirmTitle) },
+            text = { Text(strings.revokeConfirmMessage(target.requestedPoints)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    revokeTarget = null
+                    scope.launch {
+                        val clawedBack = app.pointRepository.revokeApproval(target.id)
+                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.APPROVAL_ACTION))
+                        snackbarHostState.showSnackbar(
+                            if (clawedBack > 0) strings.revokeSuccessMessage(clawedBack)
+                            else strings.revokeTerminalMessage
+                        )
+                    }
+                }) { Text(common.confirmButton) }
+            },
+            dismissButton = {
+                TextButton(onClick = { revokeTarget = null }) { Text(common.cancelButton) }
             }
         )
     }

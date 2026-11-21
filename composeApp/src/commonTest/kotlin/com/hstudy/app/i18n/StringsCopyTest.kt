@@ -117,6 +117,7 @@ private val EN_STATIC_POINTS_MENTIONS = setOf(
     "parentApproval.emptyPendingNote",        // "Point requests appear here after your child completes study activities"
     "parentApproval.alreadyProcessedMessage", // "Already handled — points were not added again"
     "parentApproval.statusRevoked",           // "Revoked (points removed)"
+    "parentApproval.revokeTerminalMessage",   // "Already final (…) — no points removed"（v3.3.1 D-10 终态如实反馈）
     // ---- W3 Task 3 奖励编辑页新增 2 条（英文原文逐条留在行尾注释里）。
     "parentRewardEdit.presetHint",            // "… adjust their point costs there …"
     "parentRewardEdit.costLabel",             // "Points required"
