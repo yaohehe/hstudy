@@ -426,6 +426,15 @@ class FakePointApprovalDao : PointApprovalDao {
     override suspend fun getPendingList(): List<PointApprovalEntity> =
         approvals.filter { it.status == ApprovalStatus.PENDING }
 
+    /**
+     * D-03 单查询的内存 Fake：判据与 Room SQL `bizKey LIKE 'TASK:%' AND date = :date`
+     * 逐字对齐（前缀 startsWith + date 列相等），id 升序返回（真实 DAO 的 ORDER BY id ASC）。
+     */
+    override fun getTaskApprovalsForDate(date: String): Flow<List<PointApprovalEntity>> =
+        MutableStateFlow(
+            approvals.filter { it.bizKey.startsWith("TASK:") && it.date == date }.sortedBy { it.id }
+        )
+
     override fun getPendingPoints(): Flow<Int> =
         MutableStateFlow(approvals.filter { it.status == ApprovalStatus.PENDING }.sumOf { it.requestedPoints })
 }

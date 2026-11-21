@@ -9,6 +9,7 @@ import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.TaskCompletionEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
@@ -394,6 +395,27 @@ class PointRepository(
 
     fun getCompletedTaskIdsForDate(date: String): Flow<List<Long>> =
         pointDao.getCompletedTaskIdsForDate(date)
+
+    /**
+     * D-03（指令 §4.1 P1-01）：某一天任务打卡的**真实审批态**：taskId → 该任务当日 bizKey
+     * （`TASK:<taskId>:<date>`，见 [checkInForTask]）对应的最新一条申请的 [ApprovalStatus]。
+     *
+     * 契约（由 PointRepositoryTaskApprovalStateTest 钉死）：
+     * - **单查询**取当日全部 task 类审批（[PointApprovalDao.getTaskApprovalsForDate]），不逐卡 N+1；
+     * - 同一 bizKey 多条（拒绝后重打卡会追加新行）取 **id 最大**一条的状态；
+     * - 跨日不串：只认 date 列（与 bizKey 日期尾巴同源同值）等于 [date] 的行；
+     * - 非 `TASK:` 前缀（布置任务/习惯/错题复习等）不混入。
+     *
+     * 只读展示流：不写库、不参与任何 bizKey 判等/幂等逻辑（展示需求不改比较语义，D-03 红线）。
+     */
+    fun getTaskApprovalStates(date: String): Flow<Map<Long, ApprovalStatus>> =
+        approvalDao.getTaskApprovalsForDate(date).map { rows ->
+            rows.groupBy { it.bizKey }
+                .values
+                .mapNotNull { group -> group.maxByOrNull { it.id } }
+                .mapNotNull { approval -> approval.taskId?.let { taskId -> taskId to approval.status } }
+                .toMap()
+        }
 
     fun getCompletionsByDate(date: String): Flow<List<TaskCompletionEntity>> =
         pointDao.getCompletionsByDate(date)

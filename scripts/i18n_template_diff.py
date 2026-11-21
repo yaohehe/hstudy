@@ -225,6 +225,11 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 派生"的派生槽；ParentWishGoalStrings 3 条：删除确认弹窗标题/正文/退还承诺——旧实现裸删、没有弹窗，
 # 所以迁移前页面对这三条没有原文）→ 238 + 7 = 245（两个组读数实测如上：默认组仍 6/239，
 # --branch 245 条、0 条未用到）。
+# v3.3.1 D-03（任务卡动态审批态 指令 §4.1 P1-01）在 245 条上新增表侧单边 6 条
+# （TaskListStrings：approvalPendingBadge/approvalApprovedBadge 函数型分值小标 + approvalRejectedBadge/
+# approvalCancelledBadge/approvalRevokedBadge 三个态词面 + recheckInButton 重打卡引导钮——全部为修复
+# 新写，迁移前页面（TASK8_REV）没有这些控件）→ 245 + 6 = 251（两个组读数实测：默认组仍 6/245，
+# --branch 251 条、0 条未用到）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -1050,6 +1055,31 @@ DISCLOSED_RESIDUALS = [
      "reason": "v3.3.1 D-08-3 新写文案：退还承诺行（只在 isActive && savedPoints>0 时渲染，"
                "与 WishGoalRepository.deleteGoal 的退款条件同源）；英文单复数走 pointsWord，"
                "两语由 WishCopyTest.parentWishGoalInterpolatedCopyPinsBothLanguages 钉死"},
+    # ---- v3.3.1 D-03（任务卡动态审批态 指令 §4.1 P1-01）：已打卡卡状态小标 + 重新打卡引导（表侧单边 6 条）----
+    # 这批是 D-03 修复的**新写**词面：迁移前页面（TASK8_REV 2304fa7）只有静态"打卡成功/N分"原文，
+    # 审批态小标与引导钮在本缺陷修复前根本不存在（旧卡拒绝后外观不变，正是指令点名要修的形态）。
+    # 词面同源 ParentApprovalScreen 历史标签（status* 槽各自已双边登记；本表槽都带 emoji/括号差值，
+    # 与之**不同串**、不构成遮蔽）。两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages /
+    # taskListEnglishPluralsCoverOneAndOther / taskListCopyDiffers 逐字钉死。
+    {"page": None, "table": "⏳ 待家长审核 (+%s分)" % VALUE, "table_field": "TaskListStrings.approvalPendingBadge",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：已打卡卡当日 bizKey 最新态 PENDING 小标（指令词面"
+               "「⏳ 待家长审核 (+{0}分)」，分值进实参位）；两语钉死见本节头注释"},
+    {"page": None, "table": "✅ 积分已到账 (+%s分)" % VALUE, "table_field": "TaskListStrings.approvalApprovedBadge",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：APPROVED 小标（「✅ 积分已到账 (+{0}分)」）；同上"},
+    {"page": None, "table": "⛔ 家长已拒绝 (未计分)", "table_field": "TaskListStrings.approvalRejectedBadge",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：REJECTED 小标（不计分，分值不进句子）。与 "
+               "ParentApprovalStrings.statusRejected「已拒绝」同源口径、不同串，不重开同值槽"},
+    {"page": None, "table": "↩️ 打卡已取消", "table_field": "TaskListStrings.approvalCancelledBadge",
+     "reason": "v3.3.1 D-03 新写文案：CANCELLED 小标（指令词面「↩️ 打卡已取消」，图标口径同 "
+               "ParentApprovalScreen.kt statusIcon 的 CANCELLED「↩️」）。与 statusCancelled"
+               "「已取消打卡（未计分）」、scoreCancelled「0 (打卡已取消)」均为不同串"},
+    {"page": None, "table": "🔄 已撤销（积分已扣回）", "table_field": "TaskListStrings.approvalRevokedBadge",
+     "reason": "v3.3.1 D-03 新写文案：REVOKED 小标。brief 要求 CANCELLED 与 REVOKED **词面分开**，"
+               "词面逐字节取 ParentApprovalStrings.statusRevoked 加 🔄 图标前缀（图标口径同该页 "
+               "statusIcon 的 REVOKED「🔄」），与不带前缀的原槽是两个值、不构成遮蔽"},
+    {"page": None, "table": "重新打卡", "table_field": "TaskListStrings.recheckInButton",
+     "reason": "v3.3.1 D-03 指令 §4.1-2 新写文案：REJECTED 态「重新打卡」引导钮（checkInForTask 对 "
+               "REJECTED 天然新建 PENDING，本槽只是把该路径做成可见入口）；整枝表组内该中文值唯一持有者"},
 ]
 
 

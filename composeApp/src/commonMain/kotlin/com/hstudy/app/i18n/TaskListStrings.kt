@@ -22,6 +22,8 @@ package com.hstudy.app.i18n
  * **v3.3 W3 新增第 8 个函数型字段 [expectedPointsLabel]**（指令 §3.3.2-3 新写文案，见表内注释）。
  * **终审 I-1 新增第 9 个函数型字段 [revertConfirmMessage]**（指令 §3.3.2-4 撤销二度确认对话框正文，
  * 命名沿用 revert… 前缀避开存储边界闸门 undo… sink 词根，同 W9 T1 改名先例）。
+ * **v3.3.1 D-03 新增第 10/11 个函数型字段 [approvalPendingBadge]/[approvalApprovedBadge]**
+ * （已打卡卡当日审批态小标，见字段组注释；同批还有 4 个静态槽）。
  * 前三个原名 `undoClawedBackMessage` / `undoPendingApprovalMessage` / `checkInUndoPrompt`，
  * 调用头以 `undo…`/`checkIn…` 开头会撞存储边界闸门的 sink 词根（`PointRepository.undoCheckIn` 等），
  * 渲染点传入 `localizedPresetText(...)` 时会被误判"文案进写库"。W9 T1 修复按 W4/W6 改名先例改为
@@ -65,6 +67,25 @@ data class TaskListStrings(
     // 命名走 revert… 前缀：`undo…` 是存储边界闸门的 sink 词根（PointRepository.undoCheckIn），
     // 调用头传标题实参会被误判"文案进写库"（W9 T1 改名先例，闸门不放宽）。
     val revertConfirmMessage: (title: String) -> String,
+    // ===== v3.3.1 D-03（指令 §4.1 P1-01）：已打卡卡的当日审批态小标 =====
+    // 真机签核 D-03：静态"打卡预得 +N 分（需审批）"在家长拒绝/通过后不变，孩子以为仍在等审批。
+    // 这六个槽只进渲染面（ChildTaskCard 的 Text），不进任何写库/bizKey 比较（存储边界红线，Ruling 25）。
+    // 词面与 ParentApprovalScreen 历史标签同源口径：⏳/✅/⛔ 对应 statusPending/statusApproved/
+    // statusRejected；CANCELLED(↩️) 与 REVOKED(🔄) **词面分开**，图标口径同该页 statusIcon
+    // （ParentApprovalScreen.kt:195-201，emoji 不受 i18n 约束、RA8）。
+    // [approvalPendingBadge]/[approvalApprovedBadge] 是函数型（分值进实参位，§3 末句"带参数文案存
+    // 函数而不是 {0} 模板"）；拒绝/取消/撤销态不计分，分值进句子反而误导，故为静态 String。
+    // [recheckInButton]：REJECTED 态卡上的"重新打卡"引导钮（checkInForTask 对 REJECTED 天然新建
+    // PENDING，这里只是把该路径做成可见入口）。
+    // 六条均为新写文案、迁移前页面无原文可比，已在 scripts/i18n_template_diff.py DISCLOSED_RESIDUALS
+    // 登记表侧单边；两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages /
+    // taskListEnglishPluralsCoverOneAndOther / taskListCopyDiffers 逐字钉死。
+    val approvalPendingBadge: (points: Int) -> String,
+    val approvalApprovedBadge: (points: Int) -> String,
+    val approvalRejectedBadge: String,
+    val approvalCancelledBadge: String,
+    val approvalRevokedBadge: String,
+    val recheckInButton: String,
 )
 
 val TaskListStringsZh = TaskListStrings(
@@ -86,6 +107,12 @@ val TaskListStringsZh = TaskListStrings(
     bonusPointsLabel = { points -> "奖励+${points}分" },
     expectedPointsLabel = { points -> "打卡预得 +${points}分（需审批）" },
     revertConfirmMessage = { title -> "确定要撤销「$title」的打卡吗？已发放的积分会被扣回。" },
+    approvalPendingBadge = { points -> "⏳ 待家长审核 (+${points}分)" },
+    approvalApprovedBadge = { points -> "✅ 积分已到账 (+${points}分)" },
+    approvalRejectedBadge = "⛔ 家长已拒绝 (未计分)",
+    approvalCancelledBadge = "↩️ 打卡已取消",
+    approvalRevokedBadge = "🔄 已撤销（积分已扣回）",
+    recheckInButton = "重新打卡",
 )
 
 val TaskListStringsEn = TaskListStrings(
@@ -114,4 +141,10 @@ val TaskListStringsEn = TaskListStrings(
     bonusPointsLabel = { points -> "Reward +$points ${pointsWord(points)}" },
     expectedPointsLabel = { points -> "Check in to earn +$points ${pointsWord(points)} (pending approval)" },
     revertConfirmMessage = { title -> "Undo the check-in for $title? Points already awarded will be removed." },
+    approvalPendingBadge = { points -> "⏳ Pending approval (+$points ${pointsWord(points)})" },
+    approvalApprovedBadge = { points -> "✅ Approved: +$points ${pointsWord(points)}" },
+    approvalRejectedBadge = "⛔ Rejected (no points)",
+    approvalCancelledBadge = "↩️ Check-in cancelled",
+    approvalRevokedBadge = "🔄 Revoked (points removed)",
+    recheckInButton = "Check in again",
 )
