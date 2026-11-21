@@ -143,11 +143,14 @@ val ParentApprovalStringsZh = ParentApprovalStrings(
     revokeConfirmMessage = { points -> "撤回后将扣回已发放的 $points 积分，并将申请状态置为已撤销。" },
     revokeSuccessMessage = { points -> "🔄 已撤回审批，扣回 $points 分" },
     // v3.3.1 D-11：超期待审清理（中文侧量词 笔，只换数字、不分支；「30 天」词面与提示条同源）
+    // 终审 Minor-4：提示条读数出自组合期一次算好的 threshold 快照（ParentApprovalScreen
+    // staleThreshold），长驻页面可能偏旧；清理本身在仓库层按执行时刻重筛（现状即正确），
+    // 故确认正文补一句「实际笔数以执行时为准」如实披露，不动快照口径。
     stalePendingNote = { count -> "$count 笔申请已超过 30 天未审核" },
     staleCleanButton = "清理超期申请",
     staleConfirmTitle = "确认清理超期申请？",
     staleConfirmMessage = { count ->
-        "将把 $count 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变。"
+        "将把 $count 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变；实际笔数以执行时为准。"
     },
     staleCleanedMessage = { count -> "🧹 已清理 $count 笔超期申请" },
 )
@@ -212,6 +215,9 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     },
     // v3.3.1 D-11: stale pending cleanup (banner, clean button, confirm dialog, honest count snackbar).
     // Singular/plural branches follow the pendingCountLabel precedent (no new plural helper).
+    // Final-review Minor-4: the banner count comes from a composition-time threshold snapshot and can age
+    // on a long-open screen; the repository re-filters at execution time (already correct), so the dialog
+    // body now says the actual count is decided at execution time.
     stalePendingNote = { count ->
         if (count == 1) "1 request has been pending for over 30 days"
         else "$count requests have been pending for over 30 days"
@@ -221,10 +227,12 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     staleConfirmMessage = { count ->
         if (count == 1) {
             "The request that has been pending for over 30 days will be marked cancelled. " +
-                "It never awarded points, so your balance stays unchanged."
+                "It never awarded points, so your balance stays unchanged. " +
+                "The actual count is decided at execution time."
         } else {
             "These $count requests, each pending for over 30 days, will be marked cancelled. " +
-                "They never awarded points, so your balance stays unchanged."
+                "They never awarded points, so your balance stays unchanged. " +
+                "The actual count is decided at execution time."
         }
     },
     staleCleanedMessage = { count ->

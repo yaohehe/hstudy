@@ -22,6 +22,10 @@ import kotlin.test.assertTrue
  *
  * 另钉两条入口护栏：PENDING 走同一条 undoCheckIn 语义（置 CANCELLED、0 扣回）；
  * 空 bizKey 的 v2 遗留 APPROVED 行保守拒绝（0 变动，绝不凭 getLatestByBizKey("") 误伤他单）。
+ *
+ * 终审 Minor-1 追加入口护栏（同 D-11 review fix c7aa445 形态）：撤回目标**按 id 复读**必须是
+ * 可撤销半区（PENDING/APPROVED）且仍是其 bizKey 最新一条才委托闭环——弹窗停留期孩子
+ * 撤销+重打卡后，裸 bizKey 委托会误伤新 PENDING，现在必须整单跳过（见同名竞态用例）。
  */
 class PointRepositoryParentRevokeTest {
 
@@ -122,5 +126,33 @@ class PointRepositoryParentRevokeTest {
         assertEquals(ApprovalStatus.APPROVED, approvalDao.approvals.single().status, "保守拒绝：状态不动")
         assertTrue(pointDao.records.isEmpty(), "保守拒绝：不写 REVERSAL")
         assertEquals(0, repo.revokeApproval(9999L), "查无此单同样返回 0")
+    }
+
+    /**
+     * 终审 Minor-1（D-10 同构竞态，防护同款于 D-11 review fix c7aa445）：家长撤回确认弹窗停留
+     * 期间，孩子先撤销原单（approveAndAward 后的 APPROVED → undoCheckIn → REVOKED）再重打卡
+     * （同 bizKey 新建 PENDING）。家长此刻点确认，若 revokeApproval 仍裸委托 undoCheckIn(bizKey)，
+     * bizKey 锚定会命中**新 PENDING** 把它误置 CANCELLED。按 id 复读防护必须整单跳过：
+     * 返回 0、新 PENDING 原样存活、账本零变动（UI 走 revokeTerminalMessage"已终态"分支）。
+     */
+    @Test
+    fun revokeApproval_childUndoneAndRecheckedInDuringDialog_sparesTheNewPending(): Unit = runBlocking {
+        val (pointDao, approvalDao, repo) = newRepo()
+        repo.checkIn("BIZ:FR-RECHECK", "TEST", "描述", 7, date = "2026-01-01")
+        val approvalId = approvalDao.approvals.single().id
+        repo.approveAndAward(approvalId)
+        // 弹窗停留期间：孩子撤销（+7/-7 净额 0，原单 REVOKED）并重打卡（同 bizKey 新 PENDING）
+        repo.undoCheckIn("BIZ:FR-RECHECK", date = "2026-01-01")
+        repo.checkIn("BIZ:FR-RECHECK", "TEST", "描述", 7, date = "2026-01-01")
+        val newPending = approvalDao.approvals.last()
+        assertEquals(ApprovalStatus.PENDING, newPending.status, "前置：重打卡生成新 PENDING")
+        val ledgerBefore = pointDao.records.map { it.points }
+
+        val clawedBack = repo.revokeApproval(approvalId)
+
+        assertEquals(0, clawedBack, "撤回目标已进终态，必须 0 扣回")
+        assertEquals(ApprovalStatus.PENDING, approvalDao.getById(newPending.id)?.status, "新 PENDING 不得被误伤")
+        assertEquals(ledgerBefore, pointDao.records.map { it.points }, "竞态跳过：账本零变动")
+        assertEquals(ApprovalStatus.REVOKED, approvalDao.getById(approvalId)?.status, "原单保持孩子撤销后的 REVOKED")
     }
 }

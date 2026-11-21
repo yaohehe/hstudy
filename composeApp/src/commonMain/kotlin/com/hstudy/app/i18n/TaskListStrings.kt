@@ -24,6 +24,8 @@ package com.hstudy.app.i18n
  * 命名沿用 revert… 前缀避开存储边界闸门 undo… sink 词根，同 W9 T1 改名先例）。
  * **v3.3.1 D-03 新增第 10/11 个函数型字段 [approvalPendingBadge]/[approvalApprovedBadge]**
  * （已打卡卡当日审批态小标，见字段组注释；同批还有 4 个静态槽）。
+ * **终审 Minor-3 新增第 12 个函数型字段 [revertedRejectedMessage]**（REJECTED 态撤销专用 snackbar，
+ * 见字段注释；沿用 revert… 前缀避让存储边界闸门 undo… sink 词根）。
  * 前三个原名 `undoClawedBackMessage` / `undoPendingApprovalMessage` / `checkInUndoPrompt`，
  * 调用头以 `undo…`/`checkIn…` 开头会撞存储边界闸门的 sink 词根（`PointRepository.undoCheckIn` 等），
  * 渲染点传入 `localizedPresetText(...)` 时会被误判"文案进写库"。W9 T1 修复按 W4/W6 改名先例改为
@@ -86,6 +88,15 @@ data class TaskListStrings(
     val approvalCancelledBadge: String,
     val approvalRevokedBadge: String,
     val recheckInButton: String,
+    // ===== 终审 Minor-3（v3.3.1 波次终审修复批）=====
+    // REJECTED 态撤销的 snackbar 专用词面。原实现 REJECTED 单撤销（undoTaskCheckIn 返回 0）与
+    // PENDING 撤销共用 [revertedPendingApprovalMessage]「尚未审批，无积分变动」——对拒绝态不精确
+    // （申请已被拒绝，不是"尚未审批"）。新槽只在页面判定当日审批态为 REJECTED 时渲染，
+    // 语义仍是"零积分变动"（REJECTED 从未计分，撤销只清完成记录），不动闭环任何口径。
+    // 命名沿用 revert… 前缀（存储边界闸门 undo… sink 词根避让，W9 T1 / D-10 先例）；
+    // 表侧单边登记见 scripts/i18n_template_diff.py DISCLOSED_RESIDUALS，两语由
+    // StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死。
+    val revertedRejectedMessage: (title: String) -> String,
 )
 
 val TaskListStringsZh = TaskListStrings(
@@ -113,6 +124,7 @@ val TaskListStringsZh = TaskListStrings(
     approvalCancelledBadge = "↩️ 打卡已取消",
     approvalRevokedBadge = "🔄 已撤销（积分已扣回）",
     recheckInButton = "重新打卡",
+    revertedRejectedMessage = { title -> "↩️ 已撤销 $title（该申请已被拒绝，撤销不产生积分变动）" },
 )
 
 val TaskListStringsEn = TaskListStrings(
@@ -147,4 +159,7 @@ val TaskListStringsEn = TaskListStrings(
     approvalCancelledBadge = "↩️ Check-in cancelled",
     approvalRevokedBadge = "🔄 Revoked (points removed)",
     recheckInButton = "Check in again",
+    revertedRejectedMessage = { title ->
+        "↩️ Check-in undone for $title (this request was rejected, so undoing changes no points)"
+    },
 )

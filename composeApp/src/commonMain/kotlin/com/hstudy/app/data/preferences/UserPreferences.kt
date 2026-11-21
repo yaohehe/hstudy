@@ -393,9 +393,26 @@ class UserPreferences {
         )
     }
 
-    /** 整组写入/整组清除（null=清会话；结算完成、停止、过期 BREAK 静默清都走这里）。 */
-    suspend fun savePomodoroSession(state: PomodoroSessionState?) {
+    /**
+     * 整组写入/整组清除（null=清会话；结算完成、停止、过期 BREAK 静默清都走这里）。
+     *
+     * 终审 M-1（结算写会话无条件覆盖竞态）：新增 [expectedStartEpochMs] CAS 锚——非 null 时，
+     * 读-判-写在同一个 `dataStore.edit` 事务内核对"现存会话的起锚点 == expectedStart"，**仅一致才
+     * 写入/清空**；不一致（结算在飞期间孩子起了新番茄，新锚已落库）则放弃整组写入并 println 告警，
+     * 绝不用旧结算的产物（null 或旧 BREAK）静默清空/覆盖新会话。缺省 null = 不校验，
+     * UI 起锚/暂停/恢复等"新会话写入方"调用点行为零变化（红线）。
+     */
+    suspend fun savePomodoroSession(state: PomodoroSessionState?, expectedStartEpochMs: Long? = null) {
         dataStore.edit { prefs ->
+            if (expectedStartEpochMs != null &&
+                (prefs[POMODORO_SESSION_START] ?: 0L) != expectedStartEpochMs
+            ) {
+                println(
+                    "[Pomodoro][CAS] savePomodoroSession 放弃：expectedStart=$expectedStartEpochMs " +
+                        "但现存会话 start=${prefs[POMODORO_SESSION_START]}（结算在飞期间已起新锚，保新会话）"
+                )
+                return@edit
+            }
             if (state == null) {
                 prefs.remove(POMODORO_SESSION_START)
                 prefs.remove(POMODORO_SESSION_PLANNED_MIN)

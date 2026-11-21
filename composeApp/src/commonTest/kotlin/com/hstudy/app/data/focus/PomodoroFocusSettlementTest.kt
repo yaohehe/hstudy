@@ -197,6 +197,39 @@ class PomodoroFocusSettlementTest {
         assertNull(fx.prefs.pomodoroSession.first())
     }
 
+    /**
+     * 终审 M-1：结算在飞时新会话起锚，新锚必须存活。
+     *
+     * 竞态形状（AppGraph bootstrap 冷启动补结算：claim CAS 后到末步写回之间隔着 Room 首查/
+     * checkIn 数百 ms，孩子"跳过呼吸立即起新番茄"；RESUME_DEPOSIT 路径窗口更宽）：
+     * 用 [FakeFocusDao.onBeforeInsertSession] 钩子在结算执行的第一个挂起点（recordFocusSession
+     * 落库前）写入**新起锚会话**，模拟覆盖窗口；末步 `savePomodoroSession(null, expectedStart=旧锚)`
+     * 必须 CAS 放弃——旧段入账照常一笔，新会话原样存活，不再被静默清空。
+     */
+    @Test
+    fun settlementInFlight_newSessionAnchoredMidway_newAnchorSurvives() = runTest {
+        val fx = newFixture()
+        fx.prefs.savePomodoroSession(null)
+        val oldSession = PomodoroSessionState.startFocus(t0, 25, "自由学习")
+        fx.prefs.savePomodoroSession(oldSession)
+        val newStart = t0 + 26 * min
+        // 结算在飞窗口：认领已赢、入账未完——孩子起新番茄（新锚落库，走 UI 同款无锚写入）
+        fx.focusDao.onBeforeInsertSession = {
+            fx.prefs.savePomodoroSession(PomodoroSessionState.startFocus(newStart, 25, "自由学习"))
+        }
+
+        val result = PomodoroFocusSettlement.settleFocusSession(
+            fx.prefs, fx.focusRepo, fx.pointRepo, oldSession, nowMs = newStart
+        )
+
+        assertNotNull(result, "结算方入账侧照常完成（sessionId/bizKey 幂等），返回产物")
+        val stored = fx.prefs.pomodoroSession.first()
+        assertNotNull(stored, "新会话锚必须存活——结算末步不得无条件覆盖（M-1）")
+        assertEquals(newStart, stored.sessionStartEpochMs)
+        assertEquals(1, fx.approvalDao.approvals.size, "旧段仍只入账一笔待审")
+        assertEquals("FOCUS:1:${PointRepository.getTodayString()}", fx.approvalDao.approvals.single().bizKey)
+    }
+
     @Test
     fun crashAfterRecordBeforeCheckIn_resumeReusesSameSessionIdAndBizKey() = runTest {
         val fx = newFixture()
@@ -223,7 +256,11 @@ class PomodoroFocusSettlementTest {
         private var nextSessionId = 1L
         private var nextPlanId = 1L
 
+        /** 终审 M-1 竞态注入钩子：insertSession 落库前执行（模拟结算在飞窗口内的并发写）。 */
+        var onBeforeInsertSession: (suspend () -> Unit)? = null
+
         override suspend fun insertSession(session: FocusSessionEntity): Long {
+            onBeforeInsertSession?.invoke()
             val id = nextSessionId++
             sessions.add(session.copy(id = id))
             return id

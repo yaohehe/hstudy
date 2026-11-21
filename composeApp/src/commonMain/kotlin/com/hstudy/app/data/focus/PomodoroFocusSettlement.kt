@@ -37,6 +37,7 @@ object PomodoroFocusSettlement {
      * 结算一个已到期的 FOCUS 段。
      *
      * @param nextSession UI 路径传入结算后立刻要写入的下一段（BREAK）；启动补结算传 null（清会话）。
+     *                    写入带终审 M-1 CAS 锚（expectedStart=本段起锚点）：结算在飞期间新会话已起锚则放弃。
      * @return 结算产物；null = 认领被并发的另一触发者赢走（本次不入账、不写 nextSession）。
      */
     suspend fun settleFocusSession(
@@ -76,7 +77,9 @@ object PomodoroFocusSettlement {
                 date = checkInDate,
             )
         }
-        userPreferences.savePomodoroSession(nextSession)
+        // 终审 M-1：末步整组写会话带 CAS 锚——认领到写回之间孩子"跳过呼吸立即起新番茄"时，
+        // 现存会话起锚点已 ≠ 本段 sessionStartEpochMs，savePomodoroSession 放弃写入保新会话。
+        userPreferences.savePomodoroSession(nextSession, expectedStartEpochMs = session.sessionStartEpochMs)
         return PomodoroSettlementResult(minutes, session.focusTarget, points, sessionId)
     }
 
@@ -98,7 +101,9 @@ object PomodoroFocusSettlement {
             -> settleFocusSession(userPreferences, focusRepository, pointRepository, session, nowMs)
 
             PomodoroRestoreAction.CLEAR_EXPIRED_BREAK ->
-                userPreferences.savePomodoroSession(null)
+                // 终审 M-1 同款：清过期 BREAK 也带本段起锚 CAS——bootstrap Room 首查期间孩子已起
+                // 新会话时，静默清会误删新锚，放弃并告警。
+                userPreferences.savePomodoroSession(null, expectedStartEpochMs = session.sessionStartEpochMs)
 
             PomodoroRestoreAction.RESUME_TICKING -> Unit
         }

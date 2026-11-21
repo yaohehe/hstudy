@@ -165,17 +165,19 @@ class ParentPointsCopyTest {
         assertEquals("3 requests have been pending for over 30 days", en.stalePendingNote(3))
         assertEquals("1 request has been pending for over 30 days", en.stalePendingNote(1))
         assertEquals(
-            "将把 3 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变。",
+            "将把 3 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变；实际笔数以执行时为准。",
             zh.staleConfirmMessage(3)
         )
         assertEquals(
             "The request that has been pending for over 30 days will be marked cancelled. " +
-                "It never awarded points, so your balance stays unchanged.",
+                "It never awarded points, so your balance stays unchanged. " +
+                "The actual count is decided at execution time.",
             en.staleConfirmMessage(1)
         )
         assertEquals(
             "These 3 requests, each pending for over 30 days, will be marked cancelled. " +
-                "They never awarded points, so your balance stays unchanged.",
+                "They never awarded points, so your balance stays unchanged. " +
+                "The actual count is decided at execution time.",
             en.staleConfirmMessage(3)
         )
         assertEquals("🧹 已清理 3 笔超期申请", zh.staleCleanedMessage(3))

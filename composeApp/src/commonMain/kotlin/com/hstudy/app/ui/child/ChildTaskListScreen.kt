@@ -71,15 +71,22 @@ fun ChildTaskListScreen(
      * 撤销打卡并如实反馈积分变动：
      * - 尚未审批 → 取消待审申请，本就没有积分，无残留
      * - 已审批通过 → 追加反向记录扣回已发积分，净额归零
+     * - 已被拒绝（终审 Minor-3）→ 撤销只清完成记录，词面如实说"该申请已被拒绝"，
+     *   不再误用"尚未审批"文案（`approvalStateAtUndo` 由调用点传入渲染时的当日审批态快照；
+     *   重打卡后的撤销窗口传 null——此刻最新态已是新 PENDING，走"尚未审批"才准确）
      */
-    val undoAndReport: suspend (Long, String) -> Unit = { taskId, title ->
+    val undoAndReport: suspend (Long, String, ApprovalStatus?) -> Unit = { taskId, title, approvalStateAtUndo ->
         val clawedBack = app.pointRepository.undoTaskCheckIn(taskId)
         // 三个 snackbar 文案字段已改名 revert…/reverted…（W9 T1），调用头不再撞存储边界闸门的
         // undo/checkIn sink 词根，标题因此可以在渲染点取词；`title` 形参保持 canonical
-        // （:159/:165 的 undoAndReport(task.id, task.title) 是业务实参不动，这里只换显示）。
+        // （两处 undoAndReport(task.id, task.title, …) 是业务实参不动，这里只换显示）。
         snackbarHostState.showSnackbar(
-            if (clawedBack > 0) strings.revertedClawedBackMessage(localizedPresetText(title, displayLanguage), clawedBack)
-            else strings.revertedPendingApprovalMessage(localizedPresetText(title, displayLanguage))
+            when {
+                clawedBack > 0 -> strings.revertedClawedBackMessage(localizedPresetText(title, displayLanguage), clawedBack)
+                approvalStateAtUndo == ApprovalStatus.REJECTED ->
+                    strings.revertedRejectedMessage(localizedPresetText(title, displayLanguage))
+                else -> strings.revertedPendingApprovalMessage(localizedPresetText(title, displayLanguage))
+            }
         )
     }
 
@@ -195,13 +202,17 @@ fun ChildTaskListScreen(
                                                     duration = SnackbarDuration.Short
                                                 )
                                                 if (result == SnackbarResult.ActionPerformed) {
-                                                    scope.launch { undoAndReport(task.id, task.title) }
+                                                    // 刚打卡（含 REJECTED 重打卡）后的撤销窗口：最新态已是**新 PENDING**，
+                                                    // 传 null 走"尚未审批"文案（终审 Minor-3：拒绝态快照在此已过时）。
+                                                    scope.launch { undoAndReport(task.id, task.title, null) }
                                                 }
                                             }
                                         }
                                     },
                                     onUndo = {
-                                        scope.launch { undoAndReport(task.id, task.title) }
+                                        // 终审 Minor-3：显式撤销钮按**渲染点**的当日审批态分流词面——
+                                        // REJECTED 走 revertedRejectedMessage，其余零扣回仍走"尚未审批"。
+                                        scope.launch { undoAndReport(task.id, task.title, approvalState) }
                                     },
                                     onUploadProof = { onUploadProof(task.id, task.title) }
                                 )

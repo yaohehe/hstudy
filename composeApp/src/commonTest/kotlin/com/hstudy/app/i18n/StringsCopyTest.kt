@@ -600,6 +600,15 @@ class StringsCopyTest {
         assertEquals("⏳ Pending approval (+5 points)", AppStringsEn.taskList.approvalPendingBadge(5))
         assertEquals("✅ 积分已到账 (+5分)", AppStringsZh.taskList.approvalApprovedBadge(5))
         assertEquals("✅ Approved: +5 points", AppStringsEn.taskList.approvalApprovedBadge(5))
+        // 终审 Minor-3：REJECTED 态撤销专用 snackbar（不再误用"尚未审批"文案；闸门表侧单边已登记）
+        assertEquals(
+            "↩️ 已撤销 每日阅读（该申请已被拒绝，撤销不产生积分变动）",
+            AppStringsZh.taskList.revertedRejectedMessage("每日阅读"),
+        )
+        assertEquals(
+            "↩️ Check-in undone for Daily reading (this request was rejected, so undoing changes no points)",
+            AppStringsEn.taskList.revertedRejectedMessage("Daily reading"),
+        )
     }
 
     /**

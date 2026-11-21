@@ -239,11 +239,23 @@ class PointRepository(
      * 无法被 bizKey 锚定的统一撤销定位，直接返回 0 不做任何写入——绝不凭 `getLatestByBizKey("")`
      * 的"最后一条空 bizKey"误伤别的记录。
      *
-     * @return 实际扣回的积分数（正数；0 表示未扣回：终态、查无此单或空 bizKey）
+     * **终审 Minor-1（D-10 同构竞态，防护同款于 D-11 review fix `c7aa445`）**：[undoCheckIn] 按
+     * bizKey 锚定"最新一条"判半区，确认弹窗停留期间孩子撤销+重打卡会留下**新的同 bizKey PENDING**，
+     * 裸委托会误伤它。因此入口先按 id 复读本次撤回目标：① 仍在可撤销半区（PENDING/APPROVED，
+     * 终态 REVOKED/CANCELLED/REJECTED 幂等拒绝）且 ② 仍是其 bizKey 的最新一条才委托闭环；
+     * 否则返回 0 零写入——UI 既有 `revokeTerminalMessage`"已终态"分支如实反馈。
+     * （①取 PENDING/APPROVED 两态而非仅 APPROVED：[expireStalePendingApprovals] 对 bizKey 锚定
+     * PENDING 行的复用路径依赖半区可达，且家长端 PENDING 撤回与 D-10 终态语义同形。）
+     *
+     * @return 实际扣回的积分数（正数；0 表示未扣回：终态、查无此单、空 bizKey 或已被并发撤销/重打卡顶替）
      */
     suspend fun revokeApproval(approvalId: Long): Int {
         val approval = approvalDao.getById(approvalId) ?: return 0
         if (approval.bizKey.isEmpty()) return 0
+        // 终审 Minor-1：按 id 复读撤回目标——弹窗停留期间孩子撤销+重打卡后，这一条要么已进终态，
+        // 要么已不是 bizKey 的最新一条（新 PENDING 顶替），两种都必须整单跳过，防误伤新单。
+        if (approval.status != ApprovalStatus.PENDING && approval.status != ApprovalStatus.APPROVED) return 0
+        if (approvalDao.getLatestByBizKey(approval.bizKey)?.id != approvalId) return 0
         return undoCheckIn(bizKey = approval.bizKey, taskId = approval.taskId, date = approval.date)
     }
 

@@ -95,6 +95,9 @@ fun ParentApprovalScreen(
     var revokeTarget by remember { mutableStateOf<PointApprovalEntity?>(null) }
     // D-11（指令 §5.2）：超期待审提示条读数——threshold 只在此处换算，30 天口径的唯一出处
     // 是 PointRepository.STALE_PENDING_MILLIS（清理入口在仓库层用同一常量重筛，UI 判据不会漂移）。
+    // 终审 Minor-4（选最小方案）：本 threshold 是组合期一次算好的快照，长驻页面读数会偏旧；
+    // 执行路径 expireStalePendingApprovals() 在仓库层按**执行时刻**重筛（现状即正确），
+    // 故不改流形态，只在确认弹窗文案注明"实际笔数以执行时为准"（ParentApprovalStrings.staleConfirmMessage）。
     val staleThreshold = remember { nowMillis() - PointRepository.STALE_PENDING_MILLIS }
     val stalePendingCount by app.pointRepository.getStalePendingApprovalCount(staleThreshold)
         .collectAsState(initial = 0)
