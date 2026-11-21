@@ -1,3 +1,4 @@
+// v3.3.1 D-01：窄屏（Compact）分支废弃无滚动 Column 嵌套，改为单一顶层 LazyColumn（状态面板/筛选栏为前置 item），错题卡恢复可触达
 package com.hstudy.app.ui.mistake
 
 import androidx.compose.animation.animateColorAsState
@@ -202,28 +203,57 @@ fun ChildMistakeListScreen(
                 }
             }
         } else {
-            // ===== 窄屏/竖屏：保持原有单栏布局 =====
-            Column(modifier = Modifier.padding(padding)) {
-                StatusCardsPanel(
-                    app = app, scope = scope, snackbarHostState = snackbarHostState,
-                    allMistakes = allMistakes, masteredCount = masteredCount,
-                    reviewStreak = reviewStreak, claimableReviewMilestone = claimableReviewMilestone,
-                    reviewCalendar = reviewCalendar, reviewForecast = reviewForecast,
-                    weakestSubject = weakestSubject, dueForReview = dueForReview,
-                    reviewReminderEnabled = reviewReminderEnabled, reviewReminderHour = reviewReminderHour,
-                    onWeakSubjectClick = onWeakSubjectClick, onDueClick = onDueClick
-                )
-                FilterBar(
-                    searchQuery = searchQuery, onSearchChange = { searchQuery = it },
-                    selectedSubject = selectedSubject, onSelectSubject = { selectedSubject = it },
-                    showOnlyUnmastered = showOnlyUnmastered, onToggleUnmastered = { showOnlyUnmastered = !showOnlyUnmastered },
-                    showOnlyDue = showOnlyDue, onToggleDue = { showOnlyDue = !showOnlyDue },
-                    dueCount = dueForReview.size
-                )
-                MistakeListContent(
-                    windowSizeClass = windowSizeClass, filtered = filtered,
-                    onViewDetail = onViewDetail, onToggleMastered = onToggleMastered, onReview = onReview
-                )
+            // ===== 窄屏/竖屏（D-01）：单一顶层 LazyColumn，状态面板与筛选栏作为前置 item，底部留 88dp FAB 空间 =====
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item(key = "status_panel") {
+                    StatusCardsPanel(
+                        app = app, scope = scope, snackbarHostState = snackbarHostState,
+                        allMistakes = allMistakes, masteredCount = masteredCount,
+                        reviewStreak = reviewStreak, claimableReviewMilestone = claimableReviewMilestone,
+                        reviewCalendar = reviewCalendar, reviewForecast = reviewForecast,
+                        weakestSubject = weakestSubject, dueForReview = dueForReview,
+                        reviewReminderEnabled = reviewReminderEnabled, reviewReminderHour = reviewReminderHour,
+                        onWeakSubjectClick = onWeakSubjectClick, onDueClick = onDueClick
+                    )
+                }
+                item(key = "filter_bar") {
+                    FilterBar(
+                        searchQuery = searchQuery, onSearchChange = { searchQuery = it },
+                        selectedSubject = selectedSubject, onSelectSubject = { selectedSubject = it },
+                        showOnlyUnmastered = showOnlyUnmastered, onToggleUnmastered = { showOnlyUnmastered = !showOnlyUnmastered },
+                        showOnlyDue = showOnlyDue, onToggleDue = { showOnlyDue = !showOnlyDue },
+                        dueCount = dueForReview.size
+                    )
+                }
+                if (filtered.isEmpty()) {
+                    item(key = "empty_state") {
+                        // 原 MistakeListContent 空状态 Box，去掉 fillMaxSize 改自然高度（嵌入 LazyColumn item）
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("📖", style = MaterialTheme.typography.displayLarge)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(strings.emptyState, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                } else {
+                    items(filtered, key = { it.id }) { mistake ->
+                        MistakeCard(
+                            mistake = mistake,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            onClick = { onViewDetail(mistake.id) },
+                            onToggleMastered = { onToggleMastered(mistake) },
+                            onReview = { onReview(mistake) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -557,7 +587,7 @@ private fun FilterBar(
     }
 }
 
-// ===== 错题列表内容：空状态 / LazyColumn =====
+// ===== 错题列表内容（仅服务宽屏双栏右栏；窄屏已由顶层 LazyColumn 直接渲染，见 D-01）=====
 @Composable
 private fun MistakeListContent(
     windowSizeClass: WindowSizeClass,
@@ -596,6 +626,7 @@ private fun MistakeListContent(
 @Composable
 private fun MistakeCard(
     mistake: MistakeEntity,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onToggleMastered: () -> Unit,
     onReview: () -> Unit
@@ -629,7 +660,7 @@ private fun MistakeCard(
 
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = bgColor)
     ) {
         Row(
