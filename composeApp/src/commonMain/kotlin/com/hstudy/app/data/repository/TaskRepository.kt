@@ -151,11 +151,16 @@ class TaskRepository(private val taskDao: TaskDao) {
 
     /**
      * 初始化默认任务（首次启动时调用）
+     *
+     * D-02：按 title 幂等播种——插入前查同名活跃任务，存在即跳过，
+     * 杜绝重复任务卡与"分别打卡刷双倍审批分"的防刷漏洞。
      */
     suspend fun initDefaultTasks() {
         // 默认使用小学高年级模板
         val defaultTemplate = getPresets()[1] // primary_high
-        defaultTemplate.tasks.forEach { taskDao.insert(it) }
+        defaultTemplate.tasks.forEach { task ->
+            if (taskDao.getActiveTaskByTitle(task.title) == null) taskDao.insert(task)
+        }
     }
 
     /** 确保预设任务存在：任务表为空时自动补全（惠及老用户/被清空场景） */

@@ -149,8 +149,11 @@ object AppGraph {
         }
         appScope.launch {
             if (!userPreferences.hasOnboarded.first()) {
-                taskRepository.initDefaultTasks()
-                rewardRepository.initDefaultRewards()
+                // D-02 首启改为"表空才播种"：v2 老用户覆盖升级至 v3 时 hasOnboarded 是 v3 新增键、
+                // 缺省 false，会误走此分支。改为先查活跃任务数——>0 视为已有数据、只补标记引导不插入；
+                // =0 才播种（initDefaultTasks 现亦按 title 幂等），杜绝同名重复任务卡与双倍审批分刷取。
+                taskRepository.ensureDefaultTasks()
+                rewardRepository.ensureDefaultRewards()
                 userPreferences.setOnboarded(true)
             } else {
                 taskRepository.ensureDefaultTasks()
