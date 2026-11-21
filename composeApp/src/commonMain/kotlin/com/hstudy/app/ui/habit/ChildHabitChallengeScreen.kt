@@ -274,10 +274,12 @@ private fun undoTodayCheckIn(
 ) {
     scope.launch {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        // 回审 P1-1：bizKey 用打卡时落库的 lastCheckInDate（跨午夜撤销对称），缺失回退今天（M-1 同策略）
+        val checkInDate = challenge.lastCheckInDate.ifEmpty { today }
         app.habitRepository.undoCheckInChallenge(challenge)
         val clawedBack = app.pointRepository.undoCheckIn(
-            bizKey = "HABIT:${challenge.id}:$today",
-            date = today
+            bizKey = "HABIT:${challenge.id}:$checkInDate",
+            date = checkInDate
         )
         snackbarHostState.showSnackbar(
             if (clawedBack > 0) taskList.revertedClawedBackMessage(challenge.title, clawedBack)

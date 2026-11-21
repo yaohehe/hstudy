@@ -1,5 +1,23 @@
 # HStudy 版本更新记录
 
+## v3.3.0 (2026-11-21)
+**Material 3 全应用改版 + 积分审批生命周期强化（Antigravity 指令波，回审全项达标）**
+
+> **发布状态**：2026-11-21 发布（tag `v3.3.0`；Release 工作流产出**已签名** APK 与 iOS 模拟器 .app 压缩包，
+> 签名沿用 v3.2.1 轮换 lineage，Android 8.x/9+ 的 v2 设备继续可直接覆盖升级）。
+
+- Material 3 改版：全面切换到 M3 语义色板（强调色按 tone-40 校准，明/暗双 scheme 全对 WCAG AA 达标并
+  留实测余量；暗色 inverse 角色接入暖色家族）、M3 形状与排版系统；20+ 页面重设计；
+  家长首页升级为三层驾驶舱（待审批 / 已结算只读展示分层）。
+- 积分审批强化：规则 6/7/8 统一审批 bizKey 同源派生（幂等审批、防重复计分）；撤销闭环
+  （习惯打卡撤销锚定存储打卡日的「今天/昨天」窗口，修复跨午夜错位）；审批队列状态如实展示；
+  新增 PENALTY 积分类型；积分不变量回归测试套件 12 条。
+- Antigravity 回审：全项达标、P0=0，裁决偏离逐项认可；回审残留收口（角色卡装饰渐变移入 theme
+  命名值、效率报表 delta 改用语义 secondary）。
+- 单测 224→252；静态闸门全绿（埋点接线 20 项 / i18n 存储边界 / 模板 diff）；验收与回审文档见
+  `docs/acceptance-m3-ui-points-hardening.md`、`docs/antigravity-review-findings.md`。
+- versionCode 30300 / versionName 3.3.0（build.gradle.kts、Info.plist、pbxproj 四处版本戳同步）。
+
 ## v3.2.1 (2026-11-20)
 **签名密钥轮换：v2（debug 签名）设备可不卸载直接覆盖升级到 v3 正式签名包**
 
