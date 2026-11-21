@@ -34,6 +34,13 @@ package com.hstudy.app.i18n
  * EN 单复数走 [pointsWord]）。字段命名统一走 `revoke…` 前缀——`undo…` 是存储边界闸门的
  * sink 词根（PointRepository.undoCheckIn），文案槽沿用 W9 T1 revert… 的避让先例。
  * 「扣回 N 分」词面与 [statusRevoked] / TaskListStrings.revertedClawedBackMessage 口径对齐。
+ *
+ * v3.3.1 D-11（指令 §5.2 超期待审一键清理）新增清理闭环文案 5 槽：
+ * [staleCleanButton]/[staleConfirmTitle] 是提示条钮面与二次确认标题两条静态（EN 侧不提 points，
+ * 刻意不进 StringsCopyTest 的 EN_STATIC_POINTS_MENTIONS 闭集）；[stalePendingNote]/
+ * [staleConfirmMessage]/[staleCleanedMessage] 是函数型（笔数进实参位；中文量词 笔 只换数字，
+ * EN 手写单复数分支，沿 pendingCountLabel 先例）。snackbar 按**实际清理笔数**如实反馈
+ * （竞态下二次清理报 0）；「30 天」口径出自 PointRepository.STALE_PENDING_MILLIS，本表只出词面。
  */
 data class ParentApprovalStrings(
     val title: String,
@@ -79,6 +86,14 @@ data class ParentApprovalStrings(
     val revokeTerminalMessage: String,
     val revokeConfirmMessage: (points: Int) -> String,
     val revokeSuccessMessage: (points: Int) -> String,
+    // v3.3.1 D-11 超期待审清理（看板下方提示条 / 清理钮 / 二次确认 / snackbar 笔数如实反馈）。
+    // 命名统一走 stale… 前缀：`undo…` 是存储边界闸门 sink 词根（PointRepository.undoCheckIn），
+    // 文案槽沿用 D-10 revoke… / W9 T1 revert… 的避让先例；EN 单复数手写分支（同 pendingCountLabel 先例）。
+    val stalePendingNote: (count: Int) -> String,
+    val staleCleanButton: String,
+    val staleConfirmTitle: String,
+    val staleConfirmMessage: (count: Int) -> String,
+    val staleCleanedMessage: (count: Int) -> String,
 )
 
 val ParentApprovalStringsZh = ParentApprovalStrings(
@@ -127,6 +142,14 @@ val ParentApprovalStringsZh = ParentApprovalStrings(
     revokeTerminalMessage = "该申请已是终态（可能已被孩子端撤销），未扣回积分",
     revokeConfirmMessage = { points -> "撤回后将扣回已发放的 $points 积分，并将申请状态置为已撤销。" },
     revokeSuccessMessage = { points -> "🔄 已撤回审批，扣回 $points 分" },
+    // v3.3.1 D-11：超期待审清理（中文侧量词 笔，只换数字、不分支；「30 天」词面与提示条同源）
+    stalePendingNote = { count -> "$count 笔申请已超过 30 天未审核" },
+    staleCleanButton = "清理超期申请",
+    staleConfirmTitle = "确认清理超期申请？",
+    staleConfirmMessage = { count ->
+        "将把 $count 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变。"
+    },
+    staleCleanedMessage = { count -> "🧹 已清理 $count 笔超期申请" },
 )
 
 val ParentApprovalStringsEn = ParentApprovalStrings(
@@ -186,5 +209,25 @@ val ParentApprovalStringsEn = ParentApprovalStrings(
     },
     revokeSuccessMessage = { points ->
         "🔄 Approval revoked — $points ${pointsWord(points)} removed"
+    },
+    // v3.3.1 D-11: stale pending cleanup (banner, clean button, confirm dialog, honest count snackbar).
+    // Singular/plural branches follow the pendingCountLabel precedent (no new plural helper).
+    stalePendingNote = { count ->
+        if (count == 1) "1 request has been pending for over 30 days"
+        else "$count requests have been pending for over 30 days"
+    },
+    staleCleanButton = "Clean stale requests",
+    staleConfirmTitle = "Clean stale requests?",
+    staleConfirmMessage = { count ->
+        if (count == 1) {
+            "The request that has been pending for over 30 days will be marked cancelled. " +
+                "It never awarded points, so your balance stays unchanged."
+        } else {
+            "These $count requests, each pending for over 30 days, will be marked cancelled. " +
+                "They never awarded points, so your balance stays unchanged."
+        }
+    },
+    staleCleanedMessage = { count ->
+        if (count == 1) "🧹 Cleaned 1 stale request" else "🧹 Cleaned $count stale requests"
     },
 )

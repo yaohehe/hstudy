@@ -203,6 +203,11 @@ class BonusClaimGuardTest {
  *
  * DataStore 的 edit 修改器串行执行 —— 三处 tryClaim* 的读取-判定-写入因此是原子的。
  * 每个用例用各自唯一的天数/周起始日/日期，避免单例文件下的用例串扰。
+ *
+ * v3.3.1 Task 8 注记：`dataStoreInstance` 的 produceFile 在进程内首次访问时定死目录，
+ * 本类文件可能与 i18n/专注用例共享且跨运行持久。周/日用例是覆盖写语义可重复跑；
+ * 里程碑集合是追加式持久键，固定天数在第二次运行时两侧 CAS 都会输（winners=0），
+ * 故 streak 用例改为基于当前已领集合推导一个必然未领的天数，保证任意次重跑稳定。
  */
 class UserPreferencesBonusClaimCasTest {
 
@@ -214,11 +219,13 @@ class UserPreferencesBonusClaimCasTest {
     @Test
     fun tryClaimStreakMilestone_concurrentDoubleClaim_exactlyOneWins() = runTest {
         val prefs = newPrefs()
-        val first = async { prefs.tryClaimStreakMilestone(91) }
-        val second = async { prefs.tryClaimStreakMilestone(91) }
+        // 追加式持久键：必须相对当前（可能跨运行残留的）已领集合取新天数，否则重跑必败
+        val days = (prefs.claimedStreakMilestones.first().maxOrNull() ?: 0) + 91
+        val first = async { prefs.tryClaimStreakMilestone(days) }
+        val second = async { prefs.tryClaimStreakMilestone(days) }
         val winners = listOf(first.await(), second.await()).count { it }
         assertEquals(1, winners, "并发领取同一里程碑：恰好一个协程赢下 CAS（入账权只有一份）")
-        assertTrue(prefs.claimedStreakMilestones.first().contains(91))
+        assertTrue(prefs.claimedStreakMilestones.first().contains(days))
     }
 
     @Test

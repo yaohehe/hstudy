@@ -1,7 +1,6 @@
 package com.hstudy.app.ui.parent
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +10,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import com.hstudy.app.ui.theme.WindowSizeClass
+import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +38,10 @@ import kotlinx.coroutines.launch
  *   今日专注分钟（focusRepository.getTotalFocusMinutesForDate，模板复用 ParentDashboardStrings）、
  *   待复习错题（allMistakes × SpacedRepetition.isDueForReview，全部既有 API，不新增查询）。
  * - **第 3 层 分组功能台**：原 15 张纵向菜单卡 → 日常任务与激励 2x2 + 学情追踪与辅导 2x2 +
- *   高级与设置横向快捷条（含指令未点名的心愿目标/积分审核/周报总览，导航目标一个不少）。
+ *   高级与设置网格（含指令未点名的心愿目标/积分审核/周报总览，导航目标一个不少）。
+ * - **v3.3.1 D-04（指令 §5.1）**：高级与设置删除 horizontalScroll 单行长滑，改断点自适应纵向网格
+ *   （Compact/Medium 两列、Expanded 四列，随主页面纵向滚动）；Daily Pulse 同步 Expanded 4×1。
+ *   只动布局层：功能入口 1:1、pendingApprovalCount 徽章语义、写库/导航回调零改动。
  */
 @Composable
 fun ParentHomeScreen(
@@ -168,34 +171,26 @@ fun ParentHomeScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(strings.childTodayOverviewTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            PulseStatCell(
-                                label = strings.overviewCompletionRate,
-                                value = "$completionRate%",
-                                note = "$todayCompleted/$todayTotal",
-                                modifier = Modifier.weight(1f)
-                            )
-                            PulseStatCell(
-                                label = strings.overviewStreak,
-                                value = strings.streakDaysValue(streak),
-                                note = null,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            PulseStatCell(
-                                label = strings.overviewFocusDuration,
-                                // 分钟模板跨表复用 ParentDashboardStrings.focusMinutesValue（单位进实参位）
-                                value = dashboardCopy.focusMinutesValue(todayFocusMinutes, common.minuteLabel),
-                                note = null,
-                                modifier = Modifier.weight(1f)
-                            )
-                            PulseStatCell(
-                                label = strings.overviewMistakesDue,
-                                value = "$dueMistakeCount",
-                                note = null,
-                                modifier = Modifier.weight(1f)
-                            )
+                        // D-04 顺带上轮 P2-3：宫格列数随断点自适应——Expanded 展开 4×1，
+                        // Compact/Medium 保持原 2×2（chunked(2) 的行序与旧两条 Row 逐格一致）。
+                        val pulseColumns = if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded) 4 else 2
+                        listOf(
+                            Triple(strings.overviewCompletionRate, "$completionRate%", "$todayCompleted/$todayTotal"),
+                            Triple(strings.overviewStreak, strings.streakDaysValue(streak), null),
+                            // 分钟模板跨表复用 ParentDashboardStrings.focusMinutesValue（单位进实参位）
+                            Triple(strings.overviewFocusDuration, dashboardCopy.focusMinutesValue(todayFocusMinutes, common.minuteLabel), null),
+                            Triple(strings.overviewMistakesDue, "$dueMistakeCount", null),
+                        ).chunked(pulseColumns).forEach { rowCells ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                rowCells.forEach { (label, value, note) ->
+                                    PulseStatCell(
+                                        label = label,
+                                        value = value,
+                                        note = note,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
                         }
                         if (completionRate == 100 && todayTotal > 0) {
                             Text(strings.todayAllDoneBanner, style = MaterialTheme.typography.bodyMedium,
@@ -300,7 +295,7 @@ fun ParentHomeScreen(
                     onNavigate = onNavigate
                 )
 
-                // 分组 3：高级与设置（横向快捷条；指令未点名的 心愿目标/积分审核/周报总览 也归入此条，不删功能）
+                // 分组 3：高级与设置（指令未点名的 心愿目标/积分审核/周报总览 也归入此条，不删功能）
                 GroupHeader(strings.groupAdvancedTitle)
                 val stripItems = listOf(
                     ControlSpec(strings.menuApprovalTitle, strings.menuApprovalSubtitle, Icons.Filled.Approval, Screen.ParentApproval.route, pendingApprovalCount),
@@ -311,13 +306,12 @@ fun ParentHomeScreen(
                     ControlSpec(strings.menuWeeklyReportTitle, strings.menuWeeklyReportSubtitle, Icons.Filled.CalendarViewWeek, Screen.ParentWeeklyReport.route, 0),
                     ControlSpec(strings.menuSettingsTitle, strings.menuSettingsSubtitle, Icons.Filled.Settings, Screen.ParentSettings.route, 0),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    stripItems.forEach { spec ->
-                        ControlTile(spec, onNavigate = onNavigate, modifier = Modifier.width(180.dp))
-                    }
+                // D-04（指令 §5.1）：删除 horizontalScroll 单行长滑——Compact/Medium 走与上方
+                // 分组同型的纵向两列网格（chunked(2)，随本页纵向滚动），Expanded 走 4 列规整网格；
+                // 末行不满时由占位 Spacer 保列宽，功能入口与 pendingApprovalCount 徽章 1:1 不变。
+                val stripColumns = if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded) 4 else 2
+                stripItems.chunked(stripColumns).forEach { rowSpecs ->
+                    ControlTileRow(rowSpecs, onNavigate = onNavigate, columns = stripColumns)
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -345,14 +339,27 @@ private fun GroupHeader(title: String) {
     )
 }
 
+/**
+ * 分组功能台的一行小卡（weight 均分列宽）。
+ *
+ * D-04（指令 §5.1）：`columns` 显式给出该网格的列数，末行不满时用**透明占位 Spacer**
+ * 补足列宽（与真实卡同 weight），保证 7 项在 Expanded 4 列/窄屏 2 列下都对齐成规整栅格。
+ */
 @Composable
-private fun ControlTileRow(specs: List<ControlSpec>, onNavigate: (String) -> Unit) {
+private fun ControlTileRow(
+    specs: List<ControlSpec>,
+    onNavigate: (String) -> Unit,
+    columns: Int = specs.size
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
     ) {
         specs.forEach { spec ->
             ControlTile(spec, onNavigate = onNavigate, modifier = Modifier.weight(1f))
+        }
+        repeat(columns - specs.size) {
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

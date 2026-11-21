@@ -255,6 +255,44 @@ class PointRepository(
         return total
     }
 
+    // ==================================================================
+    // v3.3.1 D-11（指令 §5.2）—— 超期滞留待审申请清理
+    // ==================================================================
+
+    /** D-11 提示条读数流：PENDING 且 requestedAt **严格早于** threshold 的笔数（边界值不算超期） */
+    fun getStalePendingApprovalCount(threshold: Long): Flow<Int> =
+        approvalDao.getStalePendingCount(threshold)
+
+    /**
+     * 超期待审一键清理（指令 §5.2）：把在 `now - [STALE_PENDING_MILLIS]` 之前提交、仍挂 PENDING 的
+     * 申请逐条取消，释放虚高滞留的待审分。
+     *
+     * **禁止裸批量 UPDATE**：有 bizKey 的行逐条走 [revokeApproval]——即 [undoCheckIn] 同一条闭环——
+     * PENDING 半区语义恰好是"未审批撤销 → 置 CANCELLED、零扣回"（不变量 4 对称 / 不变量 5
+     * append-only：不写任何积分记录，余额分毫不动）。任务类 PENDING 行同时清掉当日完成记录，
+     * 与孩子端撤销未审批打卡完全同形（复用既有闭环，不新写清理逻辑）。
+     *
+     * 空 bizKey 的 v2 遗留行无法被统一撤销锚定（[revokeApproval] 会保守拒绝返回 0），而清理
+     * 必须能收敛：这类行已在查询侧精确筛出（PENDING + 超期、按 id 定位），直接 updateStatus
+     * 置 CANCELLED 兜底——不涉扣回，与闭环 PENDING 半区终态一致（报告已披露此兜底）。
+     *
+     * @param now 判定基准时刻（测试注入固定时钟以钉 30 天边界）
+     * @return 实际清理笔数（0 = 无超期单 / 二次清理，UI snackbar 如实反馈）
+     */
+    suspend fun expireStalePendingApprovals(now: Long = Clock.System.now().toEpochMilliseconds()): Int {
+        val stale = approvalDao.getStalePendingList(now - STALE_PENDING_MILLIS)
+        var cleaned = 0
+        for (approval in stale) {
+            if (approval.bizKey.isNotEmpty()) {
+                revokeApproval(approval.id)
+            } else {
+                approvalDao.updateStatus(approval.id, ApprovalStatus.CANCELLED)
+            }
+            cleaned++
+        }
+        return cleaned
+    }
+
     /**
      * 确保同一业务只存在一条有效的待审申请。
      */
@@ -478,6 +516,12 @@ class PointRepository(
 
     companion object {
         fun getTodayString(): String = todayString()
+
+        /**
+         * D-11（指令 §5.2）超期待审判定窗口：申请提交后超过 30 天仍未审核即视为陈旧。
+         * 30 天口径唯一出处——清理入口与看板提示条（threshold = now - 本常量）共用，禁止各写各的。
+         */
+        const val STALE_PENDING_MILLIS: Long = 30L * 24 * 60 * 60 * 1000
 
         /**
          * 终审 M-1：把完成时间戳换算成打卡日期串（yyyy-MM-dd，本地时区，与 [todayString] 同格式）。

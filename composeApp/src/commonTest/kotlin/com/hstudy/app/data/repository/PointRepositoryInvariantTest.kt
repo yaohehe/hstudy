@@ -437,4 +437,16 @@ class FakePointApprovalDao : PointApprovalDao {
 
     override fun getPendingPoints(): Flow<Int> =
         MutableStateFlow(approvals.filter { it.status == ApprovalStatus.PENDING }.sumOf { it.requestedPoints })
+
+    /**
+     * D-11 超期待审计数的内存 Fake：判据与 Room SQL
+     * `status = 'PENDING' AND requestedAt < :threshold` 逐字对齐（**严格早于**，边界值不超期）。
+     */
+    override fun getStalePendingCount(threshold: Long): Flow<Int> =
+        MutableStateFlow(approvals.count { it.status == ApprovalStatus.PENDING && it.requestedAt < threshold })
+
+    /** D-11 超期待审列表的内存 Fake：同上判据，requestedAt 升序（真实 DAO 的 ORDER BY requestedAt ASC）。 */
+    override suspend fun getStalePendingList(threshold: Long): List<PointApprovalEntity> =
+        approvals.filter { it.status == ApprovalStatus.PENDING && it.requestedAt < threshold }
+            .sortedBy { it.requestedAt }
 }

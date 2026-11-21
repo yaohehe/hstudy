@@ -238,6 +238,15 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 逐字钉死；revokeTerminalMessage 的 EN 提到 points，同步登记进 StringsCopyTest 的
 # EN_STATIC_POINTS_MENTIONS 闭集）→ 251 + 5 = 256（两个组读数实测如上：默认组仍 6/250，
 # --branch 256 条、0 条未用到）。
+# v3.3.1 D-11（超期待审一键清理 指令 §5.2）在 256 条上新增表侧单边 5 条
+# （ParentApprovalStrings：staleCleanButton/staleConfirmTitle 两条静态 + stalePendingNote/
+# staleConfirmMessage/staleCleanedMessage 三条函数型（笔数进实参位）——看板下方超期提示条/清理钮/
+# 二次确认/snackbar 全部为修复新写，修复前页面没有该控件、迁移前后都没有原文可比；静态两条由
+# ParentPointsCopyTest.parentApprovalCopyDiffers 断言 ZH≠EN，函数三条由
+# parentApprovalInterpolatedCopyPinsBothLanguages 逐字双语钉死（含 EN 单复数）。两条 EN 静态槽
+# 不提 points，不进 EN_STATIC_POINTS_MENTIONS 闭集。字段命名统一 stale… 前缀：undo… 是存储边界
+# 闸门 sink 词根，文案槽避让（沿 D-10 revoke… / W9 T1 revert… 先例））→ 256 + 5 = 261
+# （默认组读数按上文规律为 6/255，--branch 261 条、0 条未用到；实数以闸门运行为准）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -1112,6 +1121,27 @@ DISCLOSED_RESIDUALS = [
      "table_field": "ParentApprovalStrings.revokeSuccessMessage",
      "reason": "v3.3.1 D-10 新写文案：撤回成功 snackbar（🔄 与历史卡 REVOKED statusIcon 图标口径一致，"
                "emoji 不受 i18n 约束 RA8；EN 单复数走 pointsWord，两语由 pin 测试钉死）"},
+    # ---- v3.3.1 D-11（超期待审一键清理 指令 §5.2）：看板下方提示条/清理钮/二次确认/snackbar 新写文案（表侧单边 5 条）----
+    # 这批是 D-11 修复的**新写**词面：修复前待审看板只有批量通过钮、没有超期清理控件，五条均无页面原文可比。
+    # 静态两条（钮面/弹窗标题）由 parentApprovalCopyDiffers 断言 ZH≠EN；函数三条由
+    # parentApprovalInterpolatedCopyPinsBothLanguages 逐字双语钉死（EN 单复数手写分支，沿 pendingCountLabel 先例）。
+    {"page": None, "table": "%s 笔申请已超过 30 天未审核" % VALUE,
+     "table_field": "ParentApprovalStrings.stalePendingNote",
+     "reason": "v3.3.1 D-11 指令 §5.2-2 新写文案：超期待审提示条读数行（仅 stalePendingCount>0 渲染；"
+               "30 天口径出自 PointRepository.STALE_PENDING_MILLIS，量词 笔 与 pendingCountLabel 同族）"},
+    {"page": None, "table": "清理超期申请", "table_field": "ParentApprovalStrings.staleCleanButton",
+     "reason": "v3.3.1 D-11 指令 §5.2-2 新写文案：提示条上的清理钮面（触发二次确认，不直接写库）"},
+    {"page": None, "table": "确认清理超期申请？", "table_field": "ParentApprovalStrings.staleConfirmTitle",
+     "reason": "v3.3.1 D-11 新写文案：清理二次确认对话框标题（确认/取消钮复用 CommonStrings.confirmButton/"
+               "cancelButton，均已双边登记，不重开同值槽）"},
+    {"page": None, "table": "将把 %s 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变。" % VALUE,
+     "table_field": "ParentApprovalStrings.staleConfirmMessage",
+     "reason": "v3.3.1 D-11 新写文案：确认对话框正文（笔数进实参位；如实承诺「从未发放积分/余额不变」，"
+               "与仓库层 undoCheckIn PENDING 半区零扣回语义一致）"},
+    {"page": None, "table": "🧹 已清理 %s 笔超期申请" % VALUE,
+     "table_field": "ParentApprovalStrings.staleCleanedMessage",
+     "reason": "v3.3.1 D-11 新写文案：清理结果 snackbar（按实际清理笔数如实反馈，二次清理竞态报 0；"
+               "🧹 emoji 不受 i18n 约束 RA8）"},
 ]
 
 

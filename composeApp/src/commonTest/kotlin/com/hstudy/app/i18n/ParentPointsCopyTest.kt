@@ -87,6 +87,10 @@ class ParentPointsCopyTest {
             zh.revokeApprovalButton to en.revokeApprovalButton,
             zh.revokeConfirmTitle to en.revokeConfirmTitle,
             zh.revokeTerminalMessage to en.revokeTerminalMessage,
+            // v3.3.1 D-11 超期待审清理：清理钮面 / 弹窗标题两条静态槽（EN 侧不提 points，
+            // 刻意不进 StringsCopyTest 的 EN_STATIC_POINTS_MENTIONS 闭集）
+            zh.staleCleanButton to en.staleCleanButton,
+            zh.staleConfirmTitle to en.staleConfirmTitle,
         )
         assertEquals(8, listOf(
             zh.typeChipTask, zh.typeChipHabit, zh.typeChipAssignment, zh.typeChipTarget,
@@ -154,6 +158,30 @@ class ParentPointsCopyTest {
         assertEquals("🔄 已撤回审批，扣回 1 分", zh.revokeSuccessMessage(1))
         assertEquals("🔄 Approval revoked — 8 points removed", en.revokeSuccessMessage(8))
         assertEquals("🔄 Approval revoked — 1 point removed", en.revokeSuccessMessage(1))
+        // v3.3.1 D-11 超期待审清理：提示条 / 确认正文 / 清理结果 snackbar 三条函数槽
+        // （笔数进实参位；中文侧量词 笔 只换数字、EN 侧手写单复数分支，沿 pendingCountLabel 先例）
+        assertEquals("3 笔申请已超过 30 天未审核", zh.stalePendingNote(3))
+        assertEquals("1 笔申请已超过 30 天未审核", zh.stalePendingNote(1))
+        assertEquals("3 requests have been pending for over 30 days", en.stalePendingNote(3))
+        assertEquals("1 request has been pending for over 30 days", en.stalePendingNote(1))
+        assertEquals(
+            "将把 3 笔超过 30 天仍未审核的申请置为已取消。这些申请从未发放积分，取消后余额不变。",
+            zh.staleConfirmMessage(3)
+        )
+        assertEquals(
+            "The request that has been pending for over 30 days will be marked cancelled. " +
+                "It never awarded points, so your balance stays unchanged.",
+            en.staleConfirmMessage(1)
+        )
+        assertEquals(
+            "These 3 requests, each pending for over 30 days, will be marked cancelled. " +
+                "They never awarded points, so your balance stays unchanged.",
+            en.staleConfirmMessage(3)
+        )
+        assertEquals("🧹 已清理 3 笔超期申请", zh.staleCleanedMessage(3))
+        assertEquals("🧹 已清理 0 笔超期申请", zh.staleCleanedMessage(0))
+        assertEquals("🧹 Cleaned 3 stale requests", en.staleCleanedMessage(3))
+        assertEquals("🧹 Cleaned 1 stale request", en.staleCleanedMessage(1))
     }
 
     @Test
