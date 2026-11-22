@@ -63,7 +63,9 @@ class PointRepository(
     private val approvalDao: PointApprovalDao,
     /**
      * Task C 事务执行器（见 [DbTransactionRunner] 的选型说明）。
-     * 生产装配（AppGraph）注入 Room 实现；默认 [DirectTransactionRunner]=直通不包事务，
+     * 生产装配（AppGraph）注入 [com.hstudy.app.data.local.roomTransactionRunner] 平台工厂产物
+     * （Android=Room 真事务；iOS=直通，Room 原生事务 API 缺位，见 DbTransactionRunner.ios.kt 披露）；
+     * 默认 [DirectTransactionRunner]=直通不包事务，
      * 既有两参构造的仓库测试（RA9 手写 Fake，无 JVM sqlite）行为零变化。
      */
     private val transactionRunner: DbTransactionRunner = DirectTransactionRunner

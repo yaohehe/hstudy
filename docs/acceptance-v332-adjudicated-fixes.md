@@ -95,6 +95,14 @@
    Task C 的 Room `withTransaction` 与 Task B 的 DataStore CAS 仅 Android 编译/单测实证——
    iOS 模拟器至少跑：批量审批中途杀进程→回滚不半批、转盘双击不双发；同时覆盖
    `idleTimerDisabled` interop 首编译关注点（见 [[hstudy-ios-kn-interop-limits]]）。
+   **CI fix round 补记（2026-11-23，run 45045438877 实证）**：iOS 首验即命中 commonMain 平台纯度问题——
+   `androidx.room.withTransaction` 仅 Room 2.7 JVM/Android klib 提供，`compileKotlinIosSimulatorArm64`
+   报 Unresolved reference 失败。修复：Room 事务实现移入 androidMain（`DbTransactionRunner.android.kt`），
+   commonMain 改 expect 工厂 `roomTransactionRunner(database)`；**iOS actual=DirectTransactionRunner 直通——
+   Room KMP 原生事务 API 缺位，iOS 批量原子降级为直通（等同 v3.3.1 现状），待 Room 提供 common 事务 API 后回切**
+   （KDoc 披露见 `DbTransactionRunner.ios.kt`）。对 F-7 影响：iOS 侧"批量审批中途杀进程→回滚不半批"一项
+   **随降级移出验证范围**（直通无回滚语义可言），改验"不闪退、账本判定与 Android 一致"；
+   Android 侧 F-4/F-5 红线（真 withTransaction 零变化）不受本修复影响。
 
 ### 终审残余登记（2026-11-23 整分支审查，Minor 级不阻塞发布）
 - **转盘作废态展示**：`ChildLuckyDrawScreen` onClaimed 内 `resultPoints=won` 先于 adjustPoints 赋值，

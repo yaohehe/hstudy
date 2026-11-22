@@ -2,8 +2,8 @@ package com.hstudy.app
 
 import com.hstudy.app.data.focus.PomodoroFocusSettlement
 import com.hstudy.app.data.local.AppDatabase
-import com.hstudy.app.data.local.RoomTransactionRunner
 import com.hstudy.app.data.local.getAppDatabase
+import com.hstudy.app.data.local.roomTransactionRunner
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.*
 import com.hstudy.app.i18n.DisplayLanguage
@@ -101,9 +101,10 @@ object AppGraph {
         initialized = true
         database = getAppDatabase()
         taskRepository = TaskRepository(database.taskDao())
-        // Task C（v3.3.2 / P2-2）：三入口（批量审批/超期清理/撤回）的读-判-写原子化靠 Room
-        // withTransaction，事务器在装配层接入 database 实例（仓库测试默认直通，见 DbTransactionRunner KDoc）。
-        pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao(), RoomTransactionRunner(database))
+        // Task C（v3.3.2 / P2-2）：三入口（批量审批/超期清理/撤回）的读-判-写原子化靠平台事务
+        // 工厂 roomTransactionRunner（expect/actual，CI fix round：Android=Room withTransaction 真事务，
+        // iOS=直通降级——withTransaction 是 Room JVM-only API，commonMain 直接引用会挂掉 iOS 编译）。
+        pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao(), roomTransactionRunner(database))
         rewardRepository = RewardRepository(database.rewardDao())
         // P0-01（Antigravity 指令）：错题复习/举一反三走统一审批 checkIn，注入 PointRepository
         mistakeRepository = MistakeRepository(database.mistakeDao(), pointRepository)
