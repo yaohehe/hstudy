@@ -91,8 +91,8 @@ android {
         applicationId = "com.hstudy.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 30301
-        versionName = "3.3.1"
+        versionCode = 30302
+        versionName = "3.3.2"
     }
     // 发布签名：keystore 与口令只经环境变量注入（CI secrets / 本地导出），绝不入库。
     // 未设置时 release 变体照旧产出未签名 APK，无密钥环境仍可构建。

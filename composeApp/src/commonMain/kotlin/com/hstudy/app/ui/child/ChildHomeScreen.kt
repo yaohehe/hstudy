@@ -441,7 +441,8 @@ fun ChildHomeScreen(
                                         bonusClaimGuard.claim(
                                             tryClaim = { app.userPreferences.tryClaimDailyExcellentBonus(today) },
                                             onClaimed = {
-                                                app.pointRepository.adjustPoints(2, CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
+                                                // D-12：note 写纯 ASCII 业务键，"今日学习表现优秀奖励"由明细页渲染派生
+                                                app.pointRepository.adjustPoints(2, BonusNoteKeys.excellent(today))
                                                 com.hstudy.app.ui.common.AchievementManager.evaluate(app)
                                                 snackbarHostState.showSnackbar(strings.excellentBonusMessage)
                                             }
@@ -583,7 +584,8 @@ fun ChildHomeScreen(
                                         bonusClaimGuard.claim(
                                             tryClaim = { app.userPreferences.tryClaimStreakMilestone(days) },
                                             onClaimed = {
-                                                app.pointRepository.adjustPoints(bonus, CanonicalChildHomeText.streakMilestoneNote(days))
+                                                // D-12：note 写纯 ASCII 业务键，"连续打卡N天里程碑奖励"由明细页渲染派生
+                                                app.pointRepository.adjustPoints(bonus, BonusNoteKeys.streak(days))
                                                 snackbarHostState.showSnackbar(strings.streakMilestoneClaimedMessage(bonus))
                                             }
                                         )
@@ -627,7 +629,8 @@ fun ChildHomeScreen(
                                         bonusClaimGuard.claim(
                                             tryClaim = { app.userPreferences.tryClaimWeeklyChallenge(weekStartStr) },
                                             onClaimed = {
-                                                app.pointRepository.adjustPoints(5, CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE)
+                                                // D-12：note 写纯 ASCII 业务键，"每周挑战奖励"由明细页渲染派生
+                                                app.pointRepository.adjustPoints(5, BonusNoteKeys.weekly(weekStartStr))
                                                 snackbarHostState.showSnackbar(strings.weeklyChallengeClaimMessage)
                                             }
                                         )

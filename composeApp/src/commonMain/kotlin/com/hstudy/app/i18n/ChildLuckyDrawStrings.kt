@@ -3,8 +3,10 @@ package com.hstudy.app.i18n
 /**
  * 孩子端每日幸运抽奖页（ui/child/ChildLuckyDrawScreen.kt）文案表（阶段 2 W4）。
  *
- * 数量词一律 [pointsWord]。**落库字面量**：`adjustPoints(won, "每日幸运抽奖")` 的 note 是账本数据，
- * 保持 canonical 中文原样、不进本表（等价闸门 Task 5 登记披露"每日幸运抽奖"）。
+ * 数量词一律 [pointsWord]。**落库 note**：v3.3.2 D-13 fix round 1 起改写纯 ASCII 业务键
+ * `bonus_lucky:<yyyy-MM-dd>`（`BonusNoteKeys.lucky(today)`，不进本表），展示文案由
+ * `ChildPointsStrings.bonusLucky` 渲染期派生（中文与旧直写 DB 原文"每日幸运抽奖"逐字节相同，
+ * 旧中文记录 passthrough）；通道 H 登记表对账 `bonus_lucky:` 前缀。
  */
 data class ChildLuckyDrawStrings(
     val title: String,

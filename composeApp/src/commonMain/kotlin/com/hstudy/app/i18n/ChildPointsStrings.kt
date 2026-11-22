@@ -13,6 +13,16 @@ package com.hstudy.app.i18n
  * 心愿已删除（回查不到名字）时用 [wishDepositGeneric]/[wishRefundGeneric]。
  * 库里的 note 从此不含展示文案，英文用户不会在孩子账本里看到中文。
  *
+ * **v3.3.2 D-12 把同一形态扩展到三处里程碑 bonus**：`bonus_excellent:<yyyy-MM-dd>` /
+ * `bonus_weekly:<weekStart>` / `bonus_streak:<days>`（ADJUSTMENT 记录）由
+ * [com.hstudy.app.ui.common.bonusNoteDisplayText] 按 [bonusExcellent]/[bonusWeekly]/[bonusStreak]
+ * 派生；中文值与 D-12 前直写 DB 的原文逐字节相同，旧中文记录仍原样 passthrough（append-only 不改写）。
+ *
+ * **v3.3.2 D-13 fix round 1 再扩两枚同型键**：`bonus_review:<days>`（ChildMistakeListScreen
+ * 连续复习里程碑）与 `bonus_lucky:<yyyy-MM-dd>`（ChildLuckyDrawScreen 转盘发奖）由同一派生器按
+ * [bonusReview]/[bonusLucky] 渲染；中文值与 D-13 Task B 直写 DB 的原文逐字节相同（审查员点名
+ * 披露 1 的收口），旧中文记录 passthrough 不改写。
+ *
  * v3.3 W4（指令 §3.3.4）新增**资产看板 + 时间轴分组 + 条目语义标签**文案，家长端积分管理页
  * （ParentPointsScreen）跨表复用同一批字段（同一中文值一个英文出处，沿 balanceTitle/菜单标题复用先例）：
  * - [balanceSubtitle]：余额大数字下的"当前可用积分"副标（与 ChildWishGoalStrings 的长串"当前可用积分：…"
@@ -50,6 +60,16 @@ data class ChildPointsStrings(
     val wishRefund: (goalName: String) -> String,
     val wishDepositGeneric: String,
     val wishRefundGeneric: String,
+    // v3.3.2 D-12：三处里程碑 bonus 的派生文案（note 只存 bonus_* 业务键；
+    // 中文值与 D-12 前直写 DB 的原文逐字节相同，由 ChildRewardStoreCopyTest 钉住，
+    // 新旧记录在中文界面词面一致；英文界面从此不再在账本里念出旧中文）
+    val bonusExcellent: String,
+    val bonusWeekly: String,
+    val bonusStreak: (days: Int) -> String,
+    // v3.3.2 D-13 fix round 1：复习里程碑与转盘发奖并入 bonus_* 键体系（同一派生器、同一口径；
+    // 中文值与 D-13 Task B 直写 DB 的原文逐字节相同，旧中文记录 passthrough）
+    val bonusReview: (days: Int) -> String,
+    val bonusLucky: String,
 )
 
 val ChildPointsStringsZh = ChildPointsStrings(
@@ -77,6 +97,16 @@ val ChildPointsStringsZh = ChildPointsStrings(
     wishRefund = { goalName -> "心愿退回「$goalName」" },
     wishDepositGeneric = "存入心愿",
     wishRefundGeneric = "心愿退回",
+    // D-12：三条 bonus 流水的渲染派生。中文与迁移前直写 DB 的原文**逐字节相同**
+    // （ChildHomeStrings.kt 的 CanonicalChildHomeText 旧三常量，见 ChildRewardStoreCopyTest 逐字钉死），
+    // 中文界面里新旧记录词面一致；库里只存 bonus_* 键。
+    bonusExcellent = "今日学习表现优秀奖励",
+    bonusWeekly = "每周挑战奖励：本周打卡5天",
+    bonusStreak = { days -> "连续打卡${days}天里程碑奖励" },
+    // D-13 fix round 1：复习里程碑与转盘发奖两条。中文与 D-13 Task B 直写 DB 的原文**逐字节相同**
+    // （旧 ChildMistakeListScreen.kt:325 / ChildLuckyDrawScreen.kt:128 字面量，ChildRewardStoreCopyTest 逐字钉死）。
+    bonusReview = { days -> "连续复习${days}天里程碑奖励" },
+    bonusLucky = "每日幸运抽奖",
 )
 
 val ChildPointsStringsEn = ChildPointsStrings(
@@ -105,4 +135,18 @@ val ChildPointsStringsEn = ChildPointsStrings(
     wishRefund = { goalName -> "Wish refund for “$goalName”" },
     wishDepositGeneric = "Wish deposit",
     wishRefundGeneric = "Wish refund",
+    // D-12：bonus 三键派生（中文值=迁移前 DB 原文；英文为新写词面，两语由
+    // ChildRewardStoreCopyTest 逐字钉死）。英文 one/other 走 days==1 分支
+    // （沿 childHome.streakMilestoneTitle 的 §8.3 先例；里程碑档位实际 ≥3，1 天是防御形态）。
+    bonusExcellent = "Excellent study bonus for today",
+    bonusWeekly = "Weekly challenge bonus: 5 check-ins this week",
+    bonusStreak = { days ->
+        "Streak milestone bonus: $days ${if (days == 1) "day" else "days"} in a row"
+    },
+    // D-13 fix round 1：复习/转盘两键（中文值=D-13 Task B 直写 DB 原文逐字节；英文新写词面，
+    // 不提 points、不进 StringsCopyTest 的 EN_STATIC_POINTS_MENTIONS 闭集——沿 bonusExcellent/bonusStreak 先例）。
+    bonusReview = { days ->
+        "Review milestone bonus: $days ${if (days == 1) "day" else "days"} of review in a row"
+    },
+    bonusLucky = "Daily lucky draw bonus",
 )

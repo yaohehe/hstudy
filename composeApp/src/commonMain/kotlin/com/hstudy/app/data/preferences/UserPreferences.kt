@@ -168,8 +168,18 @@ class UserPreferences {
     }
 
     // ===== 每日幸运抽奖 =====
-    suspend fun setLastLuckyDraw(date: String) {
-        dataStore.edit { it[LAST_LUCKY_DRAW] = date }
+    /**
+     * D-13（v3.3.2）：原子领取当日幸运抽奖。语义与 [tryClaimStreakMilestone]（D-09）相同：
+     * 读取-判定-写入在同一 edit 事务内完成，同一 [date] 并发/重复抽奖只有第一次返回 true
+     * （换日即新一轮抽奖窗口）。原 `setLastLuckyDraw`（无条件写入、无判定结果）已由本函数取代。
+     */
+    suspend fun tryClaimDailyLuckyDraw(date: String): Boolean {
+        var claimedNow = false
+        dataStore.edit { prefs ->
+            claimedNow = prefs[LAST_LUCKY_DRAW] != date
+            if (claimedNow) prefs[LAST_LUCKY_DRAW] = date
+        }
+        return claimedNow
     }
 
     // ===== 学习宠物照料 =====
@@ -317,13 +327,21 @@ class UserPreferences {
         it[REVIEW_STREAK_MILESTONES_CLAIMED]?.split(",")?.filter { s -> s.isNotBlank() }?.mapNotNull { s -> s.toIntOrNull() }?.toSet() ?: emptySet()
     }
 
-    /** 记录已领取的连续复习里程碑天数 */
-    suspend fun addReviewStreakMilestoneClaimed(days: Int) {
-        dataStore.edit {
-            val current = it[REVIEW_STREAK_MILESTONES_CLAIMED]?.split(",")?.filter { s -> s.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
-            current.add(days.toString())
-            it[REVIEW_STREAK_MILESTONES_CLAIMED] = current.joinToString(",")
+    /**
+     * D-13（v3.3.2）：原子领取一个连续复习里程碑。语义与 [tryClaimStreakMilestone]（D-09）相同：
+     * 读取-判定-写入在同一 `dataStore.edit` 事务内完成（edit 块串行化），并发/重复领取同一
+     * [days] 时**恰好第一次**返回 true。调用方仅在返回 true 后才允许入账（先置位、后入账）；
+     * 入账失败不回滚本置位（append-only 口径）。原 `addReviewStreakMilestoneClaimed`
+     * （无条件写入、无判定结果）已由本函数取代。
+     */
+    suspend fun tryClaimReviewStreakMilestone(days: Int): Boolean {
+        var claimedNow = false
+        dataStore.edit { prefs ->
+            val current = prefs[REVIEW_STREAK_MILESTONES_CLAIMED]?.split(",")?.filter { s -> s.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+            claimedNow = current.add(days.toString())
+            if (claimedNow) prefs[REVIEW_STREAK_MILESTONES_CLAIMED] = current.joinToString(",")
         }
+        return claimedNow
     }
 
     // ===== 家长每周学习周报推送 =====

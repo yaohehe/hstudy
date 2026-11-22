@@ -5,8 +5,8 @@ import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.repository.FakePointApprovalDao
 import com.hstudy.app.data.repository.FakePointDao
 import com.hstudy.app.data.repository.PointRepository
-import com.hstudy.app.i18n.CanonicalChildHomeText
 import com.hstudy.app.platform.Platform
+import com.hstudy.app.ui.common.BonusNoteKeys
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -84,17 +84,17 @@ class BonusClaimGuardTest {
         val pointDao = FakePointDao()
         val points = PointRepository(pointDao, FakePointApprovalDao())
 
-        /** 与 ChildHomeScreen 里程碑按钮 onClick 同构：先置位，赢下 CAS 才入账。 */
+        /** 与 ChildHomeScreen 里程碑按钮 onClick 同构：先置位，赢下 CAS 才入账（note=D-12 业务键）。 */
         suspend fun claimMilestone(days: Int, bonus: Int): Boolean =
             guard.claim(
                 tryClaim = { store.tryClaimStreakMilestone(days) },
-                onClaimed = { points.adjustPoints(bonus, CanonicalChildHomeText.streakMilestoneNote(days)) }
+                onClaimed = { points.adjustPoints(bonus, BonusNoteKeys.streak(days)) }
             )
 
         suspend fun claimWeeklyChallenge(weekStartStr: String): Boolean =
             guard.claim(
                 tryClaim = { store.tryClaimWeeklyChallenge(weekStartStr) },
-                onClaimed = { points.adjustPoints(5, CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE) }
+                onClaimed = { points.adjustPoints(5, BonusNoteKeys.weekly(weekStartStr)) }
             )
     }
 
@@ -125,7 +125,7 @@ class BonusClaimGuardTest {
         assertEquals(1, records.size, "D-09 核心断言：双击只入账一次")
         assertEquals(15, records.single().points)
         assertEquals(PointRecordType.ADJUSTMENT, records.single().type)
-        assertEquals(CanonicalChildHomeText.streakMilestoneNote(7), records.single().note, "note 存储方式本 task 不动（要求 4）")
+        assertEquals(BonusNoteKeys.streak(7), records.single().note, "note 是 D-12 业务键 `bonus_streak:7`（键形态见 PointRecordBonusNoteTest）")
         assertFalse(fx.guard.isClaimingBonus, "在飞结束后状态必须复位，按钮恢复可点")
     }
 
@@ -175,7 +175,7 @@ class BonusClaimGuardTest {
             tryClaim = { fx.store.tryClaimDailyExcellentBonus("2099-01-02") },
             onClaimed = {
                 if (ledgerDown) error("账本写入失败（理论不可达路径）")
-                fx.points.adjustPoints(2, CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
+                fx.points.adjustPoints(2, BonusNoteKeys.excellent("2099-01-02"))
             }
         )
         ledgerDown = false
@@ -188,7 +188,7 @@ class BonusClaimGuardTest {
         assertFalse(
             fx.guard.claim(
                 tryClaim = { fx.store.tryClaimDailyExcellentBonus("2099-01-02") },
-                onClaimed = { fx.points.adjustPoints(2, CanonicalChildHomeText.EXCELLENT_BONUS_NOTE) }
+                onClaimed = { fx.points.adjustPoints(2, BonusNoteKeys.excellent("2099-01-02")) }
             ),
             "claimed 不回滚 → 同键重试必须继续被 CAS 拒绝（宁可作废，不可双发）"
         )
