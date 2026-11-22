@@ -1,5 +1,7 @@
 package com.hstudy.app.data.repository
 
+import com.hstudy.app.data.local.DbTransactionRunner
+import com.hstudy.app.data.local.DirectTransactionRunner
 import com.hstudy.app.data.local.dao.PointApprovalDao
 import com.hstudy.app.data.local.dao.PointDao
 import com.hstudy.app.data.local.entity.ApprovalStatus
@@ -45,10 +47,26 @@ enum class CheckInResult {
  * ① 用户自己输入的自由备注（家长调整备注、任务名等 canonical 存储值）；
  * ② 纯 ASCII 业务键（心愿存入/退回用 `wish_deposit:<goalId>` / `wish_refund:<goalId>`，
  *    见 [WishGoalRepository]），展示文案由明细页按 `type + note` 派生。
+ *
+ * ## 事务原子化（v3.3.2 Task C，覆盖 P2-2 + v3.3.1 终审残留窗口）
+ * [approveAllAndAward] / [expireStalePendingApprovals] / [revokeApproval] 三个入口经
+ * [transactionRunner] 整体包 DB 事务：批量中途任意一条抛异常 → **整批回滚**（不存在
+ * "前半批已 APPROVED、后半批 PENDING"的半批态）；revoke/清理的"按 id 复读 → 判半区 → 落库"
+ * 读-判-写序列在事务内闭环，消除弹窗停留/清理瞬间与并发打卡交错形成的毫秒窗口
+ * （窗口期读到旧行后再写错半区的风险由 SQLite 事务隔离兜底）。
+ * 红线自查：事务**只原子化、不改判定**——单条幂等（不变量 3）、撤销对称（不变量 4）、
+ * append-only 余额=SUM（不变量 5）的判定逻辑与写库顺序一字未动；"中途异常整体回滚"下
+ * 要么全部落库要么分毫不动，SUM 不变量恒成立。
  */
 class PointRepository(
     private val pointDao: PointDao,
-    private val approvalDao: PointApprovalDao
+    private val approvalDao: PointApprovalDao,
+    /**
+     * Task C 事务执行器（见 [DbTransactionRunner] 的选型说明）。
+     * 生产装配（AppGraph）注入 Room 实现；默认 [DirectTransactionRunner]=直通不包事务，
+     * 既有两参构造的仓库测试（RA9 手写 Fake，无 JVM sqlite）行为零变化。
+     */
+    private val transactionRunner: DbTransactionRunner = DirectTransactionRunner
 ) {
 
     fun getTotalPoints(): Flow<Int> = pointDao.getTotalPoints()
@@ -247,9 +265,18 @@ class PointRepository(
      * （①取 PENDING/APPROVED 两态而非仅 APPROVED：[expireStalePendingApprovals] 对 bizKey 锚定
      * PENDING 行的复用路径依赖半区可达，且家长端 PENDING 撤回与 D-10 终态语义同形。）
      *
+     * **Task C（终审残留窗口收口）**：以上"按 id 复读 → 判半区 → 判最新 → 委托 [undoCheckIn]"
+     * 整段包进同一 DB 事务——弹窗停留期间孩子撤销+重打卡与撤回写库的毫秒级交错，由事务的
+     * 读-判-写原子性兜住；判定逻辑本身一字未动（红线：只原子化、不改幂等/终态语义）。
+     * 被 [expireStalePendingApprovals] 嵌套调用时，Room 重入机制合并到外层同一事务，不另起事务。
+     *
      * @return 实际扣回的积分数（正数；0 表示未扣回：终态、查无此单、空 bizKey 或已被并发撤销/重打卡顶替）
      */
-    suspend fun revokeApproval(approvalId: Long): Int {
+    suspend fun revokeApproval(approvalId: Long): Int =
+        transactionRunner.runInTransaction { revokeApprovalInTx(approvalId) }
+
+    /** [revokeApproval] 的判定本体——在事务内执行；逻辑与 v3.3.1 D-10 逐字相同，仅调用位置进了事务块。 */
+    private suspend fun revokeApprovalInTx(approvalId: Long): Int {
         val approval = approvalDao.getById(approvalId) ?: return 0
         if (approval.bizKey.isEmpty()) return 0
         // 终审 Minor-1：按 id 复读撤回目标——弹窗停留期间孩子撤销+重打卡后，这一条要么已进终态，
@@ -259,12 +286,22 @@ class PointRepository(
         return undoCheckIn(bizKey = approval.bizKey, taskId = approval.taskId, date = approval.date)
     }
 
-    /** 批量通过：逐条走幂等发放，返回实际发放总积分 */
-    suspend fun approveAllAndAward(): Int {
+    /**
+     * 批量通过：整批包 DB 事务（Task C / P2-2），逐条走 [approveAndAward] 幂等发放。
+     *
+     * v3.3.1 前形态：`pending.forEach { approveAndAward(it.id) }` 逐条各自落库——批量中途
+     * 任何一条抛异常（DAO 写失败、外部取消后的部分提交），已处理的前半批会**留在 APPROVED +
+     * 已入账状态**、后半批仍 PENDING，UI 重试虽幂等但用户看到的"一次批量"实际是半批账。
+     * 现在整批一个事务：中途异常 → 整批回滚（前半批的积分流水与 APPROVED 状态一并撤销，
+     * 回到"一条都没批"的干净起点）；成功路径的发放顺序、bizKey 防重、返回总额均不变。
+     *
+     * @return 实际发放的总积分（0 = 无待审单 / 全部被幂等跳过）
+     */
+    suspend fun approveAllAndAward(): Int = transactionRunner.runInTransaction {
         val pending = approvalDao.getPendingList()
         var total = 0
         pending.forEach { total += approveAndAward(it.id) }
-        return total
+        total
     }
 
     // ==================================================================
@@ -294,32 +331,40 @@ class PointRepository(
      * 更新的 APPROVED 行而追加 REVERSAL 扣回，违背弹窗"余额不变"承诺）时才执行撤销；
      * 否则整行跳过、**不计入 cleaned**，snackbar 笔数与实际置 CANCELLED 的行严格一致。
      *
+     * **Task C（终审残留窗口收口）**：整个"快照 → 逐条复读 → 判定 → 落库"循环包进同一 DB 事务。
+     * v3.3.1 形态里每条"按 id 复读后判半区/判最新"与后续写库之间各有毫秒窗口（清理瞬间被家长
+     * 并发通过/拒绝、或被同 bizKey 新单顶替后仍按旧读判定）；现在读-判-写同事务，
+     * 中途任何一条抛异常 = **整批回滚**，不存在"清了一半、cleaned 与实际落库笔数不符"的半态。
+     * 循环内的 [revokeApproval] 嵌套进同一事务（Room `withTransaction` 重入合并，不另起事务）。
+     * 判定逻辑（复读、半区、最新性、空 bizKey 兜底、cleaned 只计真正 CANCELLED 行）一字未动。
+     *
      * @param now 判定基准时刻（测试注入固定时钟以钉 30 天边界）
      * @return 实际清理笔数（只计真正置 CANCELLED 的行；0 = 无超期单 / 二次清理 / 全部被跳过，UI snackbar 如实反馈）
      */
-    suspend fun expireStalePendingApprovals(now: Long = Clock.System.now().toEpochMilliseconds()): Int {
-        val stale = approvalDao.getStalePendingList(now - STALE_PENDING_MILLIS)
-        var cleaned = 0
-        for (approval in stale) {
-            // 按 id 复读快照行：并发审批/拒绝会让这一条早已不在 PENDING 半区
-            val fresh = approvalDao.getById(approval.id) ?: continue
-            if (fresh.status != ApprovalStatus.PENDING) continue
-            if (fresh.bizKey.isNotEmpty()) {
-                // bizKey 锚定行必须仍是该业务最新一条才可撤销：undoCheckIn 按 bizKey 取
-                // "最新一条"判半区，若同 bizKey 存在更新记录（v2 遗留重复或并发新单），
-                // 清理会命中更新的 APPROVED 行触发 REVERSAL 扣回——跳过并留待看板按真实态处理。
-                if (approvalDao.getLatestByBizKey(fresh.bizKey)?.id != fresh.id) continue
-                revokeApproval(fresh.id)
-            } else {
-                // 空 bizKey 兜底：updateStatus 只写 status/reviewedAt 两列，不改 awardedRecordId——
-                // PENDING 行从未发放、该列本就是 null，与闭环 PENDING 半区 updateReview(…, null) 终态一致。
-                approvalDao.updateStatus(fresh.id, ApprovalStatus.CANCELLED)
+    suspend fun expireStalePendingApprovals(now: Long = Clock.System.now().toEpochMilliseconds()): Int =
+        transactionRunner.runInTransaction {
+            val stale = approvalDao.getStalePendingList(now - STALE_PENDING_MILLIS)
+            var cleaned = 0
+            for (approval in stale) {
+                // 按 id 复读快照行：并发审批/拒绝会让这一条早已不在 PENDING 半区
+                val fresh = approvalDao.getById(approval.id) ?: continue
+                if (fresh.status != ApprovalStatus.PENDING) continue
+                if (fresh.bizKey.isNotEmpty()) {
+                    // bizKey 锚定行必须仍是该业务最新一条才可撤销：undoCheckIn 按 bizKey 取
+                    // "最新一条"判半区，若同 bizKey 存在更新记录（v2 遗留重复或并发新单），
+                    // 清理会命中更新的 APPROVED 行触发 REVERSAL 扣回——跳过并留待看板按真实态处理。
+                    if (approvalDao.getLatestByBizKey(fresh.bizKey)?.id != fresh.id) continue
+                    revokeApproval(fresh.id)
+                } else {
+                    // 空 bizKey 兜底：updateStatus 只写 status/reviewedAt 两列，不改 awardedRecordId——
+                    // PENDING 行从未发放、该列本就是 null，与闭环 PENDING 半区 updateReview(…, null) 终态一致。
+                    approvalDao.updateStatus(fresh.id, ApprovalStatus.CANCELLED)
+                }
+                // 仅对真正落库 CANCELLED 的行计数（防御性复读，cleaned 与账本/状态变更严格对齐）
+                if (approvalDao.getById(fresh.id)?.status == ApprovalStatus.CANCELLED) cleaned++
             }
-            // 仅对真正落库 CANCELLED 的行计数（防御性复读，cleaned 与账本/状态变更严格对齐）
-            if (approvalDao.getById(fresh.id)?.status == ApprovalStatus.CANCELLED) cleaned++
+            cleaned
         }
-        return cleaned
-    }
 
     /**
      * 确保同一业务只存在一条有效的待审申请。
@@ -426,8 +471,9 @@ class PointRepository(
      * ChildPetScreen.kt:219/235/379）的既有语义与字节行为完全不变**（D-08 红线）。
      *
      * 诚实说明：本仓库没有把这两步包进 Room 事务，所以"读余额"与"写流水"之间仍有极窄的并发窗口
-     * （单用户本地应用，且 UI 侧同一时刻只有一个扣减入口）；包事务需要给仓库注入事务执行器，
-     * 超出 D-08 范围，记此备忘。
+     * （单用户本地应用，且 UI 侧同一时刻只有一个扣减入口）。Task C（v3.3.2）已为仓库注入
+     * [transactionRunner]，但裁决范围限定三入口（批量审批/超期清理/撤回），消耗入口保持
+     * 零改动红线，记此备忘。
      *
      * @return true = 已写入消耗流水；false = 校验未通过（余额不足或金额非正），**未写任何记录**
      */

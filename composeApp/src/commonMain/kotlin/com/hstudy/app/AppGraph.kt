@@ -2,6 +2,7 @@ package com.hstudy.app
 
 import com.hstudy.app.data.focus.PomodoroFocusSettlement
 import com.hstudy.app.data.local.AppDatabase
+import com.hstudy.app.data.local.RoomTransactionRunner
 import com.hstudy.app.data.local.getAppDatabase
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.*
@@ -100,7 +101,9 @@ object AppGraph {
         initialized = true
         database = getAppDatabase()
         taskRepository = TaskRepository(database.taskDao())
-        pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao())
+        // Task C（v3.3.2 / P2-2）：三入口（批量审批/超期清理/撤回）的读-判-写原子化靠 Room
+        // withTransaction，事务器在装配层接入 database 实例（仓库测试默认直通，见 DbTransactionRunner KDoc）。
+        pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao(), RoomTransactionRunner(database))
         rewardRepository = RewardRepository(database.rewardDao())
         // P0-01（Antigravity 指令）：错题复习/举一反三走统一审批 checkIn，注入 PointRepository
         mistakeRepository = MistakeRepository(database.mistakeDao(), pointRepository)
