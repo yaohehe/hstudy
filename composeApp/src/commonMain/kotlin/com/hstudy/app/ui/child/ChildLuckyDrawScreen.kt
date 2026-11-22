@@ -41,6 +41,11 @@ fun ChildLuckyDrawScreen(
     var canDraw by remember { mutableStateOf(true) }
     var isDrawing by remember { mutableStateOf(false) }
     var resultPoints by remember { mutableIntStateOf(-1) }
+    // D-13（v3.3.2，D-09 同型）：抽奖领取的 in-flight 互斥。canDraw/isDrawing 是 UI 软防抖
+    // （lastLuckyDraw flow 回流有延迟，同帧双击可各自起协程），硬防重入靠 guard 互斥 +
+    // tryClaimDailyLuckyDraw CAS："先原子置当日已抽、再入账"。奖池是页面内常量列表
+    // （无持久化池可扣），CAS 置位即独占当日抽取资格，无需 edit 事务扣池。
+    val bonusClaimGuard = remember { BonusClaimGuard() }
 
     // 抽奖动画
     val spinTransition = rememberInfiniteTransition(label = "spin")
@@ -113,16 +118,23 @@ fun ChildLuckyDrawScreen(
                             scope.launch {
                                 delay(1500) // 动画时长
                                 val won = rewardPool.random()
-                                resultPoints = won
+                                // D-13（D-09 同型）：先原子置"今日已抽"（CAS），赢下置位的那次协程才发奖入账；
+                                // 双击的第二个协程被 guard 当场拒绝（不排队补发）。note 中文原文不动（D-12 未覆盖本入口）。
+                                val claimed = bonusClaimGuard.claim(
+                                    tryClaim = { app.userPreferences.tryClaimDailyLuckyDraw(today) },
+                                    onClaimed = {
+                                        resultPoints = won
+                                        canDraw = false
+                                        app.pointRepository.adjustPoints(won, "每日幸运抽奖")
+                                        AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.LUCKY_DRAW))
+                                        snackbarHostState.showSnackbar(strings.drawSnackbar(won))
+                                    }
+                                )
                                 isDrawing = false
-                                canDraw = false
-                                app.pointRepository.adjustPoints(won, "每日幸运抽奖")
-                                AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.LUCKY_DRAW))
-                                app.userPreferences.setLastLuckyDraw(today)
-                                snackbarHostState.showSnackbar(strings.drawSnackbar(won))
+                                if (!claimed) canDraw = false // CAS 未赢/在飞被拒：今日资格已被用，回到"明天再来"展示
                             }
                         },
-                        enabled = canDraw && !isDrawing,
+                        enabled = canDraw && !isDrawing && !bonusClaimGuard.isClaimingBonus,
                         modifier = Modifier.fillMaxWidth(0.7f).height(56.dp)
                     ) {
                         Text(

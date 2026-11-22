@@ -26,6 +26,7 @@ import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeSubject
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
+import com.hstudy.app.ui.child.BonusClaimGuard
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -67,6 +68,9 @@ fun ChildMistakeListScreen(
     val claimedReviewMilestones by app.userPreferences.claimedReviewStreakMilestones.collectAsState(initial = emptySet())
     val reviewStreakMilestones = remember { listOf(3 to 3, 7 to 8, 14 to 15, 30 to 30) }
     val claimableReviewMilestone = reviewStreakMilestones.firstOrNull { (days, _) -> reviewStreak >= days && days !in claimedReviewMilestones }
+    // D-13（v3.3.2，D-09 同型）：连续复习里程碑领取的 in-flight 互斥。时序统一为
+    // "先原子置 claimed（UserPreferences CAS）、再入账"，按钮 enabled 读 guard.isClaimingBonus。
+    val bonusClaimGuard = remember { BonusClaimGuard() }
 
     var selectedSubject by remember { mutableStateOf<MistakeSubject?>(null) }
     var showOnlyUnmastered by remember { mutableStateOf(false) }
@@ -181,6 +185,7 @@ fun ChildMistakeListScreen(
                         app = app, scope = scope, snackbarHostState = snackbarHostState,
                         allMistakes = allMistakes, masteredCount = masteredCount,
                         reviewStreak = reviewStreak, claimableReviewMilestone = claimableReviewMilestone,
+                        bonusClaimGuard = bonusClaimGuard,
                         reviewCalendar = reviewCalendar, reviewForecast = reviewForecast,
                         weakestSubject = weakestSubject, dueForReview = dueForReview,
                         reviewReminderEnabled = reviewReminderEnabled, reviewReminderHour = reviewReminderHour,
@@ -214,6 +219,7 @@ fun ChildMistakeListScreen(
                         app = app, scope = scope, snackbarHostState = snackbarHostState,
                         allMistakes = allMistakes, masteredCount = masteredCount,
                         reviewStreak = reviewStreak, claimableReviewMilestone = claimableReviewMilestone,
+                        bonusClaimGuard = bonusClaimGuard,
                         reviewCalendar = reviewCalendar, reviewForecast = reviewForecast,
                         weakestSubject = weakestSubject, dueForReview = dueForReview,
                         reviewReminderEnabled = reviewReminderEnabled, reviewReminderHour = reviewReminderHour,
@@ -269,6 +275,7 @@ private fun StatusCardsPanel(
     masteredCount: Int,
     reviewStreak: Int,
     claimableReviewMilestone: Pair<Int, Int>?,
+    bonusClaimGuard: BonusClaimGuard,
     reviewCalendar: List<Boolean>,
     reviewForecast: List<Int>,
     weakestSubject: MistakeSubject?,
@@ -310,12 +317,19 @@ private fun StatusCardsPanel(
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        app.pointRepository.adjustPoints(bonus, "连续复习${days}天里程碑奖励")
-                                        app.userPreferences.addReviewStreakMilestoneClaimed(days)
-                                        com.hstudy.app.ui.common.AchievementManager.evaluate(app)
-                                        snackbarHostState.showSnackbar(strings.milestoneClaimedMessage(days, bonus))
+                                        // D-13（D-09 同型）：先原子置 claimed，赢下 CAS 的那次协程才 adjustPoints 入账；
+                                        // 第二击被 guard 当场拒绝（不排队补发）。note 中文原文不动（D-12 未覆盖本入口，见 Task B 报告披露）。
+                                        bonusClaimGuard.claim(
+                                            tryClaim = { app.userPreferences.tryClaimReviewStreakMilestone(days) },
+                                            onClaimed = {
+                                                app.pointRepository.adjustPoints(bonus, "连续复习${days}天里程碑奖励")
+                                                com.hstudy.app.ui.common.AchievementManager.evaluate(app)
+                                                snackbarHostState.showSnackbar(strings.milestoneClaimedMessage(days, bonus))
+                                            }
+                                        )
                                     }
                                 },
+                                enabled = !bonusClaimGuard.isClaimingBonus,
                                 modifier = Modifier.fillMaxWidth()
                             ) { Text(strings.milestoneClaimButton(days, bonus)) }
                         }
