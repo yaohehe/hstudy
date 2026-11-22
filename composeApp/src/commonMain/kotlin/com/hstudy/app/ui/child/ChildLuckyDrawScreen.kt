@@ -16,6 +16,7 @@ import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.AnalyticsEvent
 import com.hstudy.app.platform.AnalyticsReporter
+import com.hstudy.app.ui.common.BonusNoteKeys
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.delay
@@ -119,13 +120,15 @@ fun ChildLuckyDrawScreen(
                                 delay(1500) // 动画时长
                                 val won = rewardPool.random()
                                 // D-13（D-09 同型）：先原子置"今日已抽"（CAS），赢下置位的那次协程才发奖入账；
-                                // 双击的第二个协程被 guard 当场拒绝（不排队补发）。note 中文原文不动（D-12 未覆盖本入口）。
+                                // 双击的第二个协程被 guard 当场拒绝（不排队补发）。
+                                // D-13 fix round 1：note 改 `bonus_lucky:<yyyy-MM-dd>` 业务键（today 与 bonus_excellent
+                                // 同源 todayString()；中文原文逐字节进 ChildPointsStrings.bonusLucky 渲染派生）。
                                 val claimed = bonusClaimGuard.claim(
                                     tryClaim = { app.userPreferences.tryClaimDailyLuckyDraw(today) },
                                     onClaimed = {
                                         resultPoints = won
                                         canDraw = false
-                                        app.pointRepository.adjustPoints(won, "每日幸运抽奖")
+                                        app.pointRepository.adjustPoints(won, BonusNoteKeys.lucky(today))
                                         AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.LUCKY_DRAW))
                                         snackbarHostState.showSnackbar(strings.drawSnackbar(won))
                                     }

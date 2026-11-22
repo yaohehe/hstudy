@@ -4,8 +4,10 @@ package com.hstudy.app.i18n
  * 孩子错题列表页（ui/mistake/ChildMistakeListScreen.kt）文案表（阶段 2 W1）。
  *
  * 来源：迁移前（`4d28c8e`）该文件的状态卡/筛选栏/卡片/提醒开关全部 UI 字面量。
- * **不迁**三条落库原文（Ruling 25）：`间隔复习`（reviewMistake note）、
- * `复习错题：${title}`（submitApproval description）、`连续复习${days}天里程碑奖励`（adjustPoints note）。
+ * **不迁**落库原文（Ruling 25）：`间隔复习`（reviewMistake note）、
+ * `复习错题：${title}`（submitApproval description）。
+ * `连续复习${days}天里程碑奖励`（adjustPoints note）自 v3.3.2 D-13 fix round 1 起改
+ * `bonus_review:<days>` 纯 ASCII 业务键，中文原文逐字节进 `ChildPointsStrings.bonusReview` 渲染派生。
  *
  * 字段要点：
  * - [filterAll] 与 [TaskListStringsZh.filterAll] 是同一个中文值「全部」，英文都必须是 "All"，

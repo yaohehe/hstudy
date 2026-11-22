@@ -532,7 +532,7 @@ def main():
           not ({"commentedNote", "commentedHop", "strings", "common"} & tainted_commented),
           "实际污点集 %s" % sorted(tainted_commented))
 
-    print("\n== 6b) 通道 H：point_records.note 业务键登记表（v3.3.1 D-08 建，v3.3.2 D-12 扩）==")
+    print("\n== 6b) 通道 H：point_records.note 业务键登记表（v3.3.1 D-08 建，v3.3.2 D-12/D-13 扩）==")
     # H 是**仓库级对账**，不是逐文件形状检测，所以它没有 fixtures/ 条目：登记一条 fixture 要在
     # EXPECTED_CASES 里插行，会把本文件 26 / 313-314 两段**被闸门 docstring 按坐标引用**的行推成
     # 假引用（闸门 docstring 自己就写着这条耦合）。改用临时目录现场造探针，红绿两半各跑一次。
@@ -546,15 +546,17 @@ def main():
     check("真实树 exit 0 且通道 H 确实参与了这一轮（未改写扫描根 → 默认启用）",
           real_code == 0 and "通道 H" in real_out,
           "退出码 %d / 输出：%s" % (real_code, real_out[-500:]))
-    # D-12 起登记表跨两个写入源文件：心愿两键在 WishGoalRepository，bonus 三键在
-    # ui/common/PointRecordBonusNote.kt（BonusNoteKeys 常量）。同源对账按"键 → 写入点文件"逐条查，
-    # 任一侧改名/删键而没同步都要红。
+    # D-12 起登记表跨两个写入源文件：心愿两键在 WishGoalRepository，bonus 键在
+    # ui/common/PointRecordBonusNote.kt（BonusNoteKeys 常量，D-12 三键 + D-13 fix round 1 两键）。
+    # 同源对账按"键 → 写入点文件"逐条查，任一侧改名/删键而没同步都要红。
     NOTE_KEY_SOURCES = {
         "wish_deposit:": os.path.join("data", "repository", "WishGoalRepository.kt"),
         "wish_refund:": os.path.join("data", "repository", "WishGoalRepository.kt"),
         "bonus_excellent:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
         "bonus_weekly:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
         "bonus_streak:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
+        "bonus_review:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
+        "bonus_lucky:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
     }
     check("登记表与写入点字面量逐键同源（两侧任一方改名都要同步）",
           all(key in NOTE_KEY_SOURCES
@@ -572,7 +574,7 @@ def main():
         with io.open(stale, "w", encoding="utf-8") as handle:
             handle.write(
                 "class StaleRepo {\n"
-                "    // 只剩一条心愿键还在写，其余四条键都已被改名/删除 —— H 必须点名缺的那些\n"
+                "    // 只剩一条心愿键还在写，其余六条键都已被改名/删除 —— H 必须点名缺的那些\n"
                 '    private val depositNote = "wish_deposit:1"\n'
                 "}\n"
             )
@@ -585,23 +587,30 @@ def main():
         proc = subprocess.run([sys.executable, GATE], cwd=REPO_ROOT, env=env,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out = proc.stdout.decode("utf-8", "replace")
-    check("登记表里有键查无写入点 → 退出码 1 且点名通道 H（通道不是装饰）",
+    check("登记表里有键查无写入点 → 退出码 1 且点名通道 H（通道不是装饰；D-13 新键也被点名）",
           proc.returncode == 1 and "通道 H" in out and "wish_refund:" in out
-          and "bonus_streak:" in out,
+          and "bonus_streak:" in out and "bonus_review:" in out and "bonus_lucky:" in out,
           "退出码 %d / 输出：%s" % (proc.returncode, out[-500:]))
-    # 同一机理的绿的一半：五条键都在、且都是纯 ASCII 字面量（插值或常量拼接）→ A~H 全部不得误报
+    # 同一机理的绿的一半：七条键都在、且都是纯 ASCII 字面量（插值或常量拼接）→ A~H 全部不得误报
     # （D-08 的新写入形状 `spendPoints(n, "wish_deposit:$goalId")` 与
-    #   D-12 的 `const val EXCELLENT_PREFIX = "bonus_excellent:"` 都要能写出来）
+    #   D-12 的 `const val EXCELLENT_PREFIX = "bonus_excellent:"`、
+    #   D-13 fix round 1 的 `adjustPoints(won, "bonus_lucky:$today")` 都要能写出来）
     with tempfile.TemporaryDirectory(prefix="i18n-boundary-notekey-ok-") as tmp2:
         with io.open(os.path.join(tmp2, "AllNoteKeys.kt"), "w", encoding="utf-8") as handle:
             handle.write(
                 "class BothRepo(private val pointRepository: PointRepository) {\n"
                 '    companion object { const val EXCELLENT_PREFIX = "bonus_excellent:"\n'
                 '                         const val WEEKLY_PREFIX = "bonus_weekly:"\n'
-                '                         const val STREAK_PREFIX = "bonus_streak:" }\n'
+                '                         const val STREAK_PREFIX = "bonus_streak:"\n'
+                '                         const val REVIEW_PREFIX = "bonus_review:"\n'
+                '                         const val LUCKY_PREFIX = "bonus_lucky:" }\n'
                 "    suspend fun deposit(goalId: Long, amount: Int) {\n"
                 '        pointRepository.spendPoints(amount, "wish_deposit:$goalId", requireSufficientBalance = true)\n'
                 '        pointRepository.refundSpentPoints(amount, "wish_refund:$goalId")\n'
+                "    }\n"
+                "    suspend fun bonus(days: Int, won: Int, today: String) {\n"
+                '        pointRepository.adjustPoints(days, "bonus_review:$days")\n'
+                '        pointRepository.adjustPoints(won, "bonus_lucky:$today")\n'
                 "    }\n"
                 "}\n"
             )
@@ -612,7 +621,7 @@ def main():
         proc2 = subprocess.run([sys.executable, GATE], cwd=REPO_ROOT, env=env2,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out2 = proc2.stdout.decode("utf-8", "replace")
-    check("五条键齐全 + ASCII 业务键进 sink → 退出码 0（新形状不是误报）",
+    check("七条键齐全 + ASCII 业务键进 sink → 退出码 0（新形状不是误报）",
           proc2.returncode == 0 and "通道 H" in out2,
           "退出码 %d / 输出：%s" % (proc2.returncode, out2[-500:]))
 

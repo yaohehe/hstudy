@@ -5,7 +5,12 @@ import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.FakePointApprovalDao
 import com.hstudy.app.data.repository.FakePointDao
 import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.i18n.ChildPointsStringsEn
+import com.hstudy.app.i18n.ChildPointsStringsZh
 import com.hstudy.app.platform.Platform
+import com.hstudy.app.ui.common.BonusNoteKeys
+import com.hstudy.app.ui.common.bonusNoteTextFor
+import com.hstudy.app.ui.common.parseBonusNoteKey
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -16,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -26,6 +32,10 @@ import kotlin.test.assertTrue
  * 读取-判定-写入 + 可挂起的落盘窗口"复刻 DataStore.edit 的可观察语义（真 DataStore 的
  * CAS 由 [UserPreferencesD13CasTest] 直接验证），双击时序在 runTest 单一调度器上确定复现。
  *
+ * D-13 fix round 1：两入口的 note 从 canonical 中文直写改为 `bonus_review:<days>` /
+ * `bonus_lucky:<yyyy-MM-dd>` 业务键（D-12 同派生器），本套件同步钉"入账 note 纯 ASCII
+ * + 明细渲染派生双语（中文逐字节=旧原文）"。
+ *
  * 钉死的事：
  * 1. 复习里程碑（ChildMistakeListScreen 同构）在飞双击：第二击被互斥当场拒绝，账本只有一条
  *    （[reviewMilestone_doubleClickWhileFirstInFlight_secondClaimDoesNotDeposit]）；
@@ -34,7 +44,9 @@ import kotlin.test.assertTrue
  * 3. 顺序重入被 CAS 拒绝（同档里程碑、同日抽奖），换日/新档恢复可领
  *    （[reviewMilestone_sequentialReclaimIsRejectedByCas] / [luckyDraw_sameDayReclaimRejected_nextDayOpensAgain]）；
  * 4. 入账时序为"先置位后入账"：CAS 未赢的协程对账本零触碰
- *    （各双击用例中 records/editInvocations 断言）。
+ *    （各双击用例中 records/editInvocations 断言）；
+ * 5. fix round 1 全链路：CAS 入账 → 明细派生，两入口混排净额守恒、note 全纯 ASCII、
+ *    中文派生与旧落库原文逐字节一致（[reviewMilestoneAndLuckyDraw_fullChain_casDeposit_derivesAndNetConservation]）。
  */
 class BonusClaimGuardD13Test {
 
@@ -77,18 +89,18 @@ class BonusClaimGuardD13Test {
         val pointDao = FakePointDao()
         val points = PointRepository(pointDao, FakePointApprovalDao())
 
-        /** 与 ChildMistakeListScreen 里程碑按钮 onClick 同构（D-13 新形状：先 CAS 后置位再入账）。 */
+        /** 与 ChildMistakeListScreen 里程碑按钮 onClick 同构（D-13 先置位后入账 + fix round 1 note 业务键）。 */
         suspend fun claimReviewMilestone(days: Int, bonus: Int): Boolean =
             guard.claim(
                 tryClaim = { store.tryClaimReviewStreakMilestone(days) },
-                onClaimed = { points.adjustPoints(bonus, "连续复习${days}天里程碑奖励") }
+                onClaimed = { points.adjustPoints(bonus, BonusNoteKeys.review(days)) }
             )
 
-        /** 与 ChildLuckyDrawScreen 抽奖按钮 onClick 的后半段同构（动画 delay 不入 guard，发奖在 guard 内）。 */
+        /** 与 ChildLuckyDrawScreen 抽奖按钮 onClick 的后半段同构（动画 delay 不入 guard，发奖在 guard 内；note 业务键）。 */
         suspend fun drawLucky(today: String, won: Int): Boolean =
             guard.claim(
                 tryClaim = { store.tryClaimDailyLuckyDraw(today) },
-                onClaimed = { points.adjustPoints(won, "每日幸运抽奖") }
+                onClaimed = { points.adjustPoints(won, BonusNoteKeys.lucky(today)) }
             )
     }
 
@@ -119,7 +131,10 @@ class BonusClaimGuardD13Test {
         assertEquals(1, records.size, "D-13 核心断言：复习里程碑双击只入账一次")
         assertEquals(8, records.single().points, "7 天档 bonus=8（档位表 3/7/14/30 → 3/8/15/30 未动）")
         assertEquals(PointRecordType.ADJUSTMENT, records.single().type)
-        assertEquals("连续复习7天里程碑奖励", records.single().note, "note 保持 canonical 中文原样（D-12 未覆盖本入口）")
+        assertEquals("bonus_review:7", records.single().note, "note 是 D-13 fix round 1 业务键（中文渲染派生，库里不存文案）")
+        assertEquals("连续复习7天里程碑奖励",
+            bonusNoteTextFor(parseBonusNoteKey(records.single().note)!!, ChildPointsStringsZh),
+            "明细派生中文与 Task B 旧直写 DB 原文逐字节相同（新旧记录词面一致）")
         assertFalse(fx.guard.isClaimingBonus, "在飞结束后状态必须复位，按钮恢复可点")
     }
 
@@ -160,7 +175,10 @@ class BonusClaimGuardD13Test {
         val records = fx.pointDao.records
         assertEquals(1, records.size, "D-13 核心断言：双击转盘只发一次奖")
         assertEquals(3, records.single().points)
-        assertEquals("每日幸运抽奖", records.single().note, "note 保持 canonical 中文原样（Ruling 25 存量，D-12 未覆盖本入口）")
+        assertEquals("bonus_lucky:2099-08-02", records.single().note, "note 是 D-13 fix round 1 业务键（today 与 bonus_excellent 同源）")
+        assertEquals("每日幸运抽奖",
+            bonusNoteTextFor(parseBonusNoteKey(records.single().note)!!, ChildPointsStringsZh),
+            "明细派生中文与 Task B 旧直写 DB 原文逐字节相同（Ruling 25 存量盲区已并入键体系）")
         assertFalse(fx.guard.isClaimingBonus)
     }
 
@@ -176,6 +194,45 @@ class BonusClaimGuardD13Test {
         assertEquals(2, records.size, "两天各一发奖；被拒的同日重抽对账本零触碰")
         assertEquals(listOf(1, 2), records.map { it.points })
         assertEquals(3, fx.store.editInvocations, "三次 onClick 都走到 CAS 判定（拦截发生在置位结果上）")
+    }
+
+    /**
+     * D-13 fix round 1 全链路：两入口 CAS 入账（含一次同档重入被拒）→ 账本落库 → 明细渲染派生。
+     * 钉三件事：① 净额守恒（不变量 5：余额 = SUM(points)，被拒重入不额外入账）；
+     * ② 新入库 note 全部纯 ASCII 业务键；③ 派生中文与旧直写 DB 原文逐字节一致、英文界面念英文，
+     * 旧中文记录（Task B 直写形态）解析不出键 → passthrough 不改写。
+     */
+    @Test
+    fun reviewMilestoneAndLuckyDraw_fullChain_casDeposit_derivesAndNetConservation() = runTest {
+        val fx = Fixture()
+        assertTrue(fx.claimReviewMilestone(days = 7, bonus = 8), "复习 7 天档首领赢下 CAS")
+        assertFalse(fx.claimReviewMilestone(days = 7, bonus = 8), "同档重入被 CAS 拒绝——不得多入账一笔")
+        assertTrue(fx.drawLucky("2099-08-07", won = 3), "当日首抽赢下 CAS")
+        // 一条 Task B 直写 DB 的旧中文记录（fix round 1 之前的存量形态，append-only 不改写）
+        fx.points.adjustPoints(8, "连续复习7天里程碑奖励")
+
+        val records = fx.pointDao.records
+        assertEquals(3, records.size, "8 + 3 + 旧中文 8；被拒的同档重入对账本零触碰")
+        assertTrue(records.all { it.type == PointRecordType.ADJUSTMENT })
+        val sum = records.sumOf { it.points }
+        assertEquals(19, sum)
+        assertEquals(sum, fx.points.getTotalPoints().first(), "不变量 5：余额 = SUM(points)")
+
+        // 新两笔 note 纯 ASCII 业务键 → 派生层认领；旧中文解析不出 → passthrough
+        val newNotes = records.take(2).map { it.note }
+        newNotes.forEach { note -> assertTrue(note.all { it.code < 128 }, "新写入 note 必须纯 ASCII：$note") }
+        assertEquals(listOf("bonus_review:7", "bonus_lucky:2099-08-07"), newNotes)
+        assertEquals(
+            listOf("连续复习7天里程碑奖励", "每日幸运抽奖"),
+            newNotes.map { bonusNoteTextFor(parseBonusNoteKey(it)!!, ChildPointsStringsZh) },
+            "派生中文与旧直写 DB 原文逐字节相同（CAS 入账→明细派生全链路）",
+        )
+        assertEquals(
+            listOf("Review milestone bonus: 7 days of review in a row", "Daily lucky draw bonus"),
+            newNotes.map { bonusNoteTextFor(parseBonusNoteKey(it)!!, ChildPointsStringsEn) },
+            "英文界面派生英文——fix round 1 修的正是英文账本念中文",
+        )
+        assertNull(parseBonusNoteKey(records.last().note), "旧中文记录不得被派生层认领")
     }
 }
 

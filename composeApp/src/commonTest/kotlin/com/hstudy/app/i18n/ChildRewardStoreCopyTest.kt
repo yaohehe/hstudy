@@ -119,6 +119,8 @@ class ChildRewardStoreCopyTest {
             // v3.3.2 D-12：三处里程碑 bonus 的渲染派生静态槽（中文=旧落库原文逐字节，英文新写）
             zh.bonusExcellent to en.bonusExcellent,
             zh.bonusWeekly to en.bonusWeekly,
+            // v3.3.2 D-13 fix round 1：转盘发奖派生静态槽（中文=D-13 Task B 旧落库原文逐字节）
+            zh.bonusLucky to en.bonusLucky,
         )
         // 四个分组标题两两互不相同（when 分桶的 0..3 支同值等于两段流水念成同一段）
         assertEquals(4, listOf(zh.sectionToday, zh.sectionYesterday, zh.sectionWeekEarlier, zh.sectionHistory).distinct().size)
@@ -161,6 +163,15 @@ class ChildRewardStoreCopyTest {
         assertEquals("连续打卡30天里程碑奖励", zh.bonusStreak(30))
         assertEquals("Streak milestone bonus: 7 days in a row", en.bonusStreak(7))
         assertEquals("Streak milestone bonus: 1 day in a row", en.bonusStreak(1))
+        // v3.3.2 D-13 fix round 1：复习/转盘两键派生。中文**逐字节**等于 D-13 Task B 直写 DB 的
+        // 旧原文（ChildMistakeListScreen"连续复习N天里程碑奖励" / ChildLuckyDrawScreen"每日幸运抽奖"，
+        // 新旧记录中文词面一致）；英文为本修复新写（不提 points，沿 bonusStreak 的 days==1 防御分支）。
+        assertEquals("连续复习7天里程碑奖励", zh.bonusReview(7))
+        assertEquals("连续复习30天里程碑奖励", zh.bonusReview(30))
+        assertEquals("Review milestone bonus: 7 days of review in a row", en.bonusReview(7))
+        assertEquals("Review milestone bonus: 1 day of review in a row", en.bonusReview(1))
+        assertEquals("每日幸运抽奖", zh.bonusLucky)
+        assertEquals("Daily lucky draw bonus", en.bonusLucky)
     }
 
     @Test

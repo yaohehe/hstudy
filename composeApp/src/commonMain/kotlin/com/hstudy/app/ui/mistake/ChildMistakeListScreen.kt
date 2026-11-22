@@ -318,11 +318,13 @@ private fun StatusCardsPanel(
                                 onClick = {
                                     scope.launch {
                                         // D-13（D-09 同型）：先原子置 claimed，赢下 CAS 的那次协程才 adjustPoints 入账；
-                                        // 第二击被 guard 当场拒绝（不排队补发）。note 中文原文不动（D-12 未覆盖本入口，见 Task B 报告披露）。
+                                        // 第二击被 guard 当场拒绝（不排队补发）。
+                                        // D-13 fix round 1：note 改 `bonus_review:<days>` 纯 ASCII 业务键（D-12 同型，
+                                        // 中文原文逐字节进 ChildPointsStrings.bonusReview 渲染派生，旧中文记录 passthrough）。
                                         bonusClaimGuard.claim(
                                             tryClaim = { app.userPreferences.tryClaimReviewStreakMilestone(days) },
                                             onClaimed = {
-                                                app.pointRepository.adjustPoints(bonus, "连续复习${days}天里程碑奖励")
+                                                app.pointRepository.adjustPoints(bonus, BonusNoteKeys.review(days))
                                                 com.hstudy.app.ui.common.AchievementManager.evaluate(app)
                                                 snackbarHostState.showSnackbar(strings.milestoneClaimedMessage(days, bonus))
                                             }
