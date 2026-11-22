@@ -18,6 +18,7 @@ import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.ui.common.bonusNoteDisplayText
 import com.hstudy.app.ui.common.wishNoteDisplayText
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
@@ -36,6 +37,8 @@ import com.hstudy.app.ui.dt.*
  *
  * v3.3.1 D-08：账本 note 不再存展示文案，心愿存入/退回两条业务键在此派生标签
  * （见 [wishNoteDisplayText]）；旧记录的 note 原样显示，本页不改写任何账目。
+ * v3.3.2 D-12：三处里程碑 bonus 的 `bonus_*` 业务键同页派生（见 [bonusNoteDisplayText]），
+ * D-12 之前落库的中文 ADJUSTMENT 旧记录继续原样 passthrough。
  */
 @Composable
 fun ChildPointsScreen(
@@ -171,7 +174,8 @@ internal fun pointRecordSection(dateMillis: Long): Int {
  * REVERSAL/PENALTY 小标签。数值语义映射不动账本：符号永远如实来自 record.points。
  *
  * D-08：中间那行多一种来源 —— note 是心愿业务键时按 [wishNoteDisplayText] 派生，
- * 其余记录（商店兑换、家长备注、旧中文 ADJUSTMENT）照旧原样显示 note。
+ * D-12：note 是 bonus_* 业务键时按 [bonusNoteDisplayText] 派生，
+ * 其余记录（商店兑换、家长备注、D-08/D-12 之前落库的旧中文 ADJUSTMENT）照旧原样显示 note。
  */
 @Composable
 private fun PointHistoryItem(
@@ -180,6 +184,7 @@ private fun PointHistoryItem(
 ) {
     val strings = LocalStrings.current.childPoints
     val wishNoteText = wishNoteDisplayText(record, wishNamesById)
+    val bonusNoteText = bonusNoteDisplayText(record)
     val icon = when (record.type) {
         PointRecordType.TASK_COMPLETE -> "✅"
         PointRecordType.BONUS -> "🎁"
@@ -225,8 +230,8 @@ private fun PointHistoryItem(
             // 中：业务描述 + 精确时间
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    // D-08：心愿业务键 → 派生文案；否则 note 原样；note 空 → 类型标签
-                    wishNoteText ?: record.note.ifEmpty {
+                    // D-08/D-12：心愿/bonus 业务键 → 派生文案；否则 note 原样；note 空 → 类型标签
+                    wishNoteText ?: bonusNoteText ?: record.note.ifEmpty {
                         when (record.type) {
                             PointRecordType.TASK_COMPLETE -> strings.typeTaskComplete
                             PointRecordType.BONUS -> strings.typeBonus

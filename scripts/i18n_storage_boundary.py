@@ -39,13 +39,15 @@
   G 插值文案    —— 字符串字面量里的 `${strings.x}` / `$taintedVar` **算文案**（9b 审查 Critical 1：
                     双语迁移最常产出的复合说明就长这样；空白化时必须保留插值区，见
                     blank_string_contents）；fixture InterpolationCopy.kt / InterpolationNoFp.kt
-  H note 业务键 —— **仓库级对账**（v3.3.1 D-08）：`point_records.note` 里允许出现的自动写入键
-                    登记在 NOTE_BIZKEY_PREFIXES，闸门两头钉：① 登记表里的键必须是纯 ASCII；
+  H note 业务键 —— **仓库级对账**（v3.3.1 D-08 建，v3.3.2 D-12 扩）：`point_records.note` 里允许
+                    出现的自动写入键登记在 NOTE_BIZKEY_PREFIXES，闸门两头钉：① 登记表里的键必须是纯 ASCII；
                     ② 每条都必须在扫描根里以字符串字面量前缀真实出现（防"注释里说要写、代码里没写"
                     的空头登记表）。A~G 抓的是"文案表引用流入 sink"，抓不到**硬编码中文字面量**
                     （`spendPoints(n, "兑换：${reward.name}")` 这种不在文案表里的存量形态），
                     H 因此是新增自动写入的**正向约束**：要往 note 写机器键就得进登记表（纯 ASCII），
                     不进登记表的中文键不会被 H 抓到 → 仍靠 A~G + 人工复核（见"已知边界"）。
+                    D-12 把三处里程碑 bonus（原 CanonicalChildHomeText 直写中文）纳入本登记表
+                    （bonus_excellent:/bonus_weekly:/bonus_streak:，写入点 ui/common/PointRecordBonusNote.kt）。
                     默认只在未改写的扫描根上跑（逐通道 fixture 每次只扫一个文件，仓库级对账在那里
                     必然缺键）；自测 5b 用 `I18N_BOUNDARY_NOTE_CHECK=1` 在临时目录里逼它红一次。
 
@@ -231,20 +233,30 @@ SINK_EXTRA = [
 ]
 
 # ---------------------------------------------------------------------------
-# 通道 H：`point_records.note` 允许自动写入的**业务键**登记表（v3.3.1 D-08）
+# 通道 H：`point_records.note` 允许自动写入的**业务键**登记表（v3.3.1 D-08 建，v3.3.2 D-12 扩）
 #
 # 取证（commonMain 写入点，改名要一并改这里）：
 #   wish_deposit:  WishGoalRepository.kt:95 WISH_DEPOSIT_NOTE_PREFIX
 #                  → depositPoints 经 PointRepository.spendPoints 落 REWARD_EXCHANGE 记录
 #   wish_refund:   WishGoalRepository.kt:98 WISH_REFUND_NOTE_PREFIX
 #                  → deleteGoal 退还已存积分，经 PointRepository.refundSpentPoints 落正向记录
-# 完整形态是"前缀 + 纯数字 id"（`wish_deposit:42`），解析形状由
+#   bonus_excellent: / bonus_weekly: / bonus_streak:
+#                  ui/common/PointRecordBonusNote.kt BonusNoteKeys（D-12）
+#                  → ChildHomeScreen 三处里程碑 bonus 经 PointRepository.adjustPoints 落 ADJUSTMENT 记录
+#                    （旧形态是 CanonicalChildHomeText 中文字面量直写 DB，D-12 起键里只带数据位：
+#                    日期 yyyy-MM-dd / 周起始日 / 天数，文案渲染期派生，旧中文记录 passthrough 不改写）
+# 心愿键完整形态是"前缀 + 纯数字 id"（`wish_deposit:42`），解析形状由
 # WishGoalRepository.parseWishNoteKey 钉死、WishGoalRepositoryLedgerTest 回归；
-# 明细页（ChildPointsScreen / ParentPointsScreen → ui/common/PointRecordWishNote.kt）据此派生文案。
+# bonus 键参数形状由 PointRecordBonusNote.kt 的 parseBonusNoteKey 钉死、PointRecordBonusNoteTest 回归。
+# 明细页（ChildPointsScreen / ParentPointsScreen / ParentDashboardScreen →
+# ui/common/PointRecordWishNote.kt + ui/common/PointRecordBonusNote.kt）据此派生文案。
 # ---------------------------------------------------------------------------
 NOTE_BIZKEY_PREFIXES = [
     "wish_deposit:",
     "wish_refund:",
+    "bonus_excellent:",
+    "bonus_weekly:",
+    "bonus_streak:",
 ]
 
 

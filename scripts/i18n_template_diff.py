@@ -252,6 +252,11 @@ REASON_FROM_CLI = "--disclose 追加的临时条目（没写进脚本，下一�
 # 无原文可比；两语由 StringsCopyTest.taskListInterpolatedCopyPinsBothLanguages 逐字钉死。同批
 # Minor-4 只改 staleConfirmMessage 词面（追加「实际笔数以执行时为准」），登记条目 table 串同步
 # 更新、条数不增）→ 261 + 1 = 262（实数以闸门运行为准）。
+# v3.3.2 D-12（三处里程碑 bonus note 业务键化）不新增条目：**Task 9 那组的前三条页面单边登记**
+# （今日学习表现优秀奖励 / 连续打卡⟨$⟩天里程碑奖励 / 每周挑战奖励：本周打卡5天）改成**两侧同形**
+# ——note 已改 bonus_* 纯 ASCII 业务键，中文原文逐字节搬进 ChildPointsStrings.bonusExcellent/
+# bonusStreak/bonusWeekly 渲染槽（table_field 逐条限定，沿 W9 T3 字段级口径）。--branch 组里
+# 这三条由"只摘页面"变成"两侧各摘一次"，仍 0 条未用到；条数不变（262，实数以闸门运行为准）。
 # W9 Task 3 结束时是 184 条（20 条只看表侧）、默认组 178 条用不到；Task 4 按 Ruling 4 删掉
 # PetStrings 的两个死字段槽（`喂养`/`陪玩`）后同步删掉其 2 条表侧单边登记 → 184 - 2 = 182。
 # W9 Task 3 之前是 179 条（15 条只看表侧）、整枝组有 1 条"（未用到）"——`分` 的 scoreUnit 表侧条目
@@ -461,20 +466,29 @@ DISCLOSED_RESIDUALS = [
                "W9 T3（L-19）：表侧限定到 CommonStrings.deleteContentDescription（该值的唯一持有者）；"
                "页面侧仍是值级（『删除』散布在 8 个页面）"},
     # ---- Task 9（孩子首页）的 5 条残差 ----
-    # 前四条是 Ruling 25 的存储边界：原文**不进文案表**，而是搬到 ChildHomeStrings.kt 里的
-    # CanonicalChildHomeText 常量（该对象不属于 Zh/En 表，所以本命令的表侧集合里看不到它们）。
-    # 登记成"页面单边"而不是"表侧同形"，是因为表侧取的是 `ChildHomeStringsZh` 变量段，
-    # 常量对象在其外——于是残差条数恰好等于"落库原文条数"，多一条就说明有人把存储文案挪进了表。
-    {"page": "今日学习表现优秀奖励", "table": None,
-     "reason": "Task 9 Ruling 25：ChildHomeScreen.kt:317 传给 adjustPoints(points, note) 的 note 落库，"
-               "值留在 CanonicalChildHomeText.EXCELLENT_BONUS_NOTE（逐字节不变、不本地化）"},
-    {"page": "连续打卡%s天里程碑奖励" % VALUE, "table": None,
-     "reason": "Task 9 Ruling 25：:478 的 adjustPoints note，值留在 CanonicalChildHomeText.streakMilestoneNote(days)"},
-    {"page": "每周挑战奖励：本周打卡5天", "table": None,
-     "reason": "Task 9 Ruling 25：:514 的 adjustPoints note，值留在 CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE"},
+    # 前四条源自 Ruling 25 的存储边界：迁移前页面把中文原文直写 DB。**v3.3.2 D-12 后**前三条
+    # 改登记成"两侧同形"：note 已业务键化（bonus_* 纯 ASCII，写入点 ui/common/PointRecordBonusNote.kt），
+    # 中文原文**逐字节**搬进 ChildPointsStrings 渲染槽（表侧从此有值，页面侧仍是迁移前原文）；
+    # 第四条（checkIn description）仍走 CanonicalChildHomeText 常量、不进表（表侧无值 → 页面单边）。
+    # 残差条数仍等于"落库原文条数"，多一条就说明有人把存储文案挪回了别处。
+    {"page": "今日学习表现优秀奖励", "table": "今日学习表现优秀奖励",
+     "table_field": "ChildPointsStrings.bonusExcellent",
+     "reason": "Task 9 Ruling 25：ChildHomeScreen.kt:317 传给 adjustPoints(points, note) 的 note 落库。"
+               "v3.3.2 D-12 起库里改写 `bonus_excellent:<yyyy-MM-dd>` 业务键，中文原文逐字节进 "
+               "ChildPointsStrings.bonusExcellent 渲染派生（两语由 ChildRewardStoreCopyTest 钉死，"
+               "旧中文记录 passthrough 不改写）"},
+    {"page": "连续打卡%s天里程碑奖励" % VALUE, "table": "连续打卡%s天里程碑奖励" % VALUE,
+     "table_field": "ChildPointsStrings.bonusStreak",
+     "reason": "Task 9 Ruling 25：:478 的 adjustPoints note。D-12 起库里写 `bonus_streak:<days>`，"
+               "days 渲染期插回本模板（同上门派生）"},
+    {"page": "每周挑战奖励：本周打卡5天", "table": "每周挑战奖励：本周打卡5天",
+     "table_field": "ChildPointsStrings.bonusWeekly",
+     "reason": "Task 9 Ruling 25：:514 的 adjustPoints note。D-12 起库里写 `bonus_weekly:<weekStart>`，"
+               "本槽无插值位（原文就是定值句），渲染期直接取词（同上门派生）"},
     {"page": "完成布置任务: %s" % VALUE, "table": None,
      "reason": "Task 9 Ruling 25：:586 跨行 checkIn(bizKey, description) 的 description 参与 "
-               "PointRepository.kt:256 幂等判等，值留在 CanonicalChildHomeText.assignmentDescription(name)"},
+               "PointRepository.kt:256 幂等判等，值留在 CanonicalChildHomeText.assignmentDescription(name)"
+               "（D-12 只业务键化三处 adjustPoints note，判等路径按红线不动）"},
     {"page": "+%s分" % VALUE, "table": "+%s分" % VALUE,
      "table_field": "TaskListStrings.pointsEarnedLabel",
      "reason": "Task 9 跨表复用：ChildHomeScreen.kt:567 的 `+${a.points}分` 用 TaskListStrings.pointsEarnedLabel"

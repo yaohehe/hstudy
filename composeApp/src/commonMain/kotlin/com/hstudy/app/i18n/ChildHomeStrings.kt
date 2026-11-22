@@ -9,6 +9,8 @@ package com.hstudy.app.i18n
  * pendingApprovalCapsule 一条函数型，现共 105 字段 / 18 函数型）：它们是首页重设计的新词，
  * 迁移前页面没有原文可比，已在 `scripts/i18n_template_diff.py` DISCLOSED_RESIDUALS 登记表侧单边。
  * - 4 条进存储/幂等路径 → 不在本表，改由 [CanonicalChildHomeText] 持有规范中文（Ruling 25，详见下面那段）；
+ *   **v3.3.2 D-12 注**：其中三条 adjustPoints note 已业务键化移出常量（note 不判等，按 D-08 口径改
+ *   `bonus_*:<参数>` 纯 ASCII 键 + [ChildPointsStrings] 渲染派生），本对象只剩 checkIn description 一条；
  * - 1 条（`:567` 的 `+${a.points}分`）复用 [TaskListStrings.pointsEarnedLabel]（中文值逐字节相同、
  *   语义同为"某件事值多少积分"），按"复用不新增"的约定不在本表重开一个字段；
  * - 其余 102 条逐字来自迁移前对应行（行号写在每个 ZH 值的行尾注释里），迁移后页面只剩
@@ -16,9 +18,11 @@ package com.hstudy.app.i18n
  *
  * **存储边界（本页最容易出事的地方，Ruling 25）**：`point_records.note` 与 `checkIn` 的 description
  * 都会落库，而 `data/repository/PointRepository.kt:256` 用 `pending.description != description` 判等——
- * 文案一旦跟着语言变，切语言就等于"业务变更"，历史行会被重写。所以这四条**不进文案表**，
- * 规范值放在 [CanonicalChildHomeText]（`adjustPoints` 三处 + `checkIn` 一处）。
- * `scripts/i18n_storage_boundary.py` 会盯着这类调用，跨行的也算（Task 9 修掉了原来的行级盲区）。
+ * 文案一旦跟着语言变，切语言就等于"业务变更"，历史行会被重写。所以 checkIn 的 description
+ * **不进文案表**，规范值放在 [CanonicalChildHomeText]；三处系统奖励 note 自 v3.3.2 D-12 起写
+ * 纯 ASCII 业务键（`ui/common/PointRecordBonusNote.kt`），展示文案由 [ChildPointsStrings] 渲染派生。
+ * `scripts/i18n_storage_boundary.py` 会盯着这类调用，跨行的也算（Task 9 修掉了原来的行级盲区），
+ * note 业务键前缀由通道 H 与 `BonusNoteKeys`/`WishGoalRepository` 双向对账。
  *
  * 同形异义（`分`）在本页有三类，取值时必须逐处判断，不能整页套一个词：
  * 1. **积分**：`:95` 的"已自动扣减 N 分"、`:320`/`:324` 的"+2 分"、`:401`/`:406`/`:567`/`:591` 的"+N 分"、
@@ -191,27 +195,23 @@ data class ChildHomeStrings(
 )
 
 /**
- * 孩子首页里**落库/参与业务判等**的规范中文（Ruling 25，模式与 [CanonicalFocusText] 相同）。
+ * 孩子首页里**参与业务判等**的规范中文（Ruling 25，模式与 [CanonicalFocusText] 相同）。
  *
- * 为什么在本期必须由常量而不是文案表承担：这四条传给 `PointRepository.adjustPoints(points, note)` 与
- * `checkIn(bizKey, description)`，而 `PointRepository.kt:256` 拿 description 做幂等比较——
- * 若跟着界面语言走，孩子切一次语言就会被判定成"新的一笔业务"，同一天的奖励行会被重复登记。
- * 值必须与迁移前逐字节相同（`StringsCopyTest.childHomeStorageCopyStaysCanonical` 钉住），
- * 只在渲染时才本地化；英文态里这些历史行仍显示它自己的原文，这条进 Task 12 的人工验证清单。
+ * 为什么必须由常量而不是文案表承担这一条：`checkIn(bizKey, description)` 的 description 会被
+ * `PointRepository.kt:256` 拿来做幂等比较——若跟着界面语言走，孩子切一次语言就会被判定成
+ * "新的一笔业务"，同一天的完成判定会重开一张申请。值必须与迁移前逐字节相同
+ * （`StringsCopyTest.childHomeStorageCopyStaysCanonical` 钉住），只在渲染时才本地化。
  *
  * 与 [CanonicalFocusText] 一样**刻意不进文案表**：表值随语言实例走，
  * 存储边界闸门见到 `strings.` 进 sink 就该红，放这里闸门才能继续当硬约束用。
+ *
+ * **v3.3.2 D-12 的收缩**：原来这里还挂着三条 `adjustPoints` note 的中文原文
+ * （EXCELLENT_BONUS_NOTE / WEEKLY_CHALLENGE_NOTE / streakMilestoneNote）——那是 D-08 之前的
+ * 存量盲区（签核记录见 docs/acceptance-v331-hardening.md 残险台账 D-12）。note 不参与任何判等，
+ * 已按 D-08 同型改成纯 ASCII 业务键（`com.hstudy.app.ui.common.BonusNoteKeys`），
+ * 中文原文逐字节搬进 `ChildPointsStrings` 渲染槽位，旧记录由明细页原样展示、不改写。
  */
 object CanonicalChildHomeText {
-    /** `ChildHomeScreen.kt:317` 迁移前传给 `adjustPoints(2, …)` 的原话 */
-    const val EXCELLENT_BONUS_NOTE = "今日学习表现优秀奖励"
-
-    /** `ChildHomeScreen.kt:514` 迁移前传给 `adjustPoints(5, …)` 的原话 */
-    const val WEEKLY_CHALLENGE_NOTE = "每周挑战奖励：本周打卡5天"
-
-    /** `ChildHomeScreen.kt:478` 迁移前的模板 `连续打卡${days}天里程碑奖励` */
-    fun streakMilestoneNote(days: Int): String = "连续打卡${days}天里程碑奖励"
-
     /** `ChildHomeScreen.kt:586` 迁移前的模板 `完成布置任务: $name`（参与 `checkIn` 的幂等判等） */
     fun assignmentDescription(taskName: String): String = "完成布置任务: $taskName"
 }

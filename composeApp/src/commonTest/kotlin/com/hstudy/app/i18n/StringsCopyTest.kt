@@ -1733,30 +1733,38 @@ class StringsCopyTest {
     }
 
     /**
-     * 存储边界（Ruling 25）在本页的四条落库/幂等原文：值必须与迁移前**逐字节相同**，
+     * 存储边界（Ruling 25）在本页的**幂等判等**原文：值必须与迁移前**逐字节相同**，
      * 且必须留在 [CanonicalChildHomeText] 而不是文案表里。
      *
      * 为什么值得单独一条断言：`scripts/i18n_storage_boundary.py` 能证明"页面没把 strings.* 传给
-     * adjustPoints / checkIn"，但证明不了"规范值本身有没有被人顺手改成英文或改写措辞"；
-     * 后者一旦漂移，`PointRepository.kt:256` 的 `pending.description != description` 就会把
+     * checkIn"，但证明不了"规范值本身有没有被人顺手改成英文或改写措辞"；后者一旦漂移，
+     * `PointRepository.kt:256` 的 `pending.description != description` 就会把
      * 每一次完成判定成新业务，历史行按语言分裂。第二个方向（不得进文案表）由 assertFalse 抓：
-     * 表里出现这四条原文 = 有人把它接上了语言实例，闸门立刻会红。
+     * 表里出现这条原文 = 有人把它接上了语言实例，闸门立刻会红。
+     *
+     * **v3.3.2 D-12 的收缩**：原来同段钉的三条 adjustPoints note（EXCELLENT_BONUS_NOTE /
+     * WEEKLY_CHALLENGE_NOTE / streakMilestoneNote）不参与任何判等，已按 D-08 口径改
+     * `bonus_*` 纯 ASCII 业务键，中文原文逐字节进 [ChildPointsStrings] 渲染槽——
+     * 那三条的字节级守卫搬到 [ChildRewardStoreCopyTest.childPointsInterpolatedCopyPinsBothLanguages]
+     * 与 [com.hstudy.app.ui.common.PointRecordBonusNoteTest]（键形状 + passthrough + 净额守恒）。
      */
     @Test
     fun childHomeStorageCopyStaysCanonical() {
-        assertEquals("今日学习表现优秀奖励", CanonicalChildHomeText.EXCELLENT_BONUS_NOTE)
-        assertEquals("每周挑战奖励：本周打卡5天", CanonicalChildHomeText.WEEKLY_CHALLENGE_NOTE)
-        assertEquals("连续打卡7天里程碑奖励", CanonicalChildHomeText.streakMilestoneNote(7))
         assertEquals("完成布置任务: 数学作业", CanonicalChildHomeText.assignmentDescription("数学作业"))
         val zhTable = AppStringsZh.childHome.toString()
         val enTable = AppStringsEn.childHome.toString()
-        listOf("今日学习表现优秀奖励", "每周挑战奖励：本周打卡5天", "连续打卡", "完成布置任务: ")
-            .forEach { canonical ->
-                assertFalse(zhTable.contains(canonical), "落库原文又回到文案表里了：$canonical")
-                assertFalse(enTable.contains(canonical), "英文表里出现落库原文：$canonical")
-            }
-        // 渲染侧"连续打卡 $days 天啦！"与存储侧"连续打卡N天里程碑奖励"是两条不同的话：
-        // 前者可本地化、后者不可。这条断言钉住前者没被顺手改成规范值模板。
+        listOf("完成布置任务: ").forEach { canonical ->
+            assertFalse(zhTable.contains(canonical), "落库原文又回到文案表里了：$canonical")
+            assertFalse(enTable.contains(canonical), "英文表里出现落库原文：$canonical")
+        }
+        // D-12 后 bonus 中文原文的家在 childPoints 表（渲染派生），不在 childHome 表、
+        // 也不再是 Canonical 常量——三条从 CanonicalChildHomeText 删除本身由编译钉住。
+        assertEquals("今日学习表现优秀奖励", AppStringsZh.childPoints.bonusExcellent)
+        assertEquals("每周挑战奖励：本周打卡5天", AppStringsZh.childPoints.bonusWeekly)
+        assertEquals("连续打卡7天里程碑奖励", AppStringsZh.childPoints.bonusStreak(7))
+        assertFalse(enTable.contains("今日学习表现优秀奖励"), "bonus 原文只该在 childPoints，不串门")
+        // 渲染侧"连续打卡 $days 天啦！"与存储派生侧"连续打卡N天里程碑奖励"是两条不同的话：
+        // 前者是可本地化的卡片标题、后者是账本词面。这条断言钉住前者没被顺手改成规范值模板。
         assertEquals("连续打卡 7 天啦！", AppStringsZh.childHome.streakMilestoneTitle(7))
     }
 

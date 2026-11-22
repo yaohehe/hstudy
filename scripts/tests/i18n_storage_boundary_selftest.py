@@ -532,7 +532,7 @@ def main():
           not ({"commentedNote", "commentedHop", "strings", "common"} & tainted_commented),
           "实际污点集 %s" % sorted(tainted_commented))
 
-    print("\n== 6b) 通道 H：point_records.note 业务键登记表（v3.3.1 D-08）==")
+    print("\n== 6b) 通道 H：point_records.note 业务键登记表（v3.3.1 D-08 建，v3.3.2 D-12 扩）==")
     # H 是**仓库级对账**，不是逐文件形状检测，所以它没有 fixtures/ 条目：登记一条 fixture 要在
     # EXPECTED_CASES 里插行，会把本文件 26 / 313-314 两段**被闸门 docstring 按坐标引用**的行推成
     # 假引用（闸门 docstring 自己就写着这条耦合）。改用临时目录现场造探针，红绿两半各跑一次。
@@ -546,18 +546,33 @@ def main():
     check("真实树 exit 0 且通道 H 确实参与了这一轮（未改写扫描根 → 默认启用）",
           real_code == 0 and "通道 H" in real_out,
           "退出码 %d / 输出：%s" % (real_code, real_out[-500:]))
-    check("登记表与 WishGoalRepository 的字面量同源（两侧任一方改名都要同步）",
-          all(('"%s' % key) in io.open(os.path.join(REAL_SRC, "data", "repository",
-                                                    "WishGoalRepository.kt"), encoding="utf-8").read()
+    # D-12 起登记表跨两个写入源文件：心愿两键在 WishGoalRepository，bonus 三键在
+    # ui/common/PointRecordBonusNote.kt（BonusNoteKeys 常量）。同源对账按"键 → 写入点文件"逐条查，
+    # 任一侧改名/删键而没同步都要红。
+    NOTE_KEY_SOURCES = {
+        "wish_deposit:": os.path.join("data", "repository", "WishGoalRepository.kt"),
+        "wish_refund:": os.path.join("data", "repository", "WishGoalRepository.kt"),
+        "bonus_excellent:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
+        "bonus_weekly:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
+        "bonus_streak:": os.path.join("ui", "common", "PointRecordBonusNote.kt"),
+    }
+    check("登记表与写入点字面量逐键同源（两侧任一方改名都要同步）",
+          all(key in NOTE_KEY_SOURCES
+              and ('"%s' % key) in io.open(os.path.join(REAL_SRC, NOTE_KEY_SOURCES[key]),
+                                           encoding="utf-8").read()
               for key in gate.NOTE_BIZKEY_PREFIXES),
-          "WishGoalRepository.kt 里找不到登记表的某条键字面量：%s" % gate.NOTE_BIZKEY_PREFIXES)
+          "登记表的某条键在其写入点文件里找不到字面量：%s" % gate.NOTE_BIZKEY_PREFIXES)
+    check("登记表与逐键来源表恰好互相盖全（新登记一条键必须同时登记它的写入点文件）",
+          set(gate.NOTE_BIZKEY_PREFIXES) == set(NOTE_KEY_SOURCES),
+          "登记表 %s 与来源表 %s 不一致"
+          % (sorted(gate.NOTE_BIZKEY_PREFIXES), sorted(NOTE_KEY_SOURCES)))
     # 反向半侧：键在代码里消失了（改名/删除而没同步登记表）必须红 —— 空头登记表比没有登记表更糟。
     with tempfile.TemporaryDirectory(prefix="i18n-boundary-notekey-") as tmp:
         stale = os.path.join(tmp, "StaleNoteKey.kt")
         with io.open(stale, "w", encoding="utf-8") as handle:
             handle.write(
                 "class StaleRepo {\n"
-                "    // 只剩一条业务键还在写，另一条已被改名 —— H 必须点名缺的那条\n"
+                "    // 只剩一条心愿键还在写，其余四条键都已被改名/删除 —— H 必须点名缺的那些\n"
                 '    private val depositNote = "wish_deposit:1"\n'
                 "}\n"
             )
@@ -571,15 +586,20 @@ def main():
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out = proc.stdout.decode("utf-8", "replace")
     check("登记表里有键查无写入点 → 退出码 1 且点名通道 H（通道不是装饰）",
-          proc.returncode == 1 and "通道 H" in out and "wish_refund:" in out,
+          proc.returncode == 1 and "通道 H" in out and "wish_refund:" in out
+          and "bonus_streak:" in out,
           "退出码 %d / 输出：%s" % (proc.returncode, out[-500:]))
-    # 同一机理的绿的一半：两条键都在、且是纯 ASCII 字面量插值 → A~H 全部不得误报
-    # （D-08 的新写入形状 `spendPoints(n, "wish_deposit:$goalId")` 必须能被写出来）
+    # 同一机理的绿的一半：五条键都在、且都是纯 ASCII 字面量（插值或常量拼接）→ A~H 全部不得误报
+    # （D-08 的新写入形状 `spendPoints(n, "wish_deposit:$goalId")` 与
+    #   D-12 的 `const val EXCELLENT_PREFIX = "bonus_excellent:"` 都要能写出来）
     with tempfile.TemporaryDirectory(prefix="i18n-boundary-notekey-ok-") as tmp2:
-        with io.open(os.path.join(tmp2, "BothNoteKeys.kt"), "w", encoding="utf-8") as handle:
+        with io.open(os.path.join(tmp2, "AllNoteKeys.kt"), "w", encoding="utf-8") as handle:
             handle.write(
                 "class BothRepo(private val pointRepository: PointRepository) {\n"
-                '    suspend fun deposit(goalId: Long, amount: Int) {\n'
+                '    companion object { const val EXCELLENT_PREFIX = "bonus_excellent:"\n'
+                '                         const val WEEKLY_PREFIX = "bonus_weekly:"\n'
+                '                         const val STREAK_PREFIX = "bonus_streak:" }\n'
+                "    suspend fun deposit(goalId: Long, amount: Int) {\n"
                 '        pointRepository.spendPoints(amount, "wish_deposit:$goalId", requireSufficientBalance = true)\n'
                 '        pointRepository.refundSpentPoints(amount, "wish_refund:$goalId")\n'
                 "    }\n"
@@ -592,7 +612,7 @@ def main():
         proc2 = subprocess.run([sys.executable, GATE], cwd=REPO_ROOT, env=env2,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out2 = proc2.stdout.decode("utf-8", "replace")
-    check("两条键齐全 + ASCII 业务键进 spendPoints → 退出码 0（新形状不是误报）",
+    check("五条键齐全 + ASCII 业务键进 sink → 退出码 0（新形状不是误报）",
           proc2.returncode == 0 and "通道 H" in out2,
           "退出码 %d / 输出：%s" % (proc2.returncode, out2[-500:]))
 

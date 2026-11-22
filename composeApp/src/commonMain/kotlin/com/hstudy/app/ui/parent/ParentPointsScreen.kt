@@ -25,6 +25,7 @@ import com.hstudy.app.ui.child.pointRecordSection
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.ui.common.bonusNoteDisplayText
 import com.hstudy.app.ui.common.wishNoteDisplayText
 import kotlinx.coroutines.launch
 import com.hstudy.app.ui.dt.SimpleDateFormat
@@ -267,6 +268,7 @@ fun ParentPointsScreen(
  * （[打卡撤销] 词面跨表复用 ChildPointsStrings.tagCheckInUndo；[未完成扣分] 沿用 W2 typePenalty）。
  *
  * D-08：备注行的心愿业务键按 [wishNoteDisplayText] 派生成"存入心愿/心愿退回 + 心愿名"，
+ * D-12：三处里程碑 bonus 的 `bonus_*` 业务键按 [bonusNoteDisplayText] 派生（中文与旧落库原文逐字节相同），
  * 类型行仍如实是账本类型（REWARD_EXCHANGE = 兑换消耗），旧记录的 note 原样显示、不改写。
  */
 @Composable
@@ -277,6 +279,7 @@ private fun PointRecordCard(
     val strings = LocalStrings.current.parentPoints
     val pointsDetail = LocalStrings.current.childPoints
     val wishNoteText = wishNoteDisplayText(record, wishNamesById)
+    val bonusNoteText = bonusNoteDisplayText(record)
     val typeLabel = when (record.type) {
         PointRecordType.TASK_COMPLETE -> strings.typeTaskComplete
         PointRecordType.BONUS -> strings.typeBonus
@@ -332,9 +335,9 @@ private fun PointRecordCard(
                 Text(typeLabel, style = MaterialTheme.typography.titleSmall,
                     color = if (record.type == PointRecordType.PENALTY)
                         MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                if (record.note.isNotEmpty() || wishNoteText != null) {
-                    // D-08：业务键 → 派生文案；其余 note 原样（心愿名不再从库里读中文）
-                    Text(wishNoteText ?: record.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (record.note.isNotEmpty() || wishNoteText != null || bonusNoteText != null) {
+                    // D-08/D-12：业务键 → 派生文案；其余 note 原样（心愿名、bonus 文案不再从库里读中文）
+                    Text(wishNoteText ?: bonusNoteText ?: record.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(dateFormat.format(Date(record.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
