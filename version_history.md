@@ -1,5 +1,27 @@
 # HStudy 版本更新记录
 
+## v3.3.2 (2026-11-23)
+**裁决修复批（D-12/D-13/事务原子化，v3.3.1 真机签核台账续项）——bonus note 业务键化 + CAS 防重入 + withTransaction 批量原子**
+
+> **发布状态**：待发布（用户闸门；不打 tag、不 push，发布动作由用户决定）。验收增补报告见
+> `docs/acceptance-v332-adjudicated-fixes.md`，计划见 `docs/superpowers/plans/2026-11-22-v332-adjudicated-fixes.md`。
+
+- D-12（P1，积分账本）：三处里程碑 bonus 的 note 中文字面量直写 DB（优秀表现/连续打卡/每周挑战）
+  ——按 D-08 心愿同型业务键化 `bonus_excellent:<date>` / `bonus_streak:<days>` / `bonus_weekly:<weekStart>`，
+  渲染期经新派生器 `PointRecordBonusNote.kt` 双语派生、三消费面统一，旧中文记录零迁移 passthrough；
+  存储边界闸门通道 H 纳入三键登记（`5a051e6`）。
+- D-13（P1，复习里程碑+幸运转盘）：与 D-09 同构的"先入账后置位"重入窗口——`tryClaimReviewStreakMilestone`
+  / `tryClaimDailyLuckyDraw` 改 CAS 先置位后入账 + `BonusClaimGuard` in-flight 互斥，双击狂点不双发；
+  fix round 1 按审查裁决把两入口 note 一并并入 bonus_* 键体系（`bonus_review:<days>` /
+  `bonus_lucky:<date>`），type+note 认领判定抽纯函数补测（`977642b` + `20df6e1`）。
+- P2-2/终审残留（P2，批量审批）：批量审批 `approveAllAndAward`、撤回 `revokeApproval`、超期清理
+  `expireStalePendingApprovals` 三入口读-判-写毫秒窗口——以真 Room `withTransaction` 整批包事务
+  （`DbTransactionRunner` 小接口注入仓库、`AppGraph` 装配 `RoomTransactionRunner`），批次中途异常
+  =整体回滚上抛，不再"半批 APPROVED 半批 PENDING"（`987752e`）。
+- 单测 302→325 全绿；静态闸门全绿（埋点接线 21 项 / i18n 存储边界通道 H 7 键 + selftest / 模板等价 diff
+  默认 + `--branch` 双模）；Room schema 维持 v13，本波零迁移。
+- versionCode 30302 / versionName 3.3.2（build.gradle.kts、Info.plist、pbxproj 四处版本戳同步）。
+
 ## v3.3.1 (2026-11-22)
 **真机签核缺陷修复波（D-01~D-11，Antigravity v3.3.1 指令）——全流程业务审计与稳定性强化**
 
