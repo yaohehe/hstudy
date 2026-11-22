@@ -55,7 +55,7 @@
 | 全量单测 ≥325 且 100% 通过 | `:composeApp:testDebugUnitTest` **325 tests / 0 failures / 0 errors**（增长链 302→310(T-A)→316→317(T-B fix r1)→**325**(T-C)，Task D 复跑读数） | **达成** |
 | assembleDebug / assembleRelease | `HStudy-v3.3.2-debug.apk`、`HStudy-v3.3.2-release-unsigned.apk` 产出（lintVitalRelease 随 assembleRelease 执行；未设签名环境变量=release 照旧未签名产出，签名链走用户发布闸门） | **达成** |
 | 静态闸门 | `analytics_call_sites.py` → `ANALYTICS_GATE_OK: 21 site checks + data-layer zero-call guard` exit 0（本波埋点零改动）；`i18n_storage_boundary.py` exit 0（180 kt，通道 H 现 **7 条键**——wish 两键 + bonus_excellent/weekly/streak/review/lucky 五键，全 ASCII 各一写入点）；`i18n_storage_boundary_selftest.py` **202 断言 0 失败** exit 0；`i18n_template_diff.py` 默认组 exit 0（[A] 0 missing/0 invented，[B] 118/118 零差异），`--branch` exit 0（980/980，登记披露全部成立） | **达成**（四闸门全绿） |
-| secret scan（本分支范围） | `git log --all -S 'ghp_' 4f0594d..HEAD` **0 命中**；`git grep -E 'ghp_[A-Za-z0-9]{20}' 4f0594d..HEAD` **0 命中**（HEAD 树同样 0 命中） | **达成** |
+| secret scan（本分支范围） | `git log 4f0594d..HEAD -S 'ghp_'` 唯一命中为 eac4c21 验收文档自引的扫描命令字面量（终审 Minor① 更正举证口径：`--all` 会越出本分支范围且文档正文自指）；`git grep -E 'ghp_[A-Za-z0-9]{20}' 4f0594d..HEAD` **0 命中**（HEAD 树同样 0 命中）——无真实泄露 | **达成** |
 | 版本四处升 30302/"3.3.2" | 照 v3.3.1 发布 commit `c0fa442` 落点清单：`composeApp/build.gradle.kts` versionCode **30301→30302** / versionName **3.3.2**；`iosApp/Info.plist` CFBundleShortVersionString/CFBundleVersion；`project.pbxproj` MARKETING_VERSION/CURRENT_PROJECT_VERSION 各 Debug/Release 2 处；`version_history.md` 新增 v3.3.2 条目（加粗一行摘要 + D-12/D-13/事务原子化三条 + 测试/闸门/版本行）。**README 本轮无改动**：c0fa442 的 README 两行是 Room schema v12→v13 表述随 D-02 迁移更新，本波 schema 维持 v13 零迁移，无对应事实变化 | **达成** |
 | 五条不变量 + Ruling 25 | 存储边界闸门 exit 0；本波新落库 note 仅 ASCII 业务键；账本 append-only、撤销对称、审批幂等由 Invariant/Revoke/Cleanup/TransactionAtomicity 套件复钉；Room schema 不动 | **达成** |
 | 审查链路 | Task A Approved；Task B 6/6 Approved（微瑕 2 条留档不阻塞）；Task C 8/8 Approved（Minor①② 均已列入本报告真机清单 F-4/F-5） | **达成** |
@@ -91,6 +91,19 @@
 6. **F-6 本波触点回归复验**：首页三处里程碑 bonus（D-09）双击防刷在 note 键化后无回归；
    超期待审清理（D-11）与撤回审批（D-10）在事务包装后行为与 v3.3.1 验收一致（cleaned 计数不虚报、
    二次操作零变化）。
+7. **F-7 iOS 侧首验（终审整分支审查补登）**：本机 Windows 无法编译 Kotlin/Native target，
+   Task C 的 Room `withTransaction` 与 Task B 的 DataStore CAS 仅 Android 编译/单测实证——
+   iOS 模拟器至少跑：批量审批中途杀进程→回滚不半批、转盘双击不双发；同时覆盖
+   `idleTimerDisabled` interop 首编译关注点（见 [[hstudy-ios-kn-interop-limits]]）。
+
+### 终审残余登记（2026-11-23 整分支审查，Minor 级不阻塞发布）
+- **转盘作废态展示**：`ChildLuckyDrawScreen` onClaimed 内 `resultPoints=won` 先于 adjustPoints 赋值，
+  guard 吞异常作废的**理论不可达路径**下 UI 显示"中奖 X"而账本无记录（账本侧裁决与 D-09
+  "作废不双发"一致，红线不破）。F-6 顺带观察，若产品要求展示同源可后续把赋值移到入账后。
+- **不变量 6 措辞修订（待下批文档波）**：`PointRepository` KDoc"任何自动业务不得借 adjustPoints 入账"
+  与五处 bonus 自动入账（恒 ADJUSTMENT，`claimsBonusNote` 已把 type 钉死）正面冲突——
+  后人按措辞"纠正"为 BONUS 类型将致三消费面全盲。正确口径应为"自动业务经 CAS 防重入后可走
+  adjustPoints，type 恒 ADJUSTMENT 且 note 必须业务键化"。本波红线不动 KDoc，登记待改。
 
 ### 存量清单延续声明
 **`docs/acceptance-v331-hardening.md` §4 的 11 项真机签核待办清单继续有效**——本波未触碰其任一验证对象
