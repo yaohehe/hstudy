@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='2' y='2' width='60' height='60' rx='16' fill='%23F9A825'/><circle cx='32' cy='31' r='24' fill='%23FFF3E0'/><polygon points='32,13 34.9,21 43.4,21.3 36.7,26.5 39.1,34.7 32,29.9 24.9,34.7 27.3,26.5 20.6,21.3 29.1,21' fill='%23FF8F00'/><path d='M11.5 43 L30.5 46 L30.5 55 L11.5 52 Z' fill='%23B45309'/><path d='M52.5 43 L33.5 46 L33.5 55 L52.5 52 Z' fill='%23C05621'/></svg>">
 <title>HStudy — 家长与孩子共享的学习伙伴</title>
 <meta name="description" content="HStudy：基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用。任务打卡、家长审批、番茄钟、错题复习、奖励机制，一个 App 全搞定。">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -41,12 +42,8 @@ tailwind.config = {
   /* ---------- entrance ---------- */
   .reveal { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s cubic-bezier(.2,.8,.2,1); }
   .reveal.shown { opacity: 1; transform: none; }
-  /* ---------- pomodoro ring ---------- */
-  .pomo-ring { background: conic-gradient(#1a73e8 0 68%, rgba(26,115,232,.15) 68% 100%); }
-  .pomo-ring::after { content:''; position:absolute; inset:10px; border-radius:9999px; background:var(--pomo-bg,#fff); }
-  /* ---------- pairing dots ---------- */
-  @keyframes pulse-link { 0%,100%{opacity:.35} 50%{opacity:1} }
-  .link-pulse { animation: pulse-link 1.8s ease-in-out infinite; }
+  /* ---------- gallery scroll ---------- */
+  .gal-scroll { scrollbar-width: thin; scrollbar-color: rgba(120,120,120,.45) transparent; }
   /* ---------- tab underline ---------- */
   .tab-btn.active { color:#1a73e8; }
   .tab-btn.active .tab-bar { background:#1a73e8; transform: scaleX(1); }
@@ -66,13 +63,34 @@ tailwind.config = {
 </head>
 <body class="bg-surface dark:dk:bg-[#131314] font-sans text-ink dark:text-[#e3e3e3] antialiased">
 
+<!-- ============ APP LOGO SYMBOL (橙色星+书，复刻真实 App 图标) ============ -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <linearGradient id="hsLg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F9A825"/><stop offset="1" stop-color="#FF9800"/>
+    </linearGradient>
+  </defs>
+  <symbol id="hs-logo" viewBox="0 0 64 64">
+    <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#hsLg)"/>
+    <circle cx="32" cy="31" r="24" fill="#FFF3E0"/>
+    <polygon points="32,13 34.9,21 43.4,21.3 36.7,26.5 39.1,34.7 32,29.9 24.9,34.7 27.3,26.5 20.6,21.3 29.1,21" fill="#FF8F00"/>
+    <polygon points="14.5,15.8 15.8,19.3 19.4,19.4 16.5,21.7 17.6,25.2 14.5,23.1 11.4,25.2 12.5,21.7 9.6,19.4 13.2,19.3" fill="#FFB300"/>
+    <polygon points="49.5,15.8 50.8,19.3 54.4,19.4 51.5,21.7 52.6,25.2 49.5,23.1 46.4,25.2 47.5,21.7 44.6,19.4 48.2,19.3" fill="#FFB300"/>
+    <path d="M11.5 43 L30.5 46 L30.5 55 L11.5 52 Z" fill="#B45309"/>
+    <path d="M52.5 43 L33.5 46 L33.5 55 L52.5 52 Z" fill="#C05621"/>
+    <rect x="29.6" y="44.6" width="4.8" height="11.4" rx="1.4" fill="#8D3F14"/>
+    <g stroke="#FFF3E0" stroke-width="1.5" stroke-linecap="round">
+      <line x1="14.5" y1="47.4" x2="27" y2="49.4"/><line x1="14.5" y1="50.6" x2="27" y2="52.6"/>
+      <line x1="49.5" y1="47.4" x2="37" y2="49.4"/><line x1="49.5" y1="50.6" x2="37" y2="52.6"/>
+    </g>
+  </symbol>
+</svg>
+
 <!-- ============ HEADER ============ -->
 <header class="sticky top-0 z-50 bg-white/85 dark:bg-[#1e1f20]/85 backdrop-blur-md border-b border-black/5 dark:border-white/10">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
     <a href="#top" class="flex items-center gap-3 shrink-0">
-      <span class="w-9 h-9 rounded-xl bg-gprimary flex items-center justify-center shadow-card">
-        <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
-      </span>
+      <svg class="w-9 h-9 rounded-xl shadow-card" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
       <span class="text-xl font-bold tracking-tight">HStudy</span>
     </a>
     <nav class="hidden md:flex items-center gap-1 text-sm font-medium text-ink-secondary dark:text-[#c4c7c5]">
@@ -128,64 +146,57 @@ tailwind.config = {
       </div>
     </div>
 
-    <!-- CSS app mock -->
+    <!-- Real app screenshots -->
     <div class="reveal relative mx-auto w-full max-w-md lg:max-w-none">
-      <div class="grid grid-cols-2 gap-4 sm:gap-5">
-        <!-- task card -->
-        <div class="col-span-2 bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-5 border border-black/[.04] dark:border-white/[.06]">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2 text-sm font-medium text-ink-secondary dark:text-[#c4c7c5]"><i class="fa-solid fa-list-check text-gprimary"></i><span data-i18n="mock_tasks">今日任务</span></div>
-            <span class="text-xs px-2.5 py-1 rounded-full bg-gprimary-container text-gprimary-onContainer font-medium" data-i18n="mock_progress">3 / 6 已完成</span>
+      <div class="grid grid-cols-2 gap-4 sm:gap-6 justify-items-center">
+        <figure class="w-full">
+          <div class="relative w-full aspect-[9/19] rounded-[2rem] overflow-hidden shadow-lift ring-1 ring-black/10 dark:ring-white/20 bg-[#1f1f1f]">
+            <img src="assets/role-select.jpg" alt="HStudy 角色选择页真实截图" class="absolute inset-0 w-full h-full object-cover object-top">
           </div>
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface dark:bg-[#282a2c]">
-              <span class="w-6 h-6 rounded-full bg-ggreen flex items-center justify-center"><i class="fa-solid fa-check text-white text-xs"></i></span>
-              <span class="flex-1 text-sm font-medium line-through opacity-60" data-i18n="mock_t1">完成当天作业</span>
-              <span class="text-xs font-bold text-ggreen">+5</span>
-            </div>
-            <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface dark:bg-[#282a2c]">
-              <span class="w-6 h-6 rounded-full border-2 border-gprimary flex items-center justify-center"><i class="fa-solid fa-clock text-gprimary text-[10px]"></i></span>
-              <span class="flex-1 text-sm font-medium" data-i18n="mock_t2">英语单词听写</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-gyellow/20 text-amber-700 dark:text-amber-300 font-medium" data-i18n="mock_pending">待家长审批</span>
-            </div>
+          <figcaption class="text-center text-xs mt-2.5 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_cap_role">角色选择</figcaption>
+        </figure>
+        <figure class="w-full lg:translate-y-8">
+          <div class="relative w-full aspect-[9/19] rounded-[2rem] overflow-hidden shadow-lift ring-1 ring-black/10 dark:ring-white/20 bg-[#1f1f1f]">
+            <img src="assets/parent-home-top.jpg" alt="HStudy 家长管理台真实截图" class="absolute inset-0 w-full h-full object-cover object-top">
           </div>
-        </div>
-        <!-- pomodoro -->
-        <div class="bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-5 border border-black/[.04] dark:border-white/[.06] flex flex-col items-center text-center">
-          <div class="pomo-ring relative w-28 h-28 rounded-full flex items-center justify-center mb-3">
-            <span class="relative z-10 text-2xl font-black tracking-tight">17:05</span>
-          </div>
-          <div class="text-sm font-medium text-ink-secondary dark:text-[#c4c7c5]"><i class="fa-solid fa-apple-whole text-gred mr-1"></i><span data-i18n="mock_pomo">番茄钟专注中</span></div>
-          <div class="text-xs text-ink-tertiary mt-1" data-i18n="mock_pomo2">呼吸引导 · 科学休息</div>
-        </div>
-        <!-- mistakes -->
-        <div class="bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-5 border border-black/[.04] dark:border-white/[.06]">
-          <div class="flex items-center gap-2 text-sm font-medium mb-3 text-ink-secondary dark:text-[#c4c7c5]"><i class="fa-solid fa-book-open text-gprimary"></i><span data-i18n="mock_mist">错题本</span></div>
-          <div class="text-3xl font-black text-gprimary mb-1">8<span class="text-base font-bold text-ink-tertiary" data-i18n="mock_mist2"> / 12 已掌握</span></div>
-          <div class="w-full h-2 rounded-full bg-black/10 dark:bg-white/10 mt-3 overflow-hidden">
-            <div class="h-full w-2/3 rounded-full bg-gradient-to-r from-gprimary to-ggreen"></div>
-          </div>
-          <div class="text-xs text-ink-tertiary mt-2" data-i18n="mock_mist3">今日 3 题到期复习</div>
-        </div>
-        <!-- pairing -->
-        <div class="col-span-2 bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-5 border border-black/[.04] dark:border-white/[.06]">
-          <div class="flex items-center justify-center gap-4 sm:gap-6">
-            <div class="text-center">
-              <div class="w-12 h-12 mx-auto rounded-2xl bg-gprimary-container flex items-center justify-center"><i class="fa-solid fa-user-shield text-gprimary text-lg"></i></div>
-              <div class="text-xs mt-1.5 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="mock_parent">家长端</div>
-            </div>
-            <div class="flex-1 max-w-[160px]">
-              <div class="h-[3px] rounded-full bg-gradient-to-r from-gprimary via-ggreen to-gprimary link-pulse"></div>
-              <div class="text-[10px] text-center text-ink-tertiary mt-1.5" data-i18n="mock_pair">同机切换 / 双机配对</div>
-            </div>
-            <div class="text-center">
-              <div class="w-12 h-12 mx-auto rounded-2xl bg-[#e6f4ea] dark:bg-ggreen/20 flex items-center justify-center"><i class="fa-solid fa-child-reaching text-ggreen text-lg"></i></div>
-              <div class="text-xs mt-1.5 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="mock_child">孩子端</div>
-            </div>
-          </div>
-        </div>
+          <figcaption class="text-center text-xs mt-2.5 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_cap_parent">家长管理台</figcaption>
+        </figure>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ============ GALLERY ============ -->
+<section id="gallery" class="max-w-7xl mx-auto px-4 sm:px-6 pb-16 md:pb-20">
+  <div class="text-center max-w-2xl mx-auto mb-8 reveal">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="gal_title">应用一览</h2>
+    <p class="text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_sub">真机截图，横向滑动浏览各主要页面。</p>
+  </div>
+  <div class="gal-scroll flex gap-5 overflow-x-auto pb-4 snap-x reveal">
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-black/10 dark:ring-white/20 bg-[#1f1f1f]">
+        <img src="assets/role-select.jpg" alt="HStudy 角色选择页" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_cap_role">角色选择</figcaption>
+    </figure>
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-black/10 dark:ring-white/20 bg-[#1f1f1f]">
+        <img src="assets/parent-home-top.jpg" alt="HStudy 家长管理台" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_cap_parent">家长管理台</figcaption>
+    </figure>
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-black/10 dark:ring-white/20 bg-[#1f1f1f]">
+        <img src="assets/child-home-top.jpg" alt="HStudy 我的学习页（孩子端）" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_cap_child">我的学习（孩子端）</figcaption>
+    </figure>
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-black/10 dark:ring-white/20 bg-[#1f1f1f]">
+        <img src="assets/mistake-notebook-top.jpg" alt="HStudy 错题本页" loading="lazy" class="absolute inset-0 w-full h-full object-contain object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-ink-secondary dark:text-[#c4c7c5]" data-i18n="gal_cap_mist">错题本</figcaption>
+    </figure>
   </div>
 </section>
 
@@ -284,6 +295,13 @@ tailwind.config = {
 
     <div id="tab-android" class="tab-panel active">
       <div class="bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-6 md:p-8 border border-black/[.04] dark:border-white/[.06]">
+        <div class="flex items-center gap-4 mb-6 pb-5 border-b border-black/5 dark:border-white/10">
+          <svg class="w-14 h-14 rounded-2xl shadow-card shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <div>
+            <div class="font-bold text-lg leading-tight">HStudy</div>
+            <div class="text-xs text-ink-tertiary mt-0.5" data-i18n="ins_ver">v3.3.2 · Android & iOS 双平台同源构建</div>
+          </div>
+        </div>
         <ol class="space-y-5">
           <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-white font-bold flex items-center justify-center">1</span>
             <div><div class="font-medium" data-i18n="a1">前往 Releases 页面下载最新的 <code class="px-1.5 py-0.5 rounded bg-surface dark:bg-[#282a2c] text-sm">HStudy-vX.Y.Z-signed.apk</code></div>
@@ -300,6 +318,13 @@ tailwind.config = {
 
     <div id="tab-ios" class="tab-panel">
       <div class="bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-6 md:p-8 border border-black/[.04] dark:border-white/[.06]">
+        <div class="flex items-center gap-4 mb-6 pb-5 border-b border-black/5 dark:border-white/10">
+          <svg class="w-14 h-14 rounded-2xl shadow-card shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <div>
+            <div class="font-bold text-lg leading-tight">HStudy</div>
+            <div class="text-xs text-ink-tertiary mt-0.5" data-i18n="ins_ver">v3.3.2 · Android & iOS 双平台同源构建</div>
+          </div>
+        </div>
         <p class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed mb-5" data-i18n="i0">当前 iOS 交付物为<strong class="text-ink dark:text-[#e3e3e3]">未签名的模拟器构建包</strong>（本账号无 Apple 开发者证书，TestFlight / App Store 上架为后续计划）。</p>
         <ol class="space-y-5">
           <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-white font-bold flex items-center justify-center">1</span>
@@ -366,7 +391,7 @@ cd hstudy
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
       <div>
         <div class="flex items-center gap-3 mb-3">
-          <span class="w-8 h-8 rounded-xl bg-gprimary flex items-center justify-center"><i class="fa-solid fa-graduation-cap text-white"></i></span>
+          <svg class="w-8 h-8 rounded-lg" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
           <span class="text-lg font-bold text-white">HStudy</span>
         </div>
         <p class="text-sm leading-relaxed" data-i18n="ft_slogan">家长与孩子共享的学习伙伴。<br>Kotlin Multiplatform · 完全开源。</p>
@@ -411,10 +436,8 @@ const I18N = {
     hero_sub:'基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用：任务打卡、家长审批、番茄专注、错题复习与积分奖励，一套原生代码，全家共同使用。',
     cta_apk:'下载 Android Release (APK)', cta_repo:'前往 GitHub 仓库',
     hero_pt1:'数据全本地存储', hero_pt2:'完全开源', hero_pt3:'中英双语即时切换',
-    mock_tasks:'今日任务', mock_progress:'3 / 6 已完成', mock_t1:'完成当天作业', mock_t2:'英语单词听写', mock_pending:'待家长审批',
-    mock_pomo:'番茄钟专注中', mock_pomo2:'呼吸引导 · 科学休息',
-    mock_mist:'错题本', mock_mist2:' 已掌握', mock_mist3:'今日 3 题到期复习',
-    mock_parent:'家长端', mock_child:'孩子端', mock_pair:'同机切换 / 双机配对',
+    gal_title:'应用一览', gal_sub:'真机截图，横向滑动浏览各主要页面。',
+    gal_cap_role:'角色选择', gal_cap_parent:'家长管理台', gal_cap_child:'我的学习（孩子端）', gal_cap_mist:'错题本',
     feat_title:'为真实家庭学习场景设计的六件大事', feat_sub:'每一项功能都经过真机签核与自动化回归验证。',
     f1_t:'任务与审批', f1_d:'孩子打卡完成任务，积分仅在家长审批通过后写入账本。Append-only 账本设计保证防伪与公正——每一笔积分都可审计、可对称冲抵。',
     f2_t:'专注训练', f2_d:'集成番茄钟（呼吸引导、科学休息循环、屏幕常亮与跨进程恢复）与舒尔特方格专注力训练器，让"坐得住"变成可量化的习惯。',
@@ -430,6 +453,7 @@ const I18N = {
     priv_s1:'匿名功能使用统计', priv_s1d:'仅事件名与枚举值', priv_s2:'姓名 / 头像 / 任务文本', priv_s2d:'永不采集，仅本地存储',
     priv_note:'示意界面。真实开关位于 App 的家长设置页，关闭后不再初始化分析 SDK。',
     ins_title:'快速安装与构建', ins_sub:'三分钟上手：直接安装签名 Release APK、体验 iOS 模拟器包，或从源码构建。',
+    ins_ver:'v3.3.2 · Android & iOS 双平台同源构建',
     tab_android:'Android 安装', tab_ios:'iOS 模拟器包', tab_dev:'开发者构建',
     a1:'前往 Releases 页面下载最新的 <code class="px-1.5 py-0.5 rounded bg-surface dark:bg-[#282a2c] text-sm">HStudy-vX.Y.Z-signed.apk</code>', a1l:'打开发布页',
     a2:'在系统提示允许时，为浏览器/文件管理器开启「安装未知来源应用」权限（一次性授权即可）。',
@@ -457,10 +481,8 @@ const I18N = {
     hero_sub:'HStudy is an Android & iOS family study manager built with Kotlin Multiplatform: task check-ins, parent approval, focus timer, spaced mistake review and a points reward system — one native codebase, shared by parents and kids.',
     cta_apk:'Download Android Release (APK)', cta_repo:'View GitHub Repository',
     hero_pt1:'All data stored locally', hero_pt2:'Fully open source', hero_pt3:'Instant EN / 中文 switching',
-    mock_tasks:"Today's tasks", mock_progress:'3 / 6 done', mock_t1:'Finish homework', mock_t2:'English dictation', mock_pending:'Awaiting parent',
-    mock_pomo:'Focus in progress', mock_pomo2:'Breathing guide · Smart breaks',
-    mock_mist:'Mistake notebook', mock_mist2:' mastered', mock_mist3:'3 due for review today',
-    mock_parent:'Parent', mock_child:'Child', mock_pair:'Same-device switch / pairing',
+    gal_title:'App Gallery', gal_sub:'Real device screenshots — swipe sideways to browse the main screens.',
+    gal_cap_role:'Role Select', gal_cap_parent:'Parent Dashboard', gal_cap_child:'My Study (Child)', gal_cap_mist:'Mistake Notebook',
     feat_title:'Six things, designed for real families', feat_sub:'Every feature is device-verified and covered by automated regression suites.',
     f1_t:'Tasks & Approval', f1_d:'Kids check in tasks; points are written to the ledger only after parent approval. The append-only ledger guarantees fairness — every entry is auditable and symmetrically reversible.',
     f2_t:'Focus Training', f2_d:'Pomodoro timer (breathing guide, science-based breaks, keep-screen-on and cross-process restore) plus a Schulte-Grid attention trainer — make "sitting still" a measurable habit.',
@@ -476,6 +498,7 @@ const I18N = {
     priv_s1:'Anonymous usage analytics', priv_s1d:'Event names & enums only', priv_s2:'Names / avatars / task text', priv_s2d:'Never collected, local only',
     priv_note:'Illustration. The real switch lives in Parent Settings; once off, the analytics SDK is never initialized.',
     ins_title:'Install & Build', ins_sub:'Three minutes to start: sideload the signed release APK, run the iOS simulator build, or build from source.',
+    ins_ver:'v3.3.2 · one codebase for Android & iOS',
     tab_android:'Android Install', tab_ios:'iOS Simulator', tab_dev:'Developer Build',
     a1:'Grab the latest <code class="px-1.5 py-0.5 rounded bg-surface dark:bg-[#282a2c] text-sm">HStudy-vX.Y.Z-signed.apk</code> from Releases', a1l:'Open Releases',
     a2:'When prompted, allow "install unknown apps" for your browser / file manager (one-time grant).',
@@ -524,10 +547,6 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
   applyTheme(nowDark ? 'light' : 'dark');
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if((localStorage.getItem(THEME_KEY)||'auto')==='auto') applyTheme('auto'); });
-/* pomodoro ring inner bg follows theme */
-function syncPomoBg(){ document.documentElement.style.setProperty('--pomo-bg', document.documentElement.classList.contains('dark') ? '#1e1f20' : '#ffffff'); }
-syncPomoBg();
-new MutationObserver(syncPomoBg).observe(document.documentElement, {attributes:true, attributeFilter:['class']});
 
 /* ================= tabs ================= */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
