@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='2' y='2' width='60' height='60' rx='16' fill='%23F9A825'/><circle cx='32' cy='31' r='24' fill='%23FFF3E0'/><polygon points='32,13 34.9,21 43.4,21.3 36.7,26.5 39.1,34.7 32,29.9 24.9,34.7 27.3,26.5 20.6,21.3 29.1,21' fill='%23FF8F00'/><path d='M11.5 43 L30.5 46 L30.5 55 L11.5 52 Z' fill='%23B45309'/><path d='M52.5 43 L33.5 46 L33.5 55 L52.5 52 Z' fill='%23C05621'/></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='18 18 72 72'><rect x='18' y='18' width='72' height='72' rx='16' fill='%23FF8F00'/><circle cx='54' cy='54' r='32' fill='%23FFF3E0'/><path fill='%23E65100' d='M30,58 L30,72 Q30,74 32,74 L52,74 L52,56 L32,56 Q30,56 30,58Z'/><path fill='%23FF8F00' d='M78,58 L78,72 Q78,74 76,74 L56,74 L56,56 L76,56 Q78,56 78,58Z'/><path fill='%23BF360C' d='M52,56 L56,56 L56,74 L52,74Z'/><path fill='%23FFA000' d='M54,26 L58.5,38.5 L72,39.5 L62,48.5 L65,62 L54,55 L43,62 L46,48.5 L36,39.5 L49.5,38.5Z'/><path fill='%23FFD54F' d='M32,36 L34,41 L39,41.5 L35.5,45 L36.5,50 L32,47 L27.5,50 L28.5,45 L25,41.5 L30,41Z'/><path fill='%23FFD54F' d='M76,36 L78,41 L83,41.5 L79.5,45 L80.5,50 L76,47 L71.5,50 L72.5,45 L69,41.5 L74,41Z'/></svg>">
 <title>HStudy — 家长与孩子共享的学习伙伴</title>
 <meta name="description" content="HStudy：基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用。任务打卡、家长审批、番茄钟、错题复习、奖励机制，一个 App 全搞定。">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -61,27 +61,28 @@ tailwind.config = {
   ::selection { background:#d3e3fd; color:#041e49; }
 </style>
 </head>
-<body class="bg-surface dark:dk:bg-[#131314] font-sans text-ink dark:text-[#e3e3e3] antialiased">
+<body class="bg-surface dark:bg-[#131314] font-sans text-ink dark:text-[#e3e3e3] antialiased">
 
 <!-- ============ APP LOGO SYMBOL (橙色星+书，复刻真实 App 图标) ============ -->
 <svg width="0" height="0" class="absolute" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
   <defs>
-    <linearGradient id="hsLg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#F9A825"/><stop offset="1" stop-color="#FF9800"/>
-    </linearGradient>
+    <clipPath id="hsClip"><rect x="18" y="18" width="72" height="72" rx="16"/></clipPath>
   </defs>
-  <symbol id="hs-logo" viewBox="0 0 64 64">
-    <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#hsLg)"/>
-    <circle cx="32" cy="31" r="24" fill="#FFF3E0"/>
-    <polygon points="32,13 34.9,21 43.4,21.3 36.7,26.5 39.1,34.7 32,29.9 24.9,34.7 27.3,26.5 20.6,21.3 29.1,21" fill="#FF8F00"/>
-    <polygon points="14.5,15.8 15.8,19.3 19.4,19.4 16.5,21.7 17.6,25.2 14.5,23.1 11.4,25.2 12.5,21.7 9.6,19.4 13.2,19.3" fill="#FFB300"/>
-    <polygon points="49.5,15.8 50.8,19.3 54.4,19.4 51.5,21.7 52.6,25.2 49.5,23.1 46.4,25.2 47.5,21.7 44.6,19.4 48.2,19.3" fill="#FFB300"/>
-    <path d="M11.5 43 L30.5 46 L30.5 55 L11.5 52 Z" fill="#B45309"/>
-    <path d="M52.5 43 L33.5 46 L33.5 55 L52.5 52 Z" fill="#C05621"/>
-    <rect x="29.6" y="44.6" width="4.8" height="11.4" rx="1.4" fill="#8D3F14"/>
-    <g stroke="#FFF3E0" stroke-width="1.5" stroke-linecap="round">
-      <line x1="14.5" y1="47.4" x2="27" y2="49.4"/><line x1="14.5" y1="50.6" x2="27" y2="52.6"/>
-      <line x1="49.5" y1="47.4" x2="37" y2="49.4"/><line x1="49.5" y1="50.6" x2="37" y2="52.6"/>
+  <!-- 1:1 from composeApp/src/androidMain/res/drawable/ic_launcher_background.xml + ic_launcher_foreground.xml -->
+  <symbol id="hs-logo" viewBox="18 18 72 72">
+    <g clip-path="url(#hsClip)">
+      <path fill="#FF8F00" d="M0,0h108v108h-108z"/>
+      <path fill="#FFF3E0" d="M54,54m-32,0a32,32 0,1 1,64 0a32,32 0,1 1,-64 0"/>
+      <path fill="#E65100" d="M30,58 L30,72 Q30,74 32,74 L52,74 L52,56 L32,56 Q30,56 30,58Z"/>
+      <path fill="#FF8F00" d="M78,58 L78,72 Q78,74 76,74 L56,74 L56,56 L76,56 Q78,56 78,58Z"/>
+      <path fill="#BF360C" d="M52,56 L56,56 L56,74 L52,74Z"/>
+      <g fill="none" stroke="#FFCC80" stroke-width="1">
+        <path d="M35,62 L49,62"/><path d="M35,66 L49,66"/><path d="M35,70 L45,70"/>
+        <path d="M59,62 L73,62"/><path d="M59,66 L73,66"/><path d="M59,70 L69,70"/>
+      </g>
+      <path fill="#FFA000" d="M54,26 L58.5,38.5 L72,39.5 L62,48.5 L65,62 L54,55 L43,62 L46,48.5 L36,39.5 L49.5,38.5Z"/>
+      <path fill="#FFD54F" d="M32,36 L34,41 L39,41.5 L35.5,45 L36.5,50 L32,47 L27.5,50 L28.5,45 L25,41.5 L30,41Z"/>
+      <path fill="#FFD54F" d="M76,36 L78,41 L83,41.5 L79.5,45 L80.5,50 L76,47 L71.5,50 L72.5,45 L69,41.5 L74,41Z"/>
     </g>
   </symbol>
 </svg>
@@ -90,14 +91,15 @@ tailwind.config = {
 <header class="sticky top-0 z-50 bg-white/85 dark:bg-[#1e1f20]/85 backdrop-blur-md border-b border-black/5 dark:border-white/10">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
     <a href="#top" class="flex items-center gap-3 shrink-0">
-      <svg class="w-9 h-9 rounded-xl shadow-card" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+      <svg class="w-9 h-9" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
       <span class="text-xl font-bold tracking-tight">HStudy</span>
     </a>
     <nav class="hidden md:flex items-center gap-1 text-sm font-medium text-ink-secondary dark:text-[#c4c7c5]">
-      <a href="#features" data-i18n="nav_features" class="px-4 py-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition">功能特点</a>
-      <a href="#privacy" data-i18n="nav_privacy" class="px-4 py-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition">安全与隐私</a>
-      <a href="#install" data-i18n="nav_install" class="px-4 py-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition">下载指引</a>
-      <a href="#oss" data-i18n="nav_oss" class="px-4 py-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition">开源项目</a>
+      <a href="#features" data-i18n="nav_features" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap hover:bg-black/5 dark:hover:bg-white/10 transition">功能特点</a>
+      <a href="#privacy" data-i18n="nav_privacy" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap hover:bg-black/5 dark:hover:bg-white/10 transition">安全与隐私</a>
+      <a href="#install" data-i18n="nav_install" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap hover:bg-black/5 dark:hover:bg-white/10 transition">下载指引</a>
+      <a href="#changelog" data-i18n="nav_changelog" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap hover:bg-black/5 dark:hover:bg-white/10 transition">版本更新</a>
+      <a href="#oss" data-i18n="nav_oss" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap hover:bg-black/5 dark:hover:bg-white/10 transition">开源项目</a>
     </nav>
     <div class="flex items-center gap-2">
       <button id="langToggle" class="ripple-host px-3 py-2 rounded-full text-sm font-medium border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 transition">
@@ -107,7 +109,7 @@ tailwind.config = {
         <i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i>
       </button>
       <a href="https://github.com/yaohehe/hstudy" target="_blank" rel="noopener"
-         class="ripple-host hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink text-white text-sm font-medium hover:shadow-lift transition-shadow">
+         class="ripple-host hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink text-white text-sm font-medium hover:shadow-lift transition-shadow">
         <i class="fa-brands fa-github"></i><span data-i18n="gh_btn">GitHub</span>
       </a>
     </div>
@@ -296,7 +298,7 @@ tailwind.config = {
     <div id="tab-android" class="tab-panel active">
       <div class="bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-6 md:p-8 border border-black/[.04] dark:border-white/[.06]">
         <div class="flex items-center gap-4 mb-6 pb-5 border-b border-black/5 dark:border-white/10">
-          <svg class="w-14 h-14 rounded-2xl shadow-card shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <svg class="w-14 h-14 shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
           <div>
             <div class="font-bold text-lg leading-tight">HStudy</div>
             <div class="text-xs text-ink-tertiary mt-0.5" data-i18n="ins_ver">v3.3.2 · Android & iOS 双平台同源构建</div>
@@ -319,7 +321,7 @@ tailwind.config = {
     <div id="tab-ios" class="tab-panel">
       <div class="bg-card dark:bg-[#1e1f20] rounded-3xl shadow-card p-6 md:p-8 border border-black/[.04] dark:border-white/[.06]">
         <div class="flex items-center gap-4 mb-6 pb-5 border-b border-black/5 dark:border-white/10">
-          <svg class="w-14 h-14 rounded-2xl shadow-card shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <svg class="w-14 h-14 shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
           <div>
             <div class="font-bold text-lg leading-tight">HStudy</div>
             <div class="text-xs text-ink-tertiary mt-0.5" data-i18n="ins_ver">v3.3.2 · Android & iOS 双平台同源构建</div>
@@ -358,6 +360,86 @@ cd hstudy
       </div>
     </div>
   </div>
+</section>
+
+<!-- ============ CHANGELOG ============ -->
+<section id="changelog" class="max-w-4xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+  <div class="text-center max-w-2xl mx-auto mb-10 reveal">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="cl_title">版本更新</h2>
+    <p class="text-ink-secondary dark:text-[#c4c7c5]" data-i18n="cl_sub">每个版本都经过双平台 CI 与自动化回归，以下是近期更新。</p>
+  </div>
+  <ol class="space-y-5 reveal">
+    <li class="bg-card dark:bg-[#1e1f20] rounded-3xl p-6 shadow-card border border-black/[.04] dark:border-white/[.06]">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.2</span><span class="text-xs text-ink-tertiary">2026-11-23</span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-gprimary-container text-gprimary-onContainer font-medium" data-i18n="cl_latest">最新版本</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_332_t">裁决修复批</h3>
+      <ul class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_332_1">里程碑奖励说明改为业务键存储，中英文随界面语言派生，不再把中文写进数据库。</li>
+        <li data-i18n="cl_332_2">复习里程碑与每日幸运转盘加入 CAS 防重入，狂点、双击只入账一次。</li>
+        <li data-i18n="cl_332_3">批量审批、撤回与超期清理改为数据库事务，中途出错整体回滚。</li>
+      </ul>
+    </li>
+    <li class="bg-card dark:bg-[#1e1f20] rounded-3xl p-6 shadow-card border border-black/[.04] dark:border-white/[.06]">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.1</span><span class="text-xs text-ink-tertiary">2026-11-22</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_331_t">真机签核缺陷修复</h3>
+      <ul class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_331_1">修复错题本在窄屏下卡片被压瘪、无法复习打卡的问题。</li>
+        <li data-i18n="cl_331_2">修复覆盖升级后预设任务重复、可能被重复申领的问题。</li>
+        <li data-i18n="cl_331_3">心愿存钱罐记账修正：删除心愿时已存积分原路退还。</li>
+        <li data-i18n="cl_331_4">番茄钟计时持久化：退出、息屏或进程被杀后不丢失，重启自动补结算，计时期间屏幕常亮。</li>
+        <li data-i18n="cl_331_5">系统奖励防连击；家长可撤回误通过的审批；家长首页宽屏自适应布局。</li>
+      </ul>
+    </li>
+    <li class="bg-card dark:bg-[#1e1f20] rounded-3xl p-6 shadow-card border border-black/[.04] dark:border-white/[.06]">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.0</span><span class="text-xs text-ink-tertiary">2026-11-21</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_330_t">Material 3 全应用改版</h3>
+      <ul class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_330_1">全应用切换到 Material 3 语义色板、形状与排版系统，20+ 页面重设计，明暗双主题均达 WCAG AA 对比度。</li>
+        <li data-i18n="cl_330_2">家长首页升级为三层驾驶舱，待审批与已结算分层展示。</li>
+        <li data-i18n="cl_330_3">积分审批强化：统一业务键幂等审批、撤销闭环，并新增积分不变量回归测试套件。</li>
+      </ul>
+    </li>
+    <li class="bg-card dark:bg-[#1e1f20] rounded-3xl p-6 shadow-card border border-black/[.04] dark:border-white/[.06]">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.2.1</span><span class="text-xs text-ink-tertiary">2026-11-20</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_321_t">签名密钥轮换</h3>
+      <ul class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_321_1">v2 旧版设备无需卸载，即可覆盖升级到 v3 正式签名包（Android 8.x / 9+）。</li>
+        <li data-i18n="cl_321_2">业务代码零改动。</li>
+      </ul>
+    </li>
+    <li class="bg-card dark:bg-[#1e1f20] rounded-3xl p-6 shadow-card border border-black/[.04] dark:border-white/[.06]">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.2.0</span><span class="text-xs text-ink-tertiary">2026-11-19</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_320_t">匿名使用统计</h3>
+      <ul class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_320_1">接入 Google Analytics for Firebase，Android 与 iOS 双平台匿名使用统计。</li>
+        <li data-i18n="cl_320_2">家长设置新增「分享使用数据」开关，关闭后立即停止上报。</li>
+      </ul>
+    </li>
+    <li class="bg-card dark:bg-[#1e1f20] rounded-3xl p-6 shadow-card border border-black/[.04] dark:border-white/[.06]">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.1.1</span><span class="text-xs text-ink-tertiary">2026-11-14</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_311_t">中英双语阶段 2</h3>
+      <ul class="text-sm text-ink-secondary dark:text-[#c4c7c5] leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_311_1">全应用文案双语化：预设任务、奖励、成就等内容随界面语言显示。</li>
+        <li data-i18n="cl_311_2">通知、每周周报与提醒随语言切换；Android 发布包自此正式签名。</li>
+      </ul>
+    </li>
+  </ol>
+  <p class="text-center text-sm text-ink-secondary dark:text-[#c4c7c5] mt-8 reveal">
+    <span data-i18n="cl_older">更早版本：v3.1.0 双语第一阶段（2026-11-10）· v3.0.0 KMP 重构首发（2026-11-07）。</span>
+    <a class="text-gprimary font-medium hover:underline" href="https://github.com/yaohehe/hstudy/blob/main/version_history.md" target="_blank" rel="noopener" data-i18n="cl_full">查看完整更新记录</a>
+  </p>
 </section>
 
 <!-- ============ OSS ============ -->
@@ -430,7 +512,7 @@ cd hstudy
 /* ================= i18n ================= */
 const I18N = {
   zh: {
-    nav_features:'功能特点', nav_privacy:'安全与隐私', nav_install:'下载指引', nav_oss:'开源项目', gh_btn:'GitHub',
+    nav_features:'功能特点', nav_privacy:'安全与隐私', nav_install:'下载指引', nav_oss:'开源项目', nav_changelog:'版本更新', gh_btn:'GitHub',
     hero_badge:'Kotlin Multiplatform · Android & iOS',
     hero_title1:'家长与孩子', hero_title2:'共享的学习伙伴',
     hero_sub:'基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用：任务打卡、家长审批、番茄专注、错题复习与积分奖励，一套原生代码，全家共同使用。',
@@ -438,6 +520,31 @@ const I18N = {
     hero_pt1:'数据全本地存储', hero_pt2:'完全开源', hero_pt3:'中英双语即时切换',
     gal_title:'应用一览', gal_sub:'真机截图，横向滑动浏览各主要页面。',
     gal_cap_role:'角色选择', gal_cap_parent:'家长管理台', gal_cap_child:'我的学习（孩子端）', gal_cap_mist:'错题本',
+    cl_title:'版本更新', cl_sub:'每个版本都经过双平台 CI 与自动化回归，以下是近期更新。', cl_latest:'最新版本',
+    cl_332_t:'裁决修复批',
+    cl_332_1:'里程碑奖励说明改为业务键存储，中英文随界面语言派生，不再把中文写进数据库。',
+    cl_332_2:'复习里程碑与每日幸运转盘加入 CAS 防重入，狂点、双击只入账一次。',
+    cl_332_3:'批量审批、撤回与超期清理改为数据库事务，中途出错整体回滚。',
+    cl_331_t:'真机签核缺陷修复',
+    cl_331_1:'修复错题本在窄屏下卡片被压瘪、无法复习打卡的问题。',
+    cl_331_2:'修复覆盖升级后预设任务重复、可能被重复申领的问题。',
+    cl_331_3:'心愿存钱罐记账修正：删除心愿时已存积分原路退还。',
+    cl_331_4:'番茄钟计时持久化：退出、息屏或进程被杀后不丢失，重启自动补结算，计时期间屏幕常亮。',
+    cl_331_5:'系统奖励防连击；家长可撤回误通过的审批；家长首页宽屏自适应布局。',
+    cl_330_t:'Material 3 全应用改版',
+    cl_330_1:'全应用切换到 Material 3 语义色板、形状与排版系统，20+ 页面重设计，明暗双主题均达 WCAG AA 对比度。',
+    cl_330_2:'家长首页升级为三层驾驶舱，待审批与已结算分层展示。',
+    cl_330_3:'积分审批强化：统一业务键幂等审批、撤销闭环，并新增积分不变量回归测试套件。',
+    cl_321_t:'签名密钥轮换',
+    cl_321_1:'v2 旧版设备无需卸载，即可覆盖升级到 v3 正式签名包（Android 8.x / 9+）。',
+    cl_321_2:'业务代码零改动。',
+    cl_320_t:'匿名使用统计',
+    cl_320_1:'接入 Google Analytics for Firebase，Android 与 iOS 双平台匿名使用统计。',
+    cl_320_2:'家长设置新增「分享使用数据」开关，关闭后立即停止上报。',
+    cl_311_t:'中英双语阶段 2',
+    cl_311_1:'全应用文案双语化：预设任务、奖励、成就等内容随界面语言显示。',
+    cl_311_2:'通知、每周周报与提醒随语言切换；Android 发布包自此正式签名。',
+    cl_older:'更早版本：v3.1.0 双语第一阶段（2026-11-10）· v3.0.0 KMP 重构首发（2026-11-07）。', cl_full:'查看完整更新记录',
     feat_title:'为真实家庭学习场景设计的六件大事', feat_sub:'每一项功能都经过真机签核与自动化回归验证。',
     f1_t:'任务与审批', f1_d:'孩子打卡完成任务，积分仅在家长审批通过后写入账本。Append-only 账本设计保证防伪与公正——每一笔积分都可审计、可对称冲抵。',
     f2_t:'专注训练', f2_d:'集成番茄钟（呼吸引导、科学休息循环、屏幕常亮与跨进程恢复）与舒尔特方格专注力训练器，让"坐得住"变成可量化的习惯。',
@@ -475,7 +582,7 @@ const I18N = {
     ft_rights:'保留所有权利', ft_built:'Built with'
   },
   en: {
-    nav_features:'Features', nav_privacy:'Privacy', nav_install:'Download', nav_oss:'Open Source', gh_btn:'GitHub',
+    nav_features:'Features', nav_privacy:'Privacy', nav_install:'Download', nav_oss:'Open Source', nav_changelog:'Changelog', gh_btn:'GitHub',
     hero_badge:'Kotlin Multiplatform · Android & iOS',
     hero_title1:'A study companion', hero_title2:'for the whole family',
     hero_sub:'HStudy is an Android & iOS family study manager built with Kotlin Multiplatform: task check-ins, parent approval, focus timer, spaced mistake review and a points reward system — one native codebase, shared by parents and kids.',
@@ -483,6 +590,31 @@ const I18N = {
     hero_pt1:'All data stored locally', hero_pt2:'Fully open source', hero_pt3:'Instant EN / 中文 switching',
     gal_title:'App Gallery', gal_sub:'Real device screenshots — swipe sideways to browse the main screens.',
     gal_cap_role:'Role Select', gal_cap_parent:'Parent Dashboard', gal_cap_child:'My Study (Child)', gal_cap_mist:'Mistake Notebook',
+    cl_title:'Changelog', cl_sub:'Every release passes dual-platform CI and automated regression suites. Recent updates:', cl_latest:'Latest',
+    cl_332_t:'Adjudicated fixes',
+    cl_332_1:'Milestone bonus notes are stored as business keys and rendered in the UI language — no more Chinese literals written to the database.',
+    cl_332_2:'Review-streak milestones and the daily lucky draw gained CAS re-entry guards: rapid taps and double-clicks award points only once.',
+    cl_332_3:'Bulk approval, revocation and stale-request cleanup now run inside database transactions — a mid-batch error rolls the whole batch back.',
+    cl_331_t:'Device sign-off fixes',
+    cl_331_1:'Fixed mistake cards collapsing on narrow screens, which blocked review check-ins.',
+    cl_331_2:'Fixed preset tasks duplicating after an in-place upgrade, which allowed double claims.',
+    cl_331_3:'Corrected wish piggy-bank accounting: deleting a wish refunds the points already saved.',
+    cl_331_4:'Pomodoro state is persisted: quitting, screen-off or a killed process no longer loses the session — it settles automatically on relaunch, and the screen stays on while timing.',
+    cl_331_5:'System bonuses can no longer be claimed twice; parents can revoke a mistaken approval; the parent home adapts to wide screens.',
+    cl_330_t:'Material 3 redesign',
+    cl_330_1:'The whole app moved to Material 3 semantic colors, shape and type systems with 20+ pages redesigned; light and dark themes both meet WCAG AA contrast.',
+    cl_330_2:'Parent home became a three-tier dashboard with pending approvals and settled entries shown separately.',
+    cl_330_3:'Stronger points approval: idempotent approvals keyed by business key, a revocation loop, and a points-invariant regression suite.',
+    cl_321_t:'Signing key rotation',
+    cl_321_1:'v2 devices can upgrade in place to the properly signed v3 build without uninstalling (Android 8.x / 9+).',
+    cl_321_2:'No business code changes.',
+    cl_320_t:'Anonymous usage analytics',
+    cl_320_1:'Google Analytics for Firebase added for anonymous usage statistics on Android and iOS.',
+    cl_320_2:'New "Share usage data" switch in Parent Settings — turning it off stops reporting immediately.',
+    cl_311_t:'Bilingual stage 2',
+    cl_311_1:'All app copy is now bilingual, including preset tasks, rewards and achievements.',
+    cl_311_2:'Notifications, weekly reports and reminders follow the language; Android releases are properly signed from this version on.',
+    cl_older:'Earlier: v3.1.0 bilingual stage 1 (2026-11-10) · v3.0.0 first KMP release (2026-11-07).', cl_full:'Full changelog',
     feat_title:'Six things, designed for real families', feat_sub:'Every feature is device-verified and covered by automated regression suites.',
     f1_t:'Tasks & Approval', f1_d:'Kids check in tasks; points are written to the ledger only after parent approval. The append-only ledger guarantees fairness — every entry is auditable and symmetrically reversible.',
     f2_t:'Focus Training', f2_d:'Pomodoro timer (breathing guide, science-based breaks, keep-screen-on and cross-process restore) plus a Schulte-Grid attention trainer — make "sitting still" a measurable habit.',
