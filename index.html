@@ -30,8 +30,9 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 </script>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<!-- Tailwind Play CDN 改为自托管：cdn.tailwindcss.com 不发 CORS 头，无法用 SRI 校验；本地副本 sha384-igm5BeiBt36UU4gqwWS7imYmelpTsZlQ45FZf+XBn9MuJbn4nQr7yx1yFydocC/K -->
+<script src="assets/tailwind-cdn.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI" crossorigin="anonymous">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Inter:wght@300;400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -347,6 +348,7 @@ tailwind.config = {
         <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l2">文案展示串与数据库写入严格隔离（存储边界自动化闸门逐版本回归）</span></li>
         <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l3">可在「家长设置」中一键关闭数据分享，随时生效</span></li>
         <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l4">开源可审计：所有采集点均可在源码中检索验证</span></li>
+        <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-yellow-container flex items-center justify-center"><i class="fa-solid fa-globe text-gyellow text-xs"></i></span><span data-i18n="priv_l5">落地页本身通过 Google Tag Manager 加载 GA4 匿名访问统计（仅页面浏览与设备类别，不含 IP、姓名或任何输入内容）；它与 App 相互独立，App 内的「分享使用数据」开关不改变本页面行为。</span></li>
       </ul>
     </div>
     <div class="lg:col-span-2 reveal">
@@ -693,6 +695,7 @@ const I18N = {
     priv_p1:'HStudy 的业务数据（任务、积分账本、错题、心愿）全部存储于设备本地数据库。分析统计基于 Google Analytics for Firebase，<strong>仅记录匿名 / 伪匿名的功能使用频率</strong>，绝不收集姓名、任务内容、错题文本或任何自由文本内容。',
     priv_l1:'事件仅含功能标识与枚举值，无自由文本上报', priv_l2:'文案展示串与数据库写入严格隔离（存储边界自动化闸门逐版本回归）',
     priv_l3:'可在「家长设置」中一键关闭数据分享，随时生效', priv_l4:'开源可审计：所有采集点均可在源码中检索验证',
+    priv_l5:'落地页本身通过 Google Tag Manager 加载 GA4 匿名访问统计（仅页面浏览与设备类别，不含 IP、姓名或任何输入内容）；它与 App 相互独立，App 内的「分享使用数据」开关不改变本页面行为。',
     priv_switch_t:'数据分享设置', priv_switch_loc:'家长设置 › 隐私',
     priv_s1:'匿名功能使用统计', priv_s1d:'仅事件名与枚举值', priv_s2:'姓名 / 头像 / 任务文本', priv_s2d:'永不采集，仅本地存储',
     priv_note:'示意界面。真实开关位于 App 的家长设置页，关闭后不再初始化分析 SDK。',
@@ -769,6 +772,7 @@ const I18N = {
     priv_p1:'All business data (tasks, points ledger, mistakes, wishes) lives in a local database on your device. Analytics via Google Analytics for Firebase records <strong>only anonymous / pseudo-anonymous feature usage frequency</strong> — never names, task content, mistake text or any free-form input.',
     priv_l1:'Events carry feature identifiers and enum values only — no free text', priv_l2:'Display strings are strictly isolated from DB writes (automated storage-boundary gate every release)',
     priv_l3:'One-tap opt-out anytime in Parent Settings › Privacy', priv_l4:'Open source and auditable: every logging site is greppable in the code',
+    priv_l5:'This landing page loads GA4 via Google Tag Manager for anonymous traffic stats (page views and device category only — no IP addresses, names or typed content). It is separate from the app: the in-app "Share usage data" switch does not change this page.',
     priv_switch_t:'Data sharing', priv_switch_loc:'Parent Settings › Privacy',
     priv_s1:'Anonymous usage analytics', priv_s1d:'Event names & enums only', priv_s2:'Names / avatars / task text', priv_s2d:'Never collected, local only',
     priv_note:'Illustration. The real switch lives in Parent Settings; once off, the analytics SDK is never initialized.',
