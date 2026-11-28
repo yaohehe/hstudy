@@ -56,7 +56,8 @@ object ScheduleAlarmHelper {
                 minute = minute,
                 title = localizedPresetText(schedule.title, lang),
                 body = notificationBody(schedule, strings, lang),
-                repeatDaily = true
+                repeatDaily = true,
+                repeatDays = schedule.isoRepeatDays(),
             )
         )
         AnalyticsReporter.log(AnalyticsEvent.ReminderScheduled(ReminderKind.SCHEDULE))
@@ -64,7 +65,7 @@ object ScheduleAlarmHelper {
 
     /** 取消单条日程的提醒 */
     fun cancel(schedule: DailyScheduleEntity) {
-        Platform.notifications.cancel(schedule.id.toInt())
+        Platform.notifications.cancel(schedule.id.toInt(), ReminderKind.SCHEDULE)
     }
 
     /**
@@ -85,7 +86,8 @@ object ScheduleAlarmHelper {
                     minute = minute,
                     title = localizedPresetText(schedule.title, lang),
                     body = notificationBody(schedule, strings, lang),
-                    repeatDaily = true
+                    repeatDaily = true,
+                    repeatDays = schedule.isoRepeatDays(),
                 )
             }
         )

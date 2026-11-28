@@ -11,7 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
-import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.data.preferences.UserPreferences
+import com.hstudy.app.data.repository.DailyTargetRepository
+import com.hstudy.app.data.repository.DailyTargetResetBlockedException
+import com.hstudy.app.data.repository.FocusRepository
+import com.hstudy.app.data.repository.MistakeRepository
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
@@ -19,6 +23,8 @@ import com.hstudy.app.platform.AnalyticsEvent
 import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.time.SystemAppClock
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** 预设每日学习目标（孩子从中挑选今天要完成的） */
@@ -43,31 +49,33 @@ private val dailyTargetDefs = listOf(
 @Composable
 fun ChildDailyTargetScreen(
     onNavigateBack: () -> Unit,
-    windowSizeClass: WindowSizeClass
+    windowSizeClass: WindowSizeClass,
+    preferences: UserPreferences = AppGraph.userPreferences,
+    dailyTargetRepository: DailyTargetRepository = AppGraph.dailyTargetRepository,
+    mistakeRepository: MistakeRepository = AppGraph.mistakeRepository,
+    focusRepository: FocusRepository = AppGraph.focusRepository,
+    today: String = SystemAppClock.today()
 ) {
     val strings = LocalStrings.current.childDailyTarget
     val displayLanguage = LocalDisplayLanguage.current
-    val app = AppGraph
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val today = PointRepository.getTodayString()
 
-    val targetDate by app.userPreferences.dailyTargetDate.collectAsState(initial = null)
-    val selectedTargets by app.userPreferences.dailyTargets.collectAsState(initial = emptySet())
-    val doneTargets by app.userPreferences.dailyTargetsDone.collectAsState(initial = emptySet())
-    val bonusDate by app.userPreferences.dailyTargetBonusDate.collectAsState(initial = null)
+    val targetDate by preferences.dailyTargetDate.collectAsState(initial = null)
+    val selectedTargets by preferences.dailyTargets.collectAsState(initial = emptySet())
+    val doneTargets by preferences.dailyTargetsDone.collectAsState(initial = emptySet())
 
     // 每日复盘状态
-    val reflectionDate by app.userPreferences.dailyReflectionDate.collectAsState(initial = null)
-    val reflectionStars by app.userPreferences.dailyReflectionStars.collectAsState(initial = 0)
-    val reflectionTags by app.userPreferences.dailyReflectionTags.collectAsState(initial = emptySet())
+    val reflectionDate by preferences.dailyReflectionDate.collectAsState(initial = null)
+    val reflectionStars by preferences.dailyReflectionStars.collectAsState(initial = 0)
+    val reflectionTags by preferences.dailyReflectionTags.collectAsState(initial = emptySet())
     var pickStars by remember { mutableIntStateOf(0) }
     var pickTags by remember { mutableStateOf<Set<String>>(emptySet()) }
     val reflectionSavedToday = reflectionDate == today
 
     // 智能推荐所需数据：根据薄弱项自动生成推荐目标
-    val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
-    val allSessions by app.focusRepository.getAllSessions().collectAsState(initial = emptyList())
+    val allMistakes by mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
+    val allSessions by focusRepository.getAllSessions().collectAsState(initial = emptyList())
     val recommendations = remember(allMistakes, allSessions, displayLanguage) {
         val weekAgo = com.hstudy.app.ui.dt.nowMillis() - 7L * 24 * 60 * 60 * 1000
         val recentFocus = allSessions.filter { it.completedAt >= weekAgo }.sumOf { it.durationMinutes }
@@ -155,9 +163,18 @@ fun ChildDailyTargetScreen(
                                     scope.launch { snackbarHostState.showSnackbar(strings.needOneGoal) }
                                 } else {
                                     scope.launch {
-                                        app.userPreferences.setDailyTargets(today, picking)
-                                        editMode = false
-                                        snackbarHostState.showSnackbar(strings.goalsSet)
+                                        val result = dailyTargetRepository.reset(today, picking)
+                                        if (result.isSuccess) {
+                                            editMode = false
+                                            snackbarHostState.showSnackbar(strings.goalsSet)
+                                        } else {
+                                            val message = if (result.exceptionOrNull() is DailyTargetResetBlockedException) {
+                                                strings.resetBlocked
+                                            } else {
+                                                strings.goalUpdateFailed
+                                            }
+                                            snackbarHostState.showSnackbar(message)
+                                        }
                                     }
                                 }
                             },
@@ -212,45 +229,25 @@ fun ChildDailyTargetScreen(
                                         checked = isDone,
                                         onCheckedChange = { checked ->
                                             scope.launch {
-                                                app.userPreferences.setDailyTargetDone(def.id, checked)
-                                                val targetKey = "TARGET:${def.id}:$today"
+                                                val result = dailyTargetRepository.setDone(today, def.id, checked)
+                                                if (result.isFailure) {
+                                                    snackbarHostState.showSnackbar(strings.goalUpdateFailed)
+                                                    return@launch
+                                                }
                                                 if (checked) {
-                                                    // 完成单个目标 +2 分：走审批，此刻只登记申请，审批通过后才计分
-                                                    app.pointRepository.checkIn(
-                                                        bizKey = targetKey,
-                                                        actionType = "DAILY_TARGET",
-                                                        description = "完成每日目标：${def.title}",
-                                                        points = 2,
-                                                        date = today
-                                                    )
                                                     AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
-                                                    // 检查是否全部达成→额外奖励 +10（每天只领一次）
-                                                    val newDoneCount = doneTargets.size + 1
-                                                    if (newDoneCount >= selectedTargets.size && bonusDate != today) {
-                                                        app.pointRepository.checkIn(
-                                                            bizKey = "TARGET_ALL:$today",
-                                                            actionType = "DAILY_TARGET",
-                                                            description = "每日学习目标全部达成奖励",
-                                                            points = 10,
-                                                            date = today
-                                                        )
+                                                    if (preferences.dailyTargetBonusDate.first() == today) {
                                                         AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
-                                                        app.userPreferences.setDailyTargetBonusDate(today)
                                                         snackbarHostState.showSnackbar(strings.allDoneBonus)
                                                     } else {
-                                                        snackbarHostState.showSnackbar(strings.goalDonePending(localizedPresetText(def.title, displayLanguage)))
+                                                        snackbarHostState.showSnackbar(
+                                                            strings.goalDonePending(localizedPresetText(def.title, displayLanguage))
+                                                        )
                                                     }
                                                 } else {
-                                                    // 取消勾选 = 撤销该目标打卡：
-                                                    // 未审批则取消申请，已审批则扣回已发积分，杜绝重复累计与积分残留
-                                                    app.pointRepository.undoCheckIn(targetKey, date = today)
-                                                    val newDoneCount = (doneTargets - def.id).size
-                                                    if (newDoneCount < selectedTargets.size) {
-                                                        // 已不再"全部达成"→ 同步撤销全部达成奖励（已发放则扣回）
-                                                        app.pointRepository.undoCheckIn("TARGET_ALL:$today", date = today)
-                                                        app.userPreferences.setDailyTargetBonusDate("")
-                                                    }
-                                                    snackbarHostState.showSnackbar(strings.goalUndone(localizedPresetText(def.title, displayLanguage)))
+                                                    snackbarHostState.showSnackbar(
+                                                        strings.goalUndone(localizedPresetText(def.title, displayLanguage))
+                                                    )
                                                 }
                                             }
                                         }
@@ -332,7 +329,7 @@ fun ChildDailyTargetScreen(
                                                 scope.launch { snackbarHostState.showSnackbar(strings.rateFirst) }
                                             } else {
                                                 scope.launch {
-                                                    app.userPreferences.saveDailyReflection(today, pickStars, pickTags)
+                                                    preferences.saveDailyReflection(today, pickStars, pickTags)
                                                     snackbarHostState.showSnackbar(strings.reflectionSaved)
                                                 }
                                             }

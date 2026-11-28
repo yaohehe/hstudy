@@ -8,9 +8,15 @@ import com.hstudy.app.ui.theme.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.data.preferences.UserPreferences
+import com.hstudy.app.data.repository.FocusRepository
+import com.hstudy.app.data.repository.HabitRepository
+import com.hstudy.app.data.repository.MistakeRepository
+import com.hstudy.app.data.repository.PointRepository
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.achievementCopy
@@ -25,19 +31,29 @@ import com.hstudy.app.ui.common.ResponsiveContent
 @Composable
 fun ChildAchievementsScreen(
     onNavigateBack: () -> Unit,
-    windowSizeClass: WindowSizeClass
+    windowSizeClass: WindowSizeClass,
+    habitRepository: HabitRepository = AppGraph.habitRepository,
+    pointRepository: PointRepository = AppGraph.pointRepository,
+    mistakeRepository: MistakeRepository = AppGraph.mistakeRepository,
+    focusRepository: FocusRepository = AppGraph.focusRepository,
+    userPreferences: UserPreferences = AppGraph.userPreferences,
 ) {
     val strings = LocalStrings.current.childAchievements
     val displayLanguage = LocalDisplayLanguage.current
-    val app = AppGraph
-    val unlocked by app.habitRepository.getAllAchievements().collectAsState(initial = emptyList())
+    val unlocked by habitRepository.getAllAchievements().collectAsState(initial = emptyList())
     val allDefs = AchievementManager.allAchievements
     val unlockedTypes = unlocked.map { it.type }.toSet()
 
-    // 收集每个成就的达成进度
-    var progressMap by remember { mutableStateOf<Map<String, Pair<Int, Int>>>(emptyMap()) }
-    LaunchedEffect(Unit) {
-        progressMap = AchievementManager.getProgress(app)
+    // 页面停留期间持续收集真实 Room/DataStore 进度，不依赖一次性快照。
+    val progress by AchievementManager.progress(
+        pointRepository = pointRepository,
+        habitRepository = habitRepository,
+        mistakeRepository = mistakeRepository,
+        focusRepository = focusRepository,
+        userPreferences = userPreferences,
+    ).collectAsState(initial = emptyList())
+    val progressMap = remember(progress) {
+        progress.associate { it.type to (it.current to it.target) }
     }
 
     val unlockedCount = allDefs.count { it.type in unlockedTypes }
@@ -107,8 +123,12 @@ fun ChildAchievementsScreen(
                                             modifier = Modifier.fillMaxWidth().height(6.dp),
                                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                                         )
-                                        Text("$cur/$target", style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            "$cur/$target",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.testTag("achievement-progress-${def.type}"),
+                                        )
                                     }
                                 }
                                 if (isUnlocked) {

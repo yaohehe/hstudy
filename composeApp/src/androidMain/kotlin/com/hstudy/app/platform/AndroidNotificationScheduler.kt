@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.hstudy.app.MainActivity
 import java.util.Calendar
 
 /**
@@ -18,15 +19,19 @@ import java.util.Calendar
  */
 class AndroidNotificationScheduler(private val context: Context) : NotificationScheduler {
 
-    override fun schedule(reminder: ScheduledReminder) = scheduleAlarm(context, reminder)
+    override fun schedule(reminder: ScheduledReminder) {
+        scheduleAlarm(context, reminder)
+    }
 
     override fun cancel(id: Int) {
-        ReminderKind.entries.forEach { kind ->
-            val pi = buildPendingIntent(context, id, kind)
-            alarmManager(context)?.cancel(pi)
-            pi.cancel()
-            untrackId(context, kind, id)
-        }
+        ReminderKind.entries.forEach { kind -> cancel(id, kind) }
+    }
+
+    override fun cancel(id: Int, kind: ReminderKind) {
+        val pi = buildPendingIntent(context, id, kind)
+        alarmManager(context)?.cancel(pi)
+        pi.cancel()
+        untrackId(context, kind, id)
     }
 
     override fun cancelKind(kind: ReminderKind) {
@@ -59,28 +64,55 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
         const val EXTRA_BODY = "extra_body"
         const val EXTRA_REPEAT_DAILY = "extra_repeat_daily"
         const val EXTRA_DAY_OF_WEEK = "extra_day_of_week"
+        const val EXTRA_REPEAT_DAYS = "extra_repeat_days"
+        const val EXTRA_ROUTE = NotificationRoutes.EXTRA_ROUTE
 
         private const val PREFS_NAME = "hstudy_reminder_alarms"
 
-        /** 注册（或更新）一个提醒闹钟 */
-        fun scheduleAlarm(context: Context, reminder: ScheduledReminder) {
-            val am = alarmManager(context) ?: return
+        /** 注册（或更新）一个提醒闹钟；只有系统接受注册后才纳入 active 跟踪。 */
+        fun scheduleAlarm(context: Context, reminder: ScheduledReminder): Boolean {
+            val am = alarmManager(context) ?: return false
+            return attemptScheduleAlarm(
+                context = context,
+                reminder = reminder,
+                canScheduleExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms(),
+                setExact = { triggerAt, pi ->
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+                },
+                setInexact = { triggerAt, pi ->
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+                },
+            )
+        }
+
+        /** Injectable registration boundary used by the swallowed-failure regression test. */
+        internal fun attemptScheduleAlarm(
+            context: Context,
+            reminder: ScheduledReminder,
+            canScheduleExact: Boolean,
+            setExact: (Long, PendingIntent) -> Unit,
+            setInexact: (Long, PendingIntent) -> Unit,
+        ): Boolean {
             val pi = buildPendingIntent(context, reminder.id, reminder.kind, reminder)
             val triggerAt = nextTriggerTime(reminder)
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+            return try {
+                if (canScheduleExact) {
+                    try {
+                        setExact(triggerAt, pi)
+                    } catch (_: SecurityException) {
+                        // 缺少精确闹钟权限时降级为非精确闹钟。
+                        setInexact(triggerAt, pi)
+                    }
                 } else {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+                    setInexact(triggerAt, pi)
                 }
-            } catch (_: SecurityException) {
-                // 缺少精确闹钟权限时降级为非精确闹钟
-                try {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-                } catch (_: Exception) {
-                }
+                trackId(context, reminder.kind, reminder.id)
+                true
+            } catch (_: Exception) {
+                // AlarmManager can reject registration at runtime. Do not retain a phantom active ID.
+                pi.cancel()
+                false
             }
-            trackId(context, reminder.kind, reminder.id)
         }
 
         /** 接收器触发后重注册下一次（每日/每周重复） */
@@ -90,7 +122,8 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
             val kind = runCatching {
                 ReminderKind.valueOf(intent.getStringExtra(EXTRA_KIND) ?: "")
             }.getOrNull() ?: return
-            if (!intent.getBooleanExtra(EXTRA_REPEAT_DAILY, true)) return
+            val repeatDaily = intent.getBooleanExtra(EXTRA_REPEAT_DAILY, true)
+            if (!repeatDaily && kind != ReminderKind.WEEKLY_REPORT) return
             val reminder = ScheduledReminder(
                 id = id,
                 kind = kind,
@@ -98,8 +131,9 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
                 minute = intent.getIntExtra(EXTRA_MINUTE, 0),
                 title = intent.getStringExtra(EXTRA_TITLE) ?: "",
                 body = intent.getStringExtra(EXTRA_BODY) ?: "",
-                repeatDaily = true,
-                dayOfWeek = intent.getIntExtra(EXTRA_DAY_OF_WEEK, -1)
+                repeatDaily = repeatDaily,
+                dayOfWeek = intent.getIntExtra(EXTRA_DAY_OF_WEEK, -1),
+                repeatDays = intent.getIntArrayExtra(EXTRA_REPEAT_DAYS)?.toSet() ?: emptySet(),
             )
             // nextTriggerTime 以当前时刻为基准，触发后自然推到明天/下周
             scheduleAlarm(context, reminder)
@@ -120,9 +154,9 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
             ensureChannel(context, nm, kind)
 
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val launchIntent = buildNotificationIntent(context, kind, notificationId)
             val pendingIntent = PendingIntent.getActivity(
-                context, 0, launchIntent,
+                context, notificationId, launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
@@ -155,6 +189,21 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
                 nm.notify(notificationId, notification)
             } catch (_: SecurityException) {
                 // 未授予 POST_NOTIFICATIONS 时静默忽略
+            }
+        }
+
+        /** Builds the exact click Intent used by every notification PendingIntent. */
+        internal fun buildNotificationIntent(
+            context: Context,
+            kind: ReminderKind,
+            notificationId: Int,
+        ): Intent {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                ?: Intent(context, MainActivity::class.java)
+            return launchIntent.apply {
+                putExtra(EXTRA_ROUTE, NotificationRoutes.forKind(kind))
+                putExtra(EXTRA_ID, notificationId)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
         }
 
@@ -207,6 +256,7 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
                 intent.putExtra(EXTRA_BODY, reminder.body)
                 intent.putExtra(EXTRA_REPEAT_DAILY, reminder.repeatDaily)
                 intent.putExtra(EXTRA_DAY_OF_WEEK, reminder.dayOfWeek)
+                intent.putExtra(EXTRA_REPEAT_DAYS, reminder.repeatDays.toIntArray())
             }
             return PendingIntent.getBroadcast(
                 context, id, intent,
@@ -214,9 +264,13 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
             )
         }
 
-        /** 计算下次触发时间：今日该时刻已过则推到明天；周报推到下一个指定星期日 */
-        private fun nextTriggerTime(reminder: ScheduledReminder): Long {
+        /** 计算下次触发时间：遵守 ISO repeatDays；周报始终推到下一个指定星期。 */
+        internal fun nextTriggerTime(
+            reminder: ScheduledReminder,
+            nowMillis: Long = System.currentTimeMillis(),
+        ): Long {
             val cal = Calendar.getInstance().apply {
+                timeInMillis = nowMillis
                 set(Calendar.HOUR_OF_DAY, reminder.hour.coerceIn(0, 23))
                 set(Calendar.MINUTE, reminder.minute.coerceIn(0, 59))
                 set(Calendar.SECOND, 0)
@@ -226,15 +280,32 @@ class AndroidNotificationScheduler(private val context: Context) : NotificationS
                 // dayOfWeek: 1=周一…7=周日（与原 repeatDays 约定一致）；Calendar: 周日=1
                 val iso = if (reminder.dayOfWeek in 1..7) reminder.dayOfWeek else 7
                 cal.set(Calendar.DAY_OF_WEEK, if (iso == 7) Calendar.SUNDAY else iso + 1)
-                if (cal.timeInMillis <= System.currentTimeMillis()) {
+                if (cal.timeInMillis <= nowMillis) {
                     cal.add(Calendar.WEEK_OF_YEAR, 1)
                 }
             } else {
-                if (cal.timeInMillis <= System.currentTimeMillis()) {
+                val repeatDays = reminder.repeatDays.filter { it in 1..7 }.toSet()
+                if (repeatDays.isNotEmpty()) {
+                    if (!repeatDays.contains(isoWeekday(cal)) || cal.timeInMillis <= nowMillis) {
+                        do {
+                            cal.add(Calendar.DAY_OF_YEAR, 1)
+                        } while (!repeatDays.contains(isoWeekday(cal)))
+                    }
+                } else if (cal.timeInMillis <= nowMillis) {
                     cal.add(Calendar.DAY_OF_YEAR, 1)
                 }
             }
             return cal.timeInMillis
+        }
+
+        private fun isoWeekday(calendar: Calendar): Int = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> 1
+            Calendar.TUESDAY -> 2
+            Calendar.WEDNESDAY -> 3
+            Calendar.THURSDAY -> 4
+            Calendar.FRIDAY -> 5
+            Calendar.SATURDAY -> 6
+            else -> 7
         }
 
         private fun alarmManager(context: Context): AlarmManager? =

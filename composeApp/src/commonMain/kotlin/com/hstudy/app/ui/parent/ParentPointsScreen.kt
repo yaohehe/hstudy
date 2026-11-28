@@ -17,11 +17,10 @@ import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.PointRecordEntity
 import com.hstudy.app.data.local.entity.PointRecordType
-import com.hstudy.app.data.local.entity.effectivePoints
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
-import com.hstudy.app.ui.child.pointRecordSection
+import com.hstudy.app.ui.child.summarizePointRecords
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.PointsBadge
 import com.hstudy.app.ui.common.ResponsiveContent
@@ -38,7 +37,7 @@ import com.hstudy.app.ui.dt.*
  * ⏳ 待家长审核行（tertiaryContainer，审核后计入注）+ 🌟 累计获得行）；全部积分记录按
  * 今天/昨天/本周更早/历史记录分组；记录卡左侧加类型徽章，REVERSAL/PENALTY 附小标签。
  * 看板/分组/标签词面跨表复用 [ChildPointsStrings]（同一中文值一个英文出处；家长端
- * ParentPointsStrings 只保留本页独有词面），分组函数复用孩子端 [pointRecordSection] 保证两端口径一致。
+ * ParentPointsStrings 只保留本页独有词面），分组函数复用孩子端 [summarizePointRecords] 保证两端口径一致。
  */
 @Composable
 fun ParentPointsScreen(
@@ -56,9 +55,11 @@ fun ParentPointsScreen(
     val wishGoals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
     val wishNamesById = remember(wishGoals) { wishGoals.associate { it.id to it.name } }
 
-    // 近7天打卡记录（用于任务积分排行）
+    // 近7天已发放任务积分排行；当前任务只提供显示名，不参与历史分值计算。
     val sevenDaysAgoMillis = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }.timeInMillis }
-    val recentCompletions by app.pointRepository.getCompletionsBetween(sevenDaysAgoMillis, com.hstudy.app.ui.dt.nowMillis()).collectAsState(initial = emptyList())
+    val recentTaskStats by app.reportRepository.historicalTaskStats(
+        sevenDaysAgoMillis until com.hstudy.app.ui.dt.nowMillis()
+    ).collectAsState(initial = emptyMap())
 
     var showAdjustDialog by remember { mutableStateOf(false) }
     var adjustPoints by remember { mutableStateOf("") }
@@ -70,10 +71,10 @@ fun ParentPointsScreen(
     val parentHome = LocalStrings.current.parentHome
     val displayLanguage = LocalDisplayLanguage.current
 
-    // 累计获得 = 账本正分合计（只读展示，不参与余额判等；与孩子端口径一致）
-    val totalEarned = remember(records) { records.filter { it.points > 0 }.sumOf { it.points } }
+    // 累计获得 = 权威账本收入（心愿退款/撤销等非收入正调整不计入）。
+    val totalEarned by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
     // 时间轴分桶：LazyColumn 的 LazyListScope 内容不是 composable 上下文，remember 必须在页面作用域算好
-    val grouped = remember(records) { records.groupBy { pointRecordSection(it.date) } }
+    val grouped = remember(records) { summarizePointRecords(records).grouped }
 
     Scaffold(
         topBar = {
@@ -140,7 +141,13 @@ fun ParentPointsScreen(
                                 }
                                 last7.forEach { (dateStr, shortDate) ->
                                     val dayRecords = records.filter { dayFmt.format(Date(it.date)) == dateStr }
-                                    val earned = dayRecords.filter { it.points > 0 }.sumOf { it.points }
+                                    val earned = dayRecords.filter {
+                                        it.points > 0 && it.type in setOf(
+                                            PointRecordType.TASK_COMPLETE,
+                                            PointRecordType.BONUS,
+                                            PointRecordType.ADJUSTMENT
+                                        )
+                                    }.sumOf { it.points }
                                     val spent = dayRecords.filter { it.points < 0 }.sumOf { -it.points }
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -159,15 +166,10 @@ fun ParentPointsScreen(
 
                     // ===== 任务积分排行（近7天）=====
                     item {
-                        val taskMap = recentCompletions.groupBy { it.taskId }
-                        val taskRanking = taskMap.map { (taskId, comps) ->
+                        val taskRanking = recentTaskStats.map { (taskId, stats) ->
                             val task = tasks.find { it.id == taskId }
                             val title = task?.let { localizedPresetText(it.title, displayLanguage) } ?: strings.taskFallbackTitle(taskId)
-                            val count = comps.size
-                            // 使用任务实际积分（审核制下 pointsEarned 可能为 0，用任务定义积分更准确）
-                            val ptsPerTime = task?.effectivePoints() ?: 0
-                            val totalPts = count * ptsPerTime
-                            Triple(title, count, totalPts)
+                            Triple(title, stats.awards, stats.points)
                         }.sortedByDescending { it.third }.take(5)
 
                         if (taskRanking.isNotEmpty()) {

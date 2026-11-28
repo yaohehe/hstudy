@@ -16,13 +16,13 @@ import kotlin.test.assertTrue
  * 1. **30 天边界**：判据是 `requestedAt < now - STALE_PENDING_MILLIS` 的**严格早于**——
  *    恰好落在边界值（now-30d 整）的申请不算超期、绝不清理；
  * 2. **清理走 undoCheckIn 对称闭环**：有 bizKey 的行逐条经 [PointRepository.revokeApproval]
- *    入口（复用既有闭环，禁止裸 updateStatus 绕开不变量 4）——PENDING 半区置 CANCELLED、
+ *    入口（复用既有闭环，禁止裸通用状态设置绕开不变量 4）——PENDING 半区置 CANCELLED、
  *    任务类同步清掉当日完成记录，与孩子端撤销未审批打卡同形；
  * 3. **清理后 PENDING 归零**：看板/徽章计数流归 0；
  * 4. **余额零变化**：未审批申请从未计分，清理不写任何积分记录（不变量 5 append-only，余额分毫不动）；
  * 5. **二次清理 0 变动**：幂等——状态、审批列表与账本全量快照不变，返回 0。
  *
- * 另钉空 bizKey 的 v2 遗留行**updateStatus 兜底**（报告披露项）：只按 id 精确取消该超期行，
+ * 另钉空 bizKey 的 v2 遗留行 **cancelPending 窄 CAS 兜底**（报告披露项）：只按 id 精确取消该超期行，
  * 绝不凭 getLatestByBizKey("") 误伤其它空 bizKey 单（含 APPROVED 遗留行）。
  */
 class PointRepositoryStalePendingCleanupTest {
@@ -144,7 +144,7 @@ class PointRepositoryStalePendingCleanupTest {
         val (pointDao, approvalDao, repo) = newRepo()
         val now = 100_000L * day
         // v2 迁移遗留：bizKey 为空的行无法被统一撤销锚定（revokeApproval 会保守拒绝），
-        // 清理侧按 id 直接 updateStatus 兜底（报告披露项）。同形另两行必须毫发无损：
+        // 清理侧按 id 直接 cancelPending 窄 CAS 兜底（报告披露项）。同形另两行必须毫发无损：
         // 空 bizKey 的新 PENDING（不超期）与空 bizKey 的 APPROVED 遗留行（非 PENDING）。
         val legacyStaleId = insertPending(approvalDao, "", requestedAt = now - 32 * day, points = 9)
         val legacyFreshId = insertPending(approvalDao, "", requestedAt = now - 3 * day, points = 7)

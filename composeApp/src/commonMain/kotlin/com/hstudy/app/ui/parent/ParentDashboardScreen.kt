@@ -28,6 +28,8 @@ import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.data.local.entity.PointRecordType
 import com.hstudy.app.data.local.entity.TaskCategory
+import com.hstudy.app.data.repository.CompletionRateReport
+import com.hstudy.app.data.repository.CompletionRateSource
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.common.ResponsiveTwoColumn
@@ -36,6 +38,9 @@ import com.hstudy.app.ui.common.wishNoteDisplayText
 import com.hstudy.app.ui.theme.chartPalette
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 @Composable
 fun ParentDashboardScreen(
@@ -61,10 +66,11 @@ fun ParentDashboardScreen(
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val totalFocusMin by app.focusRepository.getTotalFocusMinutes().collectAsState(initial = 0)
     // §3.4-报表2：待审积分预估（只读展示流，与 ParentApprovalScreen 同源查询，不新增写路径）
-    val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
+    val allApprovals by app.pointRepository.getAllApprovals().collectAsState(initial = emptyList())
 
     // 孩子今日学习表现评分所需数据
     val todayStr = com.hstudy.app.data.repository.PointRepository.getTodayString()
+    val today = LocalDate.parse(todayStr)
     val todayFocusMin by app.focusRepository.getTotalFocusMinutesForDate(todayStr).collectAsState(initial = 0)
     val todayStartMillis = remember(todayStr) {
         Calendar.getInstance().apply {
@@ -73,37 +79,35 @@ fun ParentDashboardScreen(
         }.timeInMillis
     }
     val todayReviewCount by app.mistakeRepository.getReviewCountSince(todayStartMillis).collectAsState(initial = 0)
-    val todayCompletedIds by app.pointRepository.getCompletedTaskIdsForDate(todayStr).collectAsState(initial = emptyList())
+    val todayCompletion by app.reportRepository.completionRateReport(today)
+        .collectAsState(initial = CompletionRateReport(0, 0, 0, CompletionRateSource.LEGACY_ACTIVE_TASK_FALLBACK))
 
     // 本周 vs 上周对比所需：最近14天专注与复习数据
     val last14StartMillis = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -14) }.timeInMillis }
     val focusData14 by app.focusRepository.getDailyFocusMinutesSince(last14StartMillis).collectAsState(initial = emptyList())
     val reviews14 by app.mistakeRepository.getReviewsSince(last14StartMillis).collectAsState(initial = emptyList())
 
-    // 本周数据
+    // 本周已发放收入与消耗分列；收入来自权威账本聚合，退款不算收入。
     val cal = Calendar.getInstance().apply {
         set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }
     val weekStart = cal.timeInMillis
     cal.add(Calendar.DAY_OF_WEEK, 7)
     val weekEnd = cal.timeInMillis
     val weeklyRecords = records.filter { it.date in weekStart until weekEnd }
-    val weeklyEarned = weeklyRecords.filter { it.points > 0 }.sumOf { it.points }
     val weeklySpent = weeklyRecords.filter { it.points < 0 }.sumOf { -it.points }
 
-    // 最近7天每日积分获得
     val dayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val last7Days = (6 downTo 0).map { daysAgo ->
-        val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }
-        dayFormat.format(c.time)
-    }
-    val dailyEarned = last7Days.map { dateStr ->
-        records.filter { r ->
-            val rDate = dayFormat.format(Date(r.date))
-            rDate == dateStr && r.points > 0
-        }.sumOf { it.points }
-    }
+    val last7LocalDates = (6 downTo 0).map { daysAgo -> today.minus(daysAgo, DateTimeUnit.DAY) }
+    val prev7LocalDates = (13 downTo 7).map { daysAgo -> today.minus(daysAgo, DateTimeUnit.DAY) }
+    val awardedByDate by app.reportRepository.dailyAwardedPoints(prev7LocalDates.first(), last7LocalDates.last())
+        .collectAsState(initial = emptyMap())
+    val weekStartDate = LocalDate.parse(dayFormat.format(Date(weekStart)))
+    val weeklyEarned = awardedByDate.filterKeys { it >= weekStartDate }.values.sum()
+    val last7Days = last7LocalDates.map { it.toString() }
+    val dailyEarned = last7LocalDates.map { awardedByDate[it] ?: 0 }
     // 已结算 vs 待审预估（指令 3.4-报表2）：待审单按 date 归属日聚合 requestedPoints
     val dailyPending = last7Days.map { dateStr ->
         allApprovals.filter { it.status == ApprovalStatus.PENDING && it.date == dateStr }.sumOf { it.requestedPoints }
@@ -148,8 +152,8 @@ fun ParentDashboardScreen(
                     }
 
                     // ===== 孩子今日学习表现（与家长同步的学习质量反馈）=====
-                    val todayCheckinRate = if (tasks.isNotEmpty()) todayCompletedIds.size.toFloat() / tasks.size else 0f
-                    val childScore = remember(todayCompletedIds.size, tasks.size, todayFocusMin, todayReviewCount, displayLanguage) {
+                    val todayCheckinRate = todayCompletion.rate / 100f
+                    val childScore = remember(todayCompletion.rate, todayFocusMin, todayReviewCount, displayLanguage) {
                         com.hstudy.app.ui.common.LearningScoreCalculator.calculate(todayCheckinRate, todayFocusMin, todayReviewCount, displayLanguage)
                     }
                     Card(
@@ -162,7 +166,7 @@ fun ParentDashboardScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(strings.childPerformanceTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Text(strings.childPerformanceLine(childScore.grade, todayCompletedIds.size, tasks.size, todayFocusMin, todayReviewCount),
+                                    Text(strings.childPerformanceLine(childScore.grade, todayCompletion.completed, todayCompletion.total, todayFocusMin, todayReviewCount),
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                                 Text(strings.scoreValue(childScore.total, strings.scoreUnit), style = MaterialTheme.typography.titleLarge,
@@ -170,19 +174,26 @@ fun ParentDashboardScreen(
                             }
                             Text("💡 ${childScore.encouragement}", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Text(
+                                LocalStrings.current.childGoalTracker.completionRateSourceLabel(
+                                    todayCompletion.source == CompletionRateSource.DAILY_SNAPSHOT
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         }
                     }
 
                     // ===== 孩子本周 vs 上周学习对比（让家长看见孩子的进步趋势）=====
                     val wdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    val wLast7 = (6 downTo 0).map { d -> wdf.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -d) }.time) }
-                    val wPrev7 = (13 downTo 7).map { d -> wdf.format(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -d) }.time) }
+                    val wLast7 = last7LocalDates.map { it.toString() }
+                    val wPrev7 = prev7LocalDates.map { it.toString() }
                     val wFocusByDate = focusData14.associate { it.date to it.totalMinutes }
                     val wReviewByDate = reviews14.groupBy { wdf.format(Date(it.reviewedAt)) }.mapValues { it.value.size }
-                    fun wPoints(dates: List<String>) = records.filter { it.points > 0 && wdf.format(Date(it.date)) in dates }.sumOf { it.points }
+                    fun wPoints(dates: List<LocalDate>) = dates.sumOf { awardedByDate[it] ?: 0 }
                     val wThisFocus = wLast7.sumOf { wFocusByDate[it] ?: 0 }; val wLastFocus = wPrev7.sumOf { wFocusByDate[it] ?: 0 }
                     val wThisRev = wLast7.sumOf { wReviewByDate[it] ?: 0 }; val wLastRev = wPrev7.sumOf { wReviewByDate[it] ?: 0 }
-                    val wThisPts = wPoints(wLast7); val wLastPts = wPoints(wPrev7)
+                    val wThisPts = wPoints(last7LocalDates); val wLastPts = wPoints(prev7LocalDates)
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             val wVerdict = when {

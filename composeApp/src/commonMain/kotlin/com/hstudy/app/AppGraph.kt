@@ -1,8 +1,11 @@
 package com.hstudy.app
 
 import com.hstudy.app.data.focus.PomodoroFocusSettlement
+import com.hstudy.app.data.backup.BackupHelper
+import com.hstudy.app.data.backup.SqliteBackupValidator
 import com.hstudy.app.data.local.AppDatabase
 import com.hstudy.app.data.local.getAppDatabase
+import com.hstudy.app.data.local.resetAppDatabase
 import com.hstudy.app.data.local.roomTransactionRunner
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.*
@@ -16,6 +19,8 @@ import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ReminderKind
 import com.hstudy.app.platform.ScheduledReminder
+import com.hstudy.app.platform.systemFileSystem
+import com.hstudy.app.time.SystemAppClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,10 +53,26 @@ object AppGraph {
         private set
     lateinit var scheduleRepository: ScheduleRepository
         private set
-    lateinit var pointApprovalRepository: PointApprovalRepository
+    lateinit var reportRepository: ReportRepository
+        private set
+    lateinit var dailyTargetRepository: DailyTargetRepository
+        private set
+    lateinit var petRepository: PetRepository
         private set
     lateinit var userPreferences: UserPreferences
         private set
+
+    /** P1-05: production backup dependencies; tests inject their own real-file helper. */
+    val backupHelper: BackupHelper by lazy {
+        BackupHelper(
+            fs = systemFileSystem,
+            liveDbPath = BackupHelper.productionLiveDbPath(),
+            backupPath = BackupHelper.productionBackupPath(),
+            validator = SqliteBackupValidator(systemFileSystem),
+            closeDatabase = { database.close() },
+            reopenDatabase = { reopenDatabase() },
+        )
+    }
 
     /**
      * 语言偏好的**进程内快照**，供 App 根与设置页的 `collectAsState(initial = …)` 当首帧值。
@@ -99,25 +120,52 @@ object AppGraph {
     fun init() {
         if (initialized) return
         initialized = true
+        initializeDependencies()
+    }
+
+    private fun initializeDependencies() {
         database = getAppDatabase()
-        taskRepository = TaskRepository(database.taskDao())
+        val transactionRunner = roomTransactionRunner(database)
         // Task C（v3.3.2 / P2-2）：三入口（批量审批/超期清理/撤回）的读-判-写原子化靠平台事务
-        // 工厂 roomTransactionRunner（expect/actual，CI fix round：Android=Room withTransaction 真事务，
-        // iOS=直通降级——withTransaction 是 Room JVM-only API，commonMain 直接引用会挂掉 iOS 编译）。
-        pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao(), roomTransactionRunner(database))
-        rewardRepository = RewardRepository(database.rewardDao())
+        // 工厂 roomTransactionRunner（expect/actual）：Android 与 iOS 均使用真实 Room 事务。
+        pointRepository = PointRepository(database.pointDao(), database.pointApprovalDao(), transactionRunner)
+        reportRepository = ReportRepository(
+            database.reportDao(), database.dailyTaskSnapshotDao(), database.taskDao(), SystemAppClock
+        )
+        taskRepository = TaskRepository(
+            taskDao = database.taskDao(),
+            dailyScheduleDao = database.dailyScheduleDao(),
+            transactionRunner = transactionRunner,
+            snapshotWriter = reportRepository.snapshotWriter,
+            reminderCanceller = { scheduleIds ->
+                Platform.cancelScheduleReminders(scheduleIds)
+            },
+        )
+        rewardRepository = RewardRepository(database.rewardDao(), pointRepository, transactionRunner)
         // P0-01（Antigravity 指令）：错题复习/举一反三走统一审批 checkIn，注入 PointRepository
-        mistakeRepository = MistakeRepository(database.mistakeDao(), pointRepository)
+        mistakeRepository = MistakeRepository(database.mistakeDao(), pointRepository, transactionRunner)
         focusRepository = FocusRepository(database.focusDao())
-        habitRepository = HabitRepository(database.habitDao())
+        habitRepository = HabitRepository(database.habitDao(), pointRepository, transactionRunner)
         proofRepository = ProofRepository(database.habitDao())
-        assignmentRepository = AssignmentRepository(database.dailyAssignmentDao())
+        assignmentRepository = AssignmentRepository(database.dailyAssignmentDao(), transactionRunner, pointRepository)
         // D-08（v3.3.1）：心愿存入/退款是积分账本的一部分，必须走 PointRepository 权威入口，
         // 所以这里注入的是 pointRepository 而不是裸 pointDao（旧形状让心愿仓库自己 insertPointRecord）。
-        wishGoalRepository = WishGoalRepository(database.wishGoalDao(), pointRepository)
+        wishGoalRepository = WishGoalRepository(database.wishGoalDao(), pointRepository, transactionRunner)
+        petRepository = PetRepository(database.pointDao(), database.petScenePurchaseDao(), transactionRunner)
         scheduleRepository = ScheduleRepository(database.dailyScheduleDao())
-        pointApprovalRepository = PointApprovalRepository(database.pointApprovalDao())
         userPreferences = UserPreferences()
+        dailyTargetRepository = DailyTargetRepository(userPreferences, pointRepository, SystemAppClock)
+    }
+
+    /**
+     * Reconstructs Room after a restore instead of reusing a closed BundledSQLiteDriver instance.
+     * Repository singletons are rebound to the new DAOs, and a real DAO query forces Room to open
+     * the restored file before the restore is committed.
+     */
+    suspend fun reopenDatabase() {
+        resetAppDatabase()
+        initializeDependencies()
+        database.taskDao().getActiveTaskCount()
     }
 
     /** 启动引导：默认数据补全 + 恢复提醒（对应原 HStudyApp.onCreate 的启动逻辑）

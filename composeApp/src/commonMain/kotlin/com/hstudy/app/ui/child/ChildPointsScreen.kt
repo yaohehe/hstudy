@@ -40,6 +40,43 @@ import com.hstudy.app.ui.dt.*
  * v3.3.2 D-12：三处里程碑 bonus 的 `bonus_*` 业务键同页派生（见 [bonusNoteDisplayText]），
  * D-12 之前落库的中文 ADJUSTMENT 旧记录继续原样 passthrough。
  */
+internal data class PointRecordSummary(
+    val totalEarned: Int,
+    val grouped: Map<Int, List<PointRecordEntity>>,
+)
+
+internal fun summarizePointRecords(
+    records: List<PointRecordEntity>,
+    now: Long = com.hstudy.app.ui.dt.nowMillis(),
+): PointRecordSummary {
+    val calendar = Calendar.getInstance().apply {
+        timeInMillis = now
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val todayStart = calendar.timeInMillis
+    calendar.add(Calendar.DAY_OF_YEAR, -1)
+    val yesterdayStart = calendar.timeInMillis
+    calendar.add(Calendar.DAY_OF_YEAR, -5)
+    val weekStart = calendar.timeInMillis
+
+    var totalEarned = 0
+    val grouped = linkedMapOf<Int, MutableList<PointRecordEntity>>()
+    records.forEach { record ->
+        if (record.points > 0) totalEarned += record.points
+        val section = when {
+            record.date >= todayStart -> 0
+            record.date >= yesterdayStart -> 1
+            record.date >= weekStart -> 2
+            else -> 3
+        }
+        grouped.getOrPut(section) { ArrayList() }.add(record)
+    }
+    return PointRecordSummary(totalEarned, grouped)
+}
+
 @Composable
 fun ChildPointsScreen(
     onNavigateBack: () -> Unit,
@@ -57,9 +94,10 @@ fun ChildPointsScreen(
     val wishNamesById = remember(wishGoals) { wishGoals.associate { it.id to it.name } }
 
     // 累计获得 = 账本正分合计（TASK/BONUS/加分调整；含撤销的历史获得仍是"挣到过"，扣回在流水里如实展示）
-    val totalEarned = remember(records) { records.filter { it.points > 0 }.sumOf { it.points } }
+    val recordSummary = remember(records) { summarizePointRecords(records) }
+    val totalEarned = recordSummary.totalEarned
     // 时间轴分桶：LazyColumn 的 LazyListScope 内容不是 composable 上下文，remember 必须在页面作用域算好
-    val grouped = remember(records) { records.groupBy { pointRecordSection(it.date) } }
+    val grouped = recordSummary.grouped
 
     Scaffold(
         topBar = {

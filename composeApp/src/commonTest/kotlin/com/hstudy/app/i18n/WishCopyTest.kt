@@ -263,10 +263,11 @@ class WishCopyTest {
                 "🔥 当前连续打卡：3 天\n" +
                 "🐾 学习宠物：🥚 宠物蛋\n" +
                 "✅ 今日完成任务：3/5 个\n" +
+                "口径：旧数据估算（当前活跃任务）\n" +
                 "🎁 已兑换奖励：2 次\n" +
                 "🐷 已达成心愿：1 个\n" +
                 "—— 每一份坚持都值得被看见 ❤️\n",
-            zh.reportText(300, 3, "🥚 宠物蛋", 3, 5, 2, 1),
+            zh.reportText(300, 3, "🥚 宠物蛋", 3, 5, 2, 1, "口径：旧数据估算（当前活跃任务）"),
         )
         assertEquals(
             "📚 [HStudy Growth Report]\n" +
@@ -274,10 +275,11 @@ class WishCopyTest {
                 "🔥 Current check-in streak: 3 days\n" +
                 "🐾 Study pet: 🥚 宠物蛋\n" +
                 "✅ Tasks done today: 3/5\n" +
+                "Source: legacy estimate (current active tasks)\n" +
                 "🎁 Rewards redeemed: 2\n" +
                 "🐷 Wishes achieved: 1\n" +
                 "— Every bit of persistence deserves to be seen ❤️",
-            en.reportText(300, 3, "🥚 宠物蛋", 3, 5, 2, 1),
+            en.reportText(300, 3, "🥚 宠物蛋", 3, 5, 2, 1, "Source: legacy estimate (current active tasks)"),
         )
         // 行内 `if (streak == 1) "day" else "days"` 的单数分支：其余实参与上一串相同，
         // 期望串只在第三行换成 "1 day"（整串钉死，避免只测到多元分支）。
@@ -287,10 +289,19 @@ class WishCopyTest {
                 "🔥 Current check-in streak: 1 day\n" +
                 "🐾 Study pet: 🥚 宠物蛋\n" +
                 "✅ Tasks done today: 3/5\n" +
+                "Source: legacy estimate (current active tasks)\n" +
                 "🎁 Rewards redeemed: 2\n" +
                 "🐷 Wishes achieved: 1\n" +
                 "— Every bit of persistence deserves to be seen ❤️",
-            en.reportText(300, 1, "🥚 宠物蛋", 3, 5, 2, 1),
+            en.reportText(300, 1, "🥚 宠物蛋", 3, 5, 2, 1, "Source: legacy estimate (current active tasks)"),
+        )
+        assertTrue(
+            zh.reportText(300, 3, "🥚 宠物蛋", 3, 3, 2, 1, "口径：当日任务快照")
+                .contains("口径：当日任务快照")
+        )
+        assertTrue(
+            en.reportText(300, 3, "🥚 宠物蛋", 3, 3, 2, 1, "Source: daily task snapshot")
+                .contains("Source: daily task snapshot")
         )
     }
 

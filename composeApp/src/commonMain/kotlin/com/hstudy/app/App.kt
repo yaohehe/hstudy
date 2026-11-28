@@ -17,6 +17,9 @@ import com.hstudy.app.i18n.stringsFor
 import com.hstudy.app.i18n.systemLanguageTag
 import com.hstudy.app.platform.AnalyticsEvent
 import com.hstudy.app.platform.AnalyticsReporter
+import com.hstudy.app.platform.NotificationRoutes
+import com.hstudy.app.platform.Platform
+import com.hstudy.app.ui.navigation.AppNavigator
 import com.hstudy.app.ui.navigation.AppNavGraph
 import com.hstudy.app.ui.navigation.LocalNavigator
 import com.hstudy.app.ui.navigation.Screen
@@ -44,7 +47,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * - 生效文案用 remember(storedLanguage) 缓存，避免每次重组重复调用平台桥接与解析。
  */
 @Composable
-fun App() {
+fun App(navigator: AppNavigator = rememberAppNavigator(Screen.RoleSelect.route)) {
     // 首帧语言：initial 用 AppGraph.bootstrap() 预读的偏好快照，而不是 null。
     // 旧写法 initial = null 让第 1 帧按 SYSTEM（=设备语言）解析，在"存储选择与设备语言相反"的
     // 设备上会先渲染错语言、等 DataStore 首次 emission 到达才翻转（几十到几百毫秒，正好落在
@@ -78,7 +81,7 @@ fun App() {
 
     HStudyTheme {
         ProvideWindowSizeClass {
-            val navigator = rememberAppNavigator(Screen.RoleSelect.route)
+            val pendingRoute by Platform.pendingRouteFlow.collectAsState()
             LaunchedEffect(navigator) {
                 snapshotFlow { navigator.currentRoute }
                     .distinctUntilChanged()
@@ -86,6 +89,22 @@ fun App() {
                         // 参数化路由含实体 ID：只发首段路由名（spec §4 不发送任何 ID/自由文本）
                         AnalyticsReporter.log(AnalyticsEvent.ScreenView(route.substringBefore('/')))
                     }
+            }
+            LaunchedEffect(pendingRoute, navigator.currentRoute) {
+                val offeredRoute = pendingRoute ?: return@LaunchedEffect
+                val currentRole = when {
+                    navigator.currentRoute == Screen.ParentHome.route ||
+                        navigator.currentRoute.startsWith("parent_") -> "parent"
+                    navigator.currentRoute == Screen.ChildHome.route ||
+                        navigator.currentRoute.startsWith("child_") -> "child"
+                    else -> null
+                } ?: return@LaunchedEffect
+                // RoleSelect (including its parent-password dialog) is the only cold-start gate.
+                // A mismatched role consumes the offer without exposing the destination.
+                val route = Platform.consumePendingRoute() ?: return@LaunchedEffect
+                if (NotificationRoutes.roleFor(route) == currentRole && route != navigator.currentRoute) {
+                    navigator.navigate(route)
+                }
             }
             Surface(modifier = Modifier.fillMaxSize()) {
                 CompositionLocalProvider(

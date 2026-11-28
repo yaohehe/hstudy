@@ -90,7 +90,8 @@ object MigrationSafetyHelper {
             "tasks", "point_records", "task_completions", "rewards", "reward_exchanges",
             "mistakes", "mistake_reviews", "focus_sessions", "daily_plans",
             "completion_proofs", "habit_challenges", "achievements",
-            "daily_assignments", "wish_goals", "daily_schedules", "point_approvals"
+            "daily_assignments", "wish_goals", "daily_schedules", "point_approvals",
+            "daily_task_snapshots", "pet_scene_purchases", "mandatory_penalty_runs"
         )
         val counts = mutableMapOf<String, Int>()
         for (t in tables) {

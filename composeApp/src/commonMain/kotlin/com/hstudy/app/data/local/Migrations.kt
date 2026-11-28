@@ -331,9 +331,139 @@ object Migrations {
         }
     }
 
+    /**
+     * v13 -> v14：为历史重复记录增加可空 canonical 键，并新增每日任务快照、宠物场景购买与必须任务罚分运行表。
+     *
+     * 历史行一律保留：审批按 bizKey 仅从 PENDING/APPROVED 中选出 PENDING 优先、其次 APPROVED；
+     * 终态组不占用 activeBizKey，允许后续重试；
+     * 成就按 type 取 MIN(id)；奖励仅给完整 canonical 预设签名取 MIN(id)。其余行保持 NULL。
+     * 普通 UNIQUE INDEX 在 SQLite 允许多个 NULL，但不允许重复非 NULL canonical 键。
+     * focus_sessions.sessionKey 同样保持历史行为 NULL，仅新番茄钟结算按起锚点写入唯一键。
+     */
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `activeBizKey` TEXT")
+            connection.execSQL("ALTER TABLE `point_approvals` ADD COLUMN `frequencyPeriod` TEXT")
+            connection.execSQL("ALTER TABLE `task_completions` ADD COLUMN `frequencyPeriod` TEXT")
+            connection.execSQL("ALTER TABLE `achievements` ADD COLUMN `canonicalType` TEXT")
+            connection.execSQL("ALTER TABLE `rewards` ADD COLUMN `presetKey` TEXT")
+            connection.execSQL("ALTER TABLE `focus_sessions` ADD COLUMN `sessionKey` TEXT")
+
+            // Best-effort historical snapshots use the task frequency and row date available at
+            // migration time. Correlated scalar subqueries keep this compatible with SQLite 3.18
+            // (no UPDATE target alias / FROM). Missing tasks and non-task approvals remain NULL.
+            connection.execSQL(
+                """UPDATE task_completions
+                   SET frequencyPeriod = CASE
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = task_completions.taskId) = 'WEEKLY'
+                           THEN 'WEEK:' || date(date, 'weekday 0', '-6 days')
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = task_completions.taskId) = 'MONTHLY'
+                           THEN 'MONTH:' || strftime('%Y-%m', date)
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = task_completions.taskId) = 'ONCE'
+                           THEN 'ONCE'
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = task_completions.taskId) = 'DAILY'
+                           THEN date
+                       ELSE NULL
+                   END""".trimIndent()
+            )
+            connection.execSQL(
+                """UPDATE point_approvals
+                   SET frequencyPeriod = CASE
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = point_approvals.taskId) = 'WEEKLY'
+                           THEN 'WEEK:' || date(date, 'weekday 0', '-6 days')
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = point_approvals.taskId) = 'MONTHLY'
+                           THEN 'MONTH:' || strftime('%Y-%m', date)
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = point_approvals.taskId) = 'ONCE'
+                           THEN 'ONCE'
+                       WHEN (SELECT frequency FROM tasks WHERE tasks.id = point_approvals.taskId) = 'DAILY'
+                           THEN date
+                       ELSE NULL
+                   END
+                   WHERE actionType = 'TASK_COMPLETE'""".trimIndent()
+            )
+
+            connection.execSQL(
+                """UPDATE point_approvals
+                   SET activeBizKey = bizKey
+                   WHERE point_approvals.status IN ('PENDING', 'APPROVED')
+                       AND TRIM(point_approvals.bizKey) != '' AND point_approvals.id = (
+                       SELECT canonical.id FROM point_approvals AS canonical
+                       WHERE canonical.status IN ('PENDING', 'APPROVED')
+                           AND canonical.bizKey = point_approvals.bizKey AND TRIM(canonical.bizKey) != ''
+                       ORDER BY CASE canonical.status
+                           WHEN 'PENDING' THEN 0
+                           WHEN 'APPROVED' THEN 1
+                           ELSE 2 END,
+                           canonical.requestedAt DESC, canonical.id DESC
+                       LIMIT 1
+                   )""".trimIndent()
+            )
+            connection.execSQL(
+                """UPDATE achievements SET canonicalType = type
+                   WHERE id IN (SELECT MIN(id) FROM achievements GROUP BY type)""".trimIndent()
+            )
+            // Same-name custom rewards stay unkeyed. Exact duplicate preset signatures are
+            // indistinguishable in v13, so retain the existing deterministic MIN(id) choice.
+            connection.execSQL(
+                """UPDATE rewards SET presetKey = name
+                   WHERE id IN (
+                       SELECT MIN(id) FROM rewards
+                       WHERE ($CANONICAL_REWARD_PRESET_SIGNATURES_SQL)
+                       GROUP BY name, description, pointsCost, iconEmoji, category, sortOrder
+                   )""".trimIndent()
+            )
+
+            connection.execSQL(
+                "CREATE UNIQUE INDEX `index_point_approvals_activeBizKey` " +
+                    "ON `point_approvals` (`activeBizKey`)"
+            )
+            connection.execSQL(
+                "CREATE UNIQUE INDEX `index_achievements_canonicalType` " +
+                    "ON `achievements` (`canonicalType`)"
+            )
+            connection.execSQL(
+                "CREATE UNIQUE INDEX `index_rewards_presetKey` " +
+                    "ON `rewards` (`presetKey`)"
+            )
+            connection.execSQL(
+                "CREATE UNIQUE INDEX `index_focus_sessions_sessionKey` " +
+                    "ON `focus_sessions` (`sessionKey`)"
+            )
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS `daily_task_snapshots` (" +
+                    "`date` TEXT NOT NULL, `taskIdsJson` TEXT NOT NULL, " +
+                    "`totalCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`date`))"
+            )
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS `pet_scene_purchases` (" +
+                    "`sceneKey` TEXT NOT NULL, `purchasedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`sceneKey`))"
+            )
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS `mandatory_penalty_runs` (" +
+                    "`periodKey` TEXT NOT NULL, `processedAt` INTEGER NOT NULL, " +
+                    "`deductedPoints` INTEGER NOT NULL, PRIMARY KEY(`periodKey`))"
+            )
+        }
+    }
+
+    /** Full immutable preset signature shared with RewardRepository default seeding. */
+    private val CANONICAL_REWARD_PRESET_SIGNATURES_SQL =
+        RewardPresetCatalog.all.joinToString(separator = " OR ") { preset ->
+            "(`name` = ${preset.name.sqlLiteral()} AND " +
+                "`description` = ${preset.description.sqlLiteral()} AND " +
+                "`pointsCost` = ${preset.pointsCost} AND " +
+                "`iconEmoji` = ${preset.iconEmoji.sqlLiteral()} AND " +
+                "`category` = ${preset.category.sqlLiteral()} AND " +
+                "`sortOrder` = ${preset.sortOrder})"
+        }
+
+    private fun String.sqlLiteral(): String = "'${replace("'", "''")}'"
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-        MIGRATION_11_12, MIGRATION_12_13
+        MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14
     )
 }

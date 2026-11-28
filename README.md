@@ -16,13 +16,13 @@
 
 ### What is HStudy
 
-HStudy pairs a **parent** role and a **child** role on one device (or two paired devices):
+HStudy provides a **parent** role and a **child** role on one device:
 
 - **Tasks & check-ins** — kids check in completed tasks; points are awarded **only after parent approval** (append-only ledger, idempotent approvals).
 - **Focus** — pomodoro timer with breathing guide, break cycles and a Schulte-grid focus trainer.
 - **Mistake review** — spaced review with daily reminders and active-recall flows.
 - **Rewards** — lucky draw, pet care, wish goals with point deposits, weekly learning report.
-- **Family sync** — parent configuration export/import and device pairing; full backup & restore.
+- **Manual JSON file sync** — export and share a parent-settings JSON file, then import it on the child device; export and share a child-progress JSON file, then import it on the parent device. No live connection is required. Full backup & restore are also available.
 - **Bilingual UI** — 中文 / English, switchable at runtime (parent settings), system-default aware.
 
 ### Platforms & downloads
@@ -52,10 +52,13 @@ Release APKs are signed in CI from repository secrets; the keystore lives outsid
 HStudy uses **Google Analytics for Firebase** to understand which features are used:
 
 - Sent: screen names (route names only), feature-usage counts, reminder scheduling, language
-  changes, backup export and pairing completion, plus SDK-provided device model / OS / country /
-  timezone. User properties: `app_language`, `user_role`, `app_channel` (debug/release).
-- **Never sent:** names, task titles, mistake content, point values, study durations, device
-  names, pairing codes, or any free text.
+  changes, and backup export, plus SDK-provided device model / OS / country / timezone.
+  User properties: `app_language`, `user_role`, `app_channel` (debug/release).
+- Manual JSON export/share emits no analytics event. A parameterless `sync_config_imported`
+  event is sent only after a successful parent-settings JSON import on the child device;
+  this event does not upload file contents.
+- **Never sent to analytics:** names, task titles, mistake content, point values, study durations,
+  device names, file contents, or any free text.
 - Firebase assigns a stable pseudonymous `app_instance_id`. It is not personal information, but
   it **can link events from the same device across sessions** — "anonymous" here means
   pseudonymous, not unlinkable.
@@ -71,7 +74,7 @@ HStudy is free. If it helps your family, you can support development via
 ### Versioning & data compatibility
 
 `versionCode = MAJOR*10000 + MINOR*100 + PATCH` (see [docs/VERSIONING.md](docs/VERSIONING.md));
-history in [version_history.md](version_history.md). Room schema v13 with v1→v13 migrations;
+history in [version_history.md](version_history.md). Room schema v14 with v1→v14 migrations;
 upgrades preserve all existing data.
 
 **Upgrading from v2 (v3.2.1+):** releases since v3.2.1 carry a signing-key rotation
@@ -86,13 +89,13 @@ v3.0.0–v3.2.0 must export a backup, uninstall, install, then restore.
 
 ### HStudy 是什么
 
-HStudy 在同一台设备（或两台配对设备）上提供**家长**与**孩子**两种身份：
+HStudy 在同一台设备上提供**家长**与**孩子**两种身份：
 
 - **任务与打卡**——孩子完成打卡，积分**只在家长审批通过后**写入一次（append-only 账本、幂等审批）。
 - **专注**——番茄钟（呼吸引导、休息循环）与舒尔特方格专注训练。
 - **错题复习**——间隔复习、每日提醒、主动回忆流程。
 - **奖励**——每日抽奖、宠物照料、心愿目标存分、每周学习周报。
-- **家庭同步**——家长配置导出/导入、设备配对；完整备份与恢复。
+- **手动 JSON 文件同步**——导出并分享家长设置 JSON 文件，再在孩子设备导入；导出并分享孩子进度 JSON 文件，再在家长设备导入。无需实时连接，另支持完整备份与恢复。
 - **双语界面**——中文 / English 运行中切换（家长设置），默认跟随系统。
 
 ### 平台与下载
@@ -122,9 +125,11 @@ release APK 由 CI 用仓库 secrets 签名；keystore 不在仓库内。
 
 HStudy 使用 **Google Analytics for Firebase** 了解功能使用情况：
 
-- 发送：界面路由名、功能使用次数、提醒排程、语言切换、备份导出与配对完成，以及 SDK 自带的
+- 发送：界面路由名、功能使用次数、提醒排程、语言切换和备份导出，以及 SDK 自带的
   设备型号/系统版本/国家/时区。用户属性：`app_language`、`user_role`、`app_channel`（debug/release）。
-- **绝不发送**：姓名、任务标题、错题内容、积分数值、学习时长、设备名、配对码或任何自由文本。
+- 手动 JSON 导出/分享不会触发统计事件。只有在孩子设备成功导入家长设置 JSON 后，
+  才会发送无参数的 `sync_config_imported` 事件；该事件不会上传文件内容。
+- **绝不发送给统计服务**：姓名、任务标题、错题内容、积分数值、学习时长、设备名、文件内容或任何自由文本。
 - Firebase 会生成稳定的伪匿名 `app_instance_id`：它不是个人信息，但**可在同一设备上跨事件
   关联**——这里的"匿名"止于伪匿名，不是不可关联。
 - **随时关闭**：家长设置 →「分享使用数据」。关闭立即停止上报（调用点与 SDK 自动采集两层），
@@ -138,7 +143,7 @@ HStudy 免费。如果它对您的家庭有帮助，欢迎通过
 ### 版本与数据兼容
 
 `versionCode = MAJOR*10000 + MINOR*100 + PATCH`（见 [docs/VERSIONING.md](docs/VERSIONING.md)）；
-历史见 [version_history.md](version_history.md)。Room schema v13，含 v1→v13 迁移，升级保留全部数据。
+历史见 [version_history.md](version_history.md)。Room schema v14，含 v1→v14 迁移，升级保留全部数据。
 
 **从 v2 升级（v3.2.1 起）**：v3.2.1 起的发布包含签名密钥轮换（v2 原始 debug key → 现正式 key，
 APK Signature Scheme v3 lineage）。装有 v2（debug 签名）或 v3.x（Android 9+）的设备可

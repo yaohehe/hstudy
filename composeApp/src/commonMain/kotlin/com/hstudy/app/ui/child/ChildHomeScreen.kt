@@ -31,6 +31,7 @@ import com.hstudy.app.platform.AnalyticsReporter
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.navigation.Screen
+import com.hstudy.app.ui.sync.FamilySyncExportShareButton
 import kotlinx.coroutines.launch
 
 @Composable
@@ -59,7 +60,7 @@ fun ChildHomeScreen(
                     isSyncing = true
                     val result = com.hstudy.app.data.sync.FamilySyncHelper.importControlConfig(text)
                     if (result.isSuccess) {
-                        AnalyticsReporter.log(AnalyticsEvent.PairingCompleted)
+                        AnalyticsReporter.log(AnalyticsEvent.SyncConfigImported)
                         snackbarHostState.showSnackbar("✅ ${SyncDiagnosticAdapter.localize(result.getOrNull() ?: "", displayLanguage)}")
                     } else {
                         snackbarHostState.showSnackbar(
@@ -76,10 +77,10 @@ fun ChildHomeScreen(
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     // 积分申请状态（孩子查看自己的审核进度）
-    val pendingApprovalCount by app.pointApprovalRepository.getPendingCount().collectAsState(initial = 0)
+    val pendingApprovalCount by app.pointRepository.getPendingApprovalCount().collectAsState(initial = 0)
     // 待审批积分：仅展示，不参与余额，审批通过后才计入
     val pendingApprovalPoints by app.pointRepository.getPendingApprovalPoints().collectAsState(initial = 0)
-    val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
+    val allApprovals by app.pointRepository.getAllApprovals().collectAsState(initial = emptyList())
     val recentApproved = allApprovals.filter { it.status == com.hstudy.app.data.local.entity.ApprovalStatus.APPROVED }.take(3)
     val recentRejected = allApprovals.filter { it.status == com.hstudy.app.data.local.entity.ApprovalStatus.REJECTED }.take(2)
     // 我的目标：心愿存钱罐 + 奖励商店
@@ -532,28 +533,26 @@ fun ChildHomeScreen(
                                 enabled = !isSyncing,
                                 modifier = Modifier.weight(1f)
                             ) { Text(strings.receiveParentSettingsButton, style = MaterialTheme.typography.labelSmall) }
-                            OutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        isSyncing = true
-                                        val result = com.hstudy.app.data.sync.FamilySyncHelper.exportProgressReport()
-                                        if (result.isSuccess) {
-                                            com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
-                                                result.getOrNull()!!, strings.shareProgressChooserTitle
-                                            )
-                                            snackbarHostState.showSnackbar(strings.progressExportedMessage)
-                                        } else {
-                                            snackbarHostState.showSnackbar(strings.exportFailedMessage)
-                                        }
-                                        isSyncing = false
-                                    }
+                            FamilySyncExportShareButton(
+                                label = strings.sendProgressButton,
+                                processingLabel = strings.syncingLabel,
+                                exportedMessage = strings.progressExportedMessage,
+                                sharePresentedMessage = strings.sharePresentedMessage,
+                                shareCompletedMessage = strings.shareCompletedMessage,
+                                shareCancelledMessage = strings.shareCancelledMessage,
+                                shareFailedMessage = strings.shareFailedMessage,
+                                exportFailedMessage = { strings.exportFailedMessage },
+                                onExport = { com.hstudy.app.data.sync.FamilySyncHelper.exportProgressReport() },
+                                onShare = { path, onResult ->
+                                    com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
+                                        path, strings.shareProgressChooserTitle, onResult
+                                    )
                                 },
                                 enabled = !isSyncing,
-                                modifier = Modifier.weight(1f)
-                            ) { Text(strings.sendProgressButton, style = MaterialTheme.typography.labelSmall) }
-                        }
-                        if (isSyncing) {
-                            Text(strings.syncingLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                outlined = true,
+                                onTransferringChange = { isSyncing = it },
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                     }
                 }
@@ -704,18 +703,9 @@ fun ChildHomeScreen(
                                                 Text("✅", style = MaterialTheme.typography.titleMedium)
                                                 TextButton(onClick = {
                                                     scope.launch {
-                                                        // 终审 M-1：撤销 bizKey 的日期取**完成时刻** completedAt（markCompleted 落的时间戳），
-                                                        // 不再用点击撤销时的今天——页面跨午夜未关时，用今天构造的 ASSIGN:id:今天
-                                                        // 查不到昨天的申请，只会回置完成标记而 PENDING/APPROVED 原样残留（不变量 4 对称漏洞）。
-                                                        // completedAt 缺失的历史行回退今天（与旧行为一致）；无需新增 DAO 查询（Ruling 25 写路径不动）。
-                                                        val assignDate = a.completedAt?.let {
-                                                            com.hstudy.app.data.repository.PointRepository.completionDateStringOf(it)
-                                                        } ?: com.hstudy.app.data.repository.PointRepository.getTodayString()
-                                                        app.assignmentRepository.uncompleteAssignment(a.id)
-                                                        val clawedBack = app.pointRepository.undoCheckIn(
-                                                            bizKey = "ASSIGN:${a.id}:$assignDate",
-                                                            date = assignDate
-                                                        )
+                                                        // 仓库以 completedAt 推导撤销 bizKey 日期，并在同一事务内
+                                                        // 回置完成标记与取消/冲回积分，避免跨午夜或写失败留下半态。
+                                                        val clawedBack = app.assignmentRepository.uncompleteAssignment(a.id)
                                                         snackbarHostState.showSnackbar(
                                                             if (clawedBack > 0) taskListStrings.revertedClawedBackMessage(
                                                                 localizedPresetText(a.title, displayLanguage), clawedBack

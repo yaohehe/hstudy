@@ -26,6 +26,8 @@ jobs:
         run: chmod +x gradlew
       - name: Xcode version
         run: xcodebuild -version && xcrun simctl list runtimes | grep -i ios || true
+      - name: Compile Kotlin for all iOS targets
+        run: ./gradlew :composeApp:compileKotlinIosX64 :composeApp:compileKotlinIosArm64 :composeApp:compileKotlinIosSimulatorArm64 --no-daemon --stacktrace
       - name: Build Kotlin framework for iOS Simulator
         # gradle.properties 里 kotlin.native.toolchain.enabled=false：
         # 走 legacy 的 ~/.konan 工具链，避免 kspKotlinIos* 以 in-process 方式加载

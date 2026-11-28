@@ -24,11 +24,15 @@ interface PointApprovalDao {
     @Update
     suspend fun update(approval: PointApprovalEntity)
 
-    @Query("UPDATE point_approvals SET status = :status, reviewedAt = :reviewedAt WHERE id = :id")
-    suspend fun updateStatus(id: Long, status: ApprovalStatus, reviewedAt: Long = Clock.System.now().toEpochMilliseconds())
-
-    @Query("UPDATE point_approvals SET status = 'APPROVED', reviewedAt = :reviewedAt WHERE status = 'PENDING'")
-    suspend fun approveAll(reviewedAt: Long = Clock.System.now().toEpochMilliseconds())
+    /** PENDING → CANCELLED 的窄 CAS；不提供可绕过账本关联的通用状态设置入口。 */
+    @Query(
+        "UPDATE point_approvals SET status = 'CANCELLED', reviewedAt = :reviewedAt, activeBizKey = NULL " +
+            "WHERE id = :id AND status = 'PENDING'"
+    )
+    suspend fun cancelPending(
+        id: Long,
+        reviewedAt: Long = Clock.System.now().toEpochMilliseconds()
+    ): Int
 
     // ===== 生命周期一致性：按业务唯一键(bizKey)定位申请 =====
 
@@ -50,14 +54,33 @@ interface PointApprovalDao {
     @Query("SELECT * FROM point_approvals WHERE id = :id")
     suspend fun getById(id: Long): PointApprovalEntity?
 
-    /** 审核结果落库：同时记录本条申请实际发放的积分记录 id，便于撤销时精确定位冲抵 */
-    @Query("UPDATE point_approvals SET status = :status, reviewedAt = :reviewedAt, awardedRecordId = :awardedRecordId WHERE id = :id")
+    /**
+     * 审核结果落库：同时记录本条申请实际发放的积分记录 id，便于撤销时精确定位冲抵。
+     * 仅允许 PENDING → 终态；返回受影响行数，调用方必须以此判断是否成功抢占审核权。
+     * 终态同时释放本行 canonical activeBizKey（唯一索引保证同一时刻不会有另一行持有同键）。
+     */
+    @Query(
+        "UPDATE point_approvals SET status = :status, reviewedAt = :reviewedAt, " +
+            "awardedRecordId = :awardedRecordId, " +
+            "activeBizKey = CASE WHEN :status = 'PENDING' THEN activeBizKey ELSE NULL END " +
+            "WHERE id = :id AND status = 'PENDING'"
+    )
     suspend fun updateReview(
         id: Long,
         status: ApprovalStatus,
         awardedRecordId: Long?,
         reviewedAt: Long = Clock.System.now().toEpochMilliseconds()
+    ): Int
+
+    /** 已审批撤销的对称 CAS：只允许 APPROVED → REVOKED，保留原 awardedRecordId 并释放 canonical 键。 */
+    @Query(
+        "UPDATE point_approvals SET status = 'REVOKED', reviewedAt = :reviewedAt, activeBizKey = NULL " +
+            "WHERE id = :id AND status = 'APPROVED'"
     )
+    suspend fun revokeApproved(
+        id: Long,
+        reviewedAt: Long = Clock.System.now().toEpochMilliseconds()
+    ): Int
 
     /**
      * D-03（指令 §4.1 P1-01）：某一天的全部任务类审批申请——**单查询**，任务卡逐卡取态由此一次
@@ -75,6 +98,37 @@ interface PointApprovalDao {
      */
     @Query("SELECT * FROM point_approvals WHERE bizKey LIKE 'TASK:%' AND date = :date ORDER BY id ASC")
     fun getTaskApprovalsForDate(date: String): Flow<List<PointApprovalEntity>>
+
+    /** Task approval states for the caller's active task ids; period filtering happens in Kotlin. */
+    @Query("SELECT * FROM point_approvals WHERE taskId IN (:taskIds) AND bizKey LIKE 'TASK:%' ORDER BY id ASC")
+    fun getTaskApprovalsForTaskIds(taskIds: List<Long>): Flow<List<PointApprovalEntity>>
+
+    /** Daily-target approvals for one local date, including the TARGET_ALL bonus row. */
+    @Query(
+        "SELECT * FROM point_approvals WHERE actionType = 'DAILY_TARGET' AND date = :date ORDER BY id ASC"
+    )
+    suspend fun getDailyTargetApprovals(date: String): List<PointApprovalEntity>
+
+    /** Active legacy/canonical approvals that own the same task frequency period. */
+    @Query(
+        "SELECT * FROM point_approvals WHERE taskId = :taskId AND frequencyPeriod = :frequencyPeriod " +
+            "AND actionType = 'TASK_COMPLETE' AND status IN ('PENDING', 'APPROVED') ORDER BY id DESC"
+    )
+    suspend fun getActiveTaskApprovalsForPeriod(
+        taskId: Long,
+        frequencyPeriod: String
+    ): List<PointApprovalEntity>
+
+    /** Another approval in this task period already owns an award. */
+    @Query(
+        "SELECT * FROM point_approvals WHERE taskId = :taskId AND frequencyPeriod = :frequencyPeriod " +
+            "AND actionType = 'TASK_COMPLETE' AND status = 'APPROVED' AND id != :excludeId ORDER BY id DESC LIMIT 1"
+    )
+    suspend fun getActiveAwardedTaskApprovalForPeriod(
+        taskId: Long,
+        frequencyPeriod: String,
+        excludeId: Long
+    ): PointApprovalEntity?
 
     /** 当前待审核申请列表（用于批量审批，在仓库层逐条幂等发放） */
     @Query("SELECT * FROM point_approvals WHERE status = 'PENDING' ORDER BY requestedAt ASC")

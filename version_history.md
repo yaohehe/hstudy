@@ -1,5 +1,20 @@
 # HStudy 版本更新记录
 
+## v3.3.3 (2026-11-28)
+**动态加固发布批（37 项审计发现、真实 Room/DataStore/Compose 回归与 Pixel 5 性能门槛）——数据原子性、历史口径、通知导航、密码与备份同步全面强化**
+
+> **发布状态**：发布物准备中（Task 19；commit、push、tag、GitHub Release 与网站部署等待用户明确确认）。
+> 验收报告见 `docs/acceptance-v333-dynamic-hardening.md`，发布说明见 `docs/release-v333.md`。
+
+- 数据完整性：Android Room 事务改用 KMP `useWriterConnection` / `immediateTransaction`，修复 BundledSQLiteDriver 崩溃；审批、积分、奖励、心愿、宠物、模板与 preset 初始化落实事务/CAS/唯一键，失败整体回滚，防重复入账与超额消费。
+- 备份与家庭同步：分阶段备份/恢复、SQLite schema/integrity/对象类型校验、失败回滚与启动恢复；控制配置导入要求显式 `allowEmpty`，替换任务/奖励与日程解绑同事务，分享结果区分 Presented/Completed/Cancelled/Failed。
+- 报表与历史： awarded ledger 驱动日/周/历史积分，撤销在原周期冲抵；快照与 legacy fallback 标签化、完成率夹紧；任务编辑/删除不再改写历史得分；周锚点、跨午夜 Room 刷新与 UI 高亮统一。
+- Android 通知与导航：周报/日程重排、周末规则、精确闹钟回退、深链路由授权前保存与消费、返回栈、冷启动/Activity recreation 与密码门等待修复。
+- 家长密码：PBKDF2-HMAC-SHA256（600000 次）、随机盐、版本化格式、恒定时间比较与原子旧明文迁移；DataStore 不落明文。
+- 性能：积分分组与错题派生统计改为单遍计算、消除重复 Calendar/日期格式化与列表复制；Pixel 5 / API 30 六组 benchmark 全部低于 p95 100ms / retained heap 64MiB（最高 p95 95.15ms）。
+- 验证：JVM 404/404；Firebase Test Lab instrumentation 212/212；Robo 崩溃复现后重试通过；lint、静态/i18n/analytics/duplicate-API 闸门与 iOS 三目标 Kotlin 编译通过。Orchestrator 运行时未激活但测试在无进程隔离下稳定通过；iOS 原生运行时、API 33+ 真机与真实系统分享投递仍为已披露残余。
+- versionCode 30303 / versionName 3.3.3（build.gradle.kts、Info.plist、pbxproj 四处版本戳同步）。
+
 ## v3.3.2 (2026-11-23)
 **裁决修复批（D-12/D-13/事务原子化，v3.3.1 真机签核台账续项）——bonus note 业务键化 + CAS 防重入 + withTransaction 批量原子**
 

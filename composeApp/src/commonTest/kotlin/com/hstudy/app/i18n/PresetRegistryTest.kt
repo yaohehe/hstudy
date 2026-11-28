@@ -1,5 +1,6 @@
 package com.hstudy.app.i18n
 
+import com.hstudy.app.data.local.DirectTransactionRunner
 import com.hstudy.app.data.local.dao.RewardDao
 import com.hstudy.app.data.local.dao.TaskDao
 import com.hstudy.app.data.local.entity.RewardEntity
@@ -8,6 +9,9 @@ import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskEntity
 import com.hstudy.app.data.local.entity.difficultyName
 import com.hstudy.app.data.local.entity.mistakeErrorTypes
+import com.hstudy.app.data.repository.FakePointApprovalDao
+import com.hstudy.app.data.repository.FakePointDao
+import com.hstudy.app.data.repository.PointRepository
 import com.hstudy.app.data.repository.RewardRepository
 import com.hstudy.app.data.repository.TaskRepository
 import com.hstudy.app.ui.common.AchievementManager
@@ -54,7 +58,11 @@ class PresetRegistryTest {
 
     private suspend fun rewardSeedCanonicals(): Pair<Set<String>, Set<String>> {
         val dao = CapturingRewardDao()
-        RewardRepository(dao).initDefaultRewards()
+        RewardRepository(
+            dao,
+            PointRepository(FakePointDao(), FakePointApprovalDao()),
+            DirectTransactionRunner
+        ).initDefaultRewards()
         val texts = mutableSetOf<String>()
         val categories = mutableSetOf<String>()
         for (reward in dao.inserted) {

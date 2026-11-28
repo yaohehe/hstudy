@@ -314,7 +314,7 @@ private fun DepositDialog(
     var amountText by remember { mutableStateOf("") }
     val remaining = (goal.targetPoints - goal.savedPoints).coerceAtLeast(0)
     val amount = amountText.toIntOrNull() ?: 0
-    val valid = amount in 1..currentPoints
+    val valid = amount in 1..minOf(currentPoints, remaining)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -333,7 +333,7 @@ private fun DepositDialog(
                 // 快捷金额
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(50, 100, 200, remaining).distinct().filter { it > 0 }.take(4).forEach { quick ->
-                        val capped = quick.coerceAtMost(currentPoints)
+                        val capped = quick.coerceAtMost(minOf(currentPoints, remaining))
                         if (capped > 0) {
                             FilterChip(
                                 selected = amountText == capped.toString(),

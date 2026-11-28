@@ -13,6 +13,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.data.repository.CompletionRateReport
+import com.hstudy.app.data.repository.CompletionRateSource
 import com.hstudy.app.i18n.DisplayLanguage
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
@@ -22,6 +24,7 @@ import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.pet.getStageIndex
 import com.hstudy.app.ui.pet.petStages
+import kotlinx.datetime.LocalDate
 
 /** 宠物阶段名：与学习宠物页共用 [petStages] 目录与 [localizedPetStageName] 注册表 */
 private fun petStageName(lifetime: Int, lang: DisplayLanguage): String {
@@ -45,15 +48,18 @@ fun GrowthReportScreen(
     val lifetimePoints by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
     // §3.4-报表2：已结算余额之外，展示待家长审批的积分预估（只读流，与审批页同源查询）
-    val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
+    val allApprovals by app.pointRepository.getAllApprovals().collectAsState(initial = emptyList())
     val pendingPoints = allApprovals
         .filter { it.status == com.hstudy.app.data.local.entity.ApprovalStatus.PENDING }
         .sumOf { it.requestedPoints }
     val goals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
     val exchanges by app.rewardRepository.getAllExchanges().collectAsState(initial = emptyList())
-    val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
-    val today = com.hstudy.app.data.repository.PointRepository.getTodayString()
-    val completedIds by app.pointRepository.getCompletedTaskIdsForDate(today).collectAsState(initial = emptyList())
+    val today = LocalDate.parse(com.hstudy.app.data.repository.PointRepository.getTodayString())
+    val completion by app.reportRepository.completionRateReport(today)
+        .collectAsState(initial = CompletionRateReport(0, 0, 0, CompletionRateSource.LEGACY_ACTIVE_TASK_FALLBACK))
+    val completionSourceLabel = LocalStrings.current.childGoalTracker.completionRateSourceLabel(
+        completion.source == CompletionRateSource.DAILY_SNAPSHOT
+    )
 
     var streak by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { streak = app.pointRepository.getCurrentStreak() }
@@ -99,8 +105,13 @@ fun GrowthReportScreen(
                             )
                             ReportStat("🐾", strings.petLabel, petStage, strings.petSub)
                             ReportStat(
-                                "✅", strings.todayTasksLabel, strings.todayValue(completedIds.size, tasks.size),
-                                if (completedIds.size == tasks.size && tasks.isNotEmpty()) strings.todaySubAll else strings.todaySubMore
+                                "✅", strings.todayTasksLabel, strings.todayValue(completion.completed, completion.total),
+                                if (completion.rate == 100 && completion.total > 0) strings.todaySubAll else strings.todaySubMore
+                            )
+                            Text(
+                                completionSourceLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             ReportStat(
                                 "🎁", strings.exchangesLabel,
@@ -125,10 +136,11 @@ fun GrowthReportScreen(
                                     lifetimePoints,
                                     streak,
                                     petStage,
-                                    completedIds.size,
-                                    tasks.size,
+                                    completion.completed,
+                                    completion.total,
                                     exchanges.size,
                                     achievedWishes,
+                                    completionSourceLabel,
                                 ),
                                 mimeType = "text/plain"
                             )

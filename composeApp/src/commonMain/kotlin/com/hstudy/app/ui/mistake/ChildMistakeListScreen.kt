@@ -31,6 +31,58 @@ import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+internal data class MistakeListStats(
+    val dueForReview: List<MistakeEntity>,
+    val weakestSubject: MistakeSubject?,
+    val reviewForecast: List<Int>,
+)
+
+internal fun deriveMistakeListStats(
+    records: List<MistakeEntity>,
+    now: Long = com.hstudy.app.ui.dt.nowMillis(),
+): MistakeListStats {
+    val due = ArrayList<MistakeEntity>()
+    val subjectCounts = IntArray(MistakeSubject.entries.size)
+    val masteredCounts = IntArray(MistakeSubject.entries.size)
+    val forecast = IntArray(7)
+    val format = com.hstudy.app.ui.dt.SimpleDateFormat("yyyy-MM-dd", com.hstudy.app.ui.dt.Locale.getDefault())
+    val forecastDates = (0..6).map { offset ->
+        com.hstudy.app.ui.dt.Calendar.getInstance().apply {
+            add(com.hstudy.app.ui.dt.Calendar.DAY_OF_YEAR, offset)
+        }.let { format.format(it.time) }
+    }
+    val forecastIndex = forecastDates.withIndex().associate { it.value to it.index }
+
+    records.forEach { mistake ->
+        val subjectIndex = mistake.subject.ordinal
+        subjectCounts[subjectIndex]++
+        if (mistake.isMastered) {
+            masteredCounts[subjectIndex]++
+            return@forEach
+        }
+        val nextReviewAt = SpacedRepetition.nextReviewAt(mistake)
+        if (now >= nextReviewAt) due.add(mistake)
+        val nextDate = format.format(com.hstudy.app.ui.dt.Date(nextReviewAt))
+        val index = forecastIndex[nextDate]
+        if (index != null) forecast[index]++ else if (nextDate <= forecastDates[0]) forecast[0]++
+    }
+
+    var weakestSubject: MistakeSubject? = null
+    var weakestRate = Float.POSITIVE_INFINITY
+    MistakeSubject.entries.forEach { subject ->
+        val count = subjectCounts[subject.ordinal]
+        if (count < 2) return@forEach
+        val mastered = masteredCounts[subject.ordinal]
+        if (mastered >= count) return@forEach
+        val rate = mastered.toFloat() / count
+        if (rate < weakestRate) {
+            weakestRate = rate
+            weakestSubject = subject
+        }
+    }
+    return MistakeListStats(due, weakestSubject, forecast.toList())
+}
+
 @Composable
 fun ChildMistakeListScreen(
     onNavigateBack: () -> Unit,
@@ -77,33 +129,10 @@ fun ChildMistakeListScreen(
     var showOnlyDue by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
-    // 今日待复习（艾宾浩斯间隔复习到期）
-    val dueForReview = remember(allMistakes) { allMistakes.filter { SpacedRepetition.isDueForReview(it) } }
-
-    // 最薄弱科目（掌握率最低且至少有2道错题、未全部掌握，用于快速针对复习）
-    val weakestSubject = remember(allMistakes) {
-        MistakeSubject.entries.map { subj ->
-            val list = allMistakes.filter { it.subject == subj }
-            val mastered = list.count { it.isMastered }
-            val rate = if (list.isNotEmpty()) mastered.toFloat() / list.size else 1f
-            Triple(subj, list.size, rate)
-        }.filter { it.second >= 2 && it.third < 1f }.minByOrNull { it.third }?.first
-    }
-
-    // 未来7天复习计划预览（提前看见每天有多少错题到期，便于规划复习节奏）
-    val reviewForecast = remember(allMistakes) {
-        val fmt = com.hstudy.app.ui.dt.SimpleDateFormat("yyyy-MM-dd", com.hstudy.app.ui.dt.Locale.getDefault())
-        val unmastered = allMistakes.filter { !it.isMastered }
-        (0..6).map { dayOffset ->
-            val cal = com.hstudy.app.ui.dt.Calendar.getInstance().apply { add(com.hstudy.app.ui.dt.Calendar.DAY_OF_YEAR, dayOffset) }
-            val dateStr = fmt.format(cal.time)
-            val count = unmastered.count { m ->
-                val nextDateStr = fmt.format(com.hstudy.app.ui.dt.Date(SpacedRepetition.nextReviewAt(m)))
-                if (dayOffset == 0) nextDateStr <= dateStr else nextDateStr == dateStr
-            }
-            count
-        }
-    }
+    val mistakeStats = remember(allMistakes) { deriveMistakeListStats(allMistakes) }
+    val dueForReview = mistakeStats.dueForReview
+    val weakestSubject = mistakeStats.weakestSubject
+    val reviewForecast = mistakeStats.reviewForecast
 
     // 复习打卡日历（过去28天复习记录可视化，激励坚持不断链）
     val reviewCalendar = remember(allReviews) {
@@ -115,15 +144,21 @@ fun ChildMistakeListScreen(
         }
     }
 
-    val filtered = allMistakes.filter { m ->
-        (selectedSubject == null || m.subject == selectedSubject) &&
-        (!showOnlyUnmastered || !m.isMastered) &&
-        (!showOnlyDue || SpacedRepetition.isDueForReview(m)) &&
-        (searchQuery.isBlank() ||
-            m.title.contains(searchQuery, ignoreCase = true) ||
-            m.content.contains(searchQuery, ignoreCase = true) ||
-            m.wrongReason.contains(searchQuery, ignoreCase = true) ||
-            m.correctMethod.contains(searchQuery, ignoreCase = true))
+    val filtered = remember(allMistakes, selectedSubject, showOnlyUnmastered, showOnlyDue, searchQuery) {
+        if (selectedSubject == null && !showOnlyUnmastered && !showOnlyDue && searchQuery.isBlank()) {
+            allMistakes
+        } else {
+            allMistakes.filter { m ->
+                (selectedSubject == null || m.subject == selectedSubject) &&
+                    (!showOnlyUnmastered || !m.isMastered) &&
+                    (!showOnlyDue || SpacedRepetition.isDueForReview(m)) &&
+                    (searchQuery.isBlank() ||
+                        m.title.contains(searchQuery, ignoreCase = true) ||
+                        m.content.contains(searchQuery, ignoreCase = true) ||
+                        m.wrongReason.contains(searchQuery, ignoreCase = true) ||
+                        m.correctMethod.contains(searchQuery, ignoreCase = true))
+            }
+        }
     }
 
     // 交互回调（双栏/单栏共用）

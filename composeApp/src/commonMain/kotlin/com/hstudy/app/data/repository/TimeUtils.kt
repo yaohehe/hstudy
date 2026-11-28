@@ -1,6 +1,7 @@
 package com.hstudy.app.data.repository
 
-import kotlinx.datetime.Clock
+import com.hstudy.app.time.AppClock
+import com.hstudy.app.time.SystemAppClock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
@@ -23,8 +24,7 @@ import kotlinx.datetime.toLocalDateTime
 internal val DayOfWeek.isoDayOfWeek: Int get() = ordinal + 1
 
 /** 今天日期字符串（yyyy-MM-dd，本地时区），等价于原 SimpleDateFormat("yyyy-MM-dd").format(Date()) */
-internal fun todayString(): String =
-    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+internal fun todayString(clock: AppClock = SystemAppClock): String = clock.today()
 
 /** 将时间戳格式化为 yyyy-MM-dd（本地时区），等价于原 SimpleDateFormat("yyyy-MM-dd").format(Date(millis)) */
 internal fun dateStringOf(timeMillis: Long): String =
@@ -34,16 +34,19 @@ internal fun dateStringOf(timeMillis: Long): String =
  * 获取指定时刻所在周的周一 00:00:00 时间戳（本地时区）。
  * 与原 Calendar.set(DAY_OF_WEEK, MONDAY) 在周一为一周首日（中文 locale/ISO）的设备上行为一致。
  */
-internal fun weekStartTimestamp(timeMillis: Long = Clock.System.now().toEpochMilliseconds()): Long {
+internal fun weekStartTimestamp(
+    timeMillis: Long? = null,
+    clock: AppClock = SystemAppClock,
+): Long {
     val tz = TimeZone.currentSystemDefault()
-    val date = Instant.fromEpochMilliseconds(timeMillis).toLocalDateTime(tz).date
+    val date = Instant.fromEpochMilliseconds(timeMillis ?: clock.nowMillis()).toLocalDateTime(tz).date
     val monday = date.minus(date.dayOfWeek.isoDayOfWeek - 1, DateTimeUnit.DAY)
     return monday.atStartOfDayIn(tz).toEpochMilliseconds()
 }
 
 /** yyyyMMdd_HHmmss 格式时间戳（本地时区），用于迁移备份文件名 */
-internal fun backupStamp(): String {
-    val dt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+internal fun backupStamp(clock: AppClock = SystemAppClock): String {
+    val dt = Instant.fromEpochMilliseconds(clock.nowMillis()).toLocalDateTime(TimeZone.currentSystemDefault())
     fun Int.p2() = toString().padStart(2, '0')
     return "${dt.year}${dt.monthNumber.p2()}${dt.dayOfMonth.p2()}_${dt.hour.p2()}${dt.minute.p2()}${dt.second.p2()}"
 }

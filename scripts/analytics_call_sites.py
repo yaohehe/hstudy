@@ -20,7 +20,7 @@ SITES = [
     ("ui/focus/ChildPomodoroScreen.kt", "Feature.POMODORO_COMPLETE", 1),
     ("ui/child/ChildTaskListScreen.kt", "Feature.CHECKIN", 1),
     ("ui/child/ChildHomeScreen.kt", "Feature.CHECKIN", 1),
-    ("ui/child/ChildHomeScreen.kt", "AnalyticsEvent.PairingCompleted", 1),
+    ("ui/child/ChildHomeScreen.kt", "AnalyticsEvent.SyncConfigImported", 1),
     ("ui/target/ChildDailyTargetScreen.kt", "Feature.CHECKIN", 2),
     ("ui/habit/ChildHabitChallengeScreen.kt", "Feature.CHECKIN", 2),
     ("ui/child/ChildLuckyDrawScreen.kt", "Feature.LUCKY_DRAW", 1),

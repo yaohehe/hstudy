@@ -24,18 +24,40 @@ class IosFileSharer : FileSharer {
     // delegate 是 weak 引用，必须强持有直到回调完成
     private var pickerDelegate: PickerDelegate? = null
 
-    override fun shareTextFile(fileName: String, content: String, mimeType: String) {
-        val path = NSTemporaryDirectory() + fileName
-        @Suppress("DEPRECATION")
-        val ok = (content as NSString).writeToFile(path, atomically = true, encoding = NSUTF8StringEncoding, error = null)
-        if (!ok) return
-        val root = topViewController() ?: return
-        val url = NSURL.fileURLWithPath(path)
-        val vc = UIActivityViewController(activityItems = listOf(url), applicationActivities = null)
-        // iPad 上分享面板没有 popover 锚点会直接抛异常，这里改用 pageSheet 形式呈现。
-        // 新 SDK 没把 popoverPresentationController 暴露给 cinterop，呈现样式改由 ObjC 桥接设置。
-        HStudyUsePageSheetPresentation(vc)
-        root.presentViewController(vc, animated = true, completion = null)
+    override fun shareTextFile(
+        fileName: String,
+        content: String,
+        mimeType: String,
+        onResult: (ShareResult) -> Unit,
+    ): ShareResult {
+        return try {
+            val path = NSTemporaryDirectory() + fileName
+            @Suppress("DEPRECATION")
+            val ok = (content as NSString).writeToFile(path, atomically = true, encoding = NSUTF8StringEncoding, error = null)
+            if (!ok) return ShareResult.Failed("Could not write the shared file")
+            val root = topViewController() ?: return ShareResult.Failed("No view controller is available to present sharing")
+            val url = NSURL.fileURLWithPath(path)
+            val vc = UIActivityViewController(activityItems = listOf(url), applicationActivities = null)
+            // iPad 上分享面板没有 popover 锚点会直接抛异常，这里改用 pageSheet 形式呈现。
+            // 新 SDK 没把 popoverPresentationController 暴露给 cinterop，呈现样式改由 ObjC 桥接设置。
+            HStudyUsePageSheetPresentation(vc)
+            vc.completionWithItemsHandler = { _, completed, _, activityError ->
+                val result = when {
+                    activityError != null -> ShareResult.Failed(
+                        activityError.localizedDescription ?: "Share failed"
+                    )
+                    completed -> ShareResult.Completed
+                    else -> ShareResult.Cancelled
+                }
+                onResult(result)
+            }
+            root.presentViewController(vc, animated = true, completion = null)
+            // The synchronous API can truthfully report presentation immediately; the completion
+            // handler above publishes the eventual Completed/Cancelled/Failed outcome.
+            ShareResult.Presented
+        } catch (e: Exception) {
+            ShareResult.Failed(e.message ?: "Share failed")
+        }
     }
 
     override fun pickTextFile(onResult: (String?) -> Unit) {

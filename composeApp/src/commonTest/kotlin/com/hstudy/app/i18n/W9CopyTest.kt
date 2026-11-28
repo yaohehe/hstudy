@@ -147,6 +147,35 @@ class W9CopyTest {
      * 一致（"分享文件"），英文给系统分享面板的标题短语。实际弹出语言属 V-74 人工项。
      */
     @Test
+    fun familyShareResultsCopyPinned() {
+        val zhSettings = AppStringsZh.settings
+        val enSettings = AppStringsEn.settings
+        assertEquals("✅ JSON 设置文件已导出", zhSettings.settingsExportedMessage)
+        assertEquals("✅ JSON settings file exported", enSettings.settingsExportedMessage)
+        assertEquals("📤 分享面板已打开，尚未确认发送", zhSettings.sharePresentedMessage)
+        assertEquals("📤 Share sheet opened — delivery is not confirmed", enSettings.sharePresentedMessage)
+        assertEquals("✅ 分享已完成", zhSettings.shareCompletedMessage)
+        assertEquals("✅ Share completed", enSettings.shareCompletedMessage)
+        assertEquals("↩️ 已取消分享", zhSettings.shareCancelledMessage)
+        assertEquals("↩️ Sharing cancelled", enSettings.shareCancelledMessage)
+        assertEquals("❌ 分享失败：boom", zhSettings.shareFailedMessage("boom"))
+        assertEquals("❌ Share failed: boom", enSettings.shareFailedMessage("boom"))
+
+        assertEquals("✅ 进度文件已导出", AppStringsZh.childHome.progressExportedMessage)
+        assertEquals("✅ Progress file exported", AppStringsEn.childHome.progressExportedMessage)
+        assertEquals(zhSettings.sharePresentedMessage, AppStringsZh.childHome.sharePresentedMessage)
+        assertEquals(enSettings.sharePresentedMessage, AppStringsEn.childHome.sharePresentedMessage)
+        assertEquals(
+            "数据库快照：db-time；设备名采样：prefs-time（近似摘要）",
+            zhSettings.progressSnapshotNote("db-time", "prefs-time"),
+        )
+        assertEquals(
+            "DB snapshot: db-time; device name sampled: prefs-time (approximate summary)",
+            enSettings.progressSnapshotNote("db-time", "prefs-time"),
+        )
+    }
+
+    @Test
     fun shareTitlePinned() {
         assertEquals("分享文件", ShareStrings.shareFileTitle(DisplayLanguage.ZH))
         assertEquals("Share file", ShareStrings.shareFileTitle(DisplayLanguage.EN))

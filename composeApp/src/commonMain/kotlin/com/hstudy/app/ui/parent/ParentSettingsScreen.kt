@@ -27,8 +27,12 @@ import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.restartApp
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
+import com.hstudy.app.ui.sync.FamilySyncExportShareButton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun ParentSettingsScreen(
@@ -219,7 +223,7 @@ fun ParentSettingsScreen(
                         )
                     }
 
-                    // ===== 家长远程控制（配对后家长在自己手机上管理孩子设备）=====
+                    // ===== 手动文件同步（JSON 导出、系统分享与手动导入）=====
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(strings.remoteControlTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -247,45 +251,33 @@ fun ParentSettingsScreen(
 
                             // 操作按钮
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                // 推送设置给孩子
-                                Button(
-                                    onClick = {
-                                        scope.launch {
-                                            isTransferring = true
-                                            val result = com.hstudy.app.data.sync.FamilySyncHelper.exportControlConfig()
-                                            if (result.isSuccess) {
-                                                com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
-                                                    result.getOrNull()!!, strings.exportChooserTitle
-                                                )
-                                                snackbarHostState.showSnackbar(strings.settingsExportedMessage)
-                                            } else {
-                                                snackbarHostState.showSnackbar(
-                                                    strings.exportFailedMessage(
-                                                        result.exceptionOrNull()?.message?.let { raw ->
-                                                            SyncDiagnosticAdapter.localize(raw, displayLanguage)
-                                                        }
-                                                    )
-                                                )
-                                            }
-                                            isTransferring = false
-                                        }
+                                // 导出并分享设置：导出与分享结果分开呈现
+                                FamilySyncExportShareButton(
+                                    label = strings.pushSettingsButton,
+                                    processingLabel = strings.processingLabel,
+                                    exportedMessage = strings.settingsExportedMessage,
+                                    sharePresentedMessage = strings.sharePresentedMessage,
+                                    shareCompletedMessage = strings.shareCompletedMessage,
+                                    shareCancelledMessage = strings.shareCancelledMessage,
+                                    shareFailedMessage = strings.shareFailedMessage,
+                                    exportFailedMessage = strings.exportFailedMessage,
+                                    onExport = { com.hstudy.app.data.sync.FamilySyncHelper.exportControlConfig() },
+                                    onShare = { path, onResult ->
+                                        com.hstudy.app.data.sync.FamilySyncHelper.shareFile(
+                                            path, strings.exportChooserTitle, onResult
+                                        )
                                     },
-                                    enabled = !isTransferring
-                                ) { Text(strings.pushSettingsButton) }
+                                    enabled = !isTransferring,
+                                    onTransferringChange = { isTransferring = it },
+                                    modifier = Modifier.weight(1f),
+                                )
 
                                 // 查看孩子进度
                                 OutlinedButton(
                                     onClick = importProgress,
-                                    enabled = !isTransferring
+                                    enabled = !isTransferring,
+                                    modifier = Modifier.weight(1f)
                                 ) { Text(strings.viewProgressButton) }
-                            }
-
-                            if (isTransferring) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(strings.processingLabel, style = MaterialTheme.typography.bodySmall)
-                                }
                             }
 
                             // 孩子进度展示（导入后显示）
@@ -302,6 +294,14 @@ fun ParentSettingsScreen(
                                         // deviceNameDisplayLabel 只映射「家长设备」（下方保存回执 :333 仍用它）。
                                         Text(strings.progressCardTitle(localizedPresetText(cp.deviceName, displayLanguage)), style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        val zone = TimeZone.currentSystemDefault()
+                                        val dbSnapshotAt = Instant.fromEpochMilliseconds(cp.exportedAt).toLocalDateTime(zone)
+                                        val preferencesSampledAt = Instant.fromEpochMilliseconds(cp.preferencesSampledAt).toLocalDateTime(zone)
+                                        Text(
+                                            strings.progressSnapshotNote(dbSnapshotAt.toString(), preferencesSampledAt.toString()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Column { Text(strings.progressPointsLabel, style = MaterialTheme.typography.labelSmall)
                                                 Text("${cp.totalPoints}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }

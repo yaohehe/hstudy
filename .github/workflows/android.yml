@@ -56,11 +56,19 @@ jobs:
         run: python3 scripts/i18n_template_diff.py --branch
       - name: analytics call-site wiring (v3.2.0, blocking)
         run: python3 scripts/analytics_call_sites.py
-      - name: Build debug APK
-        run: ./gradlew :composeApp:assembleDebug --no-daemon
+      - name: duplicate approval API guard (P2-09, blocking)
+        run: python3 scripts/tests/no_duplicate_approval_api.py
+      - name: duplicate approval API guard self-test (P2-09, blocking)
+        run: python3 scripts/tests/no_duplicate_approval_api_selftest.py
+      - name: Build debug app and instrumentation APKs
+        # Runtime execution is handled by the Firebase Test Lab matrix; CI must at
+        # least compile and package the full new instrumentation suite on every PR.
+        run: ./gradlew :composeApp:assembleDebug :composeApp:assembleDebugAndroidTest --no-daemon
       - name: Run unit tests
         run: ./gradlew :composeApp:testDebugUnitTest --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: HStudy-debug-apk
-          path: composeApp/build/outputs/apk/debug/*.apk
+          name: HStudy-debug-apks
+          path: |
+            composeApp/build/outputs/apk/debug/*.apk
+            composeApp/build/outputs/apk/androidTest/debug/*.apk

@@ -97,7 +97,8 @@ object AndroidReminderBootstrap {
             hour = hour,
             minute = minute,
             title = title,
-            body = body
+            body = body,
+            repeatDays = schedule.isoRepeatDays(),
         )
     }
 }

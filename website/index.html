@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='18 18 72 72'><rect x='18' y='18' width='72' height='72' rx='16' fill='%23FF8F00'/><circle cx='54' cy='54' r='32' fill='%23FFF3E0'/><path fill='%23E65100' d='M30,58 L30,72 Q30,74 32,74 L52,74 L52,56 L32,56 Q30,56 30,58Z'/><path fill='%23FF8F00' d='M78,58 L78,72 Q78,74 76,74 L56,74 L56,56 L76,56 Q78,56 78,58Z'/><path fill='%23BF360C' d='M52,56 L56,56 L56,74 L52,74Z'/><path fill='%23FFA000' d='M54,26 L58.5,38.5 L72,39.5 L62,48.5 L65,62 L54,55 L43,62 L46,48.5 L36,39.5 L49.5,38.5Z'/><path fill='%23FFD54F' d='M32,36 L34,41 L39,41.5 L35.5,45 L36.5,50 L32,47 L27.5,50 L28.5,45 L25,41.5 L30,41Z'/><path fill='%23FFD54F' d='M76,36 L78,41 L83,41.5 L79.5,45 L80.5,50 L76,47 L71.5,50 L72.5,45 L69,41.5 L74,41Z'/></svg>">
+<title>HStudy — 家长与孩子共享的学习伙伴</title>
+<meta name="description" content="HStudy：基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用。任务打卡、家长审批、番茄钟、错题复习、奖励机制，一个 App 全搞定。">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121417" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://yaohehe.github.io/hstudy/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HStudy">
+<meta property="og:url" content="https://yaohehe.github.io/hstudy/">
+<meta property="og:title" content="HStudy — 家长与孩子共享的学习伙伴">
+<meta property="og:description" content="Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用：任务打卡、家长审批、番茄专注、错题复习与积分奖励。">
+<meta property="og:image" content="https://yaohehe.github.io/hstudy/assets/role-select.jpg">
+<meta property="og:image:alt" content="HStudy 角色选择页真实截图">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HStudy — 家长与孩子共享的学习伙伴">
+<meta name="twitter:description" content="Kotlin Multiplatform · Android & iOS 双平台家庭学习管理应用，数据全本地存储，完全开源。">
+<meta name="twitter:image" content="https://yaohehe.github.io/hstudy/assets/role-select.jpg">
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-5PNFQ3NK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+<!-- Tailwind Play CDN 改为自托管：cdn.tailwindcss.com 不发 CORS 头，无法用 SRI 校验；本地副本 sha384-igm5BeiBt36UU4gqwWS7imYmelpTsZlQ45FZf+XBn9MuJbn4nQr7yx1yFydocC/K -->
+<script src="assets/tailwind-cdn.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI" crossorigin="anonymous">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Inter:wght@300;400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        /* M3 roles, resolved from CSS variables so light/dark share one source of truth */
+        gprimary: { DEFAULT: 'rgb(var(--p) / <alpha-value>)', light: 'rgb(var(--p-light) / <alpha-value>)', dark: 'rgb(var(--p-dark) / <alpha-value>)' },
+        'primary-container': 'rgb(var(--p-cont) / <alpha-value>)',
+        'on-primary': 'rgb(var(--on-p) / <alpha-value>)',
+        'on-green': 'rgb(var(--on-green) / <alpha-value>)',
+        'on-primary-container': 'rgb(var(--on-p-cont) / <alpha-value>)',
+        gred: 'rgb(var(--red) / <alpha-value>)', gyellow: 'rgb(var(--yellow) / <alpha-value>)',
+        ggreen: 'rgb(var(--green) / <alpha-value>)', gpurple: 'rgb(var(--purple) / <alpha-value>)',
+        'green-container': 'rgb(var(--green-cont) / <alpha-value>)', 'on-green-container': 'rgb(var(--on-green-cont) / <alpha-value>)',
+        'red-container': 'rgb(var(--red-cont) / <alpha-value>)', 'on-red-container': 'rgb(var(--on-red-cont) / <alpha-value>)',
+        'yellow-container': 'rgb(var(--yellow-cont) / <alpha-value>)', 'on-yellow-container': 'rgb(var(--on-yellow-cont) / <alpha-value>)',
+        'purple-container': 'rgb(var(--purple-cont) / <alpha-value>)', 'on-purple-container': 'rgb(var(--on-purple-cont) / <alpha-value>)',
+        surface: 'rgb(var(--s) / <alpha-value>)',
+        'surface-container-lowest': 'rgb(var(--sc-lowest) / <alpha-value>)',
+        'surface-container-low': 'rgb(var(--sc-low) / <alpha-value>)',
+        'surface-container': 'rgb(var(--sc) / <alpha-value>)',
+        'surface-container-high': 'rgb(var(--sc-high) / <alpha-value>)',
+        'surface-container-highest': 'rgb(var(--sc-highest) / <alpha-value>)',
+        'on-surface': 'rgb(var(--on-s) / <alpha-value>)',
+        'on-surface-variant': 'rgb(var(--on-s-var) / <alpha-value>)',
+        outline: 'rgb(var(--outline) / <alpha-value>)',
+        'outline-variant': 'rgb(var(--outline-var) / <alpha-value>)',
+        'inverse-surface': 'rgb(var(--inv-s) / <alpha-value>)',
+        'inverse-on-surface': 'rgb(var(--inv-on-s) / <alpha-value>)',
+        'code-surface': 'rgb(var(--code-s) / <alpha-value>)',
+        'code-ink': 'rgb(var(--code-ink) / <alpha-value>)'
+      },
+      fontFamily: { sans: ['Roboto','Inter','Noto Sans SC','sans-serif'] },
+      borderRadius: { '4xl': '2rem' },
+      boxShadow: { card: 'var(--e1)', lift: 'var(--e2)' }
+    }
+  }
+}
+</script>
+<style>
+  /* ---------- M3 design tokens ---------- */
+  :root {
+    color-scheme: light;
+    --p:26 115 232; --p-light:66 133 244; --p-dark:11 87 208; --p-cont:211 227 253; --on-p:255 255 255; --on-p-cont:4 30 73;
+    --green:24 128 56; --on-green:255 255 255; --green-cont:218 236 223; --on-green-cont:0 52 17;
+    --red:197 34 31; --red-cont:252 224 224; --on-red-cont:84 11 10;
+    --yellow:176 122 0; --yellow-cont:251 234 179; --on-yellow-cont:53 38 0;
+    --purple:103 80 164; --purple-cont:233 224 250; --on-purple-cont:33 14 72;
+    --s:248 250 253; --sc-lowest:255 255 255; --sc-low:248 250 253; --sc:242 245 250; --sc-high:236 240 246; --sc-highest:227 232 240;
+    --on-s:27 28 30; --on-s-var:68 71 76; --outline:116 119 124; --outline-var:200 205 214;
+    --inv-s:27 28 30; --inv-on-s:248 249 251;
+    --code-s:24 26 29; --code-ink:232 234 237;
+    --e1:0 1px 2px rgba(60,64,67,.10), 0 1px 3px 1px rgba(60,64,67,.07);
+    --e2:0 2px 6px 2px rgba(60,64,67,.10), 0 1px 2px rgba(60,64,67,.16);
+  }
+  .dark {
+    color-scheme: dark;
+    --p:138 180 248; --p-light:170 204 255; --p-dark:103 155 233; --p-cont:8 48 107; --on-p:0 32 77; --on-p-cont:205 225 255;
+    --green:129 199 132; --on-green:0 32 9; --green-cont:0 60 25; --on-green-cont:185 230 185;
+    --red:239 154 154; --red-cont:109 13 12; --on-red-cont:255 208 206;
+    --yellow:240 203 102; --yellow-cont:82 56 0; --on-yellow-cont:252 224 138;
+    --purple:197 181 233; --purple-cont:58 32 106; --on-purple-cont:220 209 255;
+    --s:18 20 23; --sc-lowest:9 11 14; --sc-low:25 28 32; --sc:31 34 38; --sc-high:39 43 47; --sc-highest:47 51 56;
+    --on-s:227 228 231; --on-s-var:195 198 205; --outline:141 145 152; --outline-var:67 71 78;
+    --inv-s:227 228 231; --inv-on-s:27 28 30;
+    --code-s:12 14 17; --code-ink:226 228 231;
+    --e1:0 1px 2px rgba(0,0,0,.50), 0 1px 3px 1px rgba(0,0,0,.32);
+    --e2:0 2px 8px 2px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.45);
+  }
+  /* ---------- M3 state layer / ripple ---------- */
+  .ripple-host { position: relative; overflow: hidden; }
+  .ripple { position: absolute; border-radius: 9999px; transform: scale(0); animation: ripple-anim .55s ease-out forwards; pointer-events: none; background: currentColor; opacity: .26; }
+  @keyframes ripple-anim { to { transform: scale(2.6); opacity: 0; } }
+  /* ---------- entrance ---------- */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s cubic-bezier(.2,.8,.2,1); }
+  .reveal.shown { opacity: 1; transform: none; }
+  /* ---------- gallery scroll ---------- */
+  .gal-scroll { scrollbar-width: thin; scrollbar-color: rgb(var(--outline) / .45) transparent; }
+  #cl-older:not(.hidden) { animation: fadeUp .35s ease; }
+  /* ---------- tab underline ---------- */
+  .tab-btn.active { color:rgb(var(--p)); }
+  .tab-btn.active .tab-bar { background:rgb(var(--p)); transform: scaleX(1); }
+  .tab-bar { transform: scaleX(0); transition: transform .25s ease; }
+  .tab-panel { display:none; } .tab-panel.active { display:block; animation: fadeUp .35s ease; }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform:none;} }
+  /* ---------- hero wash ---------- */
+  .hero-bg { background:
+      radial-gradient(1100px 460px at 86% -14%, rgb(var(--p) / .10), transparent 62%),
+      radial-gradient(820px 400px at 2% 6%, rgb(var(--green) / .07), transparent 58%),
+      radial-gradient(680px 340px at 94% 66%, rgb(var(--yellow) / .09), transparent 58%),
+      linear-gradient(rgb(var(--sc-lowest)) 0%, rgb(var(--s)) 78%); }
+  html { -webkit-font-smoothing: antialiased; }
+  [id] { scroll-margin-top: 6.5rem; }
+  .card-hover { transition: box-shadow .22s ease, transform .22s ease; }
+  .card-hover:hover { transform: translateY(-2px); }
+  ::selection { background:rgb(var(--p-cont)); color:rgb(var(--on-p-cont)); }
+  :where(a,button,summary):focus-visible { outline:3px solid rgb(var(--p) / .6); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity:1; transform:none; transition:none; }
+    .ripple { display:none; }
+    html.scroll-smooth { scroll-behavior:auto; }
+  }
+</style>
+</head>
+<body class="bg-surface font-sans text-on-surface antialiased">
+
+<!-- ============ APP LOGO SYMBOL (橙色星+书，复刻真实 App 图标) ============ -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <clipPath id="hsClip"><rect x="18" y="18" width="72" height="72" rx="16"/></clipPath>
+  </defs>
+  <!-- 1:1 from composeApp/src/androidMain/res/drawable/ic_launcher_background.xml + ic_launcher_foreground.xml -->
+  <symbol id="hs-logo" viewBox="18 18 72 72">
+    <g clip-path="url(#hsClip)">
+      <path fill="#FF8F00" d="M0,0h108v108h-108z"/>
+      <path fill="#FFF3E0" d="M54,54m-32,0a32,32 0,1 1,64 0a32,32 0,1 1,-64 0"/>
+      <path fill="#E65100" d="M30,58 L30,72 Q30,74 32,74 L52,74 L52,56 L32,56 Q30,56 30,58Z"/>
+      <path fill="#FF8F00" d="M78,58 L78,72 Q78,74 76,74 L56,74 L56,56 L76,56 Q78,56 78,58Z"/>
+      <path fill="#BF360C" d="M52,56 L56,56 L56,74 L52,74Z"/>
+      <g fill="none" stroke="#FFCC80" stroke-width="1">
+        <path d="M35,62 L49,62"/><path d="M35,66 L49,66"/><path d="M35,70 L45,70"/>
+        <path d="M59,62 L73,62"/><path d="M59,66 L73,66"/><path d="M59,70 L69,70"/>
+      </g>
+      <path fill="#FFA000" d="M54,26 L58.5,38.5 L72,39.5 L62,48.5 L65,62 L54,55 L43,62 L46,48.5 L36,39.5 L49.5,38.5Z"/>
+      <path fill="#FFD54F" d="M32,36 L34,41 L39,41.5 L35.5,45 L36.5,50 L32,47 L27.5,50 L28.5,45 L25,41.5 L30,41Z"/>
+      <path fill="#FFD54F" d="M76,36 L78,41 L83,41.5 L79.5,45 L80.5,50 L76,47 L71.5,50 L72.5,45 L69,41.5 L74,41Z"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- ============ HEADER ============ -->
+<header class="sticky top-0 z-50 bg-surface-container-lowest/85 backdrop-blur-md border-b border-outline-variant/60">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+    <a href="#top" class="flex items-center gap-3 shrink-0">
+      <svg class="w-9 h-9" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+      <span class="text-xl font-bold tracking-tight">HStudy</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 text-sm font-medium text-on-surface-variant" aria-label="主导航">
+      <a href="#features" data-i18n="nav_features" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]">功能特点</a>
+      <a href="#privacy" data-i18n="nav_privacy" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]">安全与隐私</a>
+      <a href="#install" data-i18n="nav_install" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]">下载指引</a>
+      <a href="#changelog" data-i18n="nav_changelog" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]">版本更新</a>
+      <a href="#oss" data-i18n="nav_oss" class="px-3 lg:px-4 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]">开源项目</a>
+    </nav>
+    <div class="flex items-center gap-2">
+      <button id="langToggle" class="ripple-host inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium bg-surface-container transition-colors hover:bg-surface-container-high active:bg-surface-container-highest">
+        <i class="fa-solid fa-language"></i><span id="langLabel">EN</span>
+      </button>
+      <button id="themeToggle" class="ripple-host w-10 h-10 rounded-full border border-outline-variant text-on-surface-variant transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]" aria-label="切换主题">
+        <i id="ic-auto" class="fa-solid fa-circle-half-stroke hidden"></i>
+        <i id="ic-light" class="fa-solid fa-sun hidden"></i>
+        <i id="ic-dark" class="fa-solid fa-moon"></i>
+      </button>
+      <a href="https://github.com/yaohehe/hstudy" target="_blank" rel="noopener"
+         class="ripple-host hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-inverse-surface text-inverse-on-surface text-sm font-medium hover:shadow-lift transition-shadow">
+        <i class="fa-brands fa-github"></i><span data-i18n="gh_btn">GitHub</span>
+      </a>
+    </div>
+  </div>
+  <nav class="md:hidden border-t border-outline-variant/60 overflow-x-auto gal-scroll" aria-label="移动端导航">
+    <div class="flex gap-2 px-4 py-2.5 w-max">
+      <a href="#features" data-i18n="nav_features" class="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high">功能特点</a>
+      <a href="#privacy" data-i18n="nav_privacy" class="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high">安全与隐私</a>
+      <a href="#install" data-i18n="nav_install" class="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high">下载指引</a>
+      <a href="#changelog" data-i18n="nav_changelog" class="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high">版本更新</a>
+      <a href="#oss" data-i18n="nav_oss" class="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high">开源项目</a>
+    </div>
+  </nav>
+</header>
+
+<main id="top">
+<!-- ============ HERO ============ -->
+<section class="hero-bg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-20 md:pt-28 pb-16 md:pb-24 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+    <div class="reveal">
+      <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container text-sm font-medium mb-6">
+        <i class="fa-solid fa-cube"></i><span data-i18n="hero_badge">Kotlin Multiplatform · Android & iOS</span>
+      </span>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.1] tracking-tight mb-5">
+        <span data-i18n="hero_title">家长与孩子<br><span class="text-gprimary">共享的学习伙伴</span></span>
+      </h1>
+      <p class="text-lg text-on-surface-variant max-w-xl mb-8" data-i18n="hero_sub">
+        基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用：任务打卡、家长审批、番茄专注、错题复习与积分奖励，一套原生代码，全家共同使用。
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href="https://github.com/yaohehe/hstudy/releases" target="_blank" rel="noopener"
+           class="ripple-host inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-gprimary text-on-primary font-medium text-base shadow-card hover:bg-gprimary-dark hover:shadow-lift transition-all">
+          <i class="fa-brands fa-android"></i><span data-i18n="cta_apk">下载 Android Release (APK)</span>
+        </a>
+        <a href="https://github.com/yaohehe/hstudy" target="_blank" rel="noopener"
+           class="ripple-host inline-flex items-center gap-2 px-7 py-3.5 rounded-full border-2 border-outline font-medium text-base hover:bg-on-surface/[.08] active:bg-on-surface/[.12] transition-all">
+          <i class="fa-brands fa-github"></i><span data-i18n="cta_repo">前往 GitHub 仓库</span>
+        </a>
+      </div>
+      <div class="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-on-surface-variant">
+        <span><i class="fa-solid fa-shield-halved text-ggreen mr-2"></i><span data-i18n="hero_pt1">数据全本地存储</span></span>
+        <span><i class="fa-solid fa-code-branch text-gprimary mr-2"></i><span data-i18n="hero_pt2">完全开源</span></span>
+        <span><i class="fa-solid fa-language text-gprimary mr-2"></i><span data-i18n="hero_pt3">中英双语即时切换</span></span>
+      </div>
+    </div>
+
+    <!-- Real app screenshots -->
+    <div class="reveal relative mx-auto w-full max-w-md lg:max-w-none">
+      <div class="grid grid-cols-2 gap-4 sm:gap-6 justify-items-center">
+        <figure class="w-full">
+          <div class="relative w-full aspect-[9/19] rounded-[2rem] overflow-hidden shadow-lift ring-1 ring-outline-variant bg-[#1f1f1f]">
+            <img src="assets/role-select.jpg" alt="HStudy 角色选择页真实截图" class="absolute inset-0 w-full h-full object-cover object-top">
+          </div>
+          <figcaption class="text-center text-xs mt-2.5 font-medium text-on-surface-variant" data-i18n="gal_cap_role">角色选择</figcaption>
+        </figure>
+        <figure class="w-full lg:translate-y-8">
+          <div class="relative w-full aspect-[9/19] rounded-[2rem] overflow-hidden shadow-lift ring-1 ring-outline-variant bg-[#1f1f1f]">
+            <img src="assets/parent-home-top.jpg" alt="HStudy 家长管理台真实截图" class="absolute inset-0 w-full h-full object-cover object-top">
+          </div>
+          <figcaption class="text-center text-xs mt-2.5 font-medium text-on-surface-variant" data-i18n="gal_cap_parent">家长管理台</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GALLERY ============ -->
+<section id="gallery" class="max-w-7xl mx-auto px-4 sm:px-6 pb-16 md:pb-20">
+  <div class="text-center max-w-2xl mx-auto mb-8 reveal">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="gal_title">应用一览</h2>
+    <p class="text-on-surface-variant" data-i18n="gal_sub">真机截图，横向滑动浏览各主要页面。</p>
+  </div>
+  <div class="gal-scroll flex gap-5 overflow-x-auto pb-4 snap-x reveal">
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-outline-variant bg-[#1f1f1f]">
+        <img src="assets/role-select.jpg" alt="HStudy 角色选择页" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-on-surface-variant" data-i18n="gal_cap_role">角色选择</figcaption>
+    </figure>
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-outline-variant bg-[#1f1f1f]">
+        <img src="assets/parent-home-top.jpg" alt="HStudy 家长管理台" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-on-surface-variant" data-i18n="gal_cap_parent">家长管理台</figcaption>
+    </figure>
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-outline-variant bg-[#1f1f1f]">
+        <img src="assets/child-home-top.jpg" alt="HStudy 我的学习页（孩子端）" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-on-surface-variant" data-i18n="gal_cap_child">我的学习（孩子端）</figcaption>
+    </figure>
+    <figure class="w-[150px] sm:w-[168px] shrink-0 snap-start">
+      <div class="relative w-full aspect-[9/19] rounded-[1.6rem] overflow-hidden shadow-card ring-1 ring-outline-variant bg-[#1f1f1f]">
+        <img src="assets/mistake-notebook-top.jpg" alt="HStudy 错题本页" loading="lazy" class="absolute inset-0 w-full h-full object-contain object-top">
+      </div>
+      <figcaption class="text-center text-xs mt-2 font-medium text-on-surface-variant" data-i18n="gal_cap_mist">错题本</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features" class="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+  <div class="text-center max-w-2xl mx-auto mb-12 reveal">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="feat_title">为真实家庭学习场景设计的六件大事</h2>
+    <p class="text-on-surface-variant" data-i18n="feat_sub">每一项功能都经过真机签核与自动化回归验证。</p>
+  </div>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+    <div class="reveal card-hover bg-surface-container-lowest rounded-3xl p-6 shadow-card hover:shadow-lift border border-outline-variant/60">
+      <div class="w-12 h-12 rounded-2xl bg-primary-container flex items-center justify-center mb-4"><i class="fa-solid fa-clipboard-check text-gprimary text-xl"></i></div>
+      <h3 class="font-bold text-lg mb-2" data-i18n="f1_t">任务与审批</h3>
+      <p class="text-sm text-on-surface-variant leading-relaxed" data-i18n="f1_d">孩子打卡完成任务，积分仅在家长审批通过后写入账本。Append-only 账本设计保证防伪与公正——每一笔积分都可审计、可对称冲抵。</p>
+    </div>
+    <div class="reveal card-hover bg-surface-container-lowest rounded-3xl p-6 shadow-card hover:shadow-lift border border-outline-variant/60">
+      <div class="w-12 h-12 rounded-2xl bg-red-container flex items-center justify-center mb-4"><i class="fa-solid fa-stopwatch-20 text-gred text-xl"></i></div>
+      <h3 class="font-bold text-lg mb-2" data-i18n="f2_t">专注训练</h3>
+      <p class="text-sm text-on-surface-variant leading-relaxed" data-i18n="f2_d">集成番茄钟（呼吸引导、科学休息循环、屏幕常亮与跨进程恢复）与舒尔特方格专注力训练器，让"坐得住"变成可量化的习惯。</p>
+    </div>
+    <div class="reveal card-hover bg-surface-container-lowest rounded-3xl p-6 shadow-card hover:shadow-lift border border-outline-variant/60">
+      <div class="w-12 h-12 rounded-2xl bg-yellow-container flex items-center justify-center mb-4"><i class="fa-solid fa-book text-gyellow text-xl"></i></div>
+      <h3 class="font-bold text-lg mb-2" data-i18n="f3_t">错题复习</h3>
+      <p class="text-sm text-on-surface-variant leading-relaxed" data-i18n="f3_d">基于艾宾浩斯间隔复习算法与"主动回忆"流程：先想后翻、做对加分、到期提醒，把每道错题跟踪到真正掌握为止。</p>
+    </div>
+    <div class="reveal card-hover bg-surface-container-lowest rounded-3xl p-6 shadow-card hover:shadow-lift border border-outline-variant/60">
+      <div class="w-12 h-12 rounded-2xl bg-green-container flex items-center justify-center mb-4"><i class="fa-solid fa-gift text-ggreen text-xl"></i></div>
+      <h3 class="font-bold text-lg mb-2" data-i18n="f4_t">奖励机制</h3>
+      <p class="text-sm text-on-surface-variant leading-relaxed" data-i18n="f4_d">每日抽奖、宠物照料、心愿存钱罐积分兑换与每周学习周报——正向激励层层递进，且所有奖励发放均经防重入校验，双击不双发。</p>
+    </div>
+    <div class="reveal card-hover bg-surface-container-lowest rounded-3xl p-6 shadow-card hover:shadow-lift border border-outline-variant/60">
+      <div class="w-12 h-12 rounded-2xl bg-primary-container flex items-center justify-center mb-4"><i class="fa-solid fa-people-arrows text-gprimary text-xl"></i></div>
+      <h3 class="font-bold text-lg mb-2" data-i18n="f5_t">家庭同步与配对</h3>
+      <p class="text-sm text-on-surface-variant leading-relaxed" data-i18n="f5_d">支持单设备家长/孩子角色即时切换，也可两台设备轻松配对；家长配置可导出/导入，提供完整的数据备份与恢复流程。</p>
+    </div>
+    <div class="reveal card-hover bg-surface-container-lowest rounded-3xl p-6 shadow-card hover:shadow-lift border border-outline-variant/60">
+      <div class="w-12 h-12 rounded-2xl bg-purple-container flex items-center justify-center mb-4"><i class="fa-solid fa-mobile-screen-button text-gpurple text-xl"></i></div>
+      <h3 class="font-bold text-lg mb-2" data-i18n="f6_t">跨平台与双语</h3>
+      <p class="text-sm text-on-surface-variant leading-relaxed" data-i18n="f6_d">一套 Kotlin Multiplatform + Compose Multiplatform 原生代码同时构建 Android 与 iOS；界面支持中英双语运行中即时切换，Material Design 3 视觉语言深浅色自适应。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRIVACY ============ -->
+<section id="privacy" class="bg-surface-container-low border-y border-outline-variant">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28 grid lg:grid-cols-5 gap-10 lg:gap-14 items-center">
+    <div class="lg:col-span-3 reveal">
+      <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-container text-on-green-container text-sm font-medium mb-5">
+        <i class="fa-solid fa-user-shield"></i><span data-i18n="priv_badge">数据透明 · 隐私可控</span>
+      </span>
+      <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="priv_title">学习数据留在你自己的设备上</h2>
+      <p class="text-on-surface-variant leading-relaxed mb-6" data-i18n="priv_p1">
+        HStudy 的业务数据（任务、积分账本、错题、心愿）全部存储于设备本地数据库。分析统计基于 Google Analytics for Firebase，<strong>仅记录匿名 / 伪匿名的功能使用频率</strong>，绝不收集姓名、任务内容、错题文本或任何自由文本内容。
+      </p>
+      <ul class="space-y-3 text-sm">
+        <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l1">事件仅含功能标识与枚举值，无自由文本上报</span></li>
+        <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l2">文案展示串与数据库写入严格隔离（存储边界自动化闸门逐版本回归）</span></li>
+        <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l3">可在「家长设置」中一键关闭数据分享，随时生效</span></li>
+        <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-green-container flex items-center justify-center"><i class="fa-solid fa-check text-ggreen text-xs"></i></span><span data-i18n="priv_l4">开源可审计：所有采集点均可在源码中检索验证</span></li>
+        <li class="flex items-start gap-3"><span class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-yellow-container flex items-center justify-center"><i class="fa-solid fa-globe text-gyellow text-xs"></i></span><span data-i18n="priv_l5">落地页本身通过 Google Tag Manager 加载 GA4 匿名访问统计（仅页面浏览与设备类别，不含 IP、姓名或任何输入内容）；它与 App 相互独立，App 内的「分享使用数据」开关不改变本页面行为。</span></li>
+      </ul>
+    </div>
+    <div class="lg:col-span-2 reveal">
+      <div class="bg-surface-container rounded-3xl p-6 shadow-card border border-outline-variant/60">
+        <div class="flex items-center justify-between mb-4">
+          <span class="font-bold text-sm" data-i18n="priv_switch_t">数据分享设置</span>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-primary-container text-on-primary-container font-medium" data-i18n="priv_switch_loc">家长设置 › 隐私</span>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/60">
+            <div><div class="text-sm font-medium" data-i18n="priv_s1">匿名功能使用统计</div><div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="priv_s1d">仅事件名与枚举值</div></div>
+            <span class="w-12 h-7 rounded-full bg-gprimary relative"><span class="absolute top-1 right-1 w-5 h-5 rounded-full bg-white shadow"></span></span>
+          </div>
+          <div class="flex items-center justify-between p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/60">
+            <div><div class="text-sm font-medium" data-i18n="priv_s2">姓名 / 头像 / 任务文本</div><div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="priv_s2d">永不采集，仅本地存储</div></div>
+            <span class="w-12 h-7 rounded-full bg-outline-variant relative"><span class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow"></span></span>
+          </div>
+        </div>
+        <p class="text-[11px] text-on-surface-variant/70 mt-4 leading-relaxed" data-i18n="priv_note">示意界面。真实开关位于 App 的家长设置页，关闭后不再初始化分析 SDK。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section id="install" class="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+  <div class="text-center max-w-2xl mx-auto mb-10 reveal">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="ins_title">快速安装与构建</h2>
+    <p class="text-on-surface-variant" data-i18n="ins_sub">三分钟上手：直接安装签名 Release APK、体验 iOS 模拟器包，或从源码构建。</p>
+  </div>
+  <div class="max-w-4xl mx-auto reveal">
+    <div class="flex justify-center gap-1 border-b border-outline mb-8">
+      <button class="tab-btn active px-5 py-3 text-sm font-medium relative" data-tab="android"><i class="fa-brands fa-android mr-1.5"></i><span data-i18n="tab_android">Android 安装</span><span class="tab-bar absolute left-3 right-3 -bottom-px h-[3px] rounded-full"></span></button>
+      <button class="tab-btn px-5 py-3 text-sm font-medium relative text-on-surface-variant" data-tab="ios"><i class="fa-brands fa-apple mr-1.5"></i><span data-i18n="tab_ios">iOS 模拟器包</span><span class="tab-bar absolute left-3 right-3 -bottom-px h-[3px] rounded-full bg-outline-variant"></span></button>
+      <button class="tab-btn px-5 py-3 text-sm font-medium relative text-on-surface-variant" data-tab="dev"><i class="fa-solid fa-hammer mr-1.5"></i><span data-i18n="tab_dev">开发者构建</span><span class="tab-bar absolute left-3 right-3 -bottom-px h-[3px] rounded-full bg-outline-variant"></span></button>
+    </div>
+
+    <div id="tab-android" class="tab-panel active">
+      <div class="bg-surface-container-lowest rounded-3xl shadow-card p-6 md:p-8 border border-outline-variant/60">
+        <div class="flex items-center gap-4 mb-6 pb-5 border-b border-outline-variant">
+          <svg class="w-14 h-14 shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <div>
+            <div class="font-bold text-lg leading-tight">HStudy</div>
+            <div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="ins_ver">v3.3.3 · Android & iOS 双平台同源构建</div>
+          </div>
+        </div>
+        <ol class="space-y-5">
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-on-primary font-bold flex items-center justify-center">1</span>
+            <div><div class="font-medium" data-i18n="a1">前往 Releases 页面下载最新的 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-signed.apk</code></div>
+            <a class="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-gprimary hover:underline" href="https://github.com/yaohehe/hstudy/releases" target="_blank" rel="noopener"><i class="fa-solid fa-download"></i><span data-i18n="a1l">打开发布页</span></a></div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-on-primary font-bold flex items-center justify-center">2</span>
+            <div class="text-sm leading-relaxed" data-i18n="a2">在系统提示允许时，为浏览器/文件管理器开启「安装未知来源应用」权限（一次性授权即可）。</div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-on-primary font-bold flex items-center justify-center">3</span>
+            <div class="text-sm leading-relaxed" data-i18n="a3">安装 APK。老版本 v2 用户可直接覆盖安装、数据无损升级（签名密钥轮换已保证升级连续性）。</div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-ggreen text-on-green font-bold flex items-center justify-center"><i class="fa-solid fa-star text-xs"></i></span>
+            <div class="text-sm leading-relaxed" data-i18n="a4">首次启动进入引导：选择家长角色并设置孩子昵称，即可开始配置任务与奖励。</div></li>
+        </ol>
+      </div>
+    </div>
+
+    <div id="tab-ios" class="tab-panel">
+      <div class="bg-surface-container-lowest rounded-3xl shadow-card p-6 md:p-8 border border-outline-variant/60">
+        <div class="flex items-center gap-4 mb-6 pb-5 border-b border-outline-variant">
+          <svg class="w-14 h-14 shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <div>
+            <div class="font-bold text-lg leading-tight">HStudy</div>
+            <div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="ins_ver">v3.3.3 · Android & iOS 双平台同源构建</div>
+          </div>
+        </div>
+        <p class="text-sm text-on-surface-variant leading-relaxed mb-5" data-i18n="i0">当前 iOS 交付物为<strong class="text-on-surface">未签名的模拟器构建包</strong>（本账号无 Apple 开发者证书，TestFlight / App Store 上架为后续计划）。</p>
+        <ol class="space-y-5">
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-on-primary font-bold flex items-center justify-center">1</span>
+            <div class="text-sm leading-relaxed" data-i18n="i1">从 Releases 下载 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-ios-simulator-unsigned.zip</code>（需 Apple 硅 Mac）。</div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-on-primary font-bold flex items-center justify-center">2</span>
+            <div class="text-sm leading-relaxed" data-i18n="i2">解压得到 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy.app</code>，安装到 iOS 模拟器：<code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">xcrun simctl install booted HStudy.app</code>。</div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 shrink-0 rounded-full bg-gprimary text-on-primary font-bold flex items-center justify-center">3</span>
+            <div class="text-sm leading-relaxed" data-i18n="i3">在模拟器中启动，与 Android 端功能同源（Compose Multiplatform 共享同一业务代码）。</div></li>
+        </ol>
+      </div>
+    </div>
+
+    <div id="tab-dev" class="tab-panel">
+      <div class="bg-surface-container-lowest rounded-3xl shadow-card p-6 md:p-8 border border-outline-variant/60">
+        <div class="text-sm text-on-surface-variant mb-5"><span data-i18n="d0">环境要求：JDK 17+、Android SDK（compileSdk 34）；iOS 构建需 macOS + Xcode。</span></div>
+        <pre class="bg-code-surface text-code-ink rounded-2xl p-5 text-sm overflow-x-auto leading-7"><code>git clone https://github.com/yaohehe/hstudy.git
+cd hstudy
+
+# Android Debug 构建
+./gradlew :composeApp:assembleDebug
+
+# Android Release 构建（本地签名需配置 RELEASE_KEYSTORE_* 环境变量）
+./gradlew :composeApp:assembleRelease
+
+# 全量单元测试（404+ 用例，含积分不变量回归套件）
+./gradlew :composeApp:testDebugUnitTest
+
+# iOS 模拟器框架构建（macOS）
+./gradlew :composeApp:packForXcode</code></pre>
+        <p class="text-xs text-on-surface-variant/70 mt-4" data-i18n="d1">CI 会在 Linux/macOS runner 上分别执行 Android 与 iOS 构建闸门；合并主分支前必须双绿。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHANGELOG ============ -->
+<section id="changelog" class="max-w-4xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+  <div class="text-center max-w-2xl mx-auto mb-10 reveal">
+    <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="cl_title">版本更新</h2>
+    <p class="text-on-surface-variant" data-i18n="cl_sub">每个版本都经过双平台 CI 与自动化回归，以下是近期更新。</p>
+  </div>
+  <ol class="space-y-5 reveal">
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.3</span><span class="text-xs text-on-surface-variant/70">2026-11-28</span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-primary-container text-on-primary-container font-medium" data-i18n="cl_latest">最新版本</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_333_t">动态加固发布批</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_333_1">积分、审批、奖励、心愿、宠物与模板初始化落实事务和防重入，失败整体回滚；备份、恢复与家庭配置导入增加校验、回滚和空配置保护。</li>
+        <li data-i18n="cl_333_2">历史积分按账本原周期冲抵，完成率使用快照或明确标注的旧数据回退；周锚点与跨午夜刷新保持一致。</li>
+        <li data-i18n="cl_333_3">修复 Android 周报/日程重排、深链授权、返回栈、冷启动与 Activity 重建恢复。</li>
+        <li data-i18n="cl_333_4">家长密码升级为 PBKDF2 安全存储并原子迁移旧明文；分享结果区分已展示、完成、取消和失败。</li>
+        <li data-i18n="cl_333_5">积分与错题列表改为单遍统计；Pixel 5 六组性能基准全部达标，Test Lab 212/212 通过。</li>
+      </ul>
+    </li>
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.2</span><span class="text-xs text-on-surface-variant/70">2026-11-23</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_332_t">裁决修复批</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_332_1">里程碑奖励说明改为业务键存储，中英文随界面语言派生，不再把中文写进数据库。</li>
+        <li data-i18n="cl_332_2">复习里程碑与每日幸运转盘加入 CAS 防重入，狂点、双击只入账一次。</li>
+        <li data-i18n="cl_332_3">批量审批、撤回与超期清理改为数据库事务，中途出错整体回滚。</li>
+      </ul>
+    </li>
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.1</span><span class="text-xs text-on-surface-variant/70">2026-11-22</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_331_t">真机签核缺陷修复</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_331_1">修复错题本在窄屏下卡片被压瘪、无法复习打卡的问题。</li>
+        <li data-i18n="cl_331_2">修复覆盖升级后预设任务重复、可能被重复申领的问题。</li>
+        <li data-i18n="cl_331_3">心愿存钱罐记账修正：删除心愿时已存积分原路退还。</li>
+        <li data-i18n="cl_331_4">番茄钟计时持久化：退出、息屏或进程被杀后不丢失，重启自动补结算，计时期间屏幕常亮。</li>
+        <li data-i18n="cl_331_5">系统奖励防连击；家长可撤回误通过的审批；家长首页宽屏自适应布局。</li>
+      </ul>
+    </li>
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.0</span><span class="text-xs text-on-surface-variant/70">2026-11-21</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_330_t">Material 3 全应用改版</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_330_1">全应用切换到 Material 3 语义色板、形状与排版系统，20+ 页面重设计，明暗双主题均达 WCAG AA 对比度。</li>
+        <li data-i18n="cl_330_2">家长首页升级为三层驾驶舱，待审批与已结算分层展示。</li>
+        <li data-i18n="cl_330_3">积分审批强化：统一业务键幂等审批、撤销闭环，并新增积分不变量回归测试套件。</li>
+      </ul>
+    </li>
+  </ol>
+  <div class="flex justify-center mt-6">
+    <button id="clToggle" type="button" aria-expanded="false" aria-controls="cl-older"
+      class="ripple-host inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full border border-outline-variant text-sm font-medium text-gprimary transition-colors hover:bg-on-surface/[.08] active:bg-on-surface/[.12]">
+      <span id="clToggleLabel" data-i18n="cl_more">展开更多历史版本</span>
+      <i id="clChevron" class="fa-solid fa-chevron-down text-xs transition-transform duration-300"></i>
+    </button>
+  </div>
+  <ol id="cl-older" class="hidden mt-6 space-y-5">
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.2.1</span><span class="text-xs text-on-surface-variant/70">2026-11-20</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_321_t">签名密钥轮换</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_321_1">v2 旧版设备无需卸载，即可覆盖升级到 v3 正式签名包（Android 8.x / 9+）。</li>
+        <li data-i18n="cl_321_2">业务代码零改动。</li>
+      </ul>
+    </li>
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.2.0</span><span class="text-xs text-on-surface-variant/70">2026-11-19</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_320_t">匿名使用统计</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_320_1">接入 Google Analytics for Firebase，Android 与 iOS 双平台匿名使用统计。</li>
+        <li data-i18n="cl_320_2">家长设置新增「分享使用数据」开关，关闭后立即停止上报。</li>
+      </ul>
+    </li>
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.1.1</span><span class="text-xs text-on-surface-variant/70">2026-11-14</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_311_t">中英双语阶段 2</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_311_1">全应用文案双语化：预设任务、奖励、成就等内容随界面语言显示。</li>
+        <li data-i18n="cl_311_2">通知、每周周报与提醒随语言切换；Android 发布包自此正式签名。</li>
+      </ul>
+    </li>
+  </ol>
+  <p class="text-center text-sm text-on-surface-variant mt-8 reveal">
+    <span data-i18n="cl_older">更早版本：v3.1.0 双语第一阶段（2026-11-10）· v3.0.0 KMP 重构首发（2026-11-07）。</span>
+    <a class="text-gprimary font-medium hover:underline" href="https://github.com/yaohehe/hstudy/blob/main/version_history.md" target="_blank" rel="noopener" data-i18n="cl_full">查看完整更新记录</a>
+  </p>
+</section>
+
+<!-- ============ OSS ============ -->
+<section id="oss" class="bg-surface-container-low border-y border-outline-variant">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+    <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+      <div class="reveal">
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4" data-i18n="oss_title">开源，且可持续</h2>
+        <p class="text-on-surface-variant leading-relaxed mb-6" data-i18n="oss_p">
+          HStudy 完全开源：从积分审批状态机、间隔复习算法到 Material 3 主题体系，全部代码可审阅、可复用、可自建。发布链路由 GitHub Actions 自动化：双平台 CI 双绿 → 合并 → 签名 Release → 资产校验。
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="https://github.com/yaohehe/hstudy" target="_blank" rel="noopener" class="ripple-host inline-flex items-center gap-2 px-6 py-3 rounded-full bg-inverse-surface text-inverse-on-surface font-medium hover:shadow-lift transition-shadow"><i class="fa-brands fa-github"></i><span data-i18n="oss_b1">浏览源码</span></a>
+          <a href="https://github.com/sponsors/yaohehe" target="_blank" rel="noopener" class="ripple-host inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-gred/40 text-gred font-medium hover:bg-gred/5 transition"><i class="fa-solid fa-heart"></i><span data-i18n="oss_b2">Sponsor 支持</span></a>
+        </div>
+      </div>
+      <div class="reveal grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="relative overflow-hidden bg-surface-container-lowest rounded-3xl p-5 sm:p-6 border border-outline-variant/60 shadow-card hover:shadow-lift transition-shadow">
+          <span class="absolute left-0 top-0 h-full w-1.5 bg-gprimary"></span>
+          <div class="flex items-center gap-3 mb-3">
+            <span class="w-10 h-10 shrink-0 rounded-2xl bg-primary-container flex items-center justify-center"><i class="fa-solid fa-code-branch text-gprimary"></i></span>
+            <span class="text-[28px] leading-none font-black tracking-tight text-gprimary">KMP</span>
+          </div>
+          <div class="text-sm font-semibold leading-snug" data-i18n="oss_c1">Android + iOS 共享业务代码</div>
+          <div class="text-xs text-on-surface-variant mt-1.5 leading-relaxed" data-i18n="oss_c1d">一套 commonMain 业务逻辑，双端各自原生构建。</div>
+        </div>
+        <div class="relative overflow-hidden bg-surface-container-lowest rounded-3xl p-5 sm:p-6 border border-outline-variant/60 shadow-card hover:shadow-lift transition-shadow">
+          <span class="absolute left-0 top-0 h-full w-1.5 bg-ggreen"></span>
+          <div class="flex items-center gap-3 mb-3">
+            <span class="w-10 h-10 shrink-0 rounded-2xl bg-green-container flex items-center justify-center"><i class="fa-solid fa-vial-circle-check text-ggreen"></i></span>
+            <span class="text-[28px] leading-none font-black tracking-tight text-ggreen">325+</span>
+          </div>
+          <div class="text-sm font-semibold leading-snug" data-i18n="oss_c2">自动化单元测试</div>
+          <div class="text-xs text-on-surface-variant mt-1.5 leading-relaxed" data-i18n="oss_c2d">含积分不变量回归套件，作为 CI 阻塞闸门。</div>
+        </div>
+        <div class="relative overflow-hidden bg-surface-container-lowest rounded-3xl p-5 sm:p-6 border border-outline-variant/60 shadow-card hover:shadow-lift transition-shadow">
+          <span class="absolute left-0 top-0 h-full w-1.5 bg-gyellow"></span>
+          <div class="flex items-center gap-3 mb-3">
+            <span class="w-10 h-10 shrink-0 rounded-2xl bg-yellow-container flex items-center justify-center"><i class="fa-solid fa-palette text-gyellow"></i></span>
+            <span class="text-[28px] leading-none font-black tracking-tight text-gyellow">M3</span>
+          </div>
+          <div class="text-sm font-semibold leading-snug" data-i18n="oss_c3">Material Design 3 视觉体系</div>
+          <div class="text-xs text-on-surface-variant mt-1.5 leading-relaxed" data-i18n="oss_c3d">语义色板与形状系统，明暗双主题达 WCAG AA。</div>
+        </div>
+        <div class="relative overflow-hidden bg-surface-container-lowest rounded-3xl p-5 sm:p-6 border border-outline-variant/60 shadow-card hover:shadow-lift transition-shadow">
+          <span class="absolute left-0 top-0 h-full w-1.5 bg-gred"></span>
+          <div class="flex items-center gap-3 mb-3">
+            <span class="w-10 h-10 shrink-0 rounded-2xl bg-red-container flex items-center justify-center"><i class="fa-solid fa-shield-halved text-gred"></i></span>
+            <span class="text-[28px] leading-none font-black tracking-tight text-gred">100%</span>
+          </div>
+          <div class="text-sm font-semibold leading-snug" data-i18n="oss_c4">本地数据 · 无服务器依赖</div>
+          <div class="text-xs text-on-surface-variant mt-1.5 leading-relaxed" data-i18n="oss_c4d">业务数据存于设备本地，可完全离线使用。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="bg-surface-container-high text-on-surface-variant border-t border-outline-variant">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+      <div>
+        <div class="flex items-center gap-3 mb-3">
+          <svg class="w-8 h-8 rounded-lg" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
+          <span class="text-lg font-bold text-on-surface">HStudy</span>
+        </div>
+        <p class="text-sm leading-relaxed" data-i18n="ft_slogan">家长与孩子共享的学习伙伴。<br>Kotlin Multiplatform · 完全开源。</p>
+      </div>
+      <div>
+        <div class="font-semibold text-on-surface mb-3 text-sm" data-i18n="ft_h1">项目</div>
+        <ul class="space-y-2 text-sm">
+          <li><a class="hover:text-on-surface transition-colors" href="https://github.com/yaohehe/hstudy" target="_blank" rel="noopener"><i class="fa-brands fa-github mr-2"></i>GitHub</a></li>
+          <li><a class="hover:text-on-surface transition-colors" href="https://github.com/yaohehe/hstudy/releases" target="_blank" rel="noopener"><i class="fa-solid fa-tag mr-2"></i><span data-i18n="ft_releases">Releases 发布页</span></a></li>
+          <li><a class="hover:text-on-surface transition-colors" href="https://github.com/sponsors/yaohehe" target="_blank" rel="noopener"><i class="fa-solid fa-heart mr-2"></i>GitHub Sponsors</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-semibold text-on-surface mb-3 text-sm" data-i18n="ft_h2">页面导航</div>
+        <ul class="space-y-2 text-sm">
+          <li><a class="hover:text-on-surface transition-colors" href="#features" data-i18n="nav_features">功能特点</a></li>
+          <li><a class="hover:text-on-surface transition-colors" href="#privacy" data-i18n="nav_privacy">安全与隐私</a></li>
+          <li><a class="hover:text-on-surface transition-colors" href="#install" data-i18n="nav_install">下载指引</a></li>
+          <li><a class="hover:text-on-surface transition-colors" href="#changelog" data-i18n="nav_changelog">版本更新</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-semibold text-on-surface mb-3 text-sm" data-i18n="ft_h3">升级兼容说明</div>
+        <p class="text-xs leading-relaxed" data-i18n="ft_migrate">
+          应用数据库基于 Room（当前 schema v14），跨版本升级由带备份校验的迁移脚本保障：账本 append-only、历史数据不丢失。v2（Android 原生版）设备可直接覆盖升级至 v3.x。
+        </p>
+      </div>
+    </div>
+    <div class="border-t border-outline-variant pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <span>© 2026 HStudy Contributors · <span data-i18n="ft_rights">保留所有权利</span></span>
+      <span class="flex items-center gap-1.5"><span data-i18n="ft_built">Built with</span> <i class="fa-solid fa-heart text-gred"></i> Kotlin Multiplatform · Compose Multiplatform</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ================= i18n ================= */
+const I18N = {
+  zh: {
+    nav_features:'功能特点', nav_privacy:'安全与隐私', nav_install:'下载指引', nav_oss:'开源项目', nav_changelog:'版本更新', gh_btn:'GitHub',
+    meta_title:'HStudy — 家长与孩子共享的学习伙伴',
+    meta_desc:'HStudy：基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用。任务打卡、家长审批、番茄钟、错题复习、奖励机制，一个 App 全搞定。',
+    th_auto:'跟随系统', th_light:'浅色主题', th_dark:'深色主题', th_hint:'点击切换',
+    cl_more:'展开更多历史版本', cl_less:'收起历史版本',
+    oss_c1d:'一套 commonMain 业务逻辑，双端各自原生构建。', oss_c2d:'含积分不变量回归套件，作为 CI 阻塞闸门。',
+    oss_c3d:'语义色板与形状系统，明暗双主题达 WCAG AA。', oss_c4d:'业务数据存于设备本地，可完全离线使用。',
+    hero_badge:'Kotlin Multiplatform · Android & iOS',
+    hero_title:'家长与孩子<br><span class="text-gprimary">共享的学习伙伴</span>',
+    hero_sub:'基于 Kotlin Multiplatform 打造的 Android & iOS 双平台家庭学习管理应用：任务打卡、家长审批、番茄专注、错题复习与积分奖励，一套原生代码，全家共同使用。',
+    cta_apk:'下载 Android Release (APK)', cta_repo:'前往 GitHub 仓库',
+    hero_pt1:'数据全本地存储', hero_pt2:'完全开源', hero_pt3:'中英双语即时切换',
+    gal_title:'应用一览', gal_sub:'真机截图，横向滑动浏览各主要页面。',
+    gal_cap_role:'角色选择', gal_cap_parent:'家长管理台', gal_cap_child:'我的学习（孩子端）', gal_cap_mist:'错题本',
+    cl_title:'版本更新', cl_sub:'每个版本都经过双平台 CI 与自动化回归，以下是近期更新。', cl_latest:'最新版本',
+    cl_333_t:'动态加固发布批',
+    cl_333_1:'积分、审批、奖励、心愿、宠物与模板初始化落实事务和防重入，失败整体回滚；备份、恢复与家庭配置导入增加校验、回滚和空配置保护。',
+    cl_333_2:'历史积分按账本原周期冲抵，完成率使用快照或明确标注的旧数据回退；周锚点与跨午夜刷新保持一致。',
+    cl_333_3:'修复 Android 周报/日程重排、深链授权、返回栈、冷启动与 Activity 重建恢复。',
+    cl_333_4:'家长密码升级为 PBKDF2 安全存储并原子迁移旧明文；分享结果区分已展示、完成、取消和失败。',
+    cl_333_5:'积分与错题列表改为单遍统计；Pixel 5 六组性能基准全部达标，Test Lab 212/212 通过。',
+    cl_332_t:'裁决修复批',
+    cl_332_1:'里程碑奖励说明改为业务键存储，中英文随界面语言派生，不再把中文写进数据库。',
+    cl_332_2:'复习里程碑与每日幸运转盘加入 CAS 防重入，狂点、双击只入账一次。',
+    cl_332_3:'批量审批、撤回与超期清理改为数据库事务，中途出错整体回滚。',
+    cl_331_t:'真机签核缺陷修复',
+    cl_331_1:'修复错题本在窄屏下卡片被压瘪、无法复习打卡的问题。',
+    cl_331_2:'修复覆盖升级后预设任务重复、可能被重复申领的问题。',
+    cl_331_3:'心愿存钱罐记账修正：删除心愿时已存积分原路退还。',
+    cl_331_4:'番茄钟计时持久化：退出、息屏或进程被杀后不丢失，重启自动补结算，计时期间屏幕常亮。',
+    cl_331_5:'系统奖励防连击；家长可撤回误通过的审批；家长首页宽屏自适应布局。',
+    cl_330_t:'Material 3 全应用改版',
+    cl_330_1:'全应用切换到 Material 3 语义色板、形状与排版系统，20+ 页面重设计，明暗双主题均达 WCAG AA 对比度。',
+    cl_330_2:'家长首页升级为三层驾驶舱，待审批与已结算分层展示。',
+    cl_330_3:'积分审批强化：统一业务键幂等审批、撤销闭环，并新增积分不变量回归测试套件。',
+    cl_321_t:'签名密钥轮换',
+    cl_321_1:'v2 旧版设备无需卸载，即可覆盖升级到 v3 正式签名包（Android 8.x / 9+）。',
+    cl_321_2:'业务代码零改动。',
+    cl_320_t:'匿名使用统计',
+    cl_320_1:'接入 Google Analytics for Firebase，Android 与 iOS 双平台匿名使用统计。',
+    cl_320_2:'家长设置新增「分享使用数据」开关，关闭后立即停止上报。',
+    cl_311_t:'中英双语阶段 2',
+    cl_311_1:'全应用文案双语化：预设任务、奖励、成就等内容随界面语言显示。',
+    cl_311_2:'通知、每周周报与提醒随语言切换；Android 发布包自此正式签名。',
+    cl_older:'更早版本：v3.1.0 双语第一阶段（2026-11-10）· v3.0.0 KMP 重构首发（2026-11-07）。', cl_full:'查看完整更新记录',
+    feat_title:'为真实家庭学习场景设计的六件大事', feat_sub:'每一项功能都经过真机签核与自动化回归验证。',
+    f1_t:'任务与审批', f1_d:'孩子打卡完成任务，积分仅在家长审批通过后写入账本。Append-only 账本设计保证防伪与公正——每一笔积分都可审计、可对称冲抵。',
+    f2_t:'专注训练', f2_d:'集成番茄钟（呼吸引导、科学休息循环、屏幕常亮与跨进程恢复）与舒尔特方格专注力训练器，让"坐得住"变成可量化的习惯。',
+    f3_t:'错题复习', f3_d:'基于艾宾浩斯间隔复习算法与"主动回忆"流程：先想后翻、做对加分、到期提醒，把每道错题跟踪到真正掌握为止。',
+    f4_t:'奖励机制', f4_d:'每日抽奖、宠物照料、心愿存钱罐积分兑换与每周学习周报——正向激励层层递进，且所有奖励发放均经防重入校验，双击不双发。',
+    f5_t:'家庭同步与配对', f5_d:'支持单设备家长/孩子角色即时切换，也可两台设备轻松配对；家长配置可导出/导入，提供完整的数据备份与恢复流程。',
+    f6_t:'跨平台与双语', f6_d:'一套 Kotlin Multiplatform + Compose Multiplatform 原生代码同时构建 Android 与 iOS；界面支持中英双语运行中即时切换，Material Design 3 视觉语言深浅色自适应。',
+    priv_badge:'数据透明 · 隐私可控', priv_title:'学习数据留在你自己的设备上',
+    priv_p1:'HStudy 的业务数据（任务、积分账本、错题、心愿）全部存储于设备本地数据库。分析统计基于 Google Analytics for Firebase，<strong>仅记录匿名 / 伪匿名的功能使用频率</strong>，绝不收集姓名、任务内容、错题文本或任何自由文本内容。',
+    priv_l1:'事件仅含功能标识与枚举值，无自由文本上报', priv_l2:'文案展示串与数据库写入严格隔离（存储边界自动化闸门逐版本回归）',
+    priv_l3:'可在「家长设置」中一键关闭数据分享，随时生效', priv_l4:'开源可审计：所有采集点均可在源码中检索验证',
+    priv_l5:'落地页本身通过 Google Tag Manager 加载 GA4 匿名访问统计（仅页面浏览与设备类别，不含 IP、姓名或任何输入内容）；它与 App 相互独立，App 内的「分享使用数据」开关不改变本页面行为。',
+    priv_switch_t:'数据分享设置', priv_switch_loc:'家长设置 › 隐私',
+    priv_s1:'匿名功能使用统计', priv_s1d:'仅事件名与枚举值', priv_s2:'姓名 / 头像 / 任务文本', priv_s2d:'永不采集，仅本地存储',
+    priv_note:'示意界面。真实开关位于 App 的家长设置页，关闭后不再初始化分析 SDK。',
+    ins_title:'快速安装与构建', ins_sub:'三分钟上手：直接安装签名 Release APK、体验 iOS 模拟器包，或从源码构建。',
+    ins_ver:'v3.3.3 · Android & iOS 双平台同源构建',
+    tab_android:'Android 安装', tab_ios:'iOS 模拟器包', tab_dev:'开发者构建',
+    a1:'前往 Releases 页面下载最新的 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-signed.apk</code>', a1l:'打开发布页',
+    a2:'在系统提示允许时，为浏览器/文件管理器开启「安装未知来源应用」权限（一次性授权即可）。',
+    a3:'安装 APK。老版本 v2 用户可直接覆盖安装、数据无损升级（签名密钥轮换已保证升级连续性）。',
+    a4:'首次启动进入引导：选择家长角色并设置孩子昵称，即可开始配置任务与奖励。',
+    i0:'当前 iOS 交付物为<strong class="text-on-surface">未签名的模拟器构建包</strong>（本账号无 Apple 开发者证书，TestFlight / App Store 上架为后续计划）。',
+    i1:'从 Releases 下载 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-ios-simulator-unsigned.zip</code>（需 Apple 硅 Mac）。',
+    i2:'解压得到 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy.app</code>，安装到 iOS 模拟器：<code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">xcrun simctl install booted HStudy.app</code>。',
+    i3:'在模拟器中启动，与 Android 端功能同源（Compose Multiplatform 共享同一业务代码）。',
+    d0:'环境要求：JDK 17+、Android SDK（compileSdk 34）；iOS 构建需 macOS + Xcode。',
+    d1:'CI 会在 Linux/macOS runner 上分别执行 Android 与 iOS 构建闸门；合并主分支前必须双绿。',
+    oss_title:'开源，且可持续',
+    oss_p:'HStudy 完全开源：从积分审批状态机、间隔复习算法到 Material 3 主题体系，全部代码可审阅、可复用、可自建。发布链路由 GitHub Actions 自动化：双平台 CI 双绿 → 合并 → 签名 Release → 资产校验。',
+    oss_b1:'浏览源码', oss_b2:'Sponsor 支持',
+    oss_c1:'Android + iOS 共享业务代码', oss_c2:'自动化单元测试', oss_c3:'Material Design 3 视觉体系', oss_c4:'本地数据 · 无服务器依赖',
+    ft_slogan:'家长与孩子共享的学习伙伴。<br>Kotlin Multiplatform · 完全开源。',
+    ft_h1:'项目', ft_releases:'Releases 发布页', ft_h2:'页面导航', ft_h3:'升级兼容说明',
+    ft_migrate:'应用数据库基于 Room（当前 schema v14），跨版本升级由带备份校验的迁移脚本保障：账本 append-only、历史数据不丢失。v2（Android 原生版）设备可直接覆盖升级至 v3.x。',
+    ft_rights:'保留所有权利', ft_built:'Built with'
+  },
+  en: {
+    nav_features:'Features', nav_privacy:'Privacy', nav_install:'Download', nav_oss:'Open Source', nav_changelog:'Changelog', gh_btn:'GitHub',
+    meta_title:'HStudy — a study companion for the whole family',
+    meta_desc:'HStudy: an Android & iOS family study manager built with Kotlin Multiplatform. Task check-ins, parent approval, focus timer, spaced mistake review and rewards — all in one app.',
+    th_auto:'Follow system', th_light:'Light theme', th_dark:'Dark theme', th_hint:'click to cycle',
+    cl_more:'Show older releases', cl_less:'Hide older releases',
+    oss_c1d:'One commonMain codebase, built natively for both platforms.', oss_c2d:'Includes the points-invariant suite, enforced as a CI gate.',
+    oss_c3d:'Semantic color and shape system, WCAG AA in light and dark.', oss_c4d:'Business data stays on device — works fully offline.',
+    hero_badge:'Kotlin Multiplatform · Android & iOS',
+    hero_title:'A study companion<br><span class="text-gprimary">for the whole family</span>',
+    hero_sub:'HStudy is an Android & iOS family study manager built with Kotlin Multiplatform: task check-ins, parent approval, focus timer, spaced mistake review and a points reward system — one native codebase, shared by parents and kids.',
+    cta_apk:'Download Android Release (APK)', cta_repo:'View GitHub Repository',
+    hero_pt1:'All data stored locally', hero_pt2:'Fully open source', hero_pt3:'Instant EN / 中文 switching',
+    gal_title:'App Gallery', gal_sub:'Real device screenshots — swipe sideways to browse the main screens.',
+    gal_cap_role:'Role Select', gal_cap_parent:'Parent Dashboard', gal_cap_child:'My Study (Child)', gal_cap_mist:'Mistake Notebook',
+    cl_title:'Changelog', cl_sub:'Every release passes dual-platform CI and automated regression suites. Recent updates:', cl_latest:'Latest',
+    cl_333_t:'Dynamic hardening release',
+    cl_333_1:'Points, approvals, rewards, wishes, pets and template setup now use transactions and re-entry guards with full rollback; backup, restore and family-config imports gain validation, rollback and empty-config protection.',
+    cl_333_2:'History reversals net against the original ledger period; completion rates use snapshots or clearly labelled legacy fallback, with one weekly anchor and consistent midnight refresh.',
+    cl_333_3:'Fixed Android weekly-report/schedule rescheduling, authorized deep links, back-stack behavior, cold starts and Activity recreation recovery.',
+    cl_333_4:'Parent passwords now use PBKDF2 secure storage with atomic legacy migration; share results distinguish presented, completed, cancelled and failed.',
+    cl_333_5:'Points and mistake lists now use single-pass summaries; all six Pixel 5 benchmark datasets pass and Test Lab is 212/212 green.',
+    cl_332_t:'Adjudicated fixes',
+    cl_332_1:'Milestone bonus notes are stored as business keys and rendered in the UI language — no more Chinese literals written to the database.',
+    cl_332_2:'Review-streak milestones and the daily lucky draw gained CAS re-entry guards: rapid taps and double-clicks award points only once.',
+    cl_332_3:'Bulk approval, revocation and stale-request cleanup now run inside database transactions — a mid-batch error rolls the whole batch back.',
+    cl_331_t:'Device sign-off fixes',
+    cl_331_1:'Fixed mistake cards collapsing on narrow screens, which blocked review check-ins.',
+    cl_331_2:'Fixed preset tasks duplicating after an in-place upgrade, which allowed double claims.',
+    cl_331_3:'Corrected wish piggy-bank accounting: deleting a wish refunds the points already saved.',
+    cl_331_4:'Pomodoro state is persisted: quitting, screen-off or a killed process no longer loses the session — it settles automatically on relaunch, and the screen stays on while timing.',
+    cl_331_5:'System bonuses can no longer be claimed twice; parents can revoke a mistaken approval; the parent home adapts to wide screens.',
+    cl_330_t:'Material 3 redesign',
+    cl_330_1:'The whole app moved to Material 3 semantic colors, shape and type systems with 20+ pages redesigned; light and dark themes both meet WCAG AA contrast.',
+    cl_330_2:'Parent home became a three-tier dashboard with pending approvals and settled entries shown separately.',
+    cl_330_3:'Stronger points approval: idempotent approvals keyed by business key, a revocation loop, and a points-invariant regression suite.',
+    cl_321_t:'Signing key rotation',
+    cl_321_1:'v2 devices can upgrade in place to the properly signed v3 build without uninstalling (Android 8.x / 9+).',
+    cl_321_2:'No business code changes.',
+    cl_320_t:'Anonymous usage analytics',
+    cl_320_1:'Google Analytics for Firebase added for anonymous usage statistics on Android and iOS.',
+    cl_320_2:'New "Share usage data" switch in Parent Settings — turning it off stops reporting immediately.',
+    cl_311_t:'Bilingual stage 2',
+    cl_311_1:'All app copy is now bilingual, including preset tasks, rewards and achievements.',
+    cl_311_2:'Notifications, weekly reports and reminders follow the language; Android releases are properly signed from this version on.',
+    cl_older:'Earlier: v3.1.0 bilingual stage 1 (2026-11-10) · v3.0.0 first KMP release (2026-11-07).', cl_full:'Full changelog',
+    feat_title:'Six things, designed for real families', feat_sub:'Every feature is device-verified and covered by automated regression suites.',
+    f1_t:'Tasks & Approval', f1_d:'Kids check in tasks; points are written to the ledger only after parent approval. The append-only ledger guarantees fairness — every entry is auditable and symmetrically reversible.',
+    f2_t:'Focus Training', f2_d:'Pomodoro timer (breathing guide, science-based breaks, keep-screen-on and cross-process restore) plus a Schulte-Grid attention trainer — make "sitting still" a measurable habit.',
+    f3_t:'Spaced Review', f3_d:'Ebbinghaus spaced-repetition with active recall: think first, flip next, earn points on correct answers, get daily reminders — until every mistake is truly mastered.',
+    f4_t:'Rewards', f4_d:'Daily lucky draw, pet care, wish-piggy redemption and weekly study reports — layered positive reinforcement, with every bonus guarded against double-claim races.',
+    f5_t:'Family Sync & Pairing', f5_d:'Switch parent/child roles instantly on one device, or pair two devices. Parent configs export/import cleanly, with full backup and restore flows.',
+    f6_t:'Cross-platform & Bilingual', f6_d:'One Kotlin Multiplatform + Compose Multiplatform codebase builds both Android and iOS. UI switches between English and Chinese at runtime, in Material Design 3, light or dark.',
+    priv_badge:'Transparent · Controllable', priv_title:'Study data stays on your device',
+    priv_p1:'All business data (tasks, points ledger, mistakes, wishes) lives in a local database on your device. Analytics via Google Analytics for Firebase records <strong>only anonymous / pseudo-anonymous feature usage frequency</strong> — never names, task content, mistake text or any free-form input.',
+    priv_l1:'Events carry feature identifiers and enum values only — no free text', priv_l2:'Display strings are strictly isolated from DB writes (automated storage-boundary gate every release)',
+    priv_l3:'One-tap opt-out anytime in Parent Settings › Privacy', priv_l4:'Open source and auditable: every logging site is greppable in the code',
+    priv_l5:'This landing page loads GA4 via Google Tag Manager for anonymous traffic stats (page views and device category only — no IP addresses, names or typed content). It is separate from the app: the in-app "Share usage data" switch does not change this page.',
+    priv_switch_t:'Data sharing', priv_switch_loc:'Parent Settings › Privacy',
+    priv_s1:'Anonymous usage analytics', priv_s1d:'Event names & enums only', priv_s2:'Names / avatars / task text', priv_s2d:'Never collected, local only',
+    priv_note:'Illustration. The real switch lives in Parent Settings; once off, the analytics SDK is never initialized.',
+    ins_title:'Install & Build', ins_sub:'Three minutes to start: sideload the signed release APK, run the iOS simulator build, or build from source.',
+    ins_ver:'v3.3.3 · one codebase for Android & iOS',
+    tab_android:'Android Install', tab_ios:'iOS Simulator', tab_dev:'Developer Build',
+    a1:'Grab the latest <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-signed.apk</code> from Releases', a1l:'Open Releases',
+    a2:'When prompted, allow "install unknown apps" for your browser / file manager (one-time grant).',
+    a3:'Install the APK. v2 users can install over the old version with data intact (signing-key rotation preserves upgrade continuity).',
+    a4:'On first launch, pick the parent role and set your child\'s name — then configure tasks and rewards.',
+    i0:'The current iOS deliverable is an <strong class="text-on-surface">unsigned simulator build</strong> (no Apple Developer certificate on this account; TestFlight / App Store are planned).',
+    i1:'Download <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-ios-simulator-unsigned.zip</code> from Releases (Apple-silicon Mac required).',
+    i2:'Unzip to get <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy.app</code>, then install: <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">xcrun simctl install booted HStudy.app</code>.',
+    i3:'Launch in the simulator — identical business logic to Android (shared Compose Multiplatform code).',
+    d0:'Requirements: JDK 17+, Android SDK (compileSdk 34); iOS builds need macOS + Xcode.',
+    d1:'CI runs Android and iOS gates on Linux/macOS runners; both must be green before merging to main.',
+    oss_title:'Open source, and sustainable',
+    oss_p:'HStudy is fully open source: from the approval state machine and spaced-repetition algorithm to the Material 3 theme system — reviewable, reusable, self-buildable. Releases ship through automated GitHub Actions: dual CI green → merge → signed release → asset verification.',
+    oss_b1:'Browse the code', oss_b2:'Sponsor us',
+    oss_c1:'Shared Android + iOS code', oss_c2:'Automated unit tests', oss_c3:'Material Design 3 system', oss_c4:'Local data · no servers',
+    ft_slogan:'A study companion for parents and kids.<br>Kotlin Multiplatform · fully open source.',
+    ft_h1:'Project', ft_releases:'Releases', ft_h2:'Navigation', ft_h3:'Upgrade notes',
+    ft_migrate:'The app database uses Room (schema v14). Cross-version upgrades run through backup-verified migrations: the points ledger stays append-only and history is never lost. v2 Android devices can upgrade in place to v3.x.',
+    ft_rights:'All rights reserved', ft_built:'Built with'
+  }
+};
+const LANG_KEY='hstudy-site-lang';
+let lang = localStorage.getItem(LANG_KEY) || 'zh';
+function applyLang(){
+  document.documentElement.lang = lang==='zh' ? 'zh-CN' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const t = I18N[lang][el.dataset.i18n];
+    if (t !== undefined) el.innerHTML = t;
+  });
+  document.getElementById('langLabel').textContent = lang==='zh' ? 'EN' : '中';
+  document.title = I18N[lang].meta_title;
+  document.querySelector('meta[name="description"]').setAttribute('content', I18N[lang].meta_desc);
+  localStorage.setItem(LANG_KEY, lang);
+  applyTheme(themeMode);
+}
+document.getElementById('langToggle').addEventListener('click', ()=>{ lang = lang==='zh' ? 'en' : 'zh'; applyLang(); });
+
+/* ================= theme (auto / light / dark) ================= */
+const THEME_KEY='hstudy-site-theme';
+const THEME_MODES=['auto','light','dark'];
+function resolveDark(mode){ return mode==='dark' || (mode==='auto' && matchMedia('(prefers-color-scheme: dark)').matches); }
+function applyTheme(mode){
+  document.documentElement.classList.toggle('dark', resolveDark(mode));
+  THEME_MODES.forEach(m=>document.getElementById('ic-'+m).classList.toggle('hidden', m!==mode));
+  const btn = document.getElementById('themeToggle');
+  const label = I18N[lang]['th_'+mode];
+  btn.setAttribute('aria-label', label);
+  btn.title = label + ' · ' + I18N[lang].th_hint;
+}
+let themeMode = localStorage.getItem(THEME_KEY) || 'light';
+if (!THEME_MODES.includes(themeMode)) themeMode = 'light';
+applyTheme(themeMode);
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  themeMode = THEME_MODES[(THEME_MODES.indexOf(themeMode)+1)%THEME_MODES.length];
+  localStorage.setItem(THEME_KEY, themeMode);
+  applyTheme(themeMode);
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(themeMode==='auto') applyTheme('auto'); });
+
+/* ================= tabs ================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>{ b.classList.remove('active'); b.classList.add('text-on-surface-variant'); });
+    btn.classList.add('active'); btn.classList.remove('text-on-surface-variant');
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ================= changelog expand ================= */
+(function(){
+  const list = document.getElementById('cl-older');
+  const btn = document.getElementById('clToggle');
+  const chev = document.getElementById('clChevron');
+  const label = document.getElementById('clToggleLabel');
+  btn.addEventListener('click', ()=>{
+    const open = list.classList.toggle('hidden') === false;
+    btn.setAttribute('aria-expanded', String(open));
+    label.dataset.i18n = open ? 'cl_less' : 'cl_more';
+    label.textContent = I18N[lang][label.dataset.i18n];
+    chev.style.transform = open ? 'rotate(180deg)' : '';
+  });
+})();
+
+/* ================= ripple ================= */
+document.addEventListener('pointerdown', e=>{
+  const host = e.target.closest('.ripple-host');
+  if(!host) return;
+  const r = document.createElement('span');
+  const rect = host.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const light = getComputedStyle(host).color === 'rgb(255, 255, 255)' || host.classList.contains('bg-inverse-surface') || host.classList.contains('bg-gprimary');
+  r.className = 'ripple';
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = (e.clientX - rect.left - size/2) + 'px';
+  r.style.top = (e.clientY - rect.top - size/2) + 'px';
+  host.appendChild(r);
+  setTimeout(()=>r.remove(), 600);
+});
+
+/* ================= reveal on scroll ================= */
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('shown'); io.unobserve(en.target); } });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+applyLang();
+</script>
+</body>
+</html>

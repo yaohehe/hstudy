@@ -26,6 +26,9 @@ import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 @Composable
 fun ChildEfficiencyReportScreen(
@@ -37,7 +40,6 @@ fun ChildEfficiencyReportScreen(
     val displayLanguage = LocalDisplayLanguage.current
     val strings = LocalStrings.current.efficiencyReport
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
-    val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val totalFocusMin by app.focusRepository.getTotalFocusMinutes().collectAsState(initial = 0)
     // 错题数据（用于学科掌握度分析与学习建议）
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
@@ -46,18 +48,16 @@ fun ChildEfficiencyReportScreen(
 
     // 最近14天专注数据
     val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -14) }
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val focusData by app.focusRepository.getDailyFocusMinutesSince(cal.timeInMillis)
         .collectAsState(initial = emptyList())
 
-    // 最近14天打卡数据
-    val completions by app.pointRepository.getCompletionsBetween(
-        cal.timeInMillis, com.hstudy.app.ui.dt.nowMillis()
-    ).collectAsState(initial = emptyList())
-
-    // 按日期统计打卡数
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val completionByDate = completions.groupBy { dateFormat.format(Date(it.completedAt)) }
-        .mapValues { it.value.size }
+    // 最近14天完成率使用每日快照；无快照日期由仓库显式标记为旧数据估算。
+    val today = LocalDate.parse(com.hstudy.app.data.repository.PointRepository.getTodayString())
+    val reportStart = today.minus(13, DateTimeUnit.DAY)
+    val completionReports by app.reportRepository.completionRateReports(reportStart, today)
+        .collectAsState(initial = emptyMap())
+    val completionByDate = completionReports.mapValues { it.value.completed }
 
     // 最近14天复习记录（用于按日统计复习量）
     val reviewsSince by app.mistakeRepository.getReviewsSince(cal.timeInMillis).collectAsState(initial = emptyList())
@@ -77,13 +77,15 @@ fun ChildEfficiencyReportScreen(
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
     }
-    val monthCompletions by app.pointRepository.getCompletionsBetween(lastMonthStart, com.hstudy.app.ui.dt.nowMillis())
-        .collectAsState(initial = emptyList())
+    val thisMonthDate = LocalDate(today.year, today.monthNumber, 1)
+    val lastMonthDate = thisMonthDate.minus(1, DateTimeUnit.MONTH)
+    val monthApprovedByDate by app.reportRepository.approvedCompletionsBetween(lastMonthDate, today)
+        .collectAsState(initial = emptyMap())
     val monthReviews by app.mistakeRepository.getReviewsSince(lastMonthStart).collectAsState(initial = emptyList())
     val thisMonthFocus = remember(allSessions, thisMonthStart) { allSessions.filter { it.completedAt >= thisMonthStart }.sumOf { it.durationMinutes } }
     val lastMonthFocus = remember(allSessions, lastMonthStart, thisMonthStart) { allSessions.filter { it.completedAt in lastMonthStart until thisMonthStart }.sumOf { it.durationMinutes } }
-    val thisMonthComp = remember(monthCompletions, thisMonthStart) { monthCompletions.count { it.completedAt >= thisMonthStart } }
-    val lastMonthComp = remember(monthCompletions, lastMonthStart, thisMonthStart) { monthCompletions.count { it.completedAt in lastMonthStart until thisMonthStart } }
+    val thisMonthComp = monthApprovedByDate.filterKeys { it >= thisMonthDate }.values.sumOf { it.size }
+    val lastMonthComp = monthApprovedByDate.filterKeys { it >= lastMonthDate && it < thisMonthDate }.values.sumOf { it.size }
     val thisMonthRev = remember(monthReviews, thisMonthStart) { monthReviews.count { it.reviewedAt >= thisMonthStart } }
     val lastMonthRev = remember(monthReviews, lastMonthStart, thisMonthStart) { monthReviews.count { it.reviewedAt in lastMonthStart until thisMonthStart } }
     val reviewByDate = reviewsSince.groupBy { dateFormat.format(Date(it.reviewedAt)) }
@@ -96,7 +98,7 @@ fun ChildEfficiencyReportScreen(
         dateFormat.format(c.time)
     }
     val scoreTrend = last7Dates.map { dateStr ->
-        val rate = if (tasks.isNotEmpty()) (completionByDate[dateStr] ?: 0).toFloat() / tasks.size else 0f
+        val rate = (completionReports[LocalDate.parse(dateStr)]?.rate ?: 0) / 100f
         com.hstudy.app.ui.common.LearningScoreCalculator.calculate(
             rate, focusByDate[dateStr] ?: 0, reviewByDate[dateStr] ?: 0, displayLanguage
         ).total
@@ -107,12 +109,14 @@ fun ChildEfficiencyReportScreen(
         val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }
         dateFormat.format(c.time)
     }
-    fun weekFocus(dates: List<String>) = dates.sumOf { focusByDate[it] ?: 0 }
-    fun weekComp(dates: List<String>) = dates.sumOf { completionByDate[it] ?: 0 }
-    fun weekRev(dates: List<String>) = dates.sumOf { reviewByDate[it] ?: 0 }
+    fun weekFocus(dates: List<String>): Int = dates.sumOf { focusByDate[it] ?: 0 }
+    fun weekComp(dates: List<String>): Int = dates.fold(0) { total, date ->
+        total + (completionReports[LocalDate.parse(date)]?.completed ?: 0)
+    }
+    fun weekRev(dates: List<String>): Int = dates.sumOf { reviewByDate[it] ?: 0 }
     fun weekAvgScore(dates: List<String>): Int {
         val scores = dates.map { d ->
-            val rate = if (tasks.isNotEmpty()) (completionByDate[d] ?: 0).toFloat() / tasks.size else 0f
+            val rate = (completionReports[LocalDate.parse(d)]?.rate ?: 0) / 100f
             com.hstudy.app.ui.common.LearningScoreCalculator.calculate(rate, focusByDate[d] ?: 0, reviewByDate[d] ?: 0, displayLanguage).total
         }
         return if (scores.isEmpty()) 0 else scores.sum() / scores.size
@@ -148,7 +152,7 @@ fun ChildEfficiencyReportScreen(
                 ) {
                     ReportStat("⭐", "${totalPoints}", strings.statPointsLabel)
                     ReportStat("📚", statMinutesText(totalFocusMin, strings, displayLanguage), strings.statFocusLabel)
-                    ReportStat("📝", "${completions.size}", strings.statCheckinLabel)
+                    ReportStat("📝", "${completionByDate.values.sum()}", strings.statCheckinLabel)
                 }
             }
 
@@ -271,7 +275,7 @@ fun ChildEfficiencyReportScreen(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(strings.suggestionsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     val suggestions = buildLearningSuggestions(
-                        allMistakes, totalFocusMin, completions.size, tasks.size, bestPeriodLabel, strings, displayLanguage
+                        allMistakes, totalFocusMin, completionByDate.values.sum(), bestPeriodLabel, strings, displayLanguage
                     )
                     suggestions.forEach { s ->
                         Text("• $s", style = MaterialTheme.typography.bodySmall,
@@ -433,14 +437,13 @@ fun ChildEfficiencyReportScreen(
                     Text(strings.checkinTrendTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val totalTasks = tasks.size
-                    if (completionByDate.isEmpty() || totalTasks == 0) {
+                    if (completionByDate.isEmpty()) {
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
                             Text(strings.noData, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         val dates = completionByDate.keys.sorted()
-                        val rates = dates.map { (completionByDate[it] ?: 0).toFloat() / totalTasks * 100f }
+                        val rates = dates.map { (completionReports[it]?.rate ?: 0).toFloat() }
                         val maxRate = 100f
                         val lineColor = MaterialTheme.colorScheme.secondary
                         val gridColor = MaterialTheme.colorScheme.surfaceVariant
@@ -474,6 +477,13 @@ fun ChildEfficiencyReportScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("0%", style = MaterialTheme.typography.labelSmall)
                             Text("100%", style = MaterialTheme.typography.labelSmall)
+                        }
+                        if (dates.any { completionReports[it]?.source == com.hstudy.app.data.repository.CompletionRateSource.LEGACY_ACTIVE_TASK_FALLBACK }) {
+                            Text(
+                                LocalStrings.current.childGoalTracker.completionRateSourceLabel(false),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -561,7 +571,6 @@ private fun buildLearningSuggestions(
     mistakes: List<com.hstudy.app.data.local.entity.MistakeEntity>,
     totalFocusMin: Int,
     checkinCount: Int,
-    taskCount: Int,
     bestPeriodLabel: String = "",
     strings: EfficiencyReportStrings,
     lang: DisplayLanguage

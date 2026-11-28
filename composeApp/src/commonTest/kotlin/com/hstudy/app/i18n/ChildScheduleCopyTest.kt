@@ -28,6 +28,8 @@ class ChildScheduleCopyTest {
             zh.allDonePraise to en.allDonePraise,
             zh.allDoneBonus to en.allDoneBonus,
             zh.resetGoalsButton to en.resetGoalsButton,
+            zh.resetBlocked to en.resetBlocked,
+            zh.goalUpdateFailed to en.goalUpdateFailed,
             zh.reflectionTitle to en.reflectionTitle,
             zh.reflectionDone to en.reflectionDone,
             zh.reflectionPrompt to en.reflectionPrompt,
@@ -52,6 +54,10 @@ class ChildScheduleCopyTest {
         assertEquals("✅ “Finish homework” done +2 points (awaiting parent approval)", en.goalDonePending("Finish homework"))
         assertEquals("↩️ 已取消「完成作业」", zh.goalUndone("完成作业"))
         assertEquals("↩️ “Finish homework” unchecked", en.goalUndone("Finish homework"))
+        assertEquals("请先处理今天的待审核目标或已领取的全目标奖励，再重新设定目标。", zh.resetBlocked)
+        assertEquals("Resolve today's pending goal approvals or claimed all-goals bonus before resetting your goals.", en.resetBlocked)
+        assertEquals("目标状态更新失败，请重试。", zh.goalUpdateFailed)
+        assertEquals("Could not update the goal. Please try again.", en.goalUpdateFailed)
         assertEquals("今日自评：⭐⭐⭐", zh.selfRating(3))
         assertEquals("Today's self-rating: ⭐⭐⭐", en.selfRating(3))
         assertEquals("我的反思：今天很专注、完成了难题", zh.reflectionTags(listOf("今天很专注", "完成了难题")))
@@ -185,6 +191,10 @@ class ChildScheduleCopyTest {
         assertEquals("3 / 5 任务已完成", zh.tasksCompleted(3, 5))
         assertEquals("3 / 5 tasks completed", en.tasksCompleted(3, 5))
         assertEquals("1 / 1 task completed", en.tasksCompleted(1, 1))
+        assertEquals("口径：当日任务快照", zh.completionRateSourceLabel(true))
+        assertEquals("口径：旧数据估算（当前活跃任务）", zh.completionRateSourceLabel(false))
+        assertEquals("Source: daily task snapshot", en.completionRateSourceLabel(true))
+        assertEquals("Source: legacy estimate (current active tasks)", en.completionRateSourceLabel(false))
     }
 
     @Test

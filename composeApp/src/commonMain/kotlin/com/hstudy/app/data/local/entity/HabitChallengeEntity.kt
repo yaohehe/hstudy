@@ -2,6 +2,7 @@ package com.hstudy.app.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.datetime.Clock
 
@@ -22,12 +23,16 @@ data class HabitChallengeEntity(
     val createdAt: Long = Clock.System.now().toEpochMilliseconds()
 )
 
-@Entity(tableName = "achievements")
+@Entity(
+    tableName = "achievements",
+    indices = [Index(value = ["canonicalType"], unique = true)]
+)
 data class AchievementEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val type: String,                     // 成就类型标识
     val title: String,
     val description: String,
     val emoji: String,
-    val unlockedAt: Long = Clock.System.now().toEpochMilliseconds()
+    val unlockedAt: Long = Clock.System.now().toEpochMilliseconds(),
+    val canonicalType: String? = null // 历史迁移选出的唯一成就类型；重复历史行保持 null
 )

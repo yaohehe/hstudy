@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -99,6 +100,48 @@ class PointRepositoryInvariantTest {
         assertEquals(1, pointDao.records.size)
         assertEquals(4, pointDao.records.single().points)
         assertEquals(ApprovalStatus.APPROVED, approvalDao.approvals.single().status)
+    }
+
+    @Test
+    fun cancelPending_onlyCancelsPendingRowsAndReleasesTheActiveKey(): Unit = runBlocking {
+        val approvalDao = FakePointApprovalDao()
+        val pendingId = approvalDao.insert(
+            PointApprovalEntity(
+                actionType = "TEST",
+                description = "pending",
+                requestedPoints = 5,
+                bizKey = "TEST:CANCEL-PENDING",
+                activeBizKey = "TEST:CANCEL-PENDING"
+            )
+        )
+        val approvedId = approvalDao.insert(
+            PointApprovalEntity(
+                actionType = "TEST",
+                description = "approved",
+                requestedPoints = 7,
+                status = ApprovalStatus.APPROVED,
+                awardedRecordId = 99L,
+                reviewedAt = 321L,
+                bizKey = "TEST:CANCEL-APPROVED",
+                activeBizKey = "TEST:CANCEL-APPROVED"
+            )
+        )
+
+        assertEquals(1, approvalDao.cancelPending(pendingId, reviewedAt = 123L))
+        val cancelled = approvalDao.getById(pendingId)!!
+        assertEquals(ApprovalStatus.CANCELLED, cancelled.status)
+        assertEquals(123L, cancelled.reviewedAt)
+        assertNull(cancelled.activeBizKey)
+        assertNull(cancelled.awardedRecordId)
+        assertEquals(0, approvalDao.cancelPending(pendingId, reviewedAt = 456L))
+        assertEquals(123L, approvalDao.getById(pendingId)?.reviewedAt, "终态不得被二次取消覆盖")
+
+        assertEquals(0, approvalDao.cancelPending(approvedId, reviewedAt = 789L))
+        val approved = approvalDao.getById(approvedId)!!
+        assertEquals(ApprovalStatus.APPROVED, approved.status)
+        assertEquals(99L, approved.awardedRecordId)
+        assertEquals("TEST:CANCEL-APPROVED", approved.activeBizKey)
+        assertEquals(321L, approved.reviewedAt)
     }
 
     // ==================================================================
@@ -303,6 +346,7 @@ class FakePointDao : PointDao {
 
     val records = mutableListOf<PointRecordEntity>()
     val completions = mutableListOf<TaskCompletionEntity>()
+    var completionStateQueries = 0
     private var nextRecordId = 1L
     private var nextCompletionId = 1L
 
@@ -344,8 +388,63 @@ class FakePointDao : PointDao {
     override suspend fun getCompletionForTaskOnDate(taskId: Long, date: String): TaskCompletionEntity? =
         completions.firstOrNull { it.taskId == taskId && it.date == date }
 
+    override suspend fun getCompletionForTaskInPeriod(
+        taskId: Long,
+        startDate: String?,
+        endDate: String?
+    ): TaskCompletionEntity? = completions.lastOrNull {
+        it.taskId == taskId &&
+            (startDate == null || it.date >= startDate) &&
+            (endDate == null || it.date < endDate)
+    }
+
+    override fun getCompletionsForTasks(taskIds: List<Long>): Flow<List<TaskCompletionEntity>> {
+        completionStateQueries++
+        return MutableStateFlow(
+            completions.filter { it.taskId in taskIds }
+                .sortedWith(compareByDescending<TaskCompletionEntity> { it.completedAt }.thenByDescending { it.id })
+        )
+    }
+
+    override suspend fun getCompletionForTaskInFrequencyPeriod(
+        taskId: Long,
+        frequencyPeriod: String,
+        preferredDate: String?
+    ): TaskCompletionEntity? = completions.filter {
+        it.taskId == taskId && it.frequencyPeriod == frequencyPeriod
+    }.sortedWith(
+        compareBy<TaskCompletionEntity> { if (it.date == preferredDate) 0 else 1 }
+            .thenByDescending { it.completedAt }
+            .thenByDescending { it.id }
+    ).firstOrNull()
+
+    override suspend fun getLegacyCompletionForTaskInPeriod(
+        taskId: Long,
+        startDate: String?,
+        endDate: String?,
+        preferredDate: String?
+    ): TaskCompletionEntity? = completions.filter {
+        it.taskId == taskId && it.frequencyPeriod == null &&
+            (startDate == null || it.date >= startDate) &&
+            (endDate == null || it.date < endDate)
+    }.sortedWith(
+        compareBy<TaskCompletionEntity> { if (it.date == preferredDate) 0 else 1 }
+            .thenByDescending { it.completedAt }
+            .thenByDescending { it.id }
+    ).firstOrNull()
+
     override fun getCompletedTaskIdsForDate(date: String): Flow<List<Long>> =
         MutableStateFlow(completions.filter { it.date == date }.map { it.taskId })
+
+    var activeTaskIds: Set<Long> = emptySet()
+
+    override fun isPerfectDay(date: String): Flow<Boolean> = MutableStateFlow(
+        activeTaskIds.isNotEmpty() && completions.filter { it.date == date }.map { it.taskId }.toSet()
+            .containsAll(activeTaskIds)
+    )
+
+    override suspend fun getCompletionsForTask(taskId: Long): List<TaskCompletionEntity> =
+        completions.filter { it.taskId == taskId }.sortedByDescending { it.completedAt }
 
     override fun getCompletionsBetween(start: Long, end: Long): Flow<List<TaskCompletionEntity>> =
         MutableStateFlow(completions.filter { it.completedAt in start until end })
@@ -357,16 +456,27 @@ class FakePointDao : PointDao {
         completions.removeAll { it.taskId == taskId && it.date == date }
     }
 
+    override suspend fun deleteCompletionById(id: Long) {
+        completions.removeAll { it.id == id }
+    }
+
     override suspend fun getDistinctCompletionDates(since: Long): List<String> =
         completions.filter { it.completedAt >= since }.map { it.date }.distinct()
 
     override suspend fun getTotalCompletionCount(): Int = completions.size
+
+    override fun observeTotalCompletionCount(): Flow<Int> = MutableStateFlow(completions.size)
+
+    override fun observeDistinctCompletionDates(since: Long): Flow<List<String>> = MutableStateFlow(
+        completions.filter { it.completedAt >= since }.map { it.date }.distinct()
+    )
 }
 
 /** [PointApprovalDao] 的内存 Fake（RA9）。 */
 class FakePointApprovalDao : PointApprovalDao {
 
     val approvals = mutableListOf<PointApprovalEntity>()
+    var approvalStateQueries = 0
     private var nextId = 1L
 
     override fun getAllApprovals(): Flow<List<PointApprovalEntity>> =
@@ -389,15 +499,15 @@ class FakePointApprovalDao : PointApprovalDao {
         if (index >= 0) approvals[index] = approval
     }
 
-    override suspend fun updateStatus(id: Long, status: ApprovalStatus, reviewedAt: Long) {
+    override suspend fun cancelPending(id: Long, reviewedAt: Long): Int {
         val index = approvals.indexOfFirst { it.id == id }
-        if (index >= 0) approvals[index] = approvals[index].copy(status = status, reviewedAt = reviewedAt)
-    }
-
-    override suspend fun approveAll(reviewedAt: Long) {
-        approvals.replaceAll {
-            if (it.status == ApprovalStatus.PENDING) it.copy(status = ApprovalStatus.APPROVED, reviewedAt = reviewedAt) else it
-        }
+        if (index < 0 || approvals[index].status != ApprovalStatus.PENDING) return 0
+        approvals[index] = approvals[index].copy(
+            status = ApprovalStatus.CANCELLED,
+            reviewedAt = reviewedAt,
+            activeBizKey = null
+        )
+        return 1
     }
 
     override suspend fun getLatestByBizKey(bizKey: String): PointApprovalEntity? =
@@ -412,15 +522,32 @@ class FakePointApprovalDao : PointApprovalDao {
     override suspend fun getById(id: Long): PointApprovalEntity? =
         approvals.firstOrNull { it.id == id }
 
-    override suspend fun updateReview(id: Long, status: ApprovalStatus, awardedRecordId: Long?, reviewedAt: Long) {
+    override suspend fun updateReview(
+        id: Long,
+        status: ApprovalStatus,
+        awardedRecordId: Long?,
+        reviewedAt: Long
+    ): Int {
         val index = approvals.indexOfFirst { it.id == id }
-        if (index >= 0) {
-            approvals[index] = approvals[index].copy(
-                status = status,
-                reviewedAt = reviewedAt,
-                awardedRecordId = awardedRecordId
-            )
-        }
+        if (index < 0 || approvals[index].status != ApprovalStatus.PENDING) return 0
+        approvals[index] = approvals[index].copy(
+            status = status,
+            reviewedAt = reviewedAt,
+            awardedRecordId = awardedRecordId,
+            activeBizKey = if (status == ApprovalStatus.PENDING) approvals[index].activeBizKey else null
+        )
+        return 1
+    }
+
+    override suspend fun revokeApproved(id: Long, reviewedAt: Long): Int {
+        val index = approvals.indexOfFirst { it.id == id }
+        if (index < 0 || approvals[index].status != ApprovalStatus.APPROVED) return 0
+        approvals[index] = approvals[index].copy(
+            status = ApprovalStatus.REVOKED,
+            reviewedAt = reviewedAt,
+            activeBizKey = null
+        )
+        return 1
     }
 
     override suspend fun getPendingList(): List<PointApprovalEntity> =
@@ -434,6 +561,33 @@ class FakePointApprovalDao : PointApprovalDao {
         MutableStateFlow(
             approvals.filter { it.bizKey.startsWith("TASK:") && it.date == date }.sortedBy { it.id }
         )
+
+    override fun getTaskApprovalsForTaskIds(taskIds: List<Long>): Flow<List<PointApprovalEntity>> {
+        approvalStateQueries++
+        return MutableStateFlow(
+            approvals.filter { it.taskId in taskIds && it.bizKey.startsWith("TASK:") }.sortedBy { it.id }
+        )
+    }
+
+    override suspend fun getDailyTargetApprovals(date: String): List<PointApprovalEntity> =
+        approvals.filter { it.actionType == "DAILY_TARGET" && it.date == date }.sortedBy { it.id }
+
+    override suspend fun getActiveTaskApprovalsForPeriod(
+        taskId: Long,
+        frequencyPeriod: String
+    ): List<PointApprovalEntity> = approvals.filter {
+        it.taskId == taskId && it.frequencyPeriod == frequencyPeriod && it.actionType == "TASK_COMPLETE" &&
+            (it.status == ApprovalStatus.PENDING || it.status == ApprovalStatus.APPROVED)
+    }.sortedByDescending { it.id }
+
+    override suspend fun getActiveAwardedTaskApprovalForPeriod(
+        taskId: Long,
+        frequencyPeriod: String,
+        excludeId: Long
+    ): PointApprovalEntity? = approvals.lastOrNull {
+        it.taskId == taskId && it.frequencyPeriod == frequencyPeriod && it.actionType == "TASK_COMPLETE" &&
+            it.status == ApprovalStatus.APPROVED && it.id != excludeId
+    }
 
     override fun getPendingPoints(): Flow<Int> =
         MutableStateFlow(approvals.filter { it.status == ApprovalStatus.PENDING }.sumOf { it.requestedPoints })

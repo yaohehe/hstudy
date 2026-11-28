@@ -61,7 +61,7 @@ fun ParentApprovalScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val allApprovals by app.pointApprovalRepository.getAllApprovals().collectAsState(initial = emptyList())
+    val allApprovals by app.pointRepository.getAllApprovals().collectAsState(initial = emptyList())
     val pendingApprovals = allApprovals.filter { it.status == ApprovalStatus.PENDING }
     // 终审 M-3：历史列表保留全量非 PENDING（截断下移到状态筛选之后，见 filteredHistoryApprovals）
     val historyApprovals = allApprovals.filter { it.status != ApprovalStatus.PENDING }

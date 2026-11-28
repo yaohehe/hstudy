@@ -24,6 +24,7 @@ import com.hstudy.app.data.focus.PomodoroFocusSettlement
 import com.hstudy.app.data.focus.PomodoroSessionPhase
 import com.hstudy.app.data.focus.PomodoroSessionState
 import com.hstudy.app.data.focus.PomodoroSettlementResult
+import com.hstudy.app.data.preferences.PomodoroWriteExpectation
 import com.hstudy.app.i18n.CanonicalFocusText
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.platform.AnalyticsEvent
@@ -187,7 +188,10 @@ fun PomodoroTimer(
         } else {
             // 休息结束→过渡引导状态（而非直接回IDLE，给孩子一个明确的下一步）
             playCompletionAlert()
-            app.userPreferences.savePomodoroSession(null)
+            app.userPreferences.savePomodoroSession(
+                null,
+                PomodoroWriteExpectation(s.sessionStartEpochMs, s.settled, s.version),
+            )
             idlePhase = PomodoroState.READY_NEXT
         }
     }
@@ -407,7 +411,10 @@ fun PomodoroTimer(
                         // 暂停 = 在会话上记暂停锚点（deadline 随 now 顺延 → 剩余冻结）
                         val s = session
                         if (s != null) scope.launch {
-                            app.userPreferences.savePomodoroSession(s.paused(nowMillis()))
+                            app.userPreferences.savePomodoroSession(
+                                s.paused(nowMillis()),
+                                PomodoroWriteExpectation(s.sessionStartEpochMs, s.settled, s.version),
+                            )
                         }
                     }) {
                         Icon(Icons.Filled.Pause, contentDescription = null)
@@ -419,7 +426,13 @@ fun PomodoroTimer(
                         idlePhase = PomodoroState.IDLE
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
-                        scope.launch { app.userPreferences.savePomodoroSession(null) }
+                        val s = session
+                        if (s != null) scope.launch {
+                            app.userPreferences.savePomodoroSession(
+                                null,
+                                PomodoroWriteExpectation(s.sessionStartEpochMs, s.settled, s.version),
+                            )
+                        }
                     }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -431,7 +444,10 @@ fun PomodoroTimer(
                         // 从暂停恢复：累计暂停毫秒固化，deadline 顺延（剩余秒数不落地，纯派生）
                         val s = session
                         if (s != null) scope.launch {
-                            app.userPreferences.savePomodoroSession(s.resumed(nowMillis()))
+                            app.userPreferences.savePomodoroSession(
+                                s.resumed(nowMillis()),
+                                PomodoroWriteExpectation(s.sessionStartEpochMs, s.settled, s.version),
+                            )
                         }
                     }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
@@ -442,7 +458,13 @@ fun PomodoroTimer(
                         idlePhase = PomodoroState.IDLE
                         totalSeconds = focusMinutes * 60
                         remainingSeconds = totalSeconds
-                        scope.launch { app.userPreferences.savePomodoroSession(null) }
+                        val s = session
+                        if (s != null) scope.launch {
+                            app.userPreferences.savePomodoroSession(
+                                null,
+                                PomodoroWriteExpectation(s.sessionStartEpochMs, s.settled, s.version),
+                            )
+                        }
                     }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -453,7 +475,13 @@ fun PomodoroTimer(
                     TextButton(onClick = {
                         // 跳过休息：清会话进入过渡态（休息不产生结算）
                         idlePhase = PomodoroState.READY_NEXT
-                        scope.launch { app.userPreferences.savePomodoroSession(null) }
+                        val s = session
+                        if (s != null) scope.launch {
+                            app.userPreferences.savePomodoroSession(
+                                null,
+                                PomodoroWriteExpectation(s.sessionStartEpochMs, s.settled, s.version),
+                            )
+                        }
                     }) {
                         Text(strings.skipBreakButton)
                     }

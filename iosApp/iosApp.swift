@@ -14,6 +14,9 @@ struct iOSApp: App {
         #else
         channel = "release"
         #endif
+        // Set the notification delegate before SwiftUI creates the root controller so a cold-start
+        // notification response is retained in Platform.pendingRoute and passes through the normal gate.
+        IosPlatformKt.installIosNotificationDelegate()
         IosPlatformKt.doInitIosPlatform(analytics: FirebaseAnalyticsBridge(), appChannel: channel)
     }
 

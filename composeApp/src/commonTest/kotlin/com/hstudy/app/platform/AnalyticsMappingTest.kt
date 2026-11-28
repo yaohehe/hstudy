@@ -45,7 +45,7 @@ class AnalyticsMappingTest {
     @Test
     fun zeroParamEvents() {
         assertEquals("backup_exported" to emptyMap(), AnalyticsMapping.wire(AnalyticsEvent.BackupExported))
-        assertEquals("pairing_completed" to emptyMap(), AnalyticsMapping.wire(AnalyticsEvent.PairingCompleted))
+        assertEquals("sync_config_imported" to emptyMap(), AnalyticsMapping.wire(AnalyticsEvent.SyncConfigImported))
     }
 
     @Test

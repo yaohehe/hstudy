@@ -1,13 +1,20 @@
 package com.hstudy.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.remember
+import com.hstudy.app.platform.NotificationRoutes
+import com.hstudy.app.platform.Platform
+import com.hstudy.app.ui.navigation.Screen
+import com.hstudy.app.ui.navigation.rememberAppNavigator
 
 class MainActivity : ComponentActivity() {
 
@@ -16,6 +23,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleNotificationIntent(intent)
         enableEdgeToEdge()
 
         // Android 13+ 启动时申请通知权限（日程/复习/周报提醒依赖它）
@@ -26,7 +34,24 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            App()
+            val navigator = rememberAppNavigator(Screen.RoleSelect.route)
+            BackHandler(enabled = navigator.backStack.size > 1) {
+                navigator.popBackStack()
+            }
+            App(navigator)
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val route = intent?.getStringExtra(NotificationRoutes.EXTRA_ROUTE)
+            ?.takeIf { NotificationRoutes.isAllowed(it) }
+            ?: return
+        Platform.pendingRoute = route
     }
 }

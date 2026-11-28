@@ -50,6 +50,6 @@ object ReviewReminderReceiver {
 
     /** 取消每日复习提醒 */
     fun cancel() {
-        Platform.notifications.cancel(REMINDER_ID)
+        Platform.notifications.cancel(REMINDER_ID, ReminderKind.REVIEW)
     }
 }

@@ -28,5 +28,10 @@ fun initIosPlatform(analytics: Analytics, appChannel: String) {
     AppGraph.bootstrap()
 }
 
+/** Install the shared notification delegate before SwiftUI finishes launching (cold-start clicks included). */
+fun installIosNotificationDelegate() {
+    IosNotificationScheduler.installDelegate()
+}
+
 /** Swift 侧 ContentView.makeUIViewController 调用（导出为 IosPlatformKt.MainViewController()） */
 fun MainViewController(): UIViewController = ComposeUIViewController { App() }

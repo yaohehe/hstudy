@@ -83,21 +83,13 @@ fun ChildHabitChallengeScreen(
                             },
                             onCheckIn = {
                                 scope.launch {
-                                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                                     when (app.habitRepository.checkInChallenge(challenge)) {
                                         com.hstudy.app.data.repository.HabitRepository.CheckInResult.ALREADY_CHECKED_IN -> {
                                             snackbarHostState.showSnackbar(strings.alreadyCheckedInMessage)
                                         }
                                         com.hstudy.app.data.repository.HabitRepository.CheckInResult.CHALLENGE_COMPLETED -> {
-                                            // 习惯打卡同样走审批：此刻只登记申请，审批通过后才计分
+                                            // 进度与待审申请已由 HabitRepository 在同一事务内提交。
                                             if (challenge.dailyPoints > 0) {
-                                                app.pointRepository.checkIn(
-                                                    bizKey = "HABIT:${challenge.id}:$today",
-                                                    actionType = "HABIT_CHECKIN",
-                                                    description = "习惯打卡: ${challenge.title}",
-                                                    points = challenge.dailyPoints,
-                                                    date = today
-                                                )
                                                 AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                             }
                                             snackbarHostState.showSnackbar(strings.challengeCompleteMessage(challenge.title, challenge.dailyPoints))
@@ -107,13 +99,6 @@ fun ChildHabitChallengeScreen(
                                         }
                                         com.hstudy.app.data.repository.HabitRepository.CheckInResult.SUCCESS -> {
                                             if (challenge.dailyPoints > 0) {
-                                                app.pointRepository.checkIn(
-                                                    bizKey = "HABIT:${challenge.id}:$today",
-                                                    actionType = "HABIT_CHECKIN",
-                                                    description = "习惯打卡: ${challenge.title}",
-                                                    points = challenge.dailyPoints,
-                                                    date = today
-                                                )
                                                 AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
                                             }
                                             snackbarHostState.showSnackbar(strings.checkInSuccessMessage(challenge.dailyPoints, challenge.completedDays + 1, challenge.totalDays))
@@ -260,8 +245,8 @@ private fun ChallengeCard(
 
 /**
  * P1-01 撤销今日打卡（指令【P1-01】目标文件 2 的闭环入口）：
- * habit 侧回退（[HabitRepository.undoCheckInChallenge]）+ 积分侧
- * [com.hstudy.app.data.repository.PointRepository.undoCheckIn]（bizKey=`HABIT:id:date`），
+ * [HabitRepository.undoCheckInChallengeAndPoints] 在同一事务内完成 habit 回退与积分侧
+ * 取消/冲回（bizKey=`HABIT:id:date`），
  * Snackbar 如实反馈扣回/取消，镜像 ChildTaskListScreen 的 undoAndReport 流（RA4 复用 [TaskListStrings] 取词路径）。
  * 撤销路径不打埋点（既有裁决），checkIn 成功分支的两条 CHECKIN 埋点原样保留。
  */
@@ -273,16 +258,11 @@ private fun undoTodayCheckIn(
     scope: kotlinx.coroutines.CoroutineScope
 ) {
     scope.launch {
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        // 回审 P1-1：bizKey 用打卡时落库的 lastCheckInDate（跨午夜撤销对称），缺失回退今天（M-1 同策略）
-        val checkInDate = challenge.lastCheckInDate.ifEmpty { today }
-        app.habitRepository.undoCheckInChallenge(challenge)
-        val clawedBack = app.pointRepository.undoCheckIn(
-            bizKey = "HABIT:${challenge.id}:$checkInDate",
-            date = checkInDate
-        )
+        // 仓库以存储的 lastCheckInDate 为锚，在同一事务内回退进度并取消/冲回积分。
+        val result = app.habitRepository.undoCheckInChallengeAndPoints(challenge)
+        if (!result.undone) return@launch
         snackbarHostState.showSnackbar(
-            if (clawedBack > 0) taskList.revertedClawedBackMessage(challenge.title, clawedBack)
+            if (result.reversedPoints > 0) taskList.revertedClawedBackMessage(challenge.title, result.reversedPoints)
             else taskList.revertedPendingApprovalMessage(challenge.title)
         )
     }

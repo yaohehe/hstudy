@@ -1,6 +1,7 @@
 package com.hstudy.app.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.datetime.Clock
 
@@ -9,13 +10,16 @@ import kotlinx.datetime.Clock
  * 实现"申请→家长审核→确认加分"机制，防止孩子自行给自己加分。
  *
  * 生命周期一致性核心字段：
- * - [bizKey] 业务唯一键（如 TASK:12:2026-09-06）。同一 bizKey 同时最多只有一条申请处于
- *   PENDING，且最多只有一条处于"已计分"状态（APPROVED）。取消打卡后重新打卡会复用/重建，
- *   但绝不会让两条申请同时生效，从根本上杜绝重复累计。
+ * - [bizKey] 业务唯一键（日任务如 TASK:12:2026-09-06；周/月/一次性任务使用规范周期键）。
+ *   同一 bizKey 同时最多只有一条申请处于 PENDING，且最多只有一条处于"已计分"状态（APPROVED）。
+ *   [frequencyPeriod] 额外把同一任务的不同 legacy/canonical bizKey 归入同一频次周期，防止重复发放。
  * - [awardedRecordId] 审批通过时写入的积分记录 id，撤销时可精确定位并冲抵，
  *   避免"撤销后积分残留"。
  */
-@Entity(tableName = "point_approvals")
+@Entity(
+    tableName = "point_approvals",
+    indices = [Index(value = ["activeBizKey"], unique = true)]
+)
 data class PointApprovalEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val actionType: String,          // 行为类型：TASK_COMPLETE / MISTAKE_REVIEW / FOCUS_COMPLETE / VARIATION / HABIT_CHECKIN / ASSIGNMENT / DAILY_TARGET / OTHER
@@ -27,7 +31,9 @@ data class PointApprovalEntity(
     val taskId: Long? = null,        // 关联任务 id（任务打卡时有值）
     val bizKey: String = "",         // 业务唯一键：同一业务（任务+日期等）只允许一条生效申请
     val awardedRecordId: Long? = null, // 审批通过时写入的积分记录 id（撤销扣回时定位用）
-    val date: String = ""            // 归属日期 yyyy-MM-dd（打卡类行为必填，便于按日去重）
+    val date: String = "",           // 归属日期 yyyy-MM-dd（打卡类行为必填，便于按日去重）
+    val activeBizKey: String? = null, // 历史迁移选出的唯一生效申请；重复历史行保持 null
+    val frequencyPeriod: String? = null // 任务审批时的规范频次周期键；非任务/历史行可为空
 )
 
 /**

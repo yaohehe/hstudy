@@ -4,6 +4,7 @@ import com.hstudy.app.data.local.dao.DailyFocusMinutes
 import com.hstudy.app.data.local.dao.FocusDao
 import com.hstudy.app.data.local.entity.DailyPlanEntity
 import com.hstudy.app.data.local.entity.FocusSessionEntity
+import com.hstudy.app.data.preferences.PomodoroWriteExpectation
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.FakePointApprovalDao
 import com.hstudy.app.data.repository.FakePointDao
@@ -11,14 +12,18 @@ import com.hstudy.app.data.repository.FocusRepository
 import com.hstudy.app.data.repository.PointRepository
 import com.hstudy.app.platform.Platform
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * D-05/07（v3.3.1 指令 §4.2）跨进程补结算与幂等的存储层直证套件。
@@ -55,10 +60,20 @@ class PomodoroFocusSettlementTest {
 
     private fun newFixture() = Fixture().also { Platform.init(filesDir = "build/test-d05-prefs", cacheDir = "build/test-d05-prefs") }
 
+    private suspend fun Fixture.resetSession() {
+        val current = prefs.pomodoroSession.first() ?: return
+        check(
+            prefs.savePomodoroSession(
+                null,
+                PomodoroWriteExpectation(current.sessionStartEpochMs, current.settled, current.version),
+            )
+        )
+    }
+
     @Test
     fun expiredFocusSession_settlesExactlyOneEntryAndClears() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         val session = PomodoroSessionState.startFocus(t0, 25, "自由学习")
         fx.prefs.savePomodoroSession(session)
         val countBefore = fx.prefs.pomodoroTodayCount.first()
@@ -89,7 +104,7 @@ class PomodoroFocusSettlementTest {
     @Test
     fun doubleTrigger_sequentialRecover_onlyOneEntry() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         fx.prefs.savePomodoroSession(PomodoroSessionState.startFocus(t0, 25, "自由学习"))
         val countBefore = fx.prefs.pomodoroTodayCount.first()
 
@@ -105,7 +120,7 @@ class PomodoroFocusSettlementTest {
     @Test
     fun doubleTrigger_sameStaleSnapshot_claimLoserReturnsNull() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         val session = PomodoroSessionState.startFocus(t0, 25, "自由学习")
         fx.prefs.savePomodoroSession(session)
 
@@ -120,7 +135,7 @@ class PomodoroFocusSettlementTest {
     @Test
     fun doubleTrigger_concurrentRecover_exactlyOneWins() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         fx.prefs.savePomodoroSession(PomodoroSessionState.startFocus(t0, 25, "自由学习"))
         val countBefore = fx.prefs.pomodoroTodayCount.first()
 
@@ -136,7 +151,7 @@ class PomodoroFocusSettlementTest {
     @Test
     fun recover_nowBeforeDeadline_keepsSessionRunning() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         fx.prefs.savePomodoroSession(PomodoroSessionState.startFocus(t0, 25, "自由学习"))
 
         PomodoroFocusSettlement.recoverStaleSession(fx.prefs, fx.focusRepo, fx.pointRepo, t0 + 10 * min)
@@ -151,7 +166,7 @@ class PomodoroFocusSettlementTest {
     @Test
     fun recover_pausedSession_notFalselyExpiredByWallClock() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         // 10 分钟时暂停：剩余冻结 15 分钟，真实时间流过 90 分钟也**不**到期
         fx.prefs.savePomodoroSession(PomodoroSessionState.startFocus(t0, 25, "自由学习").paused(t0 + 10 * min))
 
@@ -166,8 +181,15 @@ class PomodoroFocusSettlementTest {
     @Test
     fun recover_expiredBreak_clearsSilently() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
-        fx.prefs.savePomodoroSession(PomodoroSessionState.startBreak(t0, 5, "自由学习"))
+        fx.resetSession()
+        val focus = PomodoroSessionState.startFocus(t0, 25, "自由学习")
+        assertTrue(fx.prefs.savePomodoroSession(focus))
+        assertTrue(
+            fx.prefs.savePomodoroSession(
+                PomodoroSessionState.startBreak(t0, 5, "自由学习"),
+                PomodoroWriteExpectation(t0, false, focus.version),
+            )
+        )
         val countBefore = fx.prefs.pomodoroTodayCount.first()
 
         PomodoroFocusSettlement.recoverStaleSession(fx.prefs, fx.focusRepo, fx.pointRepo, t0 + 6 * min)
@@ -181,10 +203,15 @@ class PomodoroFocusSettlementTest {
     @Test
     fun crashAfterClaim_resumeDeposit_recordsWithSavedDate_andNoBonusRepeat() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         // 上一进程赢下认领（settled+settleDate 已落盘）但在 record 前被杀
-        fx.prefs.savePomodoroSession(
-            PomodoroSessionState.startFocus(t0, 25, "自由学习").copy(settled = true, settleDate = "2099-01-01")
+        val running = PomodoroSessionState.startFocus(t0, 25, "自由学习")
+        assertTrue(fx.prefs.savePomodoroSession(running))
+        assertTrue(
+            fx.prefs.savePomodoroSession(
+                running.copy(settled = true, settleDate = "2099-01-01"),
+                PomodoroWriteExpectation(t0, false, running.version),
+            )
         )
         val countBefore = fx.prefs.pomodoroTodayCount.first()
 
@@ -209,7 +236,7 @@ class PomodoroFocusSettlementTest {
     @Test
     fun settlementInFlight_newSessionAnchoredMidway_newAnchorSurvives() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         val oldSession = PomodoroSessionState.startFocus(t0, 25, "自由学习")
         fx.prefs.savePomodoroSession(oldSession)
         val newStart = t0 + 26 * min
@@ -233,13 +260,16 @@ class PomodoroFocusSettlementTest {
     @Test
     fun crashAfterRecordBeforeCheckIn_resumeReusesSameSessionIdAndBizKey() = runTest {
         val fx = newFixture()
-        fx.prefs.savePomodoroSession(null)
+        fx.resetSession()
         // record 已落（sessionId=7 已持久化）、checkIn 前被杀：重放不得产生第二条专注记录，
         // bizKey 与原路**同一条**（要求 4"补结算路径必须同 bizKey"）。
-        fx.prefs.savePomodoroSession(
-            PomodoroSessionState
-                .startFocus(t0, 25, "自由学习")
-                .copy(settled = true, settleDate = "2099-01-02", recordedSessionId = 7L)
+        val running = PomodoroSessionState.startFocus(t0, 25, "自由学习")
+        assertTrue(fx.prefs.savePomodoroSession(running))
+        assertTrue(
+            fx.prefs.savePomodoroSession(
+                running.copy(settled = true, settleDate = "2099-01-02", recordedSessionId = 7L),
+                PomodoroWriteExpectation(t0, false, running.version),
+            )
         )
 
         PomodoroFocusSettlement.recoverStaleSession(fx.prefs, fx.focusRepo, fx.pointRepo, t0 + 100 * min)
@@ -247,6 +277,96 @@ class PomodoroFocusSettlementTest {
         assertEquals(0, fx.focusDao.sessions.size, "已落盘的 record 不重插")
         assertEquals("FOCUS:7:2099-01-02", fx.approvalDao.approvals.single().bizKey)
         assertNull(fx.prefs.pomodoroSession.first())
+    }
+
+    @Test
+    fun pomodoroSessionKeyReusesOneFocusRowForRepeatedAndConcurrentCalls() = runTest {
+        val fx = newFixture()
+        val ids = coroutineScope {
+            (1..20).map {
+                async {
+                    fx.focusRepo.recordPomodoroSession(
+                        durationMinutes = 25,
+                        taskTitle = "自由学习",
+                        points = 0,
+                        sessionStartEpochMs = t0,
+                    )
+                }
+            }.awaitAll()
+        }
+
+        assertEquals(1, ids.toSet().size)
+        val recorded = fx.focusDao.sessions.single()
+        assertEquals(ids.first(), recorded.id)
+        assertEquals("POMODORO:$t0", recorded.sessionKey)
+
+        val nextAnchorId = fx.focusRepo.recordPomodoroSession(25, "自由学习", 0, t0 + 1_000L)
+        assertTrue(nextAnchorId != ids.first())
+        assertEquals(2, fx.focusDao.sessions.size)
+    }
+
+    @Test
+    fun concurrentResumeDeposit_reusesOneFocusRowAndOneApproval() = runTest {
+        val fx = newFixture()
+        fx.resetSession()
+        val running = PomodoroSessionState.startFocus(t0, 25, "自由学习")
+        assertTrue(fx.prefs.savePomodoroSession(running))
+        assertTrue(
+            fx.prefs.savePomodoroSession(
+                running.copy(settled = true, settleDate = "2099-01-01"),
+                PomodoroWriteExpectation(t0, false, running.version),
+            )
+        )
+        val snapshot = fx.prefs.pomodoroSession.first()!!
+        assertEquals(0L, snapshot.recordedSessionId)
+
+        val results = coroutineScope {
+            listOf(
+                async {
+                    PomodoroFocusSettlement.settleFocusSession(
+                        fx.prefs, fx.focusRepo, fx.pointRepo, snapshot, t0 + 26 * min,
+                    )
+                },
+                async {
+                    PomodoroFocusSettlement.settleFocusSession(
+                        fx.prefs, fx.focusRepo, fx.pointRepo, snapshot, t0 + 26 * min,
+                    )
+                },
+            ).awaitAll()
+        }
+
+        assertNotNull(results[0])
+        assertNotNull(results[1])
+        assertEquals(results[0]!!.sessionId, results[1]!!.sessionId)
+        val focusRow = fx.focusDao.sessions.single()
+        assertEquals(results[0]!!.sessionId, focusRow.id)
+        assertEquals("POMODORO:$t0", focusRow.sessionKey)
+        val approval = fx.approvalDao.approvals.single()
+        assertEquals("FOCUS:${focusRow.id}:2099-01-01", approval.bizKey)
+        assertNull(fx.prefs.pomodoroSession.first())
+    }
+
+    @Test
+    fun unanchoredWritesOnlyStartANewFocusAnchor() = runTest {
+        val fx = newFixture()
+        fx.resetSession()
+        val session = PomodoroSessionState.startFocus(t0, 25, "自由学习")
+        assertTrue(fx.prefs.savePomodoroSession(session))
+
+        assertFalse(fx.prefs.savePomodoroSession(null), "unanchored clear must be rejected")
+        assertFalse(
+            fx.prefs.savePomodoroSession(session.copy(plannedMinutes = 30)),
+            "same-anchor overwrite must be rejected",
+        )
+        assertFalse(
+            fx.prefs.savePomodoroSession(PomodoroSessionState.startBreak(t0 + 1_000L, 5, "自由学习")),
+            "unanchored writes cannot start BREAK sessions",
+        )
+        assertEquals(session, fx.prefs.pomodoroSession.first())
+
+        val nextAnchor = PomodoroSessionState.startFocus(t0 + 2_000L, 25, "自由学习")
+        assertTrue(fx.prefs.savePomodoroSession(nextAnchor))
+        assertEquals(nextAnchor, fx.prefs.pomodoroSession.first())
     }
 
     /** [FocusDao] 的内存 Fake（RA9，形态同 [com.hstudy.app.data.repository.FakePointDao]）。 */
@@ -265,6 +385,19 @@ class PomodoroFocusSettlementTest {
             sessions.add(session.copy(id = id))
             return id
         }
+
+        override suspend fun insertSessionIfAbsent(session: FocusSessionEntity): Long {
+            onBeforeInsertSession?.invoke()
+            session.sessionKey?.let { key ->
+                sessions.firstOrNull { it.sessionKey == key }?.let { return it.id }
+            }
+            val id = nextSessionId++
+            sessions.add(session.copy(id = id))
+            return id
+        }
+
+        override suspend fun getSessionByKey(sessionKey: String): FocusSessionEntity? =
+            sessions.firstOrNull { it.sessionKey == sessionKey }
 
         override fun getAllSessions(): Flow<List<FocusSessionEntity>> = MutableStateFlow(sessions.toList())
 

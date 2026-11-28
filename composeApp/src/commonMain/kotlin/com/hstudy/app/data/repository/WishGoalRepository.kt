@@ -1,8 +1,11 @@
 package com.hstudy.app.data.repository
 
+import com.hstudy.app.data.local.DbTransactionRunner
+import com.hstudy.app.data.local.DirectTransactionRunner
 import com.hstudy.app.data.local.dao.WishGoalDao
 import com.hstudy.app.data.local.entity.WishGoalEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 
 /**
@@ -31,7 +34,8 @@ data class WishNoteKey(val goalId: Long, val kind: WishNoteKind)
  */
 class WishGoalRepository(
     private val wishGoalDao: WishGoalDao,
-    private val pointRepository: PointRepository
+    private val pointRepository: PointRepository,
+    private val transactionRunner: DbTransactionRunner = DirectTransactionRunner
 ) {
 
     fun getAllGoals(): Flow<List<WishGoalEntity>> = wishGoalDao.getAllGoals()
@@ -54,11 +58,13 @@ class WishGoalRepository(
      * 账本留痕的代价，也是它不该把文案写进库的另一个理由）。
      */
     suspend fun deleteGoal(id: Long) {
-        val goal = wishGoalDao.getGoalById(id) ?: return
-        if (goal.isActive && goal.savedPoints > 0) {
-            pointRepository.refundSpentPoints(goal.savedPoints, wishRefundNote(id))
+        transactionRunner.runInTransaction {
+            val goal = wishGoalDao.getGoalById(id) ?: return@runInTransaction
+            if (goal.isActive && goal.savedPoints > 0) {
+                pointRepository.refundSpentPoints(goal.savedPoints, wishRefundNote(id))
+            }
+            wishGoalDao.delete(id)
         }
-        wishGoalDao.delete(id)
     }
 
     /**
@@ -68,22 +74,25 @@ class WishGoalRepository(
      */
     suspend fun depositPoints(goalId: Long, amount: Int): Boolean {
         if (amount <= 0) return false
-        wishGoalDao.getGoalById(goalId) ?: return false
+        return transactionRunner.runInTransaction {
+            val goal = wishGoalDao.getGoalById(goalId) ?: return@runInTransaction false
+            val remaining = (goal.targetPoints - goal.savedPoints).coerceAtLeast(0)
+            if (amount > remaining || amount > pointRepository.getTotalPoints().first()) {
+                return@runInTransaction false
+            }
 
-        // 1. 扣减余额：走 REWARD_EXCHANGE 权威入口，余额校验在扣减点内部完成（单一校验口径）
-        if (!pointRepository.spendPoints(amount, wishDepositNote(goalId), requireSufficientBalance = true)) {
-            return false
+            // 扣减与进度更新在同一事务；spendPoints 的余额复读也加入最外层事务。
+            if (!pointRepository.spendPoints(amount, wishDepositNote(goalId), requireSufficientBalance = true)) {
+                return@runInTransaction false
+            }
+            wishGoalDao.addSavedPoints(goalId, amount)
+
+            val updated = wishGoalDao.getGoalById(goalId)
+            if (updated != null && updated.savedPoints >= updated.targetPoints && updated.isActive) {
+                wishGoalDao.markCompleted(goalId, Clock.System.now().toEpochMilliseconds())
+            }
+            true
         }
-
-        // 2. 累加到心愿目标
-        wishGoalDao.addSavedPoints(goalId, amount)
-
-        // 3. 检查是否达成目标
-        val updated = wishGoalDao.getGoalById(goalId)
-        if (updated != null && updated.savedPoints >= updated.targetPoints && updated.isActive) {
-            wishGoalDao.markCompleted(goalId, Clock.System.now().toEpochMilliseconds())
-        }
-        return true
     }
 
     companion object {

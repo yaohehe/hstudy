@@ -32,9 +32,11 @@ import com.hstudy.app.i18n.achievementCopy
 import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.platform.AnalyticsEvent
 import com.hstudy.app.platform.AnalyticsReporter
+import com.hstudy.app.time.SystemAppClock
 import com.hstudy.app.ui.common.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 
 @Composable
 fun ChildTaskListScreen(
@@ -50,10 +52,13 @@ fun ChildTaskListScreen(
     val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
 
     val today = com.hstudy.app.data.repository.PointRepository.getTodayString()
-    val completedIds by app.pointRepository.getCompletedTaskIdsForDate(today).collectAsState(initial = emptyList())
-    // D-03（指令 §4.1 P1-01）：已打卡卡渲染**当日 bizKey 对应的真实审批态**（taskId → 最新态）。
-    // 仓库层单查询（bizKey LIKE 'TASK:%' + date 同源），不逐卡 N+1；Room 失效流让"家长刚审完"即时刷卡。
-    val taskApprovalStates by app.pointRepository.getTaskApprovalStates(today).collectAsState(initial = emptyMap())
+    val todayDate = remember(today) { LocalDate.parse(today) }
+    val completedIds by app.pointRepository.getCompletedTaskIdsForPeriod(tasks, todayDate)
+        .collectAsState(initial = emptySet())
+    // D-03（指令 §4.1 P1-01）：按任务真实频次 periodKey 取最新审批态；完成态与审批态
+    // 各一条活跃任务查询，在 Kotlin 按周期过滤，不逐卡 N+1。Room 失效流让"家长刚审完"即时刷卡。
+    val taskApprovalStates by app.pointRepository.getTaskApprovalStates(tasks, todayDate)
+        .collectAsState(initial = emptyMap())
 
     var selectedCategory by remember { mutableStateOf<TaskCategory?>(null) }
 
@@ -75,11 +80,11 @@ fun ChildTaskListScreen(
      *   不再误用"尚未审批"文案（`approvalStateAtUndo` 由调用点传入渲染时的当日审批态快照；
      *   重打卡后的撤销窗口传 null——此刻最新态已是新 PENDING，走"尚未审批"才准确）
      */
-    val undoAndReport: suspend (Long, String, ApprovalStatus?) -> Unit = { taskId, title, approvalStateAtUndo ->
-        val clawedBack = app.pointRepository.undoTaskCheckIn(taskId)
+    val undoAndReport: suspend (TaskEntity, String, ApprovalStatus?) -> Unit = { task, title, approvalStateAtUndo ->
+        val clawedBack = app.pointRepository.undoTaskCheckIn(task, today)
         // 三个 snackbar 文案字段已改名 revert…/reverted…（W9 T1），调用头不再撞存储边界闸门的
         // undo/checkIn sink 词根，标题因此可以在渲染点取词；`title` 形参保持 canonical
-        // （两处 undoAndReport(task.id, task.title, …) 是业务实参不动，这里只换显示）。
+        // （两处 undoAndReport(task, task.title, …) 是业务实参不动，这里只换显示）。
         snackbarHostState.showSnackbar(
             when {
                 clawedBack > 0 -> strings.revertedClawedBackMessage(localizedPresetText(title, displayLanguage), clawedBack)
@@ -156,7 +161,7 @@ fun ChildTaskListScreen(
                             item { Spacer(modifier = Modifier.height(4.dp)) }
                             items(filteredTasks, key = { it.id }) { task ->
                                 val isCompleted = task.id in completedIds
-                                // D-03：当日 bizKey 的最新审批态；null = 当日无 task 类申请（兜底走原预得文案）。
+                                // D-03：当前频次周期的最新审批态；null = 周期内无 task 类申请（兜底走原预得文案）。
                                 val approvalState = if (isCompleted) taskApprovalStates[task.id] else null
                                 ChildTaskCard(
                                     task = task,
@@ -168,17 +173,14 @@ fun ChildTaskListScreen(
                                         // 检查都不命中），task_completions 当日已有记录也不再插第二条（幂等检查在前）。
                                         // 所以这里只放开守卫，**不改**打卡/计分语义。
                                         if (!isCompleted || approvalState == ApprovalStatus.REJECTED) {
-                                            val earned = task.effectivePoints()
+                                            val earned = task.effectivePoints() + task.bonusPoints
                                             scope.launch {
                                                 // 打卡：只记录完成 + 生成待审申请，此刻**不计入任何积分**；
                                                 // 积分仅在家长审批通过后写入一次。重复打卡不会生成第二条申请。
-                                                app.pointRepository.checkInForTask(task.id, earned, task.title)
+                                                app.pointRepository.checkInForTask(task, today, SystemAppClock)
                                                 AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.CHECKIN))
-                                                // D-03：拒绝后重打卡不新增完成记录（当日 completion 一直在，只是重开审批），
-                                                // "全部完成"判定只在**本次真的新记一条完成**时 +1，避免 isPerfect 多数一个。
-                                                val newlyCompleted = if (isCompleted) 0 else 1
-                                                val isPerfect = tasks.isNotEmpty() && (completedIds.size + newlyCompleted) >= tasks.size
-                                                val newlyUnlocked = com.hstudy.app.ui.common.AchievementManager.evaluate(app, isPerfect)
+                                                // 成就判定从持久化完成记录实时查询，拒绝用陈旧 UI 计数推断完美一天。
+                                                val newlyUnlocked = com.hstudy.app.ui.common.AchievementManager.evaluate(app)
                                                 if (newlyUnlocked.isNotEmpty()) {
                                                     snackbarHostState.showSnackbar(
                                                         strings.achievementUnlockedMessage(
@@ -204,7 +206,7 @@ fun ChildTaskListScreen(
                                                 if (result == SnackbarResult.ActionPerformed) {
                                                     // 刚打卡（含 REJECTED 重打卡）后的撤销窗口：最新态已是**新 PENDING**，
                                                     // 传 null 走"尚未审批"文案（终审 Minor-3：拒绝态快照在此已过时）。
-                                                    scope.launch { undoAndReport(task.id, task.title, null) }
+                                                    scope.launch { undoAndReport(task, task.title, null) }
                                                 }
                                             }
                                         }
@@ -212,7 +214,7 @@ fun ChildTaskListScreen(
                                     onUndo = {
                                         // 终审 Minor-3：显式撤销钮按**渲染点**的当日审批态分流词面——
                                         // REJECTED 走 revertedRejectedMessage，其余零扣回仍走"尚未审批"。
-                                        scope.launch { undoAndReport(task.id, task.title, approvalState) }
+                                        scope.launch { undoAndReport(task, task.title, approvalState) }
                                     },
                                     onUploadProof = { onUploadProof(task.id, task.title) }
                                 )

@@ -2,10 +2,14 @@ package com.hstudy.app.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.datetime.Clock
 
-@Entity(tableName = "rewards")
+@Entity(
+    tableName = "rewards",
+    indices = [Index(value = ["presetKey"], unique = true)]
+)
 data class RewardEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
@@ -16,7 +20,8 @@ data class RewardEntity(
     val category: String = "其他",        // 奖励分类：娱乐/美食/出行/特权/实物/社交
     val isActive: Boolean = true,
     val sortOrder: Int = 0,
-    val createdAt: Long = Clock.System.now().toEpochMilliseconds()
+    val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
+    val presetKey: String? = null     // 历史迁移选出的唯一预设键；非预设及重复行保持 null
 )
 
 @Entity(tableName = "reward_exchanges")

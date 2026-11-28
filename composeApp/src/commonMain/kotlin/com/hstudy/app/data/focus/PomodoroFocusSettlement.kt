@@ -1,5 +1,6 @@
 package com.hstudy.app.data.focus
 
+import com.hstudy.app.data.preferences.PomodoroWriteExpectation
 import com.hstudy.app.data.preferences.UserPreferences
 import com.hstudy.app.data.repository.FocusRepository
 import com.hstudy.app.data.repository.PointRepository
@@ -24,9 +25,10 @@ class PomodoroSettlementResult(
  *    DataStore.edit 事务内核对"FOCUS 段、未结算、同一起锚点、deadline 已过"，赢下认领才同时
  *    落 settled/结算日，并把"今日番茄数 +1、宠物心情 +3"一并放进同一段临界区——
  *    双触发（页面内 + 启动补结算 / 快速重进页面）恰好一次入账与一次统计（要求 4）。
- * 2. **bizKey 幂等可续跑**：recordFocusSession 返回的 sessionId 与结算日当场持久化，
+ * 2. **bizKey 幂等可续跑**：recordPomodoroSession 以起锚点唯一键 INSERT IGNORE + 回查，
+ *    并发 RESUME_DEPOSIT 也返回同一 sessionId；sessionId 与结算日当场持久化，
  *    认领后崩溃的续跑（[PomodoroRestoreAction.RESUME_DEPOSIT]）用同一条
- *    `FOCUS:$sessionId:$date` 补 checkIn，绝不产生第二笔待审单。
+ *    `FOCUS:$sessionId:$date` 补 checkIn，绝不产生第二条专注记录或第二笔待审单。
  * 3. 积分不变量与 bizKey 格式 `FOCUS:$sessionId:$date` 一字不动（红线）；
  *    description 继续走 [CanonicalFocusText.recordDescription]（存储边界，Ruling 25）。
  * 4. 本文件零埋点调用（数据层红线）：POMODORO_COMPLETE 仍只在宿主页面的完成回调里打点。
@@ -63,7 +65,12 @@ object PomodoroFocusSettlement {
         val sessionId = if (session.recordedSessionId != 0L) {
             session.recordedSessionId
         } else {
-            val newId = focusRepository.recordFocusSession(minutes, session.focusTarget, 0)
+            val newId = focusRepository.recordPomodoroSession(
+                durationMinutes = minutes,
+                taskTitle = session.focusTarget,
+                points = 0,
+                sessionStartEpochMs = session.sessionStartEpochMs,
+            )
             userPreferences.markPomodoroFocusRecordId(session.sessionStartEpochMs, newId)
             newId
         }
@@ -77,9 +84,19 @@ object PomodoroFocusSettlement {
                 date = checkInDate,
             )
         }
-        // 终审 M-1：末步整组写会话带 CAS 锚——认领到写回之间孩子"跳过呼吸立即起新番茄"时，
-        // 现存会话起锚点已 ≠ 本段 sessionStartEpochMs，savePomodoroSession 放弃写入保新会话。
-        userPreferences.savePomodoroSession(nextSession, expectedStartEpochMs = session.sessionStartEpochMs)
+        // 终审 M-1 + P2-04：末步带 start/settled/version 三重 CAS。claim 与 recordId 落盘都会
+        // 推进 version，因此这里读取同锚会话的最新版本；若孩子在飞期间起了新锚，start 不匹配，
+        // savePomodoroSession 放弃写入并保住新会话。
+        val current = userPreferences.pomodoroSession.first()
+        val sameAnchor = current?.takeIf { it.sessionStartEpochMs == session.sessionStartEpochMs }
+        userPreferences.savePomodoroSession(
+            nextSession,
+            PomodoroWriteExpectation(
+                startEpochMs = session.sessionStartEpochMs,
+                settled = sameAnchor?.settled ?: session.settled,
+                version = sameAnchor?.version ?: session.version,
+            ),
+        )
         return PomodoroSettlementResult(minutes, session.focusTarget, points, sessionId)
     }
 
@@ -103,7 +120,14 @@ object PomodoroFocusSettlement {
             PomodoroRestoreAction.CLEAR_EXPIRED_BREAK ->
                 // 终审 M-1 同款：清过期 BREAK 也带本段起锚 CAS——bootstrap Room 首查期间孩子已起
                 // 新会话时，静默清会误删新锚，放弃并告警。
-                userPreferences.savePomodoroSession(null, expectedStartEpochMs = session.sessionStartEpochMs)
+                userPreferences.savePomodoroSession(
+                    null,
+                    PomodoroWriteExpectation(
+                        startEpochMs = session.sessionStartEpochMs,
+                        settled = session.settled,
+                        version = session.version,
+                    ),
+                )
 
             PomodoroRestoreAction.RESUME_TICKING -> Unit
         }

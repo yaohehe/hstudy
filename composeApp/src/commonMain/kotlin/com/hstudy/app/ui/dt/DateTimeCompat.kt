@@ -1,6 +1,6 @@
 package com.hstudy.app.ui.dt
 
-import kotlinx.datetime.Clock
+import com.hstudy.app.time.SystemAppClock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -31,7 +31,7 @@ import kotlin.time.TimeSource
  */
 
 /** 当前时刻（epoch millis），替代 System.currentTimeMillis() */
-fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
+fun nowMillis(): Long = SystemAppClock.nowMillis()
 
 /** 单调毫秒时钟（替代 android.os.SystemClock.elapsedRealtime()），用于计时器不受时区/NTP 影响 */
 private val bootMark = TimeSource.Monotonic.markNow()

@@ -1,11 +1,16 @@
 package com.hstudy.app.data.repository
 
+import com.hstudy.app.data.local.DbTransactionRunner
 import com.hstudy.app.data.local.dao.DailyAssignmentDao
 import com.hstudy.app.data.local.entity.DailyAssignmentEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
 
-class AssignmentRepository(private val dao: DailyAssignmentDao) {
+class AssignmentRepository(
+    private val dao: DailyAssignmentDao,
+    private val transactionRunner: DbTransactionRunner,
+    private val pointRepository: PointRepository? = null,
+) {
 
     fun getTodayString(): String = todayString()
 
@@ -40,18 +45,29 @@ class AssignmentRepository(private val dao: DailyAssignmentDao) {
      * 孩子完成布置的任务 - 标记完成并发放积分
      */
     suspend fun completeAssignment(id: Long, onPoints: suspend (Int, String) -> Unit) {
-        val assignment = dao.getAssignmentById(id) ?: return
-        if (assignment.isCompleted) return
-        dao.markCompleted(id, Clock.System.now().toEpochMilliseconds())
-        onPoints(assignment.points, assignment.title)
+        transactionRunner.runInTransaction {
+            val assignment = dao.getAssignmentById(id) ?: return@runInTransaction
+            if (assignment.isCompleted) return@runInTransaction
+            dao.markCompleted(id, Clock.System.now().toEpochMilliseconds())
+            // Keep the points request in the same transaction: a callback failure
+            // rolls back both isCompleted and any nested approval writes.
+            onPoints(assignment.points, assignment.title)
+        }
     }
 
     /**
      * 孩子撤销已完成的布置任务（Antigravity 指令 P1-01，撤销闭环）：
-     * 只回置完成标记；积分侧的取消/扣回由调用方紧接着走
-     * [PointRepository.undoCheckIn]（bizKey=`ASSIGN:id:date`）保持撤销对称（不变量 4）。
+     * 完成标记回置与积分取消/REVERSAL 在同一事务内完成，返回实际扣回积分。
      */
-    suspend fun uncompleteAssignment(id: Long) {
+    suspend fun uncompleteAssignment(id: Long): Int = transactionRunner.runInTransaction {
+        val assignment = dao.getAssignmentById(id) ?: return@runInTransaction 0
+        if (!assignment.isCompleted) return@runInTransaction 0
         dao.markUncompleted(id)
+        val date = assignment.completedAt?.let { PointRepository.completionDateStringOf(it) }
+            ?: getTodayString()
+        pointRepository?.undoCheckIn(
+            bizKey = "ASSIGN:$id:$date",
+            date = date,
+        ) ?: 0
     }
 }
