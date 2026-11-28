@@ -2,6 +2,30 @@ import SwiftUI
 import ComposeApp
 import FirebaseCore
 import FirebaseAnalytics
+import UserNotifications
+
+private let iosNotificationDelegate = IOSNotificationDelegate()
+
+final class IOSNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .badge, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let route = response.notification.request.content.userInfo["extra_route"] as? String {
+            IosPlatformKt.handleIosNotificationRoute(route: route)
+        }
+        completionHandler()
+    }
+}
 
 @main
 struct iOSApp: App {
@@ -16,7 +40,7 @@ struct iOSApp: App {
         #endif
         // Set the notification delegate before SwiftUI creates the root controller so a cold-start
         // notification response is retained in Platform.pendingRoute and passes through the normal gate.
-        IosPlatformKt.installIosNotificationDelegate()
+        UNUserNotificationCenter.current().delegate = iosNotificationDelegate
         IosPlatformKt.doInitIosPlatform(analytics: FirebaseAnalyticsBridge(), appChannel: channel)
     }
 

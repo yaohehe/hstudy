@@ -5,7 +5,6 @@ package com.hstudy.app.platform
 import com.hstudy.app.iosbridge.HStudyFillNotificationContent
 import platform.Foundation.NSDateComponents
 import platform.Foundation.NSLock
-import platform.Foundation.NSObject
 import platform.Foundation.NSUserDefaults
 import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
@@ -13,14 +12,9 @@ import platform.UserNotifications.UNAuthorizationOptionSound
 import platform.UserNotifications.UNCalendarNotificationTrigger
 import platform.UserNotifications.UNMutableNotificationContent
 import platform.UserNotifications.UNNotification
-import platform.UserNotifications.UNNotificationPresentationOptionAlert
-import platform.UserNotifications.UNNotificationPresentationOptionBadge
-import platform.UserNotifications.UNNotificationPresentationOptionSound
 import platform.UserNotifications.UNNotificationRequest
-import platform.UserNotifications.UNNotificationResponse
 import platform.UserNotifications.UNNotificationSound
 import platform.UserNotifications.UNUserNotificationCenter
-import platform.UserNotifications.UNUserNotificationCenterDelegateProtocol
 
 /**
  * iOS 本地提醒：UNUserNotificationCenter + UNCalendarNotificationTrigger。
@@ -33,7 +27,6 @@ class IosNotificationScheduler : NotificationScheduler {
     private val center = UNUserNotificationCenter.currentNotificationCenter()
 
     init {
-        installDelegate()
         center.requestAuthorizationWithOptions(
             UNAuthorizationOptionAlert or UNAuthorizationOptionSound or UNAuthorizationOptionBadge
         ) { _, _ -> }
@@ -46,7 +39,7 @@ class IosNotificationScheduler : NotificationScheduler {
 
         // Freeze the cleanup set before adding replacement requests. Even if removal completes
         // later, it cannot contain any identifier from the new generation.
-        val previousIds = ReminderNotificationIds.legacyIdentifiers(reminder.kind, reminder.id) +
+        val previousIds = ReminderNotificationIds.legacyIdentifiers(reminder.kind, reminder.id.toLong()) +
             if (previousGeneration > 0L) {
                 ReminderNotificationIds.identifiers(reminder.kind, reminder.id.toLong(), previousGeneration)
             } else {
@@ -90,7 +83,7 @@ class IosNotificationScheduler : NotificationScheduler {
 
     override fun cancel(id: Int, kind: ReminderKind) = withGenerationLock {
         val currentGeneration = generation(kind, id)
-        val ids = ReminderNotificationIds.legacyIdentifiers(kind, id) +
+        val ids = ReminderNotificationIds.legacyIdentifiers(kind, id.toLong()) +
             if (currentGeneration > 0L) {
                 ReminderNotificationIds.identifiers(kind, id.toLong(), currentGeneration)
             } else {
@@ -139,11 +132,6 @@ class IosNotificationScheduler : NotificationScheduler {
         private const val ID_PREFIX = ReminderNotificationIds.PREFIX
         private val defaults = NSUserDefaults.standardUserDefaults
         private val generationLock = NSLock()
-        private val sharedDelegate = IosNotificationDelegate()
-
-        internal fun installDelegate() {
-            UNUserNotificationCenter.currentNotificationCenter().delegate = sharedDelegate
-        }
 
         private fun generationKey(kind: ReminderKind, id: Int): String =
             ReminderNotificationIds.base(kind, id.toLong()) + ".generation"
@@ -174,36 +162,4 @@ class IosNotificationScheduler : NotificationScheduler {
             }
         }
     }
-}
-
-/** Keeps a strong reference through the scheduler companion; UNUserNotificationCenter.delegate is weak. */
-internal class IosNotificationDelegate : NSObject(), UNUserNotificationCenterDelegateProtocol {
-    override fun userNotificationCenter(
-        center: UNUserNotificationCenter,
-        willPresentNotification: UNNotification,
-        withCompletionHandler: (ULong) -> Unit,
-    ) {
-        withCompletionHandler(
-            UNNotificationPresentationOptionAlert or
-                UNNotificationPresentationOptionBadge or
-                UNNotificationPresentationOptionSound
-        )
-    }
-
-    override fun userNotificationCenter(
-        center: UNUserNotificationCenter,
-        didReceiveNotificationResponse: UNNotificationResponse,
-        withCompletionHandler: () -> Unit,
-    ) {
-        val route = didReceiveNotificationResponse.notification.request.content.userInfo[NotificationRoutes.EXTRA_ROUTE] as? String
-        if (route != null && NotificationRoutes.isAllowed(route)) {
-            Platform.pendingRoute = route
-        }
-        withCompletionHandler()
-    }
-
-    override fun userNotificationCenter(
-        center: UNUserNotificationCenter,
-        openSettingsForNotification: UNNotification?,
-    ) = Unit
 }
