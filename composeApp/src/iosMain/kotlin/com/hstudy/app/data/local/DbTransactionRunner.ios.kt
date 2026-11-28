@@ -1,5 +1,6 @@
 package com.hstudy.app.data.local
 
+import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
 
 private class IosRoomTransactionRunner(private val database: AppDatabase) : DbTransactionRunner {

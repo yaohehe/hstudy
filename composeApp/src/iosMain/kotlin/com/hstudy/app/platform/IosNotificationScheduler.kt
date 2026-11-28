@@ -48,7 +48,7 @@ class IosNotificationScheduler : NotificationScheduler {
         // later, it cannot contain any identifier from the new generation.
         val previousIds = ReminderNotificationIds.legacyIdentifiers(reminder.kind, reminder.id) +
             if (previousGeneration > 0L) {
-                ReminderNotificationIds.identifiers(reminder.kind, reminder.id, previousGeneration)
+                ReminderNotificationIds.identifiers(reminder.kind, reminder.id.toLong(), previousGeneration)
             } else {
                 emptyList()
             }
@@ -76,7 +76,7 @@ class IosNotificationScheduler : NotificationScheduler {
             val repeats = reminder.kind == ReminderKind.WEEKLY_REPORT || reminder.repeatDaily
             val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(components, repeats)
             val request = UNNotificationRequest.requestWithIdentifier(
-                ReminderNotificationIds.identifier(reminder.kind, reminder.id, nextGeneration, isoWeekday),
+                ReminderNotificationIds.identifier(reminder.kind, reminder.id.toLong(), nextGeneration, isoWeekday),
                 content,
                 trigger,
             )
@@ -92,7 +92,7 @@ class IosNotificationScheduler : NotificationScheduler {
         val currentGeneration = generation(kind, id)
         val ids = ReminderNotificationIds.legacyIdentifiers(kind, id) +
             if (currentGeneration > 0L) {
-                ReminderNotificationIds.identifiers(kind, id, currentGeneration)
+                ReminderNotificationIds.identifiers(kind, id.toLong(), currentGeneration)
             } else {
                 emptyList()
             }
