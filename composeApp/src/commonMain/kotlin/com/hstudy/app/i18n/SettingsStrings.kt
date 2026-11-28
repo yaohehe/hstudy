@@ -189,7 +189,7 @@ package com.hstudy.app.i18n
  * 静态字段（59 个）全部进 `settingsCopyDiffers` 的清单，其中 57 条参与 ZH≠EN，
  * 两个自称词只做成员校验、不进 ZH≠EN（Ruling 6，见上面"自称词规则"那段）。
  *
- * 术语按设计文档 §11：家长审核 = Approval、设备配对 = Pairing（[remoteControlNote] 里的"配对"）、
+ * 术语按设计文档 §11：家长审核 = Approval、手动文件同步 = Manual file sync、
  * 周报 = Weekly Report、连续打卡 = Streak、打卡 = Check in / Checked in、错题 = Mistakes、
  * 专注 = Focus、番茄钟 = Pomodoro、积分 = Points、时长单位 = min。
  *
@@ -198,16 +198,15 @@ package com.hstudy.app.i18n
  * 像测试名的 token 与 commonTest 的 `fun NAME(` 定义集合做成员检查，Task 12 按同一形状重跑过一轮，未解析 0）：下面 7 行的每一个名字都可用 `grep -rn "fun <名字>(" composeApp/src/commonTest/kotlin/com/hstudy/app/i18n/` 复核
  * - 中文量词次·个 → `settingsEnglishDropsTheMeasureWords`
  * - 确定 / 确认 → `settingsOkButtonIsNotTheCommonConfirmButton`
- * - 家长远程控制（分区名）→ `settingsCopyDiffers`
+ * - 手动文件同步（分区名）→ `settingsCopyDiffers`
  * - 每周学习周报（分区名）→ `settingsCopyDiffers` + `emojiStaysInsideTheSettingsTable`
  * - 数据备份与恢复（分区名，本轮补的一行）→ `emojiStaysInsideTheSettingsTable`
  * - 连续打卡天数槽 → `settingsStreakDaysMatchParentHomeForm`
  * - 家长设备兜底 → `settingsDeviceNameFallbackStaysCanonical`
  *
- * **英文侧四处措辞漂移**（审查 round 1 的 Minor：改了 2 处、留 2 处待裁决，逐处判过"改得起改不起"）：
- * - [pushStepNote] 的英文标签是 "Push settings"、[pushSettingsButton] **原**写 "Send settings to child"：
- *   同卡两个动词。已按 [viewStepNote] / [viewProgressButton] 那一对的既有形状统一成
- *   "Push settings" + "Push settings to child"（英文侧改动，中文逐字节未动，无 §11 词条管辖）；
+ * **英文侧措辞漂移**（历史审查记录）：
+ * - 手动文件同步的导出/导入操作统一使用 Export / Import 与 Share，不把分享描述为实时推送或连接；
+ *   字段名 [pushStepNote] / [pushSettingsButton] 为兼容既有表形状保留；
  * - [restoreConfirmButton] 原译 "Restore now" 丢掉了中文 `确认恢复` 的确认语气，已改 "Confirm restore"
  *   （与 [restoreDialogTitle] "Confirm data restore" 同形，也正是 §11"确认 = Confirm"那一条的方向）；
  * - **没改的两处，交给控制器裁决**：① [progressTodayCheckinLabel] 的 "Today's Check-in"（标题式大写）
@@ -269,7 +268,7 @@ data class SettingsStrings(
     val restartAppNote: String,
     val restoreFailureMessage: (detail: String?) -> String,
 
-    // ===== 家长远程控制分区 =====
+    // ===== 手动文件同步分区 =====
     val remoteControlTitle: String,
     val remoteControlNote: String,
     val howToTitle: String,
@@ -293,12 +292,17 @@ data class SettingsStrings(
      */
     val exportChooserTitle: String,
     val settingsExportedMessage: String,
+    val sharePresentedMessage: String,
+    val shareCompletedMessage: String,
+    val shareCancelledMessage: String,
+    val shareFailedMessage: (detail: String?) -> String,
     val exportFailedMessage: (detail: String?) -> String,
     val progressImportedMessage: String,
     val childProgressImportFailedMessage: (detail: String?) -> String,
 
     // ===== 孩子进度卡片 =====
     val progressCardTitle: (deviceName: String) -> String,
+    val progressSnapshotNote: (dbSnapshotAt: String, preferencesSampledAt: String) -> String,
     val progressPointsLabel: String,
     val progressStreakLabel: String,
     val streakDaysValue: (days: Int) -> String,
@@ -390,24 +394,31 @@ val SettingsStringsZh = SettingsStrings(
     restartAppNote = "请重新启动 App 以生效",                               // :184
     restoreFailureMessage = { detail -> "❌ 恢复失败：$detail" },            // :187
 
-    // ===== 家长远程控制分区 =====
-    remoteControlTitle = "📲 家长远程控制",                                  // :199
-    remoteControlNote = "孩子有自己的手机/平板？配对后您可以在自己手机上查看孩子进度、推送任务设置。",  // :201
-    howToTitle = "使用方法",                                               // :212
-    pushStepNote = "📤 推送设置：把您配置的任务/奖励发送给孩子设备应用",            // :213
-    viewStepNote = "📥 查看进度：接收孩子发来的学习进度报告",                    // :215
-    transportNote = "💡 传输方式：蓝牙/WiFi直连/微信/邮件等任何方式均可",          // :217
-    pushSettingsButton = "📤 推送设置给孩子",                                // :242
-    viewProgressButton = "📥 查看孩子进度",                                 // :248
-    processingLabel = "正在处理…",                                         // :255
-    exportChooserTitle = "发送家长设置到孩子设备",                             // :232
-    settingsExportedMessage = "✅ 设置已导出，请发送给孩子",                    // :234
-    exportFailedMessage = { detail -> "导出失败：$detail" },                 // :236
-    progressImportedMessage = "✅ 已获取孩子最新进度",                        // :55
-    childProgressImportFailedMessage = { detail -> "导入失败：$detail" },     // :57（异常文本原样透传）
+    // ===== 手动文件同步分区 =====
+    remoteControlTitle = "📲 手动文件同步",
+    remoteControlNote = "在设备间手动同步：导出并分享 JSON 家长设置文件，或在另一台设备导入 JSON 孩子进度文件。",
+    howToTitle = "手动同步方法",
+    pushStepNote = "📤 导出设置：导出 JSON 家长设置文件，并通过系统分享面板发送",
+    viewStepNote = "📥 导入进度：接收孩子分享的 JSON 进度文件，再手动导入",
+    transportNote = "💡 传输方式：使用系统分享面板发送 JSON 文件，再在另一台设备手动导入",
+    pushSettingsButton = "📤 导出并分享设置",
+    viewProgressButton = "📥 导入 JSON 进度",
+    processingLabel = "正在处理…",
+    exportChooserTitle = "导出 JSON 家长设置文件",
+    settingsExportedMessage = "✅ JSON 设置文件已导出",
+    sharePresentedMessage = "📤 分享面板已打开，尚未确认发送",
+    shareCompletedMessage = "✅ 分享已完成",
+    shareCancelledMessage = "↩️ 已取消分享",
+    shareFailedMessage = { detail -> "❌ 分享失败：$detail" },
+    exportFailedMessage = { detail -> "导出失败：$detail" },
+    progressImportedMessage = "✅ 已导入孩子 JSON 进度文件",
+    childProgressImportFailedMessage = { detail -> "JSON 进度导入失败：$detail" },
 
     // ===== 孩子进度卡片 =====
     progressCardTitle = { deviceName -> "📊 ${deviceName}的学习进度" },       // :267
+    progressSnapshotNote = { dbSnapshotAt, preferencesSampledAt ->
+        "数据库快照：$dbSnapshotAt；设备名采样：$preferencesSampledAt（近似摘要）"
+    },
     progressPointsLabel = "⭐ 总积分",                                     // :270
     progressStreakLabel = "🔥 连续打卡",                                   // :272
     streakDaysValue = { days -> "${days}天" },                            // :273
@@ -480,24 +491,31 @@ val SettingsStringsEn = SettingsStrings(
     restartAppNote = "Please reopen the app for the changes to take effect",
     restoreFailureMessage = { detail -> "❌ Restore failed: $detail" },
 
-    // ===== 家长远程控制分区 =====
-    remoteControlTitle = "📲 Remote control",
-    remoteControlNote = "Does your child have their own phone or tablet? Once paired, you can check their progress and send task settings from your own device.",
-    howToTitle = "How it works",
-    pushStepNote = "📤 Push settings — send the tasks and rewards you set up to your child's device",
-    viewStepNote = "📥 View progress — receive the study report your child sends you",
-    transportNote = "💡 Transfer method — Bluetooth, Wi-Fi Direct, WeChat, email, any of them works",
-    pushSettingsButton = "📤 Push settings to child",
-    viewProgressButton = "📥 View child's progress",
+    // ===== Manual file sync =====
+    remoteControlTitle = "📲 Manual file sync",
+    remoteControlNote = "Sync between devices manually: export and share a JSON parent-settings file, or import a JSON child-progress file on the other device.",
+    howToTitle = "How to sync manually",
+    pushStepNote = "📤 Export settings — create a JSON parent-settings file and send it with the system share sheet",
+    viewStepNote = "📥 Import progress — receive the JSON progress file your child shares, then import it manually",
+    transportNote = "💡 Transfer method — share the JSON file, then import it manually on the other device",
+    pushSettingsButton = "📤 Export and share settings",
+    viewProgressButton = "📥 Import JSON progress",
     processingLabel = "Working…",
-    exportChooserTitle = "Send parent settings to your child's device",
-    settingsExportedMessage = "✅ Settings exported — send the file to your child",
+    exportChooserTitle = "Export JSON parent settings",
+    settingsExportedMessage = "✅ JSON settings file exported",
+    sharePresentedMessage = "📤 Share sheet opened — delivery is not confirmed",
+    shareCompletedMessage = "✅ Share completed",
+    shareCancelledMessage = "↩️ Sharing cancelled",
+    shareFailedMessage = { detail -> "❌ Share failed: $detail" },
     exportFailedMessage = { detail -> "Export failed: $detail" },
-    progressImportedMessage = "✅ Latest progress from your child is loaded",
-    childProgressImportFailedMessage = { detail -> "Import failed: $detail" },
+    progressImportedMessage = "✅ Child's JSON progress file imported",
+    childProgressImportFailedMessage = { detail -> "JSON progress import failed: $detail" },
 
     // ===== 孩子进度卡片 =====
     progressCardTitle = { deviceName -> "📊 Study progress from $deviceName" },
+    progressSnapshotNote = { dbSnapshotAt, preferencesSampledAt ->
+        "DB snapshot: $dbSnapshotAt; device name sampled: $preferencesSampledAt (approximate summary)"
+    },
     progressPointsLabel = "⭐ Total points",
     progressStreakLabel = "🔥 Streak",
     streakDaysValue = { days -> if (days == 1) "$days day" else "$days days" },

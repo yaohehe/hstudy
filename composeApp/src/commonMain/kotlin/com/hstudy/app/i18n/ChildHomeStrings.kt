@@ -123,6 +123,10 @@ data class ChildHomeStrings(
     val sendProgressButton: String,
     val shareProgressChooserTitle: String,
     val progressExportedMessage: String,
+    val sharePresentedMessage: String,
+    val shareCompletedMessage: String,
+    val shareCancelledMessage: String,
+    val shareFailedMessage: (detail: String?) -> String,
     val exportFailedMessage: String,
     val syncingLabel: String,
 
@@ -281,7 +285,11 @@ val ChildHomeStringsZh = ChildHomeStrings(
     receiveParentSettingsButton = "📥 接收家长设置",                            // :430
     sendProgressButton = "📤 发送进度给家长",                                   // :449
     shareProgressChooserTitle = "发送学习进度给家长",                            // :438
-    progressExportedMessage = "✅ 进度已导出，请发送给家长",                      // :440
+    progressExportedMessage = "✅ 进度文件已导出",
+    sharePresentedMessage = "📤 分享面板已打开，尚未确认发送",
+    shareCompletedMessage = "✅ 分享已完成",
+    shareCancelledMessage = "↩️ 已取消分享",
+    shareFailedMessage = { detail -> "❌ 分享失败：$detail" },
     exportFailedMessage = "导出失败",                                          // :442
     syncingLabel = "正在处理…",                                                // :452
 
@@ -433,7 +441,11 @@ val ChildHomeStringsEn = ChildHomeStrings(
     receiveParentSettingsButton = "📥 Receive parent settings",
     sendProgressButton = "📤 Send progress to parent",
     shareProgressChooserTitle = "Send study progress to parent",
-    progressExportedMessage = "✅ Progress exported — send it to your parent",
+    progressExportedMessage = "✅ Progress file exported",
+    sharePresentedMessage = "📤 Share sheet opened — delivery is not confirmed",
+    shareCompletedMessage = "✅ Share completed",
+    shareCancelledMessage = "↩️ Sharing cancelled",
+    shareFailedMessage = { detail -> "❌ Share failed: $detail" },
     exportFailedMessage = "Export failed",
     syncingLabel = "Working…",
 

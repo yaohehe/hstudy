@@ -9,10 +9,77 @@ import com.hstudy.app.data.repository.todayString
 import com.hstudy.app.i18n.AppLanguage
 import com.hstudy.app.i18n.CanonicalFocusText
 import com.hstudy.app.platform.Platform
+import com.hstudy.app.security.ParentPasswordHasher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import okio.Path.Companion.toPath
 import kotlin.random.Random
+
+/** 调用方读取到的 Pomodoro 会话快照；三个字段必须全部匹配才允许转换。 */
+data class PomodoroWriteExpectation(
+    val startEpochMs: Long,
+    val settled: Boolean,
+    val version: Long,
+)
+
+const val MEMORY_TRAINING_SCHEMA_VERSION = 1
+
+/** 数字记忆训练的持久化状态；schema 不匹配时读取方丢弃，避免旧格式误解释。 */
+data class MemoryTrainingState(
+    val schemaVersion: Int = MEMORY_TRAINING_SCHEMA_VERSION,
+    val phase: Phase = Phase.IDLE,
+    val level: Int = 3,
+    val sequence: String = "",
+    val bestLevel: Int = 0,
+    val lastCorrect: Boolean = false,
+    val showUntilEpochMs: Long = 0L,
+) {
+    enum class Phase { IDLE, SHOWING, INPUT, RESULT }
+
+    /** 只结束触发定时器的那一轮 SHOWING；陈旧定时器不能改写新序列。 */
+    fun afterShow(expectedSequence: String, expectedShowUntilEpochMs: Long): MemoryTrainingState =
+        if (phase == Phase.SHOWING && sequence == expectedSequence && showUntilEpochMs == expectedShowUntilEpochMs) {
+            copy(phase = Phase.INPUT)
+        } else {
+            this
+        }
+
+    /** 起新轮前校验调用方所见的 phase/sequence，拒绝重复点击或陈旧页面快照。 */
+    fun startRound(
+        sequence: String,
+        level: Int,
+        showUntilEpochMs: Long,
+        expectedPhase: Phase,
+        expectedSequence: String,
+    ): MemoryTrainingState =
+        if (phase == expectedPhase && this.sequence == expectedSequence) {
+            copy(
+                phase = Phase.SHOWING,
+                level = level,
+                sequence = sequence,
+                lastCorrect = false,
+                showUntilEpochMs = showUntilEpochMs,
+            )
+        } else {
+            this
+        }
+
+    /** 仅接受仍在 INPUT 且序列未变的答案；同一轮重复提交不会再次更新结果。 */
+    fun answer(input: String, expectedSequence: String): MemoryTrainingState =
+        if (phase == Phase.INPUT && sequence == expectedSequence) {
+            val correct = input == sequence
+            copy(
+                phase = Phase.RESULT,
+                bestLevel = if (correct) maxOf(bestLevel, level) else bestLevel,
+                lastCorrect = correct,
+            )
+        } else {
+            this
+        }
+}
 
 /**
  * DataStore 必须每文件单实例：原 Android 版通过 Context.preferencesDataStore(name = "hstudy_prefs")
@@ -25,15 +92,22 @@ private val dataStoreInstance: DataStore<Preferences> by lazy {
     )
 }
 
-class UserPreferences {
+class UserPreferences(private val dataStore: DataStore<Preferences> = dataStoreInstance) {
 
-    private val dataStore: DataStore<Preferences> get() = dataStoreInstance
+    /** Test-only raw credential snapshot; null fields mean the corresponding key is absent. */
+    internal data class ParentPasswordRawSnapshot(
+        val value: String?,
+        val format: String?,
+    )
 
     companion object {
         val ROLE_KEY = stringPreferencesKey("current_role") // "parent" or "child"
         val LANGUAGE_KEY = stringPreferencesKey("app_language") // "system" | "zh" | "en"
         val HAS_ONBOARDED = booleanPreferencesKey("has_onboarded")
-        val PARENT_PASSWORD = stringPreferencesKey("parent_password") // 家长密码
+        val PARENT_PASSWORD = stringPreferencesKey("parent_password") // 仅存版本化 PBKDF2 编码值；旧明文首次验证成功后原子替换
+        val PARENT_PASSWORD_FORMAT = stringPreferencesKey("parent_password_format") // ENCODED_V1 | LEGACY；缺省按 LEGACY
+        internal const val PARENT_PASSWORD_FORMAT_ENCODED_V1 = "ENCODED_V1"
+        internal const val PARENT_PASSWORD_FORMAT_LEGACY = "LEGACY"
         val PAIR_CODE = stringPreferencesKey("pair_code")            // 设备配对码
         val DEVICE_NAME = stringPreferencesKey("device_name")        // 本设备名称/角色
         val PAIRED_DEVICE = stringPreferencesKey("paired_device")    // 已配对设备名称
@@ -76,6 +150,14 @@ class UserPreferences {
         val POMODORO_SESSION_SETTLED = booleanPreferencesKey("pomodoro_active_settled") // 结算认领已赢（先置位后入账）
         val POMODORO_SESSION_FOCUS_RECORD_ID = longPreferencesKey("pomodoro_active_focus_record_id") // 已落 focus_sessions 行 id
         val POMODORO_SESSION_SETTLE_DATE = stringPreferencesKey("pomodoro_active_settle_date") // 结算日（bizKey 日期段）
+        val POMODORO_SESSION_VERSION = longPreferencesKey("pomodoro_active_version") // 单调递增会话版本
+        val MEMORY_TRAINING_SCHEMA = intPreferencesKey("memory_training_schema_version")
+        val MEMORY_TRAINING_PHASE = stringPreferencesKey("memory_training_phase")
+        val MEMORY_TRAINING_LEVEL = intPreferencesKey("memory_training_level")
+        val MEMORY_TRAINING_SEQUENCE = stringPreferencesKey("memory_training_sequence")
+        val MEMORY_TRAINING_BEST_LEVEL = intPreferencesKey("memory_training_best_level")
+        val MEMORY_TRAINING_LAST_CORRECT = booleanPreferencesKey("memory_training_last_correct")
+        val MEMORY_TRAINING_SHOW_UNTIL = longPreferencesKey("memory_training_show_until_epoch_ms")
     }
 
     val currentRole: Flow<String?> = dataStore.data.map { it[ROLE_KEY] }
@@ -135,17 +217,77 @@ class UserPreferences {
 
     // ===== 家长密码 =====
     suspend fun setParentPassword(password: String) {
-        dataStore.edit { it[PARENT_PASSWORD] = password }
+        val encoded = withContext(Dispatchers.Default) { ParentPasswordHasher.hash(password) }
+        dataStore.edit {
+            it[PARENT_PASSWORD] = encoded
+            it[PARENT_PASSWORD_FORMAT] = PARENT_PASSWORD_FORMAT_ENCODED_V1
+        }
     }
 
     suspend fun clearParentPassword() {
-        dataStore.edit { it.remove(PARENT_PASSWORD) }
+        dataStore.edit {
+            it.remove(PARENT_PASSWORD)
+            it.remove(PARENT_PASSWORD_FORMAT)
+        }
     }
 
+    /**
+     * 校验与旧明文迁移共用一次 DataStore.edit：读值、校验和替换明文都在同一事务内完成。
+     * parent_password_format 是唯一格式判据；缺省按 LEGACY，未知标记 fail-closed。
+     * PBKDF2 在 Default 线程执行，避免阻塞调用方 Main 线程或 DataStore actor。
+     * 错误密码不写任何值；成功后编码值与 ENCODED_V1 标记一起原子提交。
+     */
     suspend fun verifyParentPassword(input: String): Boolean {
-        var stored: String? = null
-        dataStore.edit { stored = it[PARENT_PASSWORD] }
-        return stored != null && stored == input
+        var verified = false
+        dataStore.edit { prefs ->
+            val stored = prefs[PARENT_PASSWORD]
+            if (stored.isNullOrEmpty()) return@edit
+
+            when (prefs[PARENT_PASSWORD_FORMAT]) {
+                PARENT_PASSWORD_FORMAT_ENCODED_V1 -> {
+                    verified = withContext(Dispatchers.Default) {
+                        ParentPasswordHasher.verify(input, stored)
+                    }
+                }
+                PARENT_PASSWORD_FORMAT_LEGACY, null -> {
+                    if (stored == input) {
+                        val encoded = withContext(Dispatchers.Default) {
+                            ParentPasswordHasher.hash(input)
+                        }
+                        prefs[PARENT_PASSWORD] = encoded
+                        prefs[PARENT_PASSWORD_FORMAT] = PARENT_PASSWORD_FORMAT_ENCODED_V1
+                        verified = true
+                    }
+                }
+                else -> Unit
+            }
+        }
+        return verified
+    }
+
+    /** 测试夹具专用：原样快照值与格式标记，绝不经 setParentPassword 二次哈希。 */
+    internal suspend fun snapshotParentPasswordRawForTest(): ParentPasswordRawSnapshot {
+        val prefs = dataStore.data.first()
+        return ParentPasswordRawSnapshot(
+            value = prefs[PARENT_PASSWORD],
+            format = prefs[PARENT_PASSWORD_FORMAT],
+        )
+    }
+
+    /** 测试夹具专用：在一次 edit 中原样恢复值与格式标记（包括两者均缺失）。 */
+    internal suspend fun restoreParentPasswordRawForTest(snapshot: ParentPasswordRawSnapshot) {
+        dataStore.edit { prefs ->
+            if (snapshot.value == null) {
+                prefs.remove(PARENT_PASSWORD)
+            } else {
+                prefs[PARENT_PASSWORD] = snapshot.value
+            }
+            if (snapshot.format == null) {
+                prefs.remove(PARENT_PASSWORD_FORMAT)
+            } else {
+                prefs[PARENT_PASSWORD_FORMAT] = snapshot.format
+            }
+        }
     }
 
     // ===== 设备配对 =====
@@ -317,9 +459,82 @@ class UserPreferences {
     // ===== 舒尔特方格专注训练个人最佳记录（自我竞赛，激发反复练习）=====
     val focusTrainingBestMs: Flow<Long> = dataStore.data.map { it[FOCUS_TRAINING_BEST_MS] ?: 0L }
 
-    /** 更新专注训练个人最佳用时（仅当创新纪录时调用） */
-    suspend fun setFocusTrainingBest(ms: Long) {
-        dataStore.edit { it[FOCUS_TRAINING_BEST_MS] = ms }
+    /** 原子更新专注训练个人最佳用时；返回 true 表示本次结果是新纪录。 */
+    suspend fun tryUpdateFocusTrainingBest(candidateMs: Long): Boolean {
+        if (candidateMs <= 0L) return false
+        var updated = false
+        dataStore.edit { prefs ->
+            val current = prefs[FOCUS_TRAINING_BEST_MS] ?: 0L
+            if (current == 0L || candidateMs < current) {
+                prefs[FOCUS_TRAINING_BEST_MS] = candidateMs
+                updated = true
+            }
+        }
+        return updated
+    }
+
+    // ===== 数字记忆训练状态（跨导航/跨进程恢复）=====
+    val memoryTrainingState: Flow<MemoryTrainingState?> = dataStore.data.map { readMemoryTrainingState(it) }
+
+    private fun readMemoryTrainingState(prefs: Preferences): MemoryTrainingState? {
+        if ((prefs[MEMORY_TRAINING_SCHEMA] ?: 0) != MEMORY_TRAINING_SCHEMA_VERSION) return null
+        val phase = runCatching {
+            MemoryTrainingState.Phase.valueOf(prefs[MEMORY_TRAINING_PHASE] ?: MemoryTrainingState.Phase.IDLE.name)
+        }.getOrDefault(MemoryTrainingState.Phase.IDLE)
+        return MemoryTrainingState(
+            schemaVersion = MEMORY_TRAINING_SCHEMA_VERSION,
+            phase = phase,
+            level = (prefs[MEMORY_TRAINING_LEVEL] ?: 3).coerceAtLeast(3),
+            sequence = prefs[MEMORY_TRAINING_SEQUENCE] ?: "",
+            bestLevel = (prefs[MEMORY_TRAINING_BEST_LEVEL] ?: 0).coerceAtLeast(0),
+            lastCorrect = prefs[MEMORY_TRAINING_LAST_CORRECT] ?: false,
+            showUntilEpochMs = prefs[MEMORY_TRAINING_SHOW_UNTIL] ?: 0L,
+        )
+    }
+
+    suspend fun saveMemoryTrainingState(state: MemoryTrainingState) {
+        require(state.schemaVersion == MEMORY_TRAINING_SCHEMA_VERSION) {
+            "Unsupported memory training schema: ${state.schemaVersion}"
+        }
+        require(state.level >= 3) { "Memory training level must be at least 3" }
+        require(state.bestLevel >= 0) { "Memory training best level cannot be negative" }
+        dataStore.edit { prefs ->
+            prefs.writeMemoryTrainingState(state)
+        }
+    }
+
+    /**
+     * 串行更新数字记忆状态：读取、转换、校验和写入都在同一个 DataStore.edit 内完成。
+     * 返回 true 表示状态确实变化；屏幕转换器用 phase/sequence 守卫拒绝陈旧快照。
+     */
+    suspend fun updateMemoryTrainingState(
+        transform: (MemoryTrainingState) -> MemoryTrainingState,
+    ): Boolean {
+        var changed = false
+        dataStore.edit { prefs ->
+            val current = readMemoryTrainingState(prefs) ?: MemoryTrainingState()
+            val next = transform(current)
+            require(next.schemaVersion == MEMORY_TRAINING_SCHEMA_VERSION) {
+                "Unsupported memory training schema: ${next.schemaVersion}"
+            }
+            require(next.level >= 3) { "Memory training level must be at least 3" }
+            require(next.bestLevel >= 0) { "Memory training best level cannot be negative" }
+            if (next != current) {
+                prefs.writeMemoryTrainingState(next)
+                changed = true
+            }
+        }
+        return changed
+    }
+
+    private fun MutablePreferences.writeMemoryTrainingState(state: MemoryTrainingState) {
+        this[MEMORY_TRAINING_SCHEMA] = state.schemaVersion
+        this[MEMORY_TRAINING_PHASE] = state.phase.name
+        this[MEMORY_TRAINING_LEVEL] = state.level
+        this[MEMORY_TRAINING_SEQUENCE] = state.sequence
+        this[MEMORY_TRAINING_BEST_LEVEL] = state.bestLevel
+        this[MEMORY_TRAINING_LAST_CORRECT] = state.lastCorrect
+        this[MEMORY_TRAINING_SHOW_UNTIL] = state.showUntilEpochMs
     }
 
     // ===== 连续复习里程碑奖励（巩固每日复习习惯）=====
@@ -408,29 +623,59 @@ class UserPreferences {
             settled = prefs[POMODORO_SESSION_SETTLED] ?: false,
             recordedSessionId = prefs[POMODORO_SESSION_FOCUS_RECORD_ID] ?: 0L,
             settleDate = prefs[POMODORO_SESSION_SETTLE_DATE] ?: "",
+            version = prefs[POMODORO_SESSION_VERSION] ?: 0L,
         )
     }
 
     /**
      * 整组写入/整组清除（null=清会话；结算完成、停止、过期 BREAK 静默清都走这里）。
      *
-     * 终审 M-1（结算写会话无条件覆盖竞态）：新增 [expectedStartEpochMs] CAS 锚——非 null 时，
-     * 读-判-写在同一个 `dataStore.edit` 事务内核对"现存会话的起锚点 == expectedStart"，**仅一致才
-     * 写入/清空**；不一致（结算在飞期间孩子起了新番茄，新锚已落库）则放弃整组写入并 println 告警，
-     * 绝不用旧结算的产物（null 或旧 BREAK）静默清空/覆盖新会话。缺省 null = 不校验，
-     * UI 起锚/暂停/恢复等"新会话写入方"调用点行为零变化（红线）。
+     * [expectation] 非 null 时在同一个 DataStore.edit 事务内核对起锚点、settled 与 version；
+     * 暂停/恢复/停止等 UI 转换必须传它，陈旧快照返回 false。已结算会话只接受显式结算续跑
+     * （清会话、转 BREAK 或保留 settled 的 FOCUS），拒绝一切暂停/恢复类回写。
+     *
+     * 缺省 null 仅用于**新起锚**：当前必须无会话，或写入一个不同 start 的未结算 FOCUS 段。
+     * 无锚清除、同锚覆盖、BREAK 起锚与已结算会话回写一律拒绝；显式转换必须传 [expectation]。
      */
-    suspend fun savePomodoroSession(state: PomodoroSessionState?, expectedStartEpochMs: Long? = null) {
+    suspend fun savePomodoroSession(
+        state: PomodoroSessionState?,
+        expectation: PomodoroWriteExpectation? = null,
+    ): Boolean {
+        var wrote = false
         dataStore.edit { prefs ->
-            if (expectedStartEpochMs != null &&
-                (prefs[POMODORO_SESSION_START] ?: 0L) != expectedStartEpochMs
-            ) {
-                println(
-                    "[Pomodoro][CAS] savePomodoroSession 放弃：expectedStart=$expectedStartEpochMs " +
-                        "但现存会话 start=${prefs[POMODORO_SESSION_START]}（结算在飞期间已起新锚，保新会话）"
-                )
-                return@edit
+            val current = readPomodoroSession(prefs)
+            if (expectation == null) {
+                val isNewAnchor = state != null &&
+                    (current == null || state.sessionStartEpochMs != current.sessionStartEpochMs) &&
+                    state.phase == PomodoroSessionPhase.FOCUS &&
+                    !state.settled
+                if (!isNewAnchor) {
+                    println("[Pomodoro][CAS] savePomodoroSession 放弃：无锚写入只能启动新的 FOCUS 段")
+                    return@edit
+                }
+            } else {
+                if (current == null ||
+                    current.sessionStartEpochMs != expectation.startEpochMs ||
+                    current.settled != expectation.settled ||
+                    current.version != expectation.version
+                ) {
+                    println(
+                        "[Pomodoro][CAS] savePomodoroSession 放弃：expected=$expectation " +
+                            "但现存会话=$current"
+                    )
+                    return@edit
+                }
+                if (current.settled) {
+                    val explicitSettlement = expectation.settled && state != current &&
+                        (state == null || state.phase == PomodoroSessionPhase.BREAK ||
+                            (state.phase == PomodoroSessionPhase.FOCUS && state.settled))
+                    if (!explicitSettlement) {
+                        println("[Pomodoro][CAS] savePomodoroSession 放弃：已结算会话拒绝非结算转换")
+                        return@edit
+                    }
+                }
             }
+
             if (state == null) {
                 prefs.remove(POMODORO_SESSION_START)
                 prefs.remove(POMODORO_SESSION_PLANNED_MIN)
@@ -441,6 +686,7 @@ class UserPreferences {
                 prefs.remove(POMODORO_SESSION_SETTLED)
                 prefs.remove(POMODORO_SESSION_FOCUS_RECORD_ID)
                 prefs.remove(POMODORO_SESSION_SETTLE_DATE)
+                prefs.remove(POMODORO_SESSION_VERSION)
             } else {
                 prefs[POMODORO_SESSION_START] = state.sessionStartEpochMs
                 prefs[POMODORO_SESSION_PLANNED_MIN] = state.plannedMinutes
@@ -451,8 +697,12 @@ class UserPreferences {
                 prefs[POMODORO_SESSION_SETTLED] = state.settled
                 prefs[POMODORO_SESSION_FOCUS_RECORD_ID] = state.recordedSessionId
                 prefs[POMODORO_SESSION_SETTLE_DATE] = state.settleDate
+                prefs[POMODORO_SESSION_VERSION] =
+                    if (expectation != null) expectation.version + 1L else state.version
             }
+            wrote = true
         }
+        return wrote
     }
 
     /**
@@ -478,6 +728,7 @@ class UserPreferences {
                 val today = todayString()
                 prefs[POMODORO_SESSION_SETTLED] = true
                 prefs[POMODORO_SESSION_SETTLE_DATE] = today
+                prefs[POMODORO_SESSION_VERSION] = session.version + 1L
                 val raw = prefs[POMODORO_TODAY_COUNT] ?: ""
                 val current = if (raw.startsWith("$today:")) raw.substringAfter(":").toIntOrNull() ?: 0 else 0
                 prefs[POMODORO_TODAY_COUNT] = "$today:${current + 1}"
@@ -494,8 +745,11 @@ class UserPreferences {
      */
     suspend fun markPomodoroFocusRecordId(expectedStartEpochMs: Long, recordId: Long) {
         dataStore.edit { prefs ->
-            if (prefs[POMODORO_SESSION_START] == expectedStartEpochMs) {
+            if (prefs[POMODORO_SESSION_START] == expectedStartEpochMs &&
+                (prefs[POMODORO_SESSION_FOCUS_RECORD_ID] ?: 0L) != recordId
+            ) {
                 prefs[POMODORO_SESSION_FOCUS_RECORD_ID] = recordId
+                prefs[POMODORO_SESSION_VERSION] = (prefs[POMODORO_SESSION_VERSION] ?: 0L) + 1L
             }
         }
     }
@@ -517,6 +771,7 @@ class UserPreferences {
 
     // ===== 每日必须任务扣分追踪 =====
     val lastMandatoryPenaltyDate: Flow<String?> = dataStore.data.map { it[LAST_MANDATORY_PENALTY_DATE] }
+
 
     /** 记录已处理每日必须扣分的最后日期 */
     suspend fun setLastMandatoryPenaltyDate(date: String) {

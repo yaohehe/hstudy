@@ -277,7 +277,7 @@ object CanonicalFocusText {
         TARGET_FREE_STUDY, TARGET_REVIEW_MISTAKES, TARGET_PREVIEW_LESSON, TARGET_FINISH_HOMEWORK,
     )
 
-    /** 宿主页 :174 迁移前的原文模板，交给 `pointApprovalRepository.submitApproval` 的描述列 */
+    /** 宿主页 :174 迁移前的原文模板，交给 `pointRepository.checkIn` 的描述列 */
     fun recordDescription(target: String, minutes: Int): String = "专注「$target」${minutes}分钟"
 }
 

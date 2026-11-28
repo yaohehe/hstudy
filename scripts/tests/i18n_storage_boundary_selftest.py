@@ -313,10 +313,13 @@ def main():
     reserved_with_decl = [s for s in gate.RESERVED_STEMS if any(n.startswith(s) for n in declared)]
     check("RESERVED_STEMS 目前在 commonMain 仍无声明（一旦有了就必须搬进 SINK_STEMS）",
           not reserved_with_decl, "%s 已出现真实声明，请搬进 SINK_STEMS" % reserved_with_decl)
-    check("RESERVED_STEMS 仍然被 fixture 覆盖（预留不等于免检）",
-          all(any(s.startswith(r) for s in reported_all) for r in gate.RESERVED_STEMS),
-          "没有 fixture 的预留词根：%s" % [r for r in gate.RESERVED_STEMS
-                                          if not any(s.startswith(r) for s in reported_all)])
+    # 空预留表没有可覆盖词根，不制造恒真断言；upsert 搬入 SINK_STEMS 后已由上面的
+    # fixture 命中与真实声明双向对账覆盖。非空预留表仍逐词根要求 fixture。
+    if gate.RESERVED_STEMS:
+        check("RESERVED_STEMS 仍然被 fixture 覆盖（预留不等于免检）",
+              all(any(s.startswith(r) for s in reported_all) for r in gate.RESERVED_STEMS),
+              "没有 fixture 的预留词根：%s" % [r for r in gate.RESERVED_STEMS
+                                              if not any(s.startswith(r) for s in reported_all)])
     for root in gate.SINK_CAPSUFFIX:
         got = [s for s in reported_all if capsuffix_re.match(s) and s.startswith(root)]
         ghost = [s for s in got if s not in declared]

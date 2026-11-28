@@ -41,5 +41,6 @@ data class TaskCompletionEntity(
     val completedAt: Long = Clock.System.now().toEpochMilliseconds(),
     val pointsEarned: Int,
     val note: String = "",
-    val date: String = ""                // yyyy-MM-dd 格式
+    val date: String = "",               // yyyy-MM-dd 格式
+    val frequencyPeriod: String? = null   // 打卡时的规范频次周期键；历史行回填前为空
 )

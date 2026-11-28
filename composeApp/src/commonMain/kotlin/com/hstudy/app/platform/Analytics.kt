@@ -22,7 +22,7 @@ sealed class AnalyticsEvent {
     data class ReminderScheduled(val kind: ReminderKind) : AnalyticsEvent()
     data class LanguageChanged(val to: AppLanguage) : AnalyticsEvent()
     object BackupExported : AnalyticsEvent()
-    object PairingCompleted : AnalyticsEvent()
+    object SyncConfigImported : AnalyticsEvent()
 
     enum class Feature {
         POMODORO_START, POMODORO_COMPLETE, CHECKIN, LUCKY_DRAW,
@@ -39,7 +39,7 @@ object AnalyticsMapping {
             is AnalyticsEvent.ReminderScheduled -> "reminder_scheduled" to mapOf("kind" to event.kind.name.lowercase())
             is AnalyticsEvent.LanguageChanged -> "language_changed" to mapOf("to" to event.to.toStorageValue())
             AnalyticsEvent.BackupExported -> "backup_exported" to emptyMap()
-            AnalyticsEvent.PairingCompleted -> "pairing_completed" to emptyMap()
+            AnalyticsEvent.SyncConfigImported -> "sync_config_imported" to emptyMap()
         }
         // spec §6：超长丢弃而非截断，避免把内容裁成可猜的片段
         return name to params.filterValues { it.length <= 100 }

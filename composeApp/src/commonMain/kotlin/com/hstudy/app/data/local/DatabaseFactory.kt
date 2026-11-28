@@ -5,10 +5,22 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.hstudy.app.platform.Platform
 import com.hstudy.app.platform.ioDispatcher
 import com.hstudy.app.platform.systemFileSystem
+import okio.Path.Companion.toPath
 
 private var instance: AppDatabase? = null
 
 fun getAppDatabase(): AppDatabase = instance ?: buildAppDatabase().also { instance = it }
+
+/**
+ * Closes and clears the process-wide Room instance so the next [getAppDatabase] call builds
+ * a fresh driver-backed instance. Room 2.7's BundledSQLiteDriver does not support reopening a
+ * closed Room database through its existing openHelper.
+ */
+fun resetAppDatabase() {
+    val cached = instance
+    instance = null
+    cached?.close()
+}
 
 /** 数据库文件名（历史约定，v2.88 起同名） */
 private const val DB_NAME = "hstudy_db"
@@ -16,11 +28,23 @@ private const val DB_NAME = "hstudy_db"
 fun buildAppDatabase(): AppDatabase {
     // Android 老用户兼容：原 Room 数据库位于 <dataDir>/databases/hstudy_db
     val dbFile = "${Platform.dataDir}/databases/$DB_NAME"
-    ensureParentDir(dbFile)
-    // 与原 Android 版 HStudyApp 行为一致：打开/迁移数据库前先把现有 hstudy_db 复制到
-    // db_backups（无现有库时静默跳过）；Room 首次访问才会真正打开数据库，因此此处早于迁移。
-    MigrationSafetyHelper.backupIfExists()
-    return appDatabaseBuilder(dbFile)
+    return buildAppDatabase(dbFile, backupBeforeMigration = true)
+}
+
+/** Path-injectable construction used by real-filesystem recovery regressions. */
+internal fun buildAppDatabase(dbFilePath: String): AppDatabase =
+    buildAppDatabase(dbFilePath, backupBeforeMigration = false)
+
+private fun buildAppDatabase(dbFilePath: String, backupBeforeMigration: Boolean): AppDatabase {
+    ensureParentDir(dbFilePath)
+    // Recover before Room can create/open a fresh file. A journal with missing live and .bak fails closed.
+    DatabaseRestoreRecovery.recover(systemFileSystem, dbFilePath.toPath())
+    if (backupBeforeMigration) {
+        // 与原 Android 版 HStudyApp 行为一致：打开/迁移数据库前先把现有 hstudy_db 复制到
+        // db_backups（无现有库时静默跳过）；Room 首次访问才会真正打开数据库，因此此处早于迁移。
+        MigrationSafetyHelper.backupIfExists()
+    }
+    return appDatabaseBuilder(dbFilePath)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(ioDispatcher)
         .addMigrations(*Migrations.ALL)

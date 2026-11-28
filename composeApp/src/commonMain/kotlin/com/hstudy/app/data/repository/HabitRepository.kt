@@ -1,5 +1,7 @@
 package com.hstudy.app.data.repository
 
+import com.hstudy.app.data.local.DbTransactionRunner
+import com.hstudy.app.data.local.DirectTransactionRunner
 import com.hstudy.app.data.local.dao.HabitDao
 import com.hstudy.app.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
@@ -9,7 +11,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
-class HabitRepository(private val habitDao: HabitDao) {
+class HabitRepository(
+    private val habitDao: HabitDao,
+    private val pointRepository: PointRepository? = null,
+    private val transactionRunner: DbTransactionRunner = DirectTransactionRunner,
+) {
 
     // ===== 习惯挑战 =====
     suspend fun addChallenge(challenge: HabitChallengeEntity): Long = habitDao.insertChallenge(challenge)
@@ -36,23 +42,38 @@ class HabitRepository(private val habitDao: HabitDao) {
      */
     enum class CheckInResult { ALREADY_CHECKED_IN, CHALLENGE_COMPLETED, SUCCESS }
 
-    suspend fun checkInChallenge(challenge: HabitChallengeEntity): CheckInResult {
-        val today = todayString()
-        // 防止当天重复打卡
-        if (challenge.lastCheckInDate == today) {
-            return CheckInResult.ALREADY_CHECKED_IN
+    suspend fun checkInChallenge(challenge: HabitChallengeEntity): CheckInResult =
+        transactionRunner.runInTransaction {
+            val today = todayString()
+            // 防止当天重复打卡
+            if (challenge.lastCheckInDate == today) {
+                return@runInTransaction CheckInResult.ALREADY_CHECKED_IN
+            }
+            val newDays = challenge.completedDays + 1
+            val updated = habitDao.incrementChallengeProgress(
+                id = challenge.id,
+                expectedCompletedDays = challenge.completedDays,
+                newCompletedDays = newDays,
+                lastCheckInDate = today
+            )
+            // A newer writer won the CAS. Treat this stale attempt as a no-op so its caller does not
+            // award points for a check-in that was not persisted.
+            if (updated != 1) return@runInTransaction CheckInResult.ALREADY_CHECKED_IN
+            if (pointRepository != null && challenge.dailyPoints > 0) {
+                pointRepository.checkIn(
+                    bizKey = "HABIT:${challenge.id}:$today",
+                    actionType = "HABIT_CHECKIN",
+                    description = "习惯打卡: ${challenge.title}",
+                    points = challenge.dailyPoints,
+                    date = today,
+                )
+            }
+            if (newDays >= challenge.totalDays) {
+                CheckInResult.CHALLENGE_COMPLETED
+            } else {
+                CheckInResult.SUCCESS
+            }
         }
-        val newDays = challenge.completedDays + 1
-        return if (newDays >= challenge.totalDays) {
-            // 挑战完成：同时记录打卡日期
-            habitDao.updateChallenge(challenge.copy(completedDays = newDays, lastCheckInDate = today))
-            habitDao.completeChallenge(challenge.id)
-            CheckInResult.CHALLENGE_COMPLETED
-        } else {
-            habitDao.updateChallenge(challenge.copy(completedDays = newDays, lastCheckInDate = today))
-            CheckInResult.SUCCESS
-        }
-    }
 
     /** 判断挑战今日是否已打卡 */
     fun isCheckedInToday(challenge: HabitChallengeEntity): Boolean {
@@ -60,33 +81,46 @@ class HabitRepository(private val habitDao: HabitDao) {
         return challenge.lastCheckInDate == today
     }
 
+    data class HabitUndoResult(val undone: Boolean, val reversedPoints: Int)
+
     /**
      * 撤销今日打卡（Antigravity 指令 P1-01，撤销闭环）：回退一天并清掉 lastCheckInDate；
      * 若撤销的是"完成日"那一次打卡（CHALLENGE_COMPLETED 分支），同时把挑战重新置为进行中。
-     * 积分侧的取消/扣回由调用方紧接着走 [PointRepository.undoCheckIn]
-     * （bizKey=`HABIT:id:date`），保持撤销对称（不变量 4）。
+     * 进度 CAS 与积分取消/REVERSAL 在同一事务内完成，任一步失败都整体回滚。
+     *
+     * 保留 Boolean 入口给既有调用方；生产 UI 使用 [undoCheckInChallengeAndPoints] 获取扣回数。
      */
-    suspend fun undoCheckInChallenge(challenge: HabitChallengeEntity) {
-        // 回审 P1-1：撤销锚定**存储的打卡日**而非点击时刻的今天——
-        // 页面跨午夜未关时（23:59 打卡、00:01 撤销），今天已不是打卡日，旧守卫会静默 return。
-        // 允许 今天/昨天 两日窗口（跨午夜对称），更早的打卡日不允许经此入口回退。
-        val stored = challenge.lastCheckInDate
-        if (stored.isEmpty()) return
-        val today = todayString()
-        val yesterday = Clock.System.now()
-            .toLocalDateTime(TimeZone.currentSystemDefault()).date
-            .minus(1, DateTimeUnit.DAY)
-            .toString()
-        if (stored != today && stored != yesterday) return
-        habitDao.updateChallenge(
-            challenge.copy(
-                completedDays = (challenge.completedDays - 1).coerceAtLeast(0),
-                lastCheckInDate = "",
-                isActive = true,
-                isCompleted = false
+    suspend fun undoCheckInChallenge(challenge: HabitChallengeEntity): Boolean =
+        undoCheckInChallengeAndPoints(challenge).undone
+
+    /** 撤销进度并返回同一事务内实际扣回的积分（未审批取消返回 0）。 */
+    suspend fun undoCheckInChallengeAndPoints(challenge: HabitChallengeEntity): HabitUndoResult =
+        transactionRunner.runInTransaction {
+            // 回审 P1-1：撤销锚定**存储的打卡日**而非点击时刻的今天——
+            // 页面跨午夜未关时（23:59 打卡、00:01 撤销），今天已不是打卡日，旧守卫会静默 return。
+            // 允许 今天/昨天 两日窗口（跨午夜对称），更早的打卡日不允许经此入口回退。
+            val stored = challenge.lastCheckInDate
+            if (stored.isEmpty()) return@runInTransaction HabitUndoResult(false, 0)
+            val today = todayString()
+            val yesterday = Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                .minus(1, DateTimeUnit.DAY)
+                .toString()
+            if (stored != today && stored != yesterday) {
+                return@runInTransaction HabitUndoResult(false, 0)
+            }
+            val updated = habitDao.undoChallengeCheckIn(
+                id = challenge.id,
+                expectedCompletedDays = challenge.completedDays,
+                expectedLastCheckInDate = stored
             )
-        )
-    }
+            if (updated != 1) return@runInTransaction HabitUndoResult(false, 0)
+            val reversed = pointRepository?.undoCheckIn(
+                bizKey = "HABIT:${challenge.id}:$stored",
+                date = stored,
+            ) ?: 0
+            HabitUndoResult(true, reversed)
+        }
 
     // ===== 成就 =====
     suspend fun addAchievement(achievement: AchievementEntity): Long = habitDao.insertAchievement(achievement)
@@ -101,14 +135,16 @@ class HabitRepository(private val habitDao: HabitDao) {
      * 尝试解锁成就（如果未解锁过）
      */
     suspend fun tryUnlockAchievement(type: String, title: String, description: String, emoji: String): Boolean {
-        val existing = habitDao.getAchievementByType(type)
-        if (existing == null) {
-            habitDao.insertAchievement(
-                AchievementEntity(type = type, title = title, description = description, emoji = emoji)
+        val inserted = habitDao.insertAchievement(
+            AchievementEntity(
+                type = type,
+                title = title,
+                description = description,
+                emoji = emoji,
+                canonicalType = type
             )
-            return true
-        }
-        return false
+        )
+        return inserted > 0
     }
 
     // ===== 完成证明 =====

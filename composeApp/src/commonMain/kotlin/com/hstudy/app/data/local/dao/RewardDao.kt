@@ -18,7 +18,12 @@ interface RewardDao {
     @Query("SELECT * FROM rewards WHERE id = :id")
     suspend fun getRewardById(id: Long): RewardEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * Insert custom rewards normally, but never replace an existing canonical preset row.
+     * presetKey's unique index makes repeated/concurrent initialization insert-if-absent and
+     * preserves parent edits and historical rows.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertReward(reward: RewardEntity): Long
 
     @Update

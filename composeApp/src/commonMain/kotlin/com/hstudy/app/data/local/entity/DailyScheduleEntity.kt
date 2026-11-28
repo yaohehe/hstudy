@@ -16,4 +16,10 @@ data class DailyScheduleEntity(
     val isEnabled: Boolean = true,         // 是否启用
     val repeatDays: String = "1,2,3,4,5,6,7", // 重复日（1=周一...7=周日）
     val sortOrder: Int = 0
-)
+) {
+    /** Stored CSV -> ISO weekdays; malformed/out-of-range values are ignored. */
+    fun isoRepeatDays(): Set<Int> = repeatDays.split(',')
+        .mapNotNull { it.trim().toIntOrNull() }
+        .filter { it in 1..7 }
+        .toSet()
+}

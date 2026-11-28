@@ -216,13 +216,16 @@ fun ChildRewardStoreScreen(
                     onClick = {
                         if (totalPoints >= reward.pointsCost) {
                             scope.launch {
-                                app.rewardRepository.exchangeReward(reward.id, reward.pointsCost, reward.name)
-                                app.pointRepository.spendPoints(reward.pointsCost, "兑换：${reward.name}")
-                                // 触发庆祝动画
-                                showConfetti = true
-                                celebrationMsg = "🎉 ${reward.iconEmoji} ${localizedPresetText(reward.name, displayLanguage)}"
-                                showCelebration = true
-                                snackbarHostState.showSnackbar(strings.redeemSuccess(localizedPresetText(reward.name, displayLanguage)))
+                                val exchangeId = app.rewardRepository.exchangeReward(reward.id, reward.pointsCost, reward.name)
+                                if (exchangeId > 0) {
+                                    // 触发庆祝动画
+                                    showConfetti = true
+                                    celebrationMsg = "🎉 ${reward.iconEmoji} ${localizedPresetText(reward.name, displayLanguage)}"
+                                    showCelebration = true
+                                    snackbarHostState.showSnackbar(strings.redeemSuccess(localizedPresetText(reward.name, displayLanguage)))
+                                } else {
+                                    snackbarHostState.showSnackbar(strings.insufficientPoints)
+                                }
                             }
                         } else {
                             scope.launch { snackbarHostState.showSnackbar(strings.insufficientPoints) }

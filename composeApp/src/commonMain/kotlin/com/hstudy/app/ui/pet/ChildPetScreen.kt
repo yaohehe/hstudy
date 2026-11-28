@@ -18,6 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.data.preferences.UserPreferences
+import com.hstudy.app.data.repository.PetRepository
+import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.data.repository.TaskRepository
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPetStageName
@@ -29,6 +33,7 @@ import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 
 // 宠物成长阶段（petStages）、getStageIndex 已移至 PetState.kt（同包共享）
 
@@ -37,31 +42,59 @@ fun ChildPetScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
-    val app = AppGraph
+    ChildPetScreen(
+        onNavigateBack = onNavigateBack,
+        windowSizeClass = windowSizeClass,
+        pointRepository = AppGraph.pointRepository,
+        taskRepository = AppGraph.taskRepository,
+        petRepository = AppGraph.petRepository,
+        userPreferences = AppGraph.userPreferences
+    )
+}
+
+@Composable
+internal fun ChildPetScreen(
+    onNavigateBack: () -> Unit,
+    windowSizeClass: WindowSizeClass,
+    pointRepository: PointRepository,
+    taskRepository: TaskRepository,
+    petRepository: PetRepository,
+    userPreferences: UserPreferences
+) {
     val strings = LocalStrings.current.pet
     val displayLanguage = LocalDisplayLanguage.current
-    val lifetimePoints by app.pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
-    val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
-    val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
+    val lifetimePoints by pointRepository.getLifetimeEarnedPoints().collectAsState(initial = 0)
+    val tasks by taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
     val today = com.hstudy.app.data.repository.PointRepository.getTodayString()
-    val completedIds by app.pointRepository.getCompletedTaskIdsForDate(today).collectAsState(initial = emptyList())
+    val completedIds by pointRepository.getCompletedTaskIdsForDate(today).collectAsState(initial = emptyList())
 
     // 宠物照料状态（饱食度/心情）
     var fullness by remember { mutableIntStateOf(80) }
     var mood by remember { mutableIntStateOf(80) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val actionMutex = remember { Mutex() }
 
-    // 宠物场景装饰（已购买/已装扮）
-    val ownedScenes by app.userPreferences.ownedPetScenes.collectAsState(initial = emptySet())
-    val equippedSceneId by app.userPreferences.equippedPetScene.collectAsState(initial = "home")
+    // Room 是场景所有权的权威源；旧 DataStore 所有权只做一次性无充值导入。
+    // null 表示尚未读到首个真实值，不能把初始 emptySet() 当成导入已完成。
+    val legacyOwnedScenesLoad by userPreferences.ownedPetScenes.collectAsState(initial = null)
+    val legacyOwnedScenes = legacyOwnedScenesLoad.orEmpty()
+    var legacyOwnershipReady by remember { mutableStateOf(false) }
+    val ownedScenes by petRepository.getPurchasedScenes().collectAsState(initial = emptySet())
+    val equippedSceneId by userPreferences.equippedPetScene.collectAsState(initial = "home")
     val equippedScene = getPetScene(equippedSceneId)
+
+    LaunchedEffect(legacyOwnedScenesLoad) {
+        val loadedScenes = legacyOwnedScenesLoad ?: return@LaunchedEffect
+        petRepository.importLegacyScenes(loadedScenes)
+        legacyOwnershipReady = true
+    }
 
     // 加载照料状态并应用每日衰减（隔了一天没照顾，饱食度/心情会下降，可降到0，鼓励每天照顾宠物）
     LaunchedEffect(Unit) {
-        val storedFullness = app.userPreferences.petFullness.first()
-        val storedMood = app.userPreferences.petMood.first()
-        val lastCare = app.userPreferences.petLastCareDate.first()
+        val storedFullness = userPreferences.petFullness.first()
+        val storedMood = userPreferences.petMood.first()
+        val lastCare = userPreferences.petLastCareDate.first()
         if (lastCare != null && lastCare != today) {
             // 计算间隔天数，每天衰减 15，可降到 0
             val daysMissed = try {
@@ -73,7 +106,7 @@ fun ChildPetScreen(
             val decay = daysMissed * 15
             fullness = (storedFullness - decay).coerceAtLeast(0)
             mood = (storedMood - decay).coerceAtLeast(0)
-            app.userPreferences.setPetCare(fullness, mood, today)
+            userPreferences.setPetCare(fullness, mood, today)
         } else {
             fullness = storedFullness
             mood = storedMood
@@ -212,15 +245,19 @@ fun ChildPetScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Button(
                                     onClick = {
-                                        if (totalPoints < 10) {
-                                            scope.launch { snackbarHostState.showSnackbar(strings.notEnoughPoints(10)) }
-                                        } else {
-                                            scope.launch {
-                                                app.pointRepository.spendPoints(10, "喂养宠物")
+                                        scope.launch {
+                                            if (!actionMutex.tryLock()) return@launch
+                                            try {
+                                                if (!petRepository.feed(10, "喂养宠物")) {
+                                                    snackbarHostState.showSnackbar(strings.notEnoughPoints(10))
+                                                    return@launch
+                                                }
                                                 AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.PET_CARE))
                                                 fullness = (fullness + 25).coerceAtMost(100)
-                                                app.userPreferences.setPetCare(fullness, mood, today)
+                                                userPreferences.setPetCare(fullness, mood, today)
                                                 snackbarHostState.showSnackbar(strings.fedMessage)
+                                            } finally {
+                                                actionMutex.unlock()
                                             }
                                         }
                                     },
@@ -228,15 +265,19 @@ fun ChildPetScreen(
                                 ) { Text(strings.feedButton(10)) }
                                 Button(
                                     onClick = {
-                                        if (totalPoints < 5) {
-                                            scope.launch { snackbarHostState.showSnackbar(strings.notEnoughPoints(5)) }
-                                        } else {
-                                            scope.launch {
-                                                app.pointRepository.spendPoints(5, "陪宠物玩耍")
+                                        scope.launch {
+                                            if (!actionMutex.tryLock()) return@launch
+                                            try {
+                                                if (!pointRepository.spendPoints(5, "陪宠物玩耍")) {
+                                                    snackbarHostState.showSnackbar(strings.notEnoughPoints(5))
+                                                    return@launch
+                                                }
                                                 AnalyticsReporter.log(AnalyticsEvent.FeatureUsed(AnalyticsEvent.Feature.PET_CARE))
                                                 mood = (mood + 25).coerceAtMost(100)
-                                                app.userPreferences.setPetCare(fullness, mood, today)
+                                                userPreferences.setPetCare(fullness, mood, today)
                                                 snackbarHostState.showSnackbar(strings.playedMessage)
+                                            } finally {
+                                                actionMutex.unlock()
                                             }
                                         }
                                     },
@@ -340,7 +381,7 @@ fun ChildPetScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                     petScenes.forEach { scene ->
-                        val owned = scene.id in ownedScenes || scene.price == 0
+                        val owned = scene.id in ownedScenes || scene.id in legacyOwnedScenes || scene.price == 0
                         val equipped = equippedSceneId == scene.id
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
@@ -366,23 +407,33 @@ fun ChildPetScreen(
                                     equipped -> Text(strings.equippedBadge, style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     owned -> FilledTonalButton(
-                                        onClick = { scope.launch { app.userPreferences.setEquippedScene(scene.id) } },
+                                        onClick = { scope.launch { userPreferences.setEquippedScene(scene.id) } },
                                         modifier = Modifier.heightIn(min = 48.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                     ) { Text(strings.equipButton, style = MaterialTheme.typography.labelMedium) }
                                     else -> Button(
                                         onClick = {
-                                            if (totalPoints < scene.price) {
-                                                scope.launch { snackbarHostState.showSnackbar(strings.notEnoughPoints(scene.price)) }
-                                            } else {
-                                                scope.launch {
-                                                    app.pointRepository.spendPoints(scene.price, "购买宠物场景：${scene.name}")
-                                                    app.userPreferences.addOwnedScene(scene.id)
-                                                    app.userPreferences.setEquippedScene(scene.id)
+                                            scope.launch {
+                                                if (!legacyOwnershipReady) return@launch
+                                                if (!actionMutex.tryLock()) return@launch
+                                                try {
+                                                    val purchased = petRepository.purchaseScene(
+                                                        scene.id,
+                                                        scene.price,
+                                                        "购买宠物场景：${scene.name}"
+                                                    )
+                                                    if (!purchased) {
+                                                        snackbarHostState.showSnackbar(strings.notEnoughPoints(scene.price))
+                                                        return@launch
+                                                    }
+                                                    userPreferences.setEquippedScene(scene.id)
                                                     snackbarHostState.showSnackbar(strings.purchaseSuccess(petSceneCopy[displayLanguage]?.get(scene.id) ?: scene.name))
+                                                } finally {
+                                                    actionMutex.unlock()
                                                 }
                                             }
                                         },
+                                        enabled = legacyOwnershipReady,
                                         modifier = Modifier.heightIn(min = 48.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                     ) { Text(strings.buyButton, style = MaterialTheme.typography.labelMedium) }

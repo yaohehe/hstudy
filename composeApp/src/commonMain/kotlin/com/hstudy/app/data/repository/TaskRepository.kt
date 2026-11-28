@@ -1,9 +1,14 @@
 package com.hstudy.app.data.repository
 
+import com.hstudy.app.data.local.DbTransactionRunner
+import com.hstudy.app.data.local.DirectTransactionRunner
+import com.hstudy.app.data.local.dao.DailyScheduleDao
 import com.hstudy.app.data.local.dao.TaskDao
+import com.hstudy.app.data.local.entity.DailyScheduleEntity
 import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onEach
 
 /**
  * 积分任务模板
@@ -17,20 +22,59 @@ data class TaskTemplate(
     val tasks: List<TaskEntity>
 )
 
-class TaskRepository(private val taskDao: TaskDao) {
+data class ReminderCancellationResult(
+    val cancelled: List<Long> = emptyList(),
+    val failed: List<Long> = emptyList(),
+)
 
-    fun getAllActiveTasks(): Flow<List<TaskEntity>> = taskDao.getAllActiveTasks()
+class TaskRepository(
+    private val taskDao: TaskDao,
+    private val dailyScheduleDao: DailyScheduleDao,
+    private val transactionRunner: DbTransactionRunner = DirectTransactionRunner,
+    private val snapshotWriter: DailyTaskSnapshotWriter? = null,
+    private val reminderCanceller: (List<Long>) -> Unit = {},
+) {
 
+    /** Test-only compatibility for callers that never soft-delete tasks or capture snapshots. */
+    internal constructor(
+        taskDao: TaskDao,
+        transactionRunner: DbTransactionRunner = DirectTransactionRunner
+    ) : this(taskDao, UnusedDailyScheduleDao, transactionRunner)
+
+    fun getAllActiveTasks(): Flow<List<TaskEntity>> =
+        taskDao.getAllActiveTasks().onEach { snapshotWriter?.captureObserved(it) }
+
+    // A category emission is only a subset of the active denominator. Snapshot capture belongs
+    // to the full active-task flow, mutations, and report queries, never to this filtered flow.
     fun getTasksByCategory(category: TaskCategory): Flow<List<TaskEntity>> =
         taskDao.getTasksByCategory(category)
 
     suspend fun getTaskById(id: Long): TaskEntity? = taskDao.getTaskById(id)
 
-    suspend fun addTask(task: TaskEntity): Long = taskDao.insert(task)
+    suspend fun addTask(task: TaskEntity): Long = transactionRunner.runInTransaction {
+        val id = taskDao.insert(task)
+        snapshotWriter?.captureActive()
+        id
+    }
 
-    suspend fun updateTask(task: TaskEntity) = taskDao.update(task)
+    suspend fun updateTask(task: TaskEntity) {
+        transactionRunner.runInTransaction {
+            taskDao.update(task)
+            snapshotWriter?.captureActive()
+        }
+    }
 
-    suspend fun deleteTask(id: Long) = taskDao.softDelete(id)
+    suspend fun deleteTask(id: Long): ReminderCancellationResult {
+        requireScheduleDao()
+        val unlinkedScheduleIds = mutableListOf<Long>()
+        transactionRunner.runInTransaction {
+            unlinkedScheduleIds += dailyScheduleDao.getScheduleIdsForTask(id)
+            taskDao.softDelete(id)
+            dailyScheduleDao.unlinkTask(id)
+            snapshotWriter?.captureActive()
+        }
+        return cancelRemindersBestEffort(unlinkedScheduleIds)
+    }
 
     /**
      * 获取所有预设模板
@@ -141,12 +185,22 @@ class TaskRepository(private val taskDao: TaskDao) {
     /**
      * 应用模板 - 先清除现有任务，再插入模板任务
      */
-    suspend fun applyTemplate(template: TaskTemplate) {
-        // 软删除所有现有任务
-        val existingTasks = taskDao.getAllActiveTasksSnapshot()
-        existingTasks.forEach { taskDao.softDelete(it.id) }
-        // 插入模板任务
-        template.tasks.forEach { task -> taskDao.insert(task) }
+    suspend fun applyTemplate(template: TaskTemplate): ReminderCancellationResult {
+        requireScheduleDao()
+        val unlinkedScheduleIds = mutableListOf<Long>()
+        transactionRunner.runInTransaction {
+            // 软删除所有现有任务，并在同一事务解除其日程关联
+            val existingTasks = taskDao.getAllActiveTasksSnapshot()
+            existingTasks.forEach { task ->
+                unlinkedScheduleIds += dailyScheduleDao.getScheduleIdsForTask(task.id)
+                taskDao.softDelete(task.id)
+                dailyScheduleDao.unlinkTask(task.id)
+            }
+            // 插入模板任务
+            template.tasks.forEach { task -> taskDao.insert(task) }
+            snapshotWriter?.captureActive()
+        }
+        return cancelRemindersBestEffort(unlinkedScheduleIds)
     }
 
     /**
@@ -156,6 +210,21 @@ class TaskRepository(private val taskDao: TaskDao) {
      * 杜绝重复任务卡与"分别打卡刷双倍审批分"的防刷漏洞。
      */
     suspend fun initDefaultTasks() {
+        transactionRunner.runInTransaction {
+            seedDefaultTasks()
+            snapshotWriter?.captureActive()
+        }
+    }
+
+    /** 确保预设任务存在：任务表为空时自动补全（惠及老用户/被清空场景） */
+    suspend fun ensureDefaultTasks() {
+        transactionRunner.runInTransaction {
+            if (taskDao.getActiveTaskCount() == 0) seedDefaultTasks()
+            snapshotWriter?.captureActive()
+        }
+    }
+
+    private suspend fun seedDefaultTasks() {
         // 默认使用小学高年级模板
         val defaultTemplate = getPresets()[1] // primary_high
         defaultTemplate.tasks.forEach { task ->
@@ -163,10 +232,41 @@ class TaskRepository(private val taskDao: TaskDao) {
         }
     }
 
-    /** 确保预设任务存在：任务表为空时自动补全（惠及老用户/被清空场景） */
-    suspend fun ensureDefaultTasks() {
-        if (taskDao.getActiveTaskCount() == 0) {
-            initDefaultTasks()
+    private fun cancelRemindersBestEffort(scheduleIds: List<Long>): ReminderCancellationResult {
+        val cancelled = mutableListOf<Long>()
+        val failed = mutableListOf<Long>()
+        scheduleIds.distinct().forEach { id ->
+            try {
+                reminderCanceller(listOf(id))
+                cancelled += id
+            } catch (_: Exception) {
+                // The database operation is already committed. One platform failure must not
+                // turn it into an apparent delete/template failure or skip the remaining IDs.
+                failed += id
+            }
+        }
+        return ReminderCancellationResult(cancelled = cancelled, failed = failed)
+    }
+
+    private fun requireScheduleDao() {
+        check(dailyScheduleDao !== UnusedDailyScheduleDao) {
+            "DailyScheduleDao is required before soft-deleting tasks"
         }
     }
+}
+
+/** Only used by the legacy test constructor; production always injects the Room schedule DAO. */
+private object UnusedDailyScheduleDao : DailyScheduleDao {
+    override suspend fun insert(schedule: DailyScheduleEntity): Long = unsupported()
+    override suspend fun update(schedule: DailyScheduleEntity) = unsupported()
+    override suspend fun delete(id: Long) = unsupported()
+    override fun getAllSchedules(): Flow<List<DailyScheduleEntity>> = unsupported()
+    override fun getEnabledSchedules(): Flow<List<DailyScheduleEntity>> = unsupported()
+    override suspend fun getScheduleById(id: Long): DailyScheduleEntity? = unsupported()
+    override suspend fun setEnabled(id: Long, enabled: Boolean) = unsupported()
+    override suspend fun unlinkTask(taskId: Long): Int = unsupported()
+    override suspend fun getScheduleIdsForTask(taskId: Long): List<Long> = unsupported()
+    override suspend fun getEnabledSchedulesSync(): List<DailyScheduleEntity> = unsupported()
+
+    private fun unsupported(): Nothing = error("DailyScheduleDao is required for schedule operations")
 }

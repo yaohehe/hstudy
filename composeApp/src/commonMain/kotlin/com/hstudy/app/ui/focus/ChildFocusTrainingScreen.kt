@@ -70,12 +70,10 @@ fun ChildFocusTrainingScreen(onNavigateBack: () -> Unit) {
                 running = false
                 finished = true
                 val seconds = elapsedMs / 1000f
-                // 检测个人最佳记录（自我竞赛）
-                val isRecord = bestMs != 0L && elapsedMs < bestMs
-                if (bestMs == 0L || elapsedMs < bestMs) {
-                    scope.launch { app.userPreferences.setFocusTrainingBest(elapsedMs) }
+                // 首个有效结果也是纪录；DataStore CAS 保证并发较慢结果不会覆盖更佳成绩。
+                scope.launch {
+                    isNewRecord = app.userPreferences.tryUpdateFocusTrainingBest(elapsedMs)
                 }
-                isNewRecord = isRecord
                 val points = 0 // 训练不直接加分（防止无限刷分，积分通过学习活动获取）
                 if (!rewarded) {
                     rewarded = true

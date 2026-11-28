@@ -11,10 +11,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.AchievementEntity
+import com.hstudy.app.data.preferences.UserPreferences
+import com.hstudy.app.data.repository.FocusRepository
+import com.hstudy.app.data.repository.HabitRepository
+import com.hstudy.app.data.repository.MistakeRepository
+import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.data.repository.todayString
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.achievementCopy
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+
+data class AchievementProgress(
+    val type: String,
+    val current: Int,
+    val target: Int,
+)
 
 /**
  * 成就管理器 - 检查并解锁成就
@@ -89,12 +104,13 @@ object AchievementManager {
      * 集中评估成就：汇总各项统计后调用 checkAndUnlock，返回本次新解锁的成就。
      * 应在打卡、复习错题、专注结束、习惯打卡等关键动作后调用。
      */
-    suspend fun evaluate(app: AppGraph, isPerfectDay: Boolean = false): List<AchievementDef> {
+    suspend fun evaluate(app: AppGraph): List<AchievementDef> {
         val streak = app.pointRepository.getCurrentStreak()
         val totalCheckins = app.pointRepository.getTotalCompletionCount()
         val masteredMistakes = app.mistakeRepository.getMasteredCount().first()
         val totalFocusMinutes = app.focusRepository.getTotalFocusMinutes().first()
         val habitCompleted = app.habitRepository.getCompletedChallengeCount().first() > 0
+        val isPerfectDay = app.pointRepository.isPerfectDay(todayString()).first()
         val totalReviews = app.mistakeRepository.getTotalReviewCount().first()
         val variationCount = app.mistakeRepository.getVariationCount().first()
         val trainingCount = app.userPreferences.focusTrainingCount.first()
@@ -112,33 +128,65 @@ object AchievementManager {
         )
     }
 
-    /**
-     * 计算每个成就的当前进度（当前值 to 目标值），用于展示距离解锁还有多远。
-     */
-    suspend fun getProgress(app: AppGraph): Map<String, Pair<Int, Int>> {
-        val streak = app.pointRepository.getCurrentStreak()
-        val totalCheckins = app.pointRepository.getTotalCompletionCount()
-        val masteredMistakes = app.mistakeRepository.getMasteredCount().first()
-        val totalFocusMinutes = app.focusRepository.getTotalFocusMinutes().first()
-        val totalReviews = app.mistakeRepository.getTotalReviewCount().first()
-        val variationCount = app.mistakeRepository.getVariationCount().first()
-        val trainingCount = app.userPreferences.focusTrainingCount.first()
-        return mapOf(
-            "first_checkin" to (totalCheckins.coerceAtMost(1) to 1),
-            "streak_3" to (streak.coerceAtMost(3) to 3),
-            "streak_7" to (streak.coerceAtMost(7) to 7),
-            "checkin_100" to (totalCheckins.coerceAtMost(100) to 100),
-            "perfect_day" to (0 to 1),
-            "mistake_50" to (masteredMistakes.coerceAtMost(50) to 50),
-            "focus_600" to (totalFocusMinutes.coerceAtMost(600) to 600),
-            "habit_complete" to (0 to 1),
-            "mistake_100" to (masteredMistakes.coerceAtMost(100) to 100),
-            "focus_1800" to (totalFocusMinutes.coerceAtMost(1800) to 1800),
-            "review_30" to (totalReviews.coerceAtMost(30) to 30),
-            "variation_5" to (variationCount.coerceAtMost(5) to 5),
-            "training_10" to (trainingCount.coerceAtMost(10) to 10),
-        )
+    /** 反应式成就进度；页面持续收集，数据库或 DataStore 变化时自动刷新。 */
+    fun progress(app: AppGraph): Flow<List<AchievementProgress>> = progress(
+        pointRepository = app.pointRepository,
+        habitRepository = app.habitRepository,
+        mistakeRepository = app.mistakeRepository,
+        focusRepository = app.focusRepository,
+        userPreferences = app.userPreferences,
+    )
+
+    fun progress(
+        pointRepository: PointRepository,
+        habitRepository: HabitRepository,
+        mistakeRepository: MistakeRepository,
+        focusRepository: FocusRepository,
+        userPreferences: UserPreferences,
+    ): Flow<List<AchievementProgress>> {
+        val pointStats = combine(
+            pointRepository.observeCurrentStreak(),
+            pointRepository.observeTotalCompletionCount(),
+            pointRepository.isPerfectDay(todayString()),
+        ) { streak, checkins, perfectDay -> PointStats(streak, checkins, perfectDay) }
+        val mistakeStats = combine(
+            mistakeRepository.getMasteredCount(),
+            mistakeRepository.getTotalReviewCount(),
+            mistakeRepository.getVariationCount(),
+        ) { mastered, reviews, variations -> MistakeStats(mastered, reviews, variations) }
+        val activityStats = combine(
+            focusRepository.getTotalFocusMinutes(),
+            userPreferences.focusTrainingCount,
+            habitRepository.getCompletedChallengeCount(),
+        ) { focusMinutes, trainingCount, completedHabits ->
+            ActivityStats(focusMinutes, trainingCount, completedHabits > 0)
+        }
+        return combine(pointStats, mistakeStats, activityStats) { points, mistakes, activity ->
+            listOf(
+                AchievementProgress("first_checkin", points.checkins.coerceAtMost(1), 1),
+                AchievementProgress("streak_3", points.streak.coerceAtMost(3), 3),
+                AchievementProgress("streak_7", points.streak.coerceAtMost(7), 7),
+                AchievementProgress("checkin_100", points.checkins.coerceAtMost(100), 100),
+                AchievementProgress("perfect_day", if (points.perfectDay) 1 else 0, 1),
+                AchievementProgress("mistake_50", mistakes.mastered.coerceAtMost(50), 50),
+                AchievementProgress("focus_600", activity.focusMinutes.coerceAtMost(600), 600),
+                AchievementProgress("habit_complete", if (activity.habitCompleted) 1 else 0, 1),
+                AchievementProgress("mistake_100", mistakes.mastered.coerceAtMost(100), 100),
+                AchievementProgress("focus_1800", activity.focusMinutes.coerceAtMost(1800), 1800),
+                AchievementProgress("review_30", mistakes.reviews.coerceAtMost(30), 30),
+                AchievementProgress("variation_5", mistakes.variations.coerceAtMost(5), 5),
+                AchievementProgress("training_10", activity.trainingCount.coerceAtMost(10), 10),
+            )
+        }
     }
+
+    /** 兼容一次性快照调用方；UI 应持续收集 [progress]。 */
+    suspend fun getProgress(app: AppGraph): Map<String, Pair<Int, Int>> =
+        progress(app).first().associate { it.type to (it.current to it.target) }
+
+    private data class PointStats(val streak: Int, val checkins: Int, val perfectDay: Boolean)
+    private data class MistakeStats(val mastered: Int, val reviews: Int, val variations: Int)
+    private data class ActivityStats(val focusMinutes: Int, val trainingCount: Int, val habitCompleted: Boolean)
 }
 
 @Composable
@@ -151,10 +199,10 @@ fun AchievementBadges(
     val achievements by app.habitRepository.getAllAchievements().collectAsState(initial = emptyList())
     val allDefs = AchievementManager.allAchievements
 
-    // 收集每个成就的当前进度（距离解锁还有多远）
-    var progressMap by remember { mutableStateOf<Map<String, Pair<Int, Int>>>(emptyMap()) }
-    LaunchedEffect(Unit) {
-        progressMap = AchievementManager.getProgress(app)
+    // 收集每个成就的当前进度（距离解锁还有多远）；源数据变化时持续刷新。
+    val progress by AchievementManager.progress(app).collectAsState(initial = emptyList())
+    val progressMap = remember(progress) {
+        progress.associate { it.type to (it.current to it.target) }
     }
 
     Column(modifier = modifier) {

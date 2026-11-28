@@ -101,18 +101,18 @@ class PointRepositoryTransactionAtomicityTest {
         }
     }
 
-    /** 第 N 次 updateReview 抛异常的 PointApprovalDao 委托 */
+    /** 第 N 次 cancelPending 抛异常的 PointApprovalDao 委托 */
     private class ThrowingApprovalDao(
         private val base: FakePointApprovalDao,
-        private val throwOnNthUpdateReview: Int,
+        private val throwOnNthCancel: Int,
     ) : PointApprovalDao by base {
-        private var reviews = 0
-        override suspend fun updateReview(id: Long, status: ApprovalStatus, awardedRecordId: Long?, reviewedAt: Long) {
-            reviews++
-            if (reviews == throwOnNthUpdateReview) {
-                throw SimulatedDbFailure("模拟第 $reviews 次 updateReview 失败")
+        private var cancellations = 0
+        override suspend fun cancelPending(id: Long, reviewedAt: Long): Int {
+            cancellations++
+            if (cancellations == throwOnNthCancel) {
+                throw SimulatedDbFailure("模拟第 $cancellations 次 cancelPending 失败")
             }
-            base.updateReview(id, status, awardedRecordId, reviewedAt)
+            return base.cancelPending(id, reviewedAt)
         }
     }
 
@@ -303,10 +303,10 @@ class PointRepositoryTransactionAtomicityTest {
         val s2 = insertPending(approvalDao, "BIZ:EXRB:2", requestedAt = now - 33 * day)
         val approvalsBefore = approvalDao.approvals.toList()
         val journal = JournalTxRunner(pointDao, approvalDao)
-        // 两条 PENDING 行各走 updateReview(CANCELLED) 一次：第 2 次抛=清到一半失败
+        // 两条 PENDING 行各走 cancelPending 一次：第 2 次抛=清到一半失败
         val repo = PointRepository(
             pointDao,
-            ThrowingApprovalDao(approvalDao, throwOnNthUpdateReview = 2),
+            ThrowingApprovalDao(approvalDao, throwOnNthCancel = 2),
             journal
         )
 

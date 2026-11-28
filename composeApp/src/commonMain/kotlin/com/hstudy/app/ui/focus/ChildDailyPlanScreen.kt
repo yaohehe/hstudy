@@ -12,26 +12,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.DailyPlanEntity
+import com.hstudy.app.data.repository.FocusRepository
+import com.hstudy.app.AppGraph
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.*
-import kotlinx.coroutines.launch
-import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
+import com.hstudy.app.ui.time.rememberAppDate
+import com.hstudy.app.time.AppClock
+import com.hstudy.app.time.SystemAppClock
+import kotlinx.coroutines.launch
 
 @Composable
 fun ChildDailyPlanScreen(
     onNavigateBack: () -> Unit,
-    windowSizeClass: WindowSizeClass
+    windowSizeClass: WindowSizeClass,
+    clock: AppClock = SystemAppClock,
+    focusRepository: FocusRepository = AppGraph.focusRepository,
 ) {
-    val app = AppGraph
     val strings = LocalStrings.current.focus
     val scope = rememberCoroutineScope()
-    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    val plans by app.focusRepository.getPlansByDate(today).collectAsState(initial = emptyList())
+    val today = rememberAppDate(clock)
+    val plans by remember(today, focusRepository) {
+        focusRepository.getPlansByDate(today)
+    }.collectAsState(initial = emptyList())
 
     var showAddDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -78,12 +84,12 @@ fun ChildDailyPlanScreen(
                         plan = plan,
                         onToggle = {
                             scope.launch {
-                                app.focusRepository.setPlanCompleted(plan.id, !plan.isCompleted)
+                                focusRepository.setPlanCompleted(plan.id, !plan.isCompleted)
                             }
                         },
                         onDelete = {
                             scope.launch {
-                                app.focusRepository.deletePlan(plan.id)
+                                focusRepository.deletePlan(plan.id)
                             }
                         }
                     )
@@ -99,7 +105,7 @@ fun ChildDailyPlanScreen(
             onDismiss = { showAddDialog = false },
             onAdd = { title, startH, startM, endH, endM ->
                 scope.launch {
-                    app.focusRepository.addPlan(
+                    focusRepository.addPlan(
                         DailyPlanEntity(
                             date = today,
                             startHour = startH, startMinute = startM,

@@ -28,6 +28,14 @@ interface DailyScheduleDao {
     @Query("UPDATE daily_schedules SET isEnabled = :enabled WHERE id = :id")
     suspend fun setEnabled(id: Long, enabled: Boolean)
 
+    /** Snapshot the exact schedule IDs that a task deletion will detach. */
+    @Query("SELECT id FROM daily_schedules WHERE linkedTaskId = :taskId")
+    suspend fun getScheduleIdsForTask(taskId: Long): List<Long>
+
+    /** Detach every schedule linked to a soft-deleted task; returns the affected row count. */
+    @Query("UPDATE daily_schedules SET linkedTaskId = NULL WHERE linkedTaskId = :taskId")
+    suspend fun unlinkTask(taskId: Long): Int
+
     @Query("SELECT * FROM daily_schedules WHERE isEnabled = 1")
     suspend fun getEnabledSchedulesSync(): List<DailyScheduleEntity>
 }

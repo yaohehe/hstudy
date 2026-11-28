@@ -28,5 +28,12 @@ fun initIosPlatform(analytics: Analytics, appChannel: String) {
     AppGraph.bootstrap()
 }
 
+/** Called by the Swift notification delegate for cold-start and warm-start routes. */
+fun handleIosNotificationRoute(route: String?) {
+    if (route != null && NotificationRoutes.isAllowed(route)) {
+        Platform.pendingRoute = route
+    }
+}
+
 /** Swift 侧 ContentView.makeUIViewController 调用（导出为 IosPlatformKt.MainViewController()） */
 fun MainViewController(): UIViewController = ComposeUIViewController { App() }

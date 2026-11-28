@@ -148,9 +148,10 @@ RUN_NOTE_CHECK = "I18N_BOUNDARY_SRC" not in os.environ or os.environ.get("I18N_B
 #      recordMistake / saveHabit / setApproval —— 9b 实测 `<name>(` 的调用点计数均为 0），已删。
 #      其中 `save` / `upsert` / `delete` 作为**词根**是有价值的（覆盖 saveVariation、
 #      saveDailyReflection、softDeleteReward 等真实函数），故以词根形式回归；其余 5 项不保留。
-#      9b 审查 Important 4 又把这条规则收紧了一格：**"有 fixture"不等于"存在"**——`upsert` 当时
+#      9b 审查 Important 4 把这条规则收紧为一格：**"有 fixture"不等于"存在"**——`upsert` 当时
 #      只有 fixture 里的 `upsertHabit(` 撑着，真实树里 `fun upsertXxx(` 声明数 = 0（实测），
-#      所以它现在被挪进 RESERVED_STEMS 单独标注（预留、非现实）；SINK_STEMS 里每一条都必须
+#      所以它当时被挪进 RESERVED_STEMS 单独标注（预留、非现实）。v3.3.3 Task 3 已引入真实
+#      `DailyTaskSnapshotDao.upsert`，因此 `upsert` 现在搬回 SINK_STEMS；SINK_STEMS 里每一条都必须
 #      在 commonMain 有 ≥1 个 `fun <词根>*(` 声明，自测第 3 节反向对账，同时
 #      RESERVED_STEMS 一旦被真实代码用上就必须搬回 SINK_STEMS（反向对账也会抓住赖着不走的）。
 #   5) `add` / `set` **不做成裸词根**，而是走 SINK_CAPSUFFIX 的"大写后缀"规则：
@@ -176,9 +177,9 @@ SINK_STEMS = [
     "softDelete",   # RewardDao.kt:28 softDeleteReward
     "save",         # MistakeRepository.kt:64 saveVariation(mistake, note)、
                     # UserPreferences.kt:233 saveDailyReflection(date, stars, tags)
+    "upsert",       # DailyTaskSnapshotDao.kt:16 upsert(snapshot)（v3.3.3 Task 3 真实写库路径）
     "mark",         # DailyAssignmentDao.kt:29 / WishGoalDao.kt:32 markCompleted
     "record",       # FocusRepository.kt:12 recordFocusSession(durationMinutes, taskTitle, points)
-    "submit",       # PointApprovalRepository.kt:28 submitApproval（description 参与幂等比较）
     "adjust",       # PointRepository.kt:301 adjustPoints(points, note) → point_records.note
     "spend",        # PointRepository.kt:347 spendPoints(points, note, requireSufficientBalance)
                     # → point_records.note：**与 adjustPoints 同表同列**；
@@ -195,8 +196,10 @@ SINK_STEMS = [
 
 # **预留**词根：真实树当前 0 声明（自测会核对这一点），一旦引入（Room @Upsert、
 # `fun upsertXxx`）就立刻生效；搬进 SINK_STEMS 之前它不参与"必须有真实声明"的对账。
+# Task 16 删除 PointApprovalRepository.submitApproval 后，`submit` 已无真实声明；
+# 仍保留为预留词根，使既有 fixture 能继续证明未来 submit* 写库路径会被拦截。
 RESERVED_STEMS = [
-    "upsert",       # 9b 实测 commonMain `fun upsert*(` 声明 0 个、`upsert*(` 调用 0 处
+    "submit",
 ]
 
 # 大写后缀词根：`\b(?:add|set)[A-Z]\w*(` 才算写库调用（原因见上面第 5 条）。

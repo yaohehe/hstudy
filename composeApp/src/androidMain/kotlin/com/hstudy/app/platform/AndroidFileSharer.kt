@@ -20,8 +20,13 @@ import java.io.File
  */
 class AndroidFileSharer(private val context: Context) : FileSharer {
 
-    override fun shareTextFile(fileName: String, content: String, mimeType: String) {
-        try {
+    override fun shareTextFile(
+        fileName: String,
+        content: String,
+        mimeType: String,
+        onResult: (ShareResult) -> Unit,
+    ): ShareResult {
+        return try {
             val dir = File(context.cacheDir, "shared").apply { mkdirs() }
             val file = File(dir, fileName)
             file.writeText(content)
@@ -44,8 +49,11 @@ class AndroidFileSharer(private val context: Context) : FileSharer {
                 chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(chooser)
             }
+            // Android's chooser API has no completion callback. Launch is the only truthful result.
+            ShareResult.Presented
         } catch (e: Exception) {
             e.printStackTrace()
+            ShareResult.Failed(e.message ?: e.javaClass.simpleName)
         }
     }
 

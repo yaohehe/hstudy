@@ -26,6 +26,8 @@ data class ChildDailyTargetStrings(
     val goalDonePending: (title: String) -> String,
     val goalUndone: (title: String) -> String,
     val resetGoalsButton: String,
+    val resetBlocked: String,
+    val goalUpdateFailed: String,
     val reflectionTitle: String,
     val selfRating: (stars: Int) -> String,
     val reflectionTags: (tags: List<String>) -> String,
@@ -57,6 +59,8 @@ val ChildDailyTargetStringsZh = ChildDailyTargetStrings(
     goalDonePending = { title -> "✅ 「$title」完成 +2分（待家长审核）" },        // :232
     goalUndone = { title -> "↩️ 已取消「$title」" },                            // :244
     resetGoalsButton = "✏️ 重新设定今日目标",                                    // :265
+    resetBlocked = "请先处理今天的待审核目标或已领取的全目标奖励，再重新设定目标。",
+    goalUpdateFailed = "目标状态更新失败，请重试。",
     reflectionTitle = "🔍 每日复盘",                                            // :273
     // Ruling 20(b)：页面迁移前是 `"今日自评：" + "⭐".repeat(n)`（:276），中文字面量只到冒号为止、
     // 星星由页面另接。表侧按逐字节拷贝同样把 `"⭐".repeat(n)` 留在字面量外，否则等价闸门 strict 层
@@ -91,6 +95,8 @@ val ChildDailyTargetStringsEn = ChildDailyTargetStrings(
     goalDonePending = { title -> "✅ “$title” done +2 points (awaiting parent approval)" },
     goalUndone = { title -> "↩️ “$title” unchecked" },
     resetGoalsButton = "✏️ Reset today's goals",
+    resetBlocked = "Resolve today's pending goal approvals or claimed all-goals bonus before resetting your goals.",
+    goalUpdateFailed = "Could not update the goal. Please try again.",
     reflectionTitle = "🔍 Daily reflection",
     selfRating = { stars -> "Today's self-rating: ${"⭐".repeat(stars)}" },
     reflectionTags = { tags -> "My reflections: ${tags.joinToString(", ")}" },

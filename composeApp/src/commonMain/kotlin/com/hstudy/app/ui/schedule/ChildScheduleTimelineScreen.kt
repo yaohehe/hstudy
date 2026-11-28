@@ -22,13 +22,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.DailyScheduleEntity
+import com.hstudy.app.data.repository.ScheduleRepository
+import com.hstudy.app.data.repository.TaskRepository
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
 import com.hstudy.app.ui.common.AmbientBackground
 import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
-import com.hstudy.app.ui.dt.Calendar
+import com.hstudy.app.ui.dt.strFormat
+import com.hstudy.app.ui.time.rememberAppTime
+import com.hstudy.app.time.AppClock
+import com.hstudy.app.time.SystemAppClock
 
 /**
  * 儿童端 - 今日时间线：按时间排列的日程卡片，已过的标灰、当前时段高亮
@@ -36,17 +41,23 @@ import com.hstudy.app.ui.dt.Calendar
 @Composable
 fun ChildScheduleTimelineScreen(
     onNavigateBack: () -> Unit,
-    windowSizeClass: WindowSizeClass
+    windowSizeClass: WindowSizeClass,
+    clock: AppClock = SystemAppClock,
+    scheduleRepository: ScheduleRepository = AppGraph.scheduleRepository,
+    taskRepository: TaskRepository = AppGraph.taskRepository,
 ) {
     val strings = LocalStrings.current.childScheduleTimeline
-    val app = AppGraph
-    val schedules by app.scheduleRepository.getEnabledSchedules().collectAsState(initial = emptyList())
-    val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
+    val schedules by remember(scheduleRepository) {
+        scheduleRepository.getEnabledSchedules()
+    }.collectAsState(initial = emptyList())
+    val tasks by remember(taskRepository) {
+        taskRepository.getAllActiveTasks()
+    }.collectAsState(initial = emptyList())
 
-    // 当前时间（分钟数）
-    val cal = Calendar.getInstance()
-    val nowMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-    val todayDay = com.hstudy.app.data.repository.ScheduleRepository.getTodayDayOfWeek()
+    // 日期、星期与当前分钟来自同一 tick，跨午夜时一起切换。
+    val appTime = rememberAppTime(clock)
+    val nowMinutes = appTime.minute
+    val todayDay = appTime.dayOfWeek
 
     // 过滤出今天重复的日程
     val todaySchedules = schedules.filter { s ->
@@ -75,7 +86,7 @@ fun ChildScheduleTimelineScreen(
                             Text("🕐", fontSize = 28.sp)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(strings.nowLabel(com.hstudy.app.ui.dt.strFormat("%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))),
+                                Text(strings.nowLabel(strFormat("%02d:%02d", nowMinutes / 60, nowMinutes % 60)),
                                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(strings.subtitle, style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -39,7 +39,7 @@ package com.hstudy.app.i18n
  *
  * 术语按设计文档 §11：积分 = Points、打卡 = Check in / Checked in、连续打卡 = Streak、
  * 家长审核 = Approval、周报 = Weekly Report、奖励 = Reward、任务 = Task、专注 = Focus、
- * 心愿存钱罐/许愿池 = Wish Pool、设备配对 = Pairing。本页新增词条（家长管理台 = Parent console、
+ * 心愿存钱罐/许愿池 = Wish Pool、手动文件同步 = Manual file sync。本页新增词条（家长管理台 = Parent console、
  * 快速配置助手 = Quick setup assistant、完成证明 = Completion proofs、积分模板 = Points templates）
  * 已同步补进 §11。
  *
@@ -151,8 +151,8 @@ val ParentHomeStringsZh = ParentHomeStrings(
 
     // ===== 载入预设奖励与同步提醒 =====
     presetRewardsLoadedMessage = "✅ 已载入预设奖励",                          // :155
-    syncOverdueTitle = { days -> "设备数据已 $days 天未同步" },                // :184
-    syncOverdueNote = "点击去同步，保持家长手机与孩子设备数据一致",               // :187
+    syncOverdueTitle = { days -> "已 $days 天未进行手动同步" },
+    syncOverdueNote = "点击前往设置，通过 JSON 文件手动导出、分享或导入",
 
     // ===== 功能菜单 =====
     menuTaskManageTitle = "任务管理",                                        // :201
@@ -184,7 +184,7 @@ val ParentHomeStringsZh = ParentHomeStrings(
     menuWeeklyReportTitle = "周报总览",                                       // :214
     menuWeeklyReportSubtitle = "每周打卡与积分汇总",                            // :214
     menuSettingsTitle = "家长设置",                                          // :215
-    menuSettingsSubtitle = "密码保护与数据同步",                               // :215
+    menuSettingsSubtitle = "密码保护与手动 JSON 文件同步",
 
     // ===== 快速配置助手 =====
     setupAssistantTitle = "快速配置助手",                                     // :299
@@ -240,10 +240,10 @@ val ParentHomeStringsEn = ParentHomeStrings(
     // ===== 载入预设奖励与同步提醒 =====
     presetRewardsLoadedMessage = "✅ Preset rewards loaded",
     syncOverdueTitle = { days ->
-        if (days == 1) "Device data has not been synced for 1 day"
-        else "Device data has not been synced for $days days"
+        if (days == 1) "Manual sync last performed 1 day ago"
+        else "Manual sync last performed $days days ago"
     },
-    syncOverdueNote = "Tap to sync and keep the parent phone in step with your child's device",
+    syncOverdueNote = "Tap to open settings and manually export, share, or import JSON files",
 
     // ===== 功能菜单 =====
     menuTaskManageTitle = "Task management",
@@ -275,7 +275,7 @@ val ParentHomeStringsEn = ParentHomeStrings(
     menuWeeklyReportTitle = "Weekly reports",
     menuWeeklyReportSubtitle = "Weekly check-ins and points summary",
     menuSettingsTitle = "Parent settings",
-    menuSettingsSubtitle = "Password protection and data sync",
+    menuSettingsSubtitle = "Password protection and manual JSON file sync",
 
     // ===== 快速配置助手 =====
     setupAssistantTitle = "Quick setup assistant",

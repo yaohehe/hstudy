@@ -8,10 +8,9 @@ package com.hstudy.app.data.local
  *   （见 PointRepositoryInvariantTest 的 FakePointDao / FakePointApprovalDao）；
  *   Fake 无法伪造真 RoomDatabase 的事务语义，注入抽象后测试可以插一个
  *   "快照-回滚" journal 假事务器，把"中途异常整体回滚"钉在纯逻辑层。
- * - 生产装配（AppGraph）注入 [roomTransactionRunner]（expect 工厂，CI fix round）：
- *   Android actual 委托 Room 的 `RoomDatabase.withTransaction` 真事务（DatabaseFactory
- *   已配 setQueryCoroutineContext，满足其挂起协程上下文要求；嵌套调用与 Room 一致=同一
- *   事务内联执行）；iOS actual 返回 [DirectTransactionRunner] 直通——原因见 [roomTransactionRunner] KDoc。
+ * - 生产装配（AppGraph）注入 [roomTransactionRunner]（expect 工厂）：
+ *   Android 与 iOS actual 均使用 Room KMP 的 `useWriterConnection` / `immediateTransaction`
+ *   真事务，以匹配 `BundledSQLiteDriver` 的连接模型。
  */
 interface DbTransactionRunner {
     /**
@@ -25,9 +24,7 @@ interface DbTransactionRunner {
  * 直通实现（**不做事务**，原样执行 block）：
  * - 单元测试的默认值——保持既有两参构造 `PointRepository(pointDao, approvalDao)` 的全部
  *   317 条基线用例字节行为不变（红线：幂等判定逻辑零变化，事务只做原子化）；
- * - iOS 生产装配的实际形态（Room KMP 原生事务 API 缺位，见 [roomTransactionRunner] 的
- *   iosMain actual KDoc 披露）；
- * - 也用作事务器不可用场景的兜底形状（行为退化为 v3.3.1 现状）。
+ * - 生产平台工厂不得返回该实现；Android 与 iOS 均使用真实 Room 事务。
  */
 object DirectTransactionRunner : DbTransactionRunner {
     override suspend fun <R> runInTransaction(block: suspend () -> R): R = block()
@@ -36,15 +33,9 @@ object DirectTransactionRunner : DbTransactionRunner {
 /**
  * 平台事务工厂（CI iosSimulatorArm64 fix round）：
  *
- * **为什么不是 commonMain 直接实现**：Room 2.7 的 `androidx.room.withTransaction` 扩展只发布在
- * JVM/Android klib，common klib 没有对应的挂起事务 API，commonMain 引用会让 iOS 目标编译失败
- * （CI run 45045438877：`Unresolved reference 'withTransaction'` → `:composeApp:compileKotlinIosSimulatorArm64 FAILED`）。
- * 原 Task C 把它写在 commonMain 的 `RoomTransactionRunner` 是平台 API 可用性误判，真实现现移入 androidMain。
- *
- * - Android actual（`DbTransactionRunner.android.kt`）：真 Room `withTransaction`，
- *   跨 DAO 多表写原子性与嵌套重入语义与 Task C 生产路径零变化（红线）；
- * - iOS actual（`DbTransactionRunner.ios.kt`）：返回 [DirectTransactionRunner] 直通，
- *   **批量原子降级为直通**，待 Room 在 common klib 提供原生事务 API 后回切实实现
- *   （验收文档 F-7 关联披露）。
+ * **为什么按平台提供 actual**：保留平台装配边界，两个 actual 均使用 Room KMP 的
+ * `useWriterConnection` 获取写连接，再以 `immediateTransaction` 执行真事务。
+ * Android 数据库使用 `BundledSQLiteDriver`，不能调用依赖 SupportSQLiteOpenHelper 的
+ * Android-only `withTransaction`。
  */
 expect fun roomTransactionRunner(database: AppDatabase): DbTransactionRunner

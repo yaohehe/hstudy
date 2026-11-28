@@ -84,7 +84,7 @@ fun AppNavGraph(navigator: AppNavigator) {
             windowSizeClass = windowSizeClass
         )
         route.startsWith(argPrefix(Screen.ParentTaskEdit.route)) -> {
-            val taskId = pathArg(route, Screen.ParentTaskEdit.route).toLongOrNull() ?: 0L
+            val taskId = numericRouteArg(route, Screen.ParentTaskEdit.route)
             ParentTaskEditScreen(taskId = taskId, onNavigateBack = back, windowSizeClass = windowSizeClass)
         }
         route == Screen.ParentPoints.route ->
@@ -95,7 +95,7 @@ fun AppNavGraph(navigator: AppNavigator) {
             windowSizeClass = windowSizeClass
         )
         route.startsWith(argPrefix(Screen.ParentRewardEdit.route)) -> {
-            val rewardId = pathArg(route, Screen.ParentRewardEdit.route).toLongOrNull() ?: 0L
+            val rewardId = numericRouteArg(route, Screen.ParentRewardEdit.route)
             ParentRewardEditScreen(rewardId = rewardId, onNavigateBack = back, windowSizeClass = windowSizeClass)
         }
         route == Screen.ParentDashboard.route ->
@@ -161,7 +161,7 @@ fun AppNavGraph(navigator: AppNavigator) {
         route == Screen.ChildMistakeAdd.route ->
             ChildMistakeAddScreen(onNavigateBack = back)
         route.startsWith(argPrefix(Screen.ChildMistakeDetail.route)) -> {
-            val mistakeId = pathArg(route, Screen.ChildMistakeDetail.route).toLongOrNull() ?: 0L
+            val mistakeId = numericRouteArg(route, Screen.ChildMistakeDetail.route)
             ChildMistakeDetailScreen(mistakeId = mistakeId, onNavigateBack = back)
         }
 
@@ -182,7 +182,7 @@ fun AppNavGraph(navigator: AppNavigator) {
         // ====== 完成证明 ======
         route.startsWith(argPrefix(Screen.ChildProofCapture.route)) -> {
             val args = pathArgs(route, Screen.ChildProofCapture.route)
-            val taskId = args.getOrNull(0)?.toLongOrNull() ?: 0L
+            val taskId = numericRouteArg(route, Screen.ChildProofCapture.route)
             val taskTitle = decodeRouteArg(args.getOrNull(1) ?: "")
             ChildProofCaptureScreen(taskId = taskId, taskTitle = taskTitle, onNavigateBack = back)
         }
@@ -290,6 +290,10 @@ private fun RoleSelectDestination(
 
 /** 带参路由前缀："parent_task_edit/{taskId}" -> "parent_task_edit/" */
 private fun argPrefix(pattern: String): String = pattern.substringBefore("{")
+
+/** 取出路由首个数值参数；空值、非数字与 Long 溢出均沿用 AppNavGraph 的 0L 兜底。 */
+internal fun numericRouteArg(route: String, pattern: String): Long =
+    pathArgs(route, pattern).firstOrNull().orEmpty().toLongOrNull() ?: 0L
 
 /** 取出带参路由中占位部分对应的实参（单参数路由） */
 private fun pathArg(route: String, pattern: String): String = route.removePrefix(argPrefix(pattern))

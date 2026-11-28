@@ -55,6 +55,8 @@ data class PomodoroSessionState(
     val recordedSessionId: Long = 0L,
     /** 结算认领当日（yyyy-MM-dd，claim 时落盘；bizKey 日期段跨零点重放保持不变）。 */
     val settleDate: String = "",
+    /** 持久化会话版本；每次成功的状态转换递增，用于拒绝陈旧 UI 快照。 */
+    val version: Long = 0L,
 ) {
 
     val isPaused: Boolean get() = pauseStartedAtEpochMs != null
@@ -75,13 +77,14 @@ data class PomodoroSessionState(
 
     /** 暂停：冻结本段（已在暂停中/已结算时幂等返回自身）。 */
     fun paused(nowMs: Long): PomodoroSessionState =
-        if (isPaused || settled) this else copy(pauseStartedAtEpochMs = nowMs)
+        if (isPaused || settled) this else copy(pauseStartedAtEpochMs = nowMs, version = version + 1L)
 
     /** 恢复：累计暂停毫秒 +=（now - 暂停起点），deadline 相应顺延（未在暂停中时幂等）。 */
     fun resumed(nowMs: Long): PomodoroSessionState =
         if (!isPaused) this else copy(
             pausedAccumMs = pausedAccumMs + (nowMs - pauseStartedAtEpochMs!!),
             pauseStartedAtEpochMs = null,
+            version = version + 1L,
         )
 
     /** 专注段结算完成 → 同一条会话记录无缝转入休息段（重新锚定 start、清零暂停）。 */
@@ -95,6 +98,7 @@ data class PomodoroSessionState(
             settled = false,
             recordedSessionId = 0L,
             settleDate = "",
+            version = version + 1L,
         )
 
     /** 恢复时该做什么（要求 2/3 的纯函数判定核，测试逐分支钉死）。 */

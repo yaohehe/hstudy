@@ -1,5 +1,7 @@
 package com.hstudy.app.data.repository
 
+import com.hstudy.app.data.local.DbTransactionRunner
+import com.hstudy.app.data.local.DirectTransactionRunner
 import com.hstudy.app.data.local.dao.MistakeDao
 import com.hstudy.app.data.local.entity.MistakeEntity
 import com.hstudy.app.data.local.entity.MistakeReviewEntity
@@ -9,7 +11,8 @@ import kotlinx.datetime.Clock
 
 class MistakeRepository(
     private val mistakeDao: MistakeDao,
-    private val pointRepository: PointRepository
+    private val pointRepository: PointRepository,
+    private val transactionRunner: DbTransactionRunner = DirectTransactionRunner
 ) {
 
     fun getAllMistakes(): Flow<List<MistakeEntity>> = mistakeDao.getAllMistakes()
@@ -56,24 +59,26 @@ class MistakeRepository(
      * 该值是落库 canonical（Ruling 25），不随界面语言变化，所以不进文案表。
      */
     suspend fun reviewMistake(mistakeId: Long, points: Int = 3, note: String = "") {
-        val mistake = mistakeDao.getMistakeById(mistakeId) ?: return
-        mistakeDao.updateReviewProgress(
-            id = mistakeId,
-            lastReviewAt = Clock.System.now().toEpochMilliseconds(),
-            reviewCount = mistake.reviewCount + 1
-        )
-        mistakeDao.insertReview(
-            MistakeReviewEntity(mistakeId = mistakeId, earnedPoints = points, note = note)
-        )
-        if (points > 0) {
-            val today = todayString()
-            pointRepository.checkIn(
-                bizKey = "MISTAKE_REV:$mistakeId:$today",
-                actionType = "MISTAKE_REVIEW",
-                description = "错题复习：$note",
-                points = points,
-                date = today
+        transactionRunner.runInTransaction {
+            val mistake = mistakeDao.getMistakeById(mistakeId) ?: return@runInTransaction
+            mistakeDao.updateReviewProgress(
+                id = mistakeId,
+                lastReviewAt = Clock.System.now().toEpochMilliseconds(),
+                reviewCount = mistake.reviewCount + 1
             )
+            mistakeDao.insertReview(
+                MistakeReviewEntity(mistakeId = mistakeId, earnedPoints = points, note = note)
+            )
+            if (points > 0) {
+                val today = todayString()
+                pointRepository.checkIn(
+                    bizKey = "MISTAKE_REV:$mistakeId:$today",
+                    actionType = "MISTAKE_REVIEW",
+                    description = "错题复习：$note",
+                    points = points,
+                    date = today
+                )
+            }
         }
     }
 
@@ -89,15 +94,17 @@ class MistakeRepository(
      * `"举一反三思考: ${title}"`，落库 canonical、不进文案表，Ruling 25）。
      */
     suspend fun saveVariation(mistake: MistakeEntity, note: String) {
-        mistakeDao.update(mistake.copy(variationNote = note, hasVariation = true))
-        val today = todayString()
-        pointRepository.checkIn(
-            bizKey = "VARIATION:${mistake.id}:$today",
-            actionType = "VARIATION",
-            description = "举一反三思考: ${mistake.title}",
-            points = 3,
-            date = today
-        )
+        transactionRunner.runInTransaction {
+            mistakeDao.update(mistake.copy(variationNote = note, hasVariation = true))
+            val today = todayString()
+            pointRepository.checkIn(
+                bizKey = "VARIATION:${mistake.id}:$today",
+                actionType = "VARIATION",
+                description = "举一反三思考: ${mistake.title}",
+                points = 3,
+                date = today
+            )
+        }
     }
 
     fun getTotalReviewCount(): Flow<Int> = mistakeDao.getTotalReviewCount()

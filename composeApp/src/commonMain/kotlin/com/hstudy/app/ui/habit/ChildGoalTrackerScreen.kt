@@ -13,39 +13,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hstudy.app.AppGraph
+import com.hstudy.app.data.repository.CompletionRateReport
+import com.hstudy.app.data.repository.CompletionRateSource
+import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.data.repository.ReportRepository
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.ui.common.*
-import com.hstudy.app.ui.dt.SimpleDateFormat
-import com.hstudy.app.ui.dt.*
+import kotlinx.datetime.LocalDate
 
 @Composable
 fun ChildGoalTrackerScreen(
     onNavigateBack: () -> Unit,
     windowSizeClass: WindowSizeClass
 ) {
+    ChildGoalTrackerScreen(
+        onNavigateBack = onNavigateBack,
+        windowSizeClass = windowSizeClass,
+        pointRepository = AppGraph.pointRepository,
+        reportRepository = AppGraph.reportRepository,
+        today = LocalDate.parse(PointRepository.getTodayString())
+    )
+}
+
+@Composable
+internal fun ChildGoalTrackerScreen(
+    onNavigateBack: () -> Unit,
+    windowSizeClass: WindowSizeClass,
+    pointRepository: PointRepository,
+    reportRepository: ReportRepository,
+    today: LocalDate
+) {
     val strings = LocalStrings.current.childGoalTracker
-    val app = AppGraph
-    val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
-    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    val completedIds by app.pointRepository.getCompletedTaskIdsForDate(today).collectAsState(initial = emptyList())
+    val completion by reportRepository.completionRateReport(today)
+        .collectAsState(initial = CompletionRateReport(0, 0, 0, CompletionRateSource.LEGACY_ACTIVE_TASK_FALLBACK))
 
     // 连续打卡天数
     var streak by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { streak = app.pointRepository.getCurrentStreak() }
+    LaunchedEffect(pointRepository) { streak = pointRepository.getCurrentStreak() }
 
-    val todayCompleted = completedIds.size
-    val todayTotal = tasks.size
-    val completionRate = if (todayTotal > 0) (todayCompleted.toFloat() / todayTotal * 100).toInt() else 0
-
-    // 本周统计
-    val cal = Calendar.getInstance()
-    cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0)
-    val weekStart = cal.timeInMillis
-    val cal2 = Calendar.getInstance()
-    cal2.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-    cal2.set(Calendar.HOUR_OF_DAY, 23); cal2.set(Calendar.MINUTE, 59); cal2.set(Calendar.SECOND, 59)
-    val weekEnd = cal2.timeInMillis
+    val todayCompleted = completion.completed
+    val todayTotal = completion.total
+    val completionRate = completion.rate
 
     Scaffold(
         topBar = { HStudyTopBar(title = strings.title, onNavigateBack = onNavigateBack) }
@@ -65,6 +73,11 @@ fun ChildGoalTrackerScreen(
                     Text("${completionRate}%", style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text(strings.tasksCompleted(todayCompleted, todayTotal), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        strings.completionRateSourceLabel(completion.source == CompletionRateSource.DAILY_SNAPSHOT),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     val animProgress by animateFloatAsState(
                         targetValue = if (todayTotal > 0) todayCompleted.toFloat() / todayTotal else 0f,
@@ -98,7 +111,7 @@ fun ChildGoalTrackerScreen(
 
                     val suggestions = listOf(
                         strings.suggestionAllTasks to (todayCompleted == todayTotal && todayTotal > 0),
-                        strings.suggestionThreeBasic to (completedIds.size >= 3),
+                        strings.suggestionThreeBasic to (todayCompleted >= 3),
                         strings.suggestionPomodoro to false,
                         strings.suggestionReview to false
                     )

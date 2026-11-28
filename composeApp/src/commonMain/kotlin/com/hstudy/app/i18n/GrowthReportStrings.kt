@@ -6,14 +6,15 @@ package com.hstudy.app.i18n
  * 六个统计项 = 标签 + 数值 + 副标题；数值格式走本表函数（[lifetimeValue] / [balanceSub] /
  * [streakValue] / [todayValue] / [exchangesValue] / [wishesValue]），英文单复数用
  * [pointsWord] / [timesWord] 与行内 day/days（W5/W6 同型）。
- * [reportText] 是分享到家族群的整段文本（7 参）。`petStage` 实参来自页面
+ * [reportText] 是分享到家族群的整段文本（8 参，含完成率来源标注）。`petStage` 实参来自页面
  * `petStageName(lifetime, displayLanguage)`：W7 起阶段名改由注册表 [localizedPetStageName]
  * （键控表 [petStageCopy]）解析，`reportText` 原样嵌入**已本地化**的阶段名——中文态仍是
  * 「宠物蛋 / 刚破壳 / 小黄鸡 / 小猫咪 / 小狐狸 / 小狮子 / 独角兽 / 小神龙」逐字节不变，
  * 英文态分享文本里出现的是「Pet Egg / Just Hatched / … / Little Dragon」。W6 期间
  * 「阶段名归 W7、英文分享文本里仍出现中文」的临时状态已由 W7 回接收口（V-67）。
- * 中文八行照录迁移前页面的 `buildString`（`appendLine` 逐行换行，末行也带 `"\n"`，
- * 中文态分享文本逐字节不变——等价闸门按行钉回页面原文）；英文按新文案单串给出（无尾随换行）。
+ * 中文原八行照录迁移前页面的 `buildString`（`appendLine` 逐行换行，末行也带 `"\n"`），
+ * 英文按新文案单串给出（无尾随换行）；Task 10 的来源行是有意新增，不再声称整串逐字节不变。
+ * v3.3.3 Task 10 起今日任务行下追加 [sourceLabel]，屏幕与导出文本使用同一来源标注。
  * 行尾注释里的 `:行号` 是迁移前 GrowthReportScreen.kt 的坐标。
  */
 data class GrowthReportStrings(
@@ -50,6 +51,7 @@ data class GrowthReportStrings(
         total: Int,
         exchanges: Int,
         wishes: Int,
+        sourceLabel: String,
     ) -> String,
 )
 
@@ -79,13 +81,14 @@ val GrowthReportStringsZh = GrowthReportStrings(
     exchangesSub = "用努力换来的奖励最甜",                                          // :100
     wishesValue = { n -> "$n 个" },                                              // :101
     wishesSub = "攒钱实现大梦想",                                                  // :101
-    reportText = { lifetime, streak, petStage, done, total, exchanges, wishes ->  // :59
+    reportText = { lifetime, streak, petStage, done, total, exchanges, wishes, sourceLabel ->  // :59
         buildString {
             appendLine("📚 【HStudy 学习成长报告】")                              // :60
             appendLine("🌟 累计获得积分：$lifetime 分")                           // :61
             appendLine("🔥 当前连续打卡：$streak 天")                             // :62
             appendLine("🐾 学习宠物：$petStage")                                 // :63
             appendLine("✅ 今日完成任务：$done/$total 个")                         // :64
+            appendLine(sourceLabel)
             appendLine("🎁 已兑换奖励：$exchanges 次")                            // :65
             appendLine("🐷 已达成心愿：$wishes 个")                               // :66
             appendLine("—— 每一份坚持都值得被看见 ❤️")                            // :67
@@ -119,11 +122,12 @@ val GrowthReportStringsEn = GrowthReportStrings(
     exchangesSub = "Rewards earned through effort taste sweetest",
     wishesValue = { n -> "$n" },
     wishesSub = "Save up to realize a big dream",
-    reportText = { lifetime, streak, petStage, done, total, exchanges, wishes ->
+    reportText = { lifetime, streak, petStage, done, total, exchanges, wishes, sourceLabel ->
         "📚 [HStudy Growth Report]\n🌟 Total points earned: $lifetime\n" +
             "🔥 Current check-in streak: $streak ${if (streak == 1) "day" else "days"}\n" +
             "🐾 Study pet: $petStage\n" +
             "✅ Tasks done today: $done/$total\n" +
+            "$sourceLabel\n" +
             "🎁 Rewards redeemed: $exchanges\n" +
             "🐷 Wishes achieved: $wishes\n" +
             "— Every bit of persistence deserves to be seen ❤️"

@@ -27,6 +27,7 @@ fun ParentRewardEditScreen(
     val app = AppGraph
     val scope = rememberCoroutineScope()
 
+    var existingReward by remember(rewardId) { mutableStateOf<RewardEntity?>(null) }
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var pointsCost by remember { mutableStateOf("300") }
@@ -41,6 +42,7 @@ fun ParentRewardEditScreen(
         if (rewardId > 0) {
             val reward = app.rewardRepository.getRewardById(rewardId)
             reward?.let {
+                existingReward = it
                 name = it.name
                 description = it.description
                 pointsCost = it.pointsCost.toString()
@@ -62,11 +64,12 @@ fun ParentRewardEditScreen(
                     TextButton(onClick = {
                         if (name.isBlank()) return@TextButton
                         scope.launch {
-                            val reward = RewardEntity(
-                                id = rewardId,
+                            val reward = buildRewardForSave(
+                                existing = existingReward,
+                                rewardId = rewardId,
                                 name = name,
                                 description = description,
-                                pointsCost = pointsCost.toIntOrNull() ?: 300,
+                                pointsCost = pointsCost,
                                 iconEmoji = iconEmoji,
                                 category = category
                             )
@@ -165,4 +168,31 @@ fun ParentRewardEditScreen(
             }
         }
     }
+}
+
+/** Keeps database-owned identity and metadata when the edit form saves an existing reward. */
+internal fun buildRewardForSave(
+    existing: RewardEntity?,
+    rewardId: Long,
+    name: String,
+    description: String,
+    pointsCost: String,
+    iconEmoji: String,
+    category: String
+): RewardEntity {
+    val parsedPointsCost = pointsCost.toIntOrNull() ?: 300
+    return existing?.copy(
+        name = name,
+        description = description,
+        pointsCost = parsedPointsCost,
+        iconEmoji = iconEmoji,
+        category = category
+    ) ?: RewardEntity(
+        id = rewardId,
+        name = name,
+        description = description,
+        pointsCost = parsedPointsCost,
+        iconEmoji = iconEmoji,
+        category = category
+    )
 }

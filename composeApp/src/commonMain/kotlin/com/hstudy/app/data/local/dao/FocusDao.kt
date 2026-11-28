@@ -12,6 +12,12 @@ interface FocusDao {
     @Insert
     suspend fun insertSession(session: FocusSessionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSessionIfAbsent(session: FocusSessionEntity): Long
+
+    @Query("SELECT * FROM focus_sessions WHERE sessionKey = :sessionKey LIMIT 1")
+    suspend fun getSessionByKey(sessionKey: String): FocusSessionEntity?
+
     @Query("SELECT * FROM focus_sessions ORDER BY completedAt DESC")
     fun getAllSessions(): Flow<List<FocusSessionEntity>>
 

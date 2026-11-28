@@ -65,6 +65,6 @@ object WeeklyReportReceiver {
 
     /** 取消每周周报推送 */
     fun cancel() {
-        Platform.notifications.cancel(REMINDER_ID)
+        Platform.notifications.cancel(REMINDER_ID, ReminderKind.WEEKLY_REPORT)
     }
 }

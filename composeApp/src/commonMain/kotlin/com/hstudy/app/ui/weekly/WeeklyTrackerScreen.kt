@@ -12,12 +12,16 @@ import com.hstudy.app.ui.theme.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hstudy.app.AppGraph
 import com.hstudy.app.data.local.entity.TaskCategory
+import com.hstudy.app.data.repository.PointRepository
+import com.hstudy.app.data.repository.ReportRepository
+import com.hstudy.app.data.repository.TaskRepository
 import com.hstudy.app.i18n.LocalDisplayLanguage
 import com.hstudy.app.i18n.LocalStrings
 import com.hstudy.app.i18n.localizedPresetText
@@ -25,8 +29,17 @@ import com.hstudy.app.ui.common.HStudyTopBar
 import com.hstudy.app.ui.common.ResponsiveContent
 import com.hstudy.app.ui.dt.SimpleDateFormat
 import com.hstudy.app.ui.dt.*
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 private val dayIcons = listOf("❤️", "⭐", "🖊️", "🖍️", "📐", "📖", "✈️")
+
+/** Single week source of truth shared by the table dates, header total and daily summary. */
+internal data class WeeklyTrackerAnchor(val weekStart: LocalDate)
 
 @Composable
 fun WeeklyTrackerScreen(
@@ -34,37 +47,56 @@ fun WeeklyTrackerScreen(
     isParentView: Boolean,
     windowSizeClass: WindowSizeClass
 ) {
+    WeeklyTrackerScreen(
+        onNavigateBack = onNavigateBack,
+        isParentView = isParentView,
+        windowSizeClass = windowSizeClass,
+        pointRepository = AppGraph.pointRepository,
+        taskRepository = AppGraph.taskRepository,
+        reportRepository = AppGraph.reportRepository,
+        today = LocalDate.parse(PointRepository.getTodayString())
+    )
+}
+
+@Composable
+internal fun WeeklyTrackerScreen(
+    onNavigateBack: () -> Unit,
+    isParentView: Boolean,
+    windowSizeClass: WindowSizeClass,
+    pointRepository: PointRepository,
+    taskRepository: TaskRepository,
+    reportRepository: ReportRepository,
+    today: LocalDate
+) {
     val strings = LocalStrings.current.weeklyTracker
-    val app = AppGraph
-    val tasks by app.taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
-    val totalPoints by app.pointRepository.getTotalPoints().collectAsState(initial = 0)
+    val tasks by taskRepository.getAllActiveTasks().collectAsState(initial = emptyList())
+    val totalPoints by pointRepository.getTotalPoints().collectAsState(initial = 0)
 
-    // 获取本周每天的日期
-    val weekDates = remember { getWeekDates() }
+    val anchor = remember(today) {
+        WeeklyTrackerAnchor(today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY))
+    }
+    val weekDates = remember(anchor) {
+        (0 until 7).map { offset ->
+            Date(anchor.weekStart.plus(offset, DateTimeUnit.DAY)
+                .atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds())
+        }
+    }
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
-    // 获取每天的打卡数据
+    val dailyPointsByDate by reportRepository.weeklyPoints(anchor.weekStart)
+        .collectAsState(initial = emptyMap())
+    val approvedByDate by reportRepository.approvedCompletionsBetween(
+        anchor.weekStart, anchor.weekStart.plus(6, DateTimeUnit.DAY)
+    ).collectAsState(initial = emptyMap())
     val dailyCompletions = weekDates.map { date ->
         val dateStr = dateFormat.format(date)
-        val completedIds by app.pointRepository.getCompletedTaskIdsForDate(dateStr).collectAsState(initial = emptyList())
-        dateStr to completedIds
+        val localDate = LocalDate.parse(dateStr)
+        dateStr to approvedByDate[localDate].orEmpty().toList()
     }
 
     val basicTasks = tasks.filter { it.category == TaskCategory.BASIC }
     val enhanceTasks = tasks.filter { it.category == TaskCategory.ENHANCEMENT }
     val habitTasks = tasks.filter { it.category == TaskCategory.HABIT }
-
-    // 计算本周积分
-    val cal = Calendar.getInstance().apply {
-        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }
-    val weekStart = cal.timeInMillis
-    cal.add(Calendar.DAY_OF_WEEK, 7)
-    val weekEnd = cal.timeInMillis
-    val records by app.pointRepository.getAllRecords().collectAsState(initial = emptyList())
-    val weeklyRecords = records.filter { it.date in weekStart until weekEnd }
-    val weeklyPoints = weeklyRecords.sumOf { it.points }
+    val weeklyPoints = dailyPointsByDate.values.sum()
 
     val isTablet = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     val cellWidth = if (isTablet) 80.dp else 56.dp
@@ -96,7 +128,8 @@ fun WeeklyTrackerScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(strings.weeklyPointsLabel, style = MaterialTheme.typography.labelMedium)
-                            Text("+$weeklyPoints", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            Text("+$weeklyPoints", style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold, modifier = Modifier.testTag("weekly-points-total"))
                         }
                         Divider(modifier = Modifier.height(48.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -150,8 +183,7 @@ fun WeeklyTrackerScreen(
                 // 每日积分汇总行
                 DailyPointsSummary(
                     weekDates = weekDates,
-                    dailyCompletions = dailyCompletions,
-                    tasks = tasks,
+                    dailyPointsByDate = dailyPointsByDate,
                     cellWidth = cellWidth,
                     labelWidth = labelWidth
                 )
@@ -249,15 +281,13 @@ private fun SectionTable(
 @Composable
 private fun DailyPointsSummary(
     weekDates: List<Date>,
-    dailyCompletions: List<Pair<String, List<Long>>>,
-    tasks: List<com.hstudy.app.data.local.entity.TaskEntity>,
+    dailyPointsByDate: Map<LocalDate, Int>,
     cellWidth: androidx.compose.ui.unit.Dp,
     labelWidth: androidx.compose.ui.unit.Dp
 ) {
     val strings = LocalStrings.current.weeklyTracker
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     Text(strings.dailySummaryTitle, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-
-    val taskMap = tasks.associateBy { it.id }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -275,17 +305,19 @@ private fun DailyPointsSummary(
             }
 
             // 每日积分
-            Row {
+            Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 Box(
                     modifier = Modifier.width(labelWidth).height(40.dp).padding(end = 4.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(strings.pointsRowLabel, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
-                dailyCompletions.forEach { (_, completedIds) ->
-                    val dayPoints = completedIds.sumOf { taskMap[it]?.points ?: 0 }
+                weekDates.forEach { date ->
+                    val dateStr = dateFormat.format(date)
+                    val dayPoints = dailyPointsByDate[LocalDate.parse(dateStr)] ?: 0
                     Box(
-                        modifier = Modifier.width(cellWidth).height(40.dp),
+                        modifier = Modifier.width(cellWidth).height(40.dp)
+                            .testTag("weekly-points-$dateStr"),
                         contentAlignment = Alignment.Center
                     ) {
                         if (dayPoints > 0) {
@@ -302,25 +334,6 @@ private fun DailyPointsSummary(
                     }
                 }
             }
-        }
-    }
-}
-
-/**
- * 获取本周一到周日的日期列表
- */
-private fun getWeekDates(): List<Date> {
-    val cal = Calendar.getInstance()
-    cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    cal.set(Calendar.HOUR_OF_DAY, 0)
-    cal.set(Calendar.MINUTE, 0)
-    cal.set(Calendar.SECOND, 0)
-    cal.set(Calendar.MILLISECOND, 0)
-
-    return (0 until 7).map { i ->
-        if (i == 0) cal.time else {
-            cal.add(Calendar.DAY_OF_MONTH, 1)
-            cal.time
         }
     }
 }

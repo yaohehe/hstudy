@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  *
  * v3.3 W4 重构（RA7：只动视觉层与布局结构，业务回调/导航/写库入口全部保留）：
  * - **第 1 层 紧急待办区**：待审积分或待审证明 >0 时置顶警示卡（counts 走本页既有
- *   pointApprovalRepository.getPendingCount / habitRepository.getPendingProofCount 流），
+ *   pointRepository.getPendingApprovalCount / habitRepository.getPendingProofCount 流），
  *   "立即处理"直达审批页；证明待审仍保留直达证明页的既有按钮（15 卡功能 1:1 映射，不删）。
  * - **第 2 层 Daily Pulse**：删除硬编码浅蓝渐变色值（旧 Color 十六进制三件套），改 ElevatedCard +
  *   2x2 宫格：今日打卡率（completedIds/tasks）、连续天数（getCurrentStreak）、
@@ -58,7 +58,7 @@ fun ParentHomeScreen(
     val today = com.hstudy.app.data.repository.PointRepository.getTodayString()
     val completedIds by app.pointRepository.getCompletedTaskIdsForDate(today).collectAsState(initial = emptyList())
     val pendingProofCount by app.habitRepository.getPendingProofCount().collectAsState(initial = 0)
-    val pendingApprovalCount by app.pointApprovalRepository.getPendingCount().collectAsState(initial = 0)
+    val pendingApprovalCount by app.pointRepository.getPendingApprovalCount().collectAsState(initial = 0)
     val allMistakes by app.mistakeRepository.getAllMistakes().collectAsState(initial = emptyList())
     val masteredCount by app.mistakeRepository.getMasteredCount().collectAsState(initial = 0)
     // Daily Pulse 专注时长：既有 FocusRepository 当日分钟流（ParentDashboard 同源，不新增查询）
@@ -67,7 +67,7 @@ fun ParentHomeScreen(
     val rewards by app.rewardRepository.getAllActiveRewards().collectAsState(initial = emptyList())
     val wishGoals by app.wishGoalRepository.getAllGoals().collectAsState(initial = emptyList())
     val schedules by app.scheduleRepository.getAllSchedules().collectAsState(initial = emptyList())
-    // 设备同步状态（配对后持续同步可见化）
+    // 手动文件同步状态（依据最近一次导入记录提醒，不代表后台自动同步）
     val lastSyncDate by app.userPreferences.lastSyncDate.collectAsState(initial = "")
     val syncReminderEnabled by app.userPreferences.syncReminderEnabled.collectAsState(initial = true)
 
@@ -223,7 +223,7 @@ fun ParentHomeScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // ===== 设备同步状态（配对后持续同步可见化，超期时主动提醒）=====
+                // ===== 手动文件同步状态（超期时提醒导出、分享或导入 JSON 文件）=====
                 if (syncReminderEnabled && lastSyncDate.isNotBlank()) {
                     val syncDaysAgo = remember(lastSyncDate) {
                         try {

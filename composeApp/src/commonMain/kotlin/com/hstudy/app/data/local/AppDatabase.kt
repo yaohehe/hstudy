@@ -7,6 +7,9 @@ import androidx.room.RoomDatabaseConstructor
 import com.hstudy.app.data.local.dao.*
 import com.hstudy.app.data.local.entity.*
 
+/** Shared with backup validation so a future schema bump cannot silently reject new backups. */
+const val APP_SCHEMA_VERSION = 14
+
 @Database(
     entities = [
         TaskEntity::class,
@@ -24,15 +27,19 @@ import com.hstudy.app.data.local.entity.*
         DailyAssignmentEntity::class,
         WishGoalEntity::class,
         DailyScheduleEntity::class,
-        PointApprovalEntity::class
+        PointApprovalEntity::class,
+        DailyTaskSnapshotEntity::class,
+        PetScenePurchaseEntity::class,
+        MandatoryPenaltyRunEntity::class
     ],
-    version = 13,
-    exportSchema = false
+    version = APP_SCHEMA_VERSION,
+    exportSchema = true
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun pointDao(): PointDao
+    abstract fun familyProgressDao(): FamilyProgressDao
     abstract fun rewardDao(): RewardDao
     abstract fun mistakeDao(): MistakeDao
     abstract fun focusDao(): FocusDao
@@ -41,6 +48,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun wishGoalDao(): WishGoalDao
     abstract fun dailyScheduleDao(): DailyScheduleDao
     abstract fun pointApprovalDao(): PointApprovalDao
+    abstract fun mandatoryPenaltyRunDao(): MandatoryPenaltyRunDao
+    abstract fun dailyTaskSnapshotDao(): DailyTaskSnapshotDao
+    abstract fun reportDao(): ReportDao
+    abstract fun petScenePurchaseDao(): PetScenePurchaseDao
 }
 
 // Room 编译器（KSP）会为每个目标平台生成 actual 实现（内部实例化 AppDatabase_Impl），

@@ -8,12 +8,20 @@ import com.hstudy.app.data.local.entity.ApprovalStatus
 import com.hstudy.app.data.local.entity.PointApprovalEntity
 import com.hstudy.app.data.local.entity.PointRecordEntity
 import com.hstudy.app.data.local.entity.PointRecordType
+import com.hstudy.app.data.local.entity.TaskCategory
 import com.hstudy.app.data.local.entity.TaskCompletionEntity
+import com.hstudy.app.data.local.entity.TaskEntity
+import com.hstudy.app.data.local.entity.TaskFrequency
+import com.hstudy.app.data.local.entity.effectivePoints
+import com.hstudy.app.time.AppClock
+import com.hstudy.app.time.SystemAppClock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
@@ -34,7 +42,8 @@ enum class CheckInResult {
  * 1. **打卡不计分**：任何打卡类行为只写入完成记录 + 生成待审申请，绝不写积分记录。
  *    积分只在家长审批通过时写入一次。
  * 2. **一业务一生效申请**：通过 bizKey（如 `TASK:12:2026-09-06`）约束，
- *    同一业务同时最多一条 PENDING、最多一条 APPROVED，从根本上杜绝重复累计。
+ *    同一业务同时最多一条 PENDING、最多一条 APPROVED；任务类再用 frequencyPeriod 把
+ *    legacy/canonical bizKey 归入同一频次周期，从根本上杜绝重复累计。
  * 3. **审批幂等**：只有 PENDING 状态才能转为 APPROVED 并计分，重复审批不会重复加分。
  * 4. **撤销对称**：未审批撤销 → 申请置 CANCELLED（本就没分，无残留）；
  *    已审批撤销 → 追加 REVERSAL 反向记录冲抵，净额归零且保留审计轨迹。
@@ -48,15 +57,14 @@ enum class CheckInResult {
  * ② 纯 ASCII 业务键（心愿存入/退回用 `wish_deposit:<goalId>` / `wish_refund:<goalId>`，
  *    见 [WishGoalRepository]），展示文案由明细页按 `type + note` 派生。
  *
- * ## 事务原子化（v3.3.2 Task C，覆盖 P2-2 + v3.3.1 终审残留窗口）
- * [approveAllAndAward] / [expireStalePendingApprovals] / [revokeApproval] 三个入口经
- * [transactionRunner] 整体包 DB 事务：批量中途任意一条抛异常 → **整批回滚**（不存在
- * "前半批已 APPROVED、后半批 PENDING"的半批态）；revoke/清理的"按 id 复读 → 判半区 → 落库"
- * 读-判-写序列在事务内闭环，消除弹窗停留/清理瞬间与并发打卡交错形成的毫秒窗口
- * （窗口期读到旧行后再写错半区的风险由 SQLite 事务隔离兜底）。
- * 红线自查：事务**只原子化、不改判定**——单条幂等（不变量 3）、撤销对称（不变量 4）、
- * append-only 余额=SUM（不变量 5）的判定逻辑与写库顺序一字未动；"中途异常整体回滚"下
- * 要么全部落库要么分毫不动，SUM 不变量恒成立。
+ * ## 事务原子化（v3.3.2 Task C + v3.3.3 Task 4）
+ * [approveAllAndAward] / [expireStalePendingApprovals] / [revokeApproval] 三个批量/撤回入口经
+ * [transactionRunner] 整体包 DB 事务：批量中途任意一条抛异常 → **整批回滚**。
+ * v3.3.3 Task 4 再将单条 [checkIn] / [checkInForTask] / [undoCheckIn] / [approveAndAward] /
+ * [rejectApproval] / [spendPoints] / [refundSpentPoints] 全部包进同一注入事务；审核/撤销使用状态 CAS，
+ * 余额在事务内复读，账本只在 CAS 成功后追加。批量入口复用事务内私有本体，
+ * 避免无意义嵌套，同时保持最外层事务边界与既有回归口径。
+ * append-only 余额=SUM（不变量 5）在提交与回滚两态下都成立。
  */
 class PointRepository(
     private val pointDao: PointDao,
@@ -64,7 +72,8 @@ class PointRepository(
     /**
      * Task C 事务执行器（见 [DbTransactionRunner] 的选型说明）。
      * 生产装配（AppGraph）注入 [com.hstudy.app.data.local.roomTransactionRunner] 平台工厂产物
-     * （Android=Room 真事务；iOS=直通，Room 原生事务 API 缺位，见 DbTransactionRunner.ios.kt 披露）；
+     * （Android=Room `withTransaction` 真事务；iOS=Room `useWriterConnection` /
+     * `immediateTransaction` 真事务，见 DbTransactionRunner.ios.kt）；
      * 默认 [DirectTransactionRunner]=直通不包事务，
      * 既有两参构造的仓库测试（RA9 手写 Fake，无 JVM sqlite）行为零变化。
      */
@@ -76,7 +85,13 @@ class PointRepository(
     /** 待审批积分（仅展示，绝不计入可用余额） */
     fun getPendingApprovalPoints(): Flow<Int> = approvalDao.getPendingPoints()
 
-    /** 累计获得的总积分（只算正数）——用于学习宠物成长等长期激励 */
+    /** 审批全量历史流；审批状态变更仍必须经由本仓库的账本联动入口。 */
+    fun getAllApprovals(): Flow<List<PointApprovalEntity>> = approvalDao.getAllApprovals()
+
+    /** 待审批笔数流；与审批页/首页共用同一 DAO 口径。 */
+    fun getPendingApprovalCount(): Flow<Int> = approvalDao.getPendingCount()
+
+    /** 累计获得收入（任务/奖励/家长奖惩正分；心愿退款等非收入正调整除外）。 */
     fun getLifetimeEarnedPoints(): Flow<Int> = pointDao.getLifetimeEarnedPoints()
 
     /** 最近 7 天日均获得积分（只算正数）——用于预估心愿达成天数 */
@@ -98,6 +113,13 @@ class PointRepository(
     /** 累计打卡总次数——用于成就评估 */
     suspend fun getTotalCompletionCount(): Int = pointDao.getTotalCompletionCount()
 
+    fun observeTotalCompletionCount(): Flow<Int> = pointDao.observeTotalCompletionCount()
+
+    fun observeDistinctCompletionDates(since: Long): Flow<List<String>> =
+        pointDao.observeDistinctCompletionDates(since)
+
+    fun isPerfectDay(date: String): Flow<Boolean> = pointDao.isPerfectDay(date)
+
     fun getAllRecords(): Flow<List<PointRecordEntity>> = pointDao.getAllPointRecords()
 
     fun getRecordsBetween(start: Long, end: Long): Flow<List<PointRecordEntity>> =
@@ -110,32 +132,72 @@ class PointRepository(
     // ==================================================================
 
     /**
-     * 任务打卡：记录完成 + 生成（或复用）待审申请。**不写入任何积分记录。**
+     * Frequency-aware task check-in: records one completion per DAILY/WEEKLY/
+     * MONTHLY/ONCE period and creates or reuses that period's approval request.
+     * The configured bonus is included once in both snapshots. No points are
+     * credited until approval.
      *
-     * @return 打卡结果，供 UI 提示；无论哪种结果，本次都不会产生重复申请
+     * The legacy task-id overload below remains for existing callers/tests and
+     * delegates here as a DAILY task with zero bonus.
      */
-    suspend fun checkInForTask(taskId: Long, points: Int, note: String = ""): CheckInResult {
-        val today = todayString()
-        // 完成记录幂等：同一天同一任务只保留一条（用于 streak / 今日进度统计）
-        if (pointDao.getCompletionForTaskOnDate(taskId, today) == null) {
+    suspend fun checkInForTask(
+        task: TaskEntity,
+        date: String,
+        clock: AppClock
+    ): CheckInResult = transactionRunner.runInTransaction {
+        val localDate = LocalDate.parse(date)
+        val window = task.frequency.periodWindow(localDate)
+        val periodKey = task.frequency.periodKey(localDate)
+        val requestedPoints = task.effectivePoints() + task.bonusPoints
+        val requestedAt = clock.nowMillis()
+
+        val activeApprovals = approvalDao.getActiveTaskApprovalsForPeriod(task.id, periodKey)
+        if (activeApprovals.isNotEmpty()) {
+            return@runInTransaction if (activeApprovals.any { it.status == ApprovalStatus.APPROVED }) {
+                CheckInResult.ALREADY_CREDITED
+            } else {
+                CheckInResult.ALREADY_PENDING
+            }
+        }
+
+        val existingCompletion = findCompletionForPeriod(task.id, periodKey, window)
+        if (existingCompletion == null) {
             pointDao.insertCompletion(
                 TaskCompletionEntity(
-                    taskId = taskId,
-                    pointsEarned = points,
-                    note = note,
-                    date = today
+                    taskId = task.id,
+                    completedAt = requestedAt,
+                    pointsEarned = requestedPoints,
+                    note = task.title,
+                    date = date,
+                    frequencyPeriod = periodKey
                 )
             )
         }
-        return ensureApproval(
-            bizKey = bizKey("TASK", taskId, today),
+        ensureApproval(
+            bizKey = bizKey("TASK", task.id, periodKey),
             actionType = "TASK_COMPLETE",
-            description = "完成任务：$note",
-            points = points,
-            taskId = taskId,
-            date = today
+            description = "完成任务：${task.title}",
+            points = existingCompletion?.pointsEarned ?: requestedPoints,
+            taskId = task.id,
+            date = existingCompletion?.date ?: date,
+            requestedAt = requestedAt,
+            frequencyPeriod = periodKey,
+            syncPendingSnapshot = false
         )
     }
+
+    /** Legacy DAILY check-in entry retained for source and stored-key compatibility. */
+    suspend fun checkInForTask(taskId: Long, points: Int, note: String = ""): CheckInResult =
+        checkInForTask(
+            task = TaskEntity(
+                id = taskId,
+                title = note,
+                category = TaskCategory.BASIC,
+                points = points
+            ),
+            date = todayString(),
+            clock = SystemAppClock
+        )
 
     /**
      * 通用打卡（习惯 / 布置任务 / 每日目标等）：只生成（或复用）待审申请，**不计分**。
@@ -147,14 +209,16 @@ class PointRepository(
         points: Int,
         taskId: Long? = null,
         date: String = todayString()
-    ): CheckInResult = ensureApproval(
-        bizKey = bizKey,
-        actionType = actionType,
-        description = description,
-        points = points,
-        taskId = taskId,
-        date = date
-    )
+    ): CheckInResult = transactionRunner.runInTransaction {
+        ensureApproval(
+            bizKey = bizKey,
+            actionType = actionType,
+            description = description,
+            points = points,
+            taskId = taskId,
+            date = date
+        )
+    }
 
     /**
      * 撤销任务打卡：
@@ -168,25 +232,71 @@ class PointRepository(
         return undoCheckIn(bizKey = bizKey("TASK", taskId, today), taskId = taskId, date = today)
     }
 
+    /** Frequency-aware undo, including a later-day undo of an earlier period completion. */
+    suspend fun undoTaskCheckIn(task: TaskEntity, date: String): Int =
+        transactionRunner.runInTransaction {
+            val localDate = LocalDate.parse(date)
+            val window = task.frequency.periodWindow(localDate)
+            val periodKey = task.frequency.periodKey(localDate)
+            val active = approvalDao.getActiveTaskApprovalsForPeriod(task.id, periodKey)
+            val approval = active.firstOrNull { it.status == ApprovalStatus.APPROVED }
+                ?: active.firstOrNull { it.status == ApprovalStatus.PENDING }
+                ?: approvalDao.getLatestByBizKey(bizKey("TASK", task.id, periodKey))
+            val completion = findCompletionForPeriod(
+                taskId = task.id,
+                periodKey = periodKey,
+                window = window,
+                preferredDate = approval?.date
+            )
+            undoSelectedInTx(approval, completion)
+        }
+
     /**
      * 通用撤销打卡（习惯 / 布置任务 / 每日目标等），语义同 [undoTaskCheckIn]。
      *
      * @return 实际扣回的积分数（正数；0 表示原本尚未计分）
      */
-    suspend fun undoCheckIn(bizKey: String, taskId: Long? = null, date: String = todayString()): Int {
-        // 先移除完成记录（任务类打卡才有）
-        if (taskId != null) {
-            pointDao.deleteCompletionForTaskOnDate(taskId, date)
+    suspend fun undoCheckIn(bizKey: String, taskId: Long? = null, date: String = todayString()): Int =
+        transactionRunner.runInTransaction { undoCheckInInTx(bizKey, taskId, date) }
+
+    /** [undoCheckIn] 的事务内本体；批量/撤回入口已在事务中时直接复用，避免嵌套计数漂移。 */
+    private suspend fun undoCheckInInTx(bizKey: String, taskId: Long?, date: String): Int {
+        val approval = approvalDao.getLatestByBizKey(bizKey)
+        val taskKeyPrefix = taskId?.let { "TASK:$it:" }
+        val periodKey = when {
+            taskKeyPrefix == null || !bizKey.startsWith(taskKeyPrefix) -> date
+            approval?.frequencyPeriod != null -> approval.frequencyPeriod
+            else -> bizKey.removePrefix(taskKeyPrefix)
         }
-        val approval = approvalDao.getLatestByBizKey(bizKey) ?: return 0
+        val completion = taskId?.let {
+            findCompletionForPeriod(
+                taskId = it,
+                periodKey = periodKey,
+                window = frequencyWindowForKey(periodKey, date),
+                preferredDate = approval?.date
+            )
+        }
+        return undoSelectedInTx(approval, completion)
+    }
+
+    /** Apply the selected approval and delete only its exact completion row. */
+    private suspend fun undoSelectedInTx(
+        approval: PointApprovalEntity?,
+        completion: TaskCompletionEntity?
+    ): Int {
+        completion?.let { pointDao.deleteCompletionById(it.id) }
+        if (approval == null) return 0
         return when (approval.status) {
             ApprovalStatus.PENDING -> {
-                // 未审批：直接取消申请，积分从未计入，无需扣回
-                approvalDao.updateReview(approval.id, ApprovalStatus.CANCELLED, null)
+                // 未审批：先 CAS 抢占取消权；只有成功者返回，并发审批/拒绝不能覆盖终态。
+                if (approvalDao.cancelPending(approval.id) != 1) return 0
                 0
             }
             ApprovalStatus.APPROVED -> {
-                // 已审批：写反向记录冲抵（不删原记录，保留审计轨迹）
+                // 已审批：先 CAS 转为 REVOKED，再追加反向记录；真事务保证失败时状态与账本同时回滚。
+                if (approvalDao.revokeApproved(approval.id) != 1) {
+                    return 0
+                }
                 pointDao.insertPointRecord(
                     PointRecordEntity(
                         taskId = approval.taskId,
@@ -197,10 +307,45 @@ class PointRepository(
                         approvalId = approval.id
                     )
                 )
-                approvalDao.updateReview(approval.id, ApprovalStatus.REVOKED, approval.awardedRecordId)
                 approval.requestedPoints
             }
             else -> 0 // REJECTED / CANCELLED / REVOKED 均不计分，无需处理
+        }
+    }
+
+    /** Canonical snapshot first; only NULL legacy snapshots may use the date-range fallback. */
+    private suspend fun findCompletionForPeriod(
+        taskId: Long,
+        periodKey: String,
+        window: FrequencyWindow,
+        preferredDate: String? = null
+    ): TaskCompletionEntity? = pointDao.getCompletionForTaskInFrequencyPeriod(
+        taskId = taskId,
+        frequencyPeriod = periodKey,
+        preferredDate = preferredDate
+    ) ?: pointDao.getLegacyCompletionForTaskInPeriod(
+        taskId = taskId,
+        startDate = window.startInclusive?.toString(),
+        endDate = window.endExclusive?.toString(),
+        preferredDate = preferredDate
+    )
+
+    /** Reconstruct a safe fallback window from a stored canonical key or legacy daily suffix. */
+    private fun frequencyWindowForKey(periodKey: String, fallbackDate: String): FrequencyWindow {
+        if (periodKey == "ONCE") return FrequencyWindow(null, null)
+        val noMatch = FrequencyWindow(LocalDate(1, 1, 1), LocalDate(1, 1, 1))
+        val fallback = parseDateOrNull(fallbackDate) ?: return noMatch
+        val date = when {
+            periodKey.startsWith("WEEK:") ->
+                parseDateOrNull(periodKey.removePrefix("WEEK:")) ?: return noMatch
+            periodKey.startsWith("MONTH:") ->
+                parseDateOrNull("${periodKey.removePrefix("MONTH:")}-01") ?: return noMatch
+            else -> parseDateOrNull(periodKey) ?: fallback
+        }
+        return when {
+            periodKey.startsWith("WEEK:") -> TaskFrequency.WEEKLY.periodWindow(date)
+            periodKey.startsWith("MONTH:") -> TaskFrequency.MONTHLY.periodWindow(date)
+            else -> TaskFrequency.DAILY.periodWindow(date)
         }
     }
 
@@ -213,7 +358,11 @@ class PointRepository(
      *
      * @return 实际发放的积分（0 表示未发放）
      */
-    suspend fun approveAndAward(approvalId: Long): Int {
+    suspend fun approveAndAward(approvalId: Long): Int =
+        transactionRunner.runInTransaction { approveAndAwardInTx(approvalId) }
+
+    /** [approveAndAward] 的事务内本体；批量审批共享外层事务时直接复用。 */
+    private suspend fun approveAndAwardInTx(approvalId: Long): Int {
         val approval = approvalDao.getById(approvalId) ?: return 0
         if (approval.status != ApprovalStatus.PENDING) return 0
 
@@ -221,10 +370,23 @@ class PointRepository(
         if (approval.bizKey.isNotEmpty() &&
             approvalDao.getActiveAwardedByBizKey(approval.bizKey) != null
         ) {
-            approvalDao.updateReview(approvalId, ApprovalStatus.CANCELLED, null)
+            approvalDao.cancelPending(approvalId)
+            return 0
+        }
+        if (approval.actionType == "TASK_COMPLETE" && approval.taskId != null && approval.frequencyPeriod != null &&
+            approvalDao.getActiveAwardedTaskApprovalForPeriod(
+                taskId = approval.taskId,
+                frequencyPeriod = approval.frequencyPeriod,
+                excludeId = approval.id
+            ) != null
+        ) {
+            approvalDao.cancelPending(approvalId)
             return 0
         }
 
+        // 先以 PENDING CAS 抢占审核权，再写账本；失败时由外层真事务回滚这次抢占。
+        val reviewedAt = Clock.System.now().toEpochMilliseconds()
+        if (approvalDao.updateReview(approvalId, ApprovalStatus.APPROVED, null, reviewedAt) != 1) return 0
         val recordId = pointDao.insertPointRecord(
             PointRecordEntity(
                 taskId = approval.taskId,
@@ -236,19 +398,31 @@ class PointRepository(
                 approvalId = approval.id
             )
         )
-        approvalDao.updateReview(approvalId, ApprovalStatus.APPROVED, recordId)
+        // CAS 已释放 activeBizKey；补落账本 id，保留历史审批行与审计关联。
+        approvalDao.update(
+            approval.copy(
+                status = ApprovalStatus.APPROVED,
+                reviewedAt = reviewedAt,
+                awardedRecordId = recordId,
+                activeBizKey = null
+            )
+        )
         return approval.requestedPoints
     }
 
     /** 家长拒绝单条申请（不计分） */
     suspend fun rejectApproval(approvalId: Long) {
+        transactionRunner.runInTransaction { rejectApprovalInTx(approvalId) }
+    }
+
+    private suspend fun rejectApprovalInTx(approvalId: Long) {
         val approval = approvalDao.getById(approvalId) ?: return
         if (approval.status != ApprovalStatus.PENDING) return
         approvalDao.updateReview(approvalId, ApprovalStatus.REJECTED, null)
     }
 
     /**
-     * 家长撤回已审批申请（v3.3.1 D-10）：**委托 [undoCheckIn]，与孩子端撤销走同一条函数**，
+     * 家长撤回已审批申请（v3.3.1 D-10）：**复用 [undoCheckIn] 的事务内本体，与孩子端撤销走同一闭环**，
      * 保证不变量 4（撤销对称）在家长侧同样成立——APPROVED → 追加 REVERSAL 冲抵并置 REVOKED；
      * PENDING → CANCELLED；REJECTED / CANCELLED / REVOKED 等终态幂等拒绝（返回 0、零写入）。
      *
@@ -277,7 +451,7 @@ class PointRepository(
     suspend fun revokeApproval(approvalId: Long): Int =
         transactionRunner.runInTransaction { revokeApprovalInTx(approvalId) }
 
-    /** [revokeApproval] 的判定本体——在事务内执行；逻辑与 v3.3.1 D-10 逐字相同，仅调用位置进了事务块。 */
+    /** [revokeApproval] 的判定本体——在事务内执行；判定口径保持不变，写入复用撤销事务内本体。 */
     private suspend fun revokeApprovalInTx(approvalId: Long): Int {
         val approval = approvalDao.getById(approvalId) ?: return 0
         if (approval.bizKey.isEmpty()) return 0
@@ -285,7 +459,23 @@ class PointRepository(
         // 要么已不是 bizKey 的最新一条（新 PENDING 顶替），两种都必须整单跳过，防误伤新单。
         if (approval.status != ApprovalStatus.PENDING && approval.status != ApprovalStatus.APPROVED) return 0
         if (approvalDao.getLatestByBizKey(approval.bizKey)?.id != approvalId) return 0
-        return undoCheckIn(bizKey = approval.bizKey, taskId = approval.taskId, date = approval.date)
+        val taskKeyPrefix = approval.taskId?.let { "TASK:$it:" }
+        val periodKey = approval.frequencyPeriod ?: if (
+            taskKeyPrefix != null && approval.bizKey.startsWith(taskKeyPrefix)
+        ) {
+            approval.bizKey.removePrefix(taskKeyPrefix)
+        } else {
+            approval.date
+        }
+        val completion = approval.taskId?.let {
+            findCompletionForPeriod(
+                taskId = it,
+                periodKey = periodKey,
+                window = frequencyWindowForKey(periodKey, approval.date),
+                preferredDate = approval.date
+            )
+        }
+        return undoSelectedInTx(approval, completion)
     }
 
     /**
@@ -302,7 +492,7 @@ class PointRepository(
     suspend fun approveAllAndAward(): Int = transactionRunner.runInTransaction {
         val pending = approvalDao.getPendingList()
         var total = 0
-        pending.forEach { total += approveAndAward(it.id) }
+        pending.forEach { total += approveAndAwardInTx(it.id) }
         total
     }
 
@@ -324,8 +514,9 @@ class PointRepository(
      * 与孩子端撤销未审批打卡完全同形（复用既有闭环，不新写清理逻辑）。
      *
      * 空 bizKey 的 v2 遗留行无法被统一撤销锚定（[revokeApproval] 会保守拒绝返回 0），而清理
-     * 必须能收敛：这类行已在查询侧精确筛出（PENDING + 超期、按 id 定位），直接 updateStatus
-     * 置 CANCELLED 兜底——不涉扣回，与闭环 PENDING 半区终态一致（报告已披露此兜底）。
+     * 必须能收敛：这类行已在查询侧精确筛出（PENDING + 超期、按 id 定位），直接调用
+     * [PointApprovalDao.cancelPending] 的 PENDING → CANCELLED CAS 兜底——不涉扣回，
+     * 与闭环 PENDING 半区终态一致（报告已披露此兜底）。
      *
      * **D-11 review fix（防 bizKey 新单误伤）**：快照列表逐条处理前先按 id 复读该 approval，
      * 仅当 ① 仍 PENDING（防清理瞬间被家长并发通过/拒绝后落错半区）且 ② 仍是其 bizKey 的
@@ -358,9 +549,9 @@ class PointRepository(
                     if (approvalDao.getLatestByBizKey(fresh.bizKey)?.id != fresh.id) continue
                     revokeApproval(fresh.id)
                 } else {
-                    // 空 bizKey 兜底：updateStatus 只写 status/reviewedAt 两列，不改 awardedRecordId——
-                    // PENDING 行从未发放、该列本就是 null，与闭环 PENDING 半区 updateReview(…, null) 终态一致。
-                    approvalDao.updateStatus(fresh.id, ApprovalStatus.CANCELLED)
+                    // 空 bizKey 兜底：cancelPending 只允许 PENDING → CANCELLED，并释放 activeBizKey；
+                    // 不涉扣回，与闭环 PENDING 半区终态一致。
+                    approvalDao.cancelPending(fresh.id)
                 }
                 // 仅对真正落库 CANCELLED 的行计数（防御性复读，cleaned 与账本/状态变更严格对齐）
                 if (approvalDao.getById(fresh.id)?.status == ApprovalStatus.CANCELLED) cleaned++
@@ -377,7 +568,10 @@ class PointRepository(
         description: String,
         points: Int,
         taskId: Long?,
-        date: String
+        date: String,
+        requestedAt: Long = Clock.System.now().toEpochMilliseconds(),
+        frequencyPeriod: String? = null,
+        syncPendingSnapshot: Boolean = true
     ): CheckInResult {
         if (bizKey.isEmpty()) {
             // 无业务键的兜底路径（历史数据兼容）：直接新建申请
@@ -387,21 +581,24 @@ class PointRepository(
                     description = description,
                     requestedPoints = points,
                     taskId = taskId,
-                    date = date
+                    date = date,
+                    requestedAt = requestedAt,
+                    frequencyPeriod = frequencyPeriod
                 )
             )
             return CheckInResult.CREATED
         }
 
-        // 1) 已有待审申请 → 复用，仅同步分数与描述，绝不新建（防止取消后重打卡产生第二条）
-        // 终审 M-2（积分不降级）：复用 PENDING 时分值取 max(已挂起, 本次请求)——
-        // 同一 bizKey 先 +3（做对）后 +1（快捷复习）不得把已挂起的高分值改低，
-        // 孩子已挣到的待审分值只升不降；审批仍只按最终 requestedPoints 入账一次（不变量 3）。
+        // 1) 已有待审申请 → 复用，绝不新建（防止取消后重打卡产生第二条）。
+        // 通用业务保留终审 M-2 的分数/描述同步；任务周期审批使用不可变快照，后续打卡不得
+        //  retroactively 改写已挂起的分值或描述。
         val pending = approvalDao.getPendingByBizKey(bizKey)
         if (pending != null) {
-            val syncedPoints = maxOf(pending.requestedPoints, points)
-            if (pending.requestedPoints != syncedPoints || pending.description != description) {
-                approvalDao.update(pending.copy(requestedPoints = syncedPoints, description = description))
+            if (syncPendingSnapshot) {
+                val syncedPoints = maxOf(pending.requestedPoints, points)
+                if (pending.requestedPoints != syncedPoints || pending.description != description) {
+                    approvalDao.update(pending.copy(requestedPoints = syncedPoints, description = description))
+                }
             }
             return CheckInResult.ALREADY_PENDING
         }
@@ -419,13 +616,16 @@ class PointRepository(
                 requestedPoints = points,
                 taskId = taskId,
                 bizKey = bizKey,
-                date = date
+                activeBizKey = bizKey,
+                date = date,
+                requestedAt = requestedAt,
+                frequencyPeriod = frequencyPeriod
             )
         )
         return CheckInResult.CREATED
     }
 
-    /** 业务唯一键：类型 + 主体 id + 日期 */
+    /** 业务唯一键：类型 + 主体 id + 日期/周期 */
     private fun bizKey(prefix: String, subjectId: Long, date: String): String =
         "$prefix:$subjectId:$date"
 
@@ -466,21 +666,20 @@ class PointRepository(
      * D-08（v3.3.1 / 指令 §3.3）：心愿存钱罐的"存入"过去直接 `pointDao.insertPointRecord(ADJUSTMENT)`，
      * 同一种"孩子自主消耗"在账本里记成了家长调整。现在它走本函数，与商店消耗同一口径。
      *
-     * 新增的 [requireSufficientBalance] 是给这类**内部自主扣减**的调用方用的：余额校验写在扣减点内部，
-     * 于是"校验 + 落账"只有一处、一个口径，调用方不必自己先 `getTotalPoints().first()` 再决定要不要扣
-     * （那会在仓库外形成第二处校验点，两边对"余额"的读法一旦分叉就会出现扣成负数的窗口）。
-     * **默认 false —— 商店/宠物四处调用点（ChildRewardStoreScreen.kt:220、
-     * ChildPetScreen.kt:219/235/379）的既有语义与字节行为完全不变**（D-08 红线）。
-     *
-     * 诚实说明：本仓库没有把这两步包进 Room 事务，所以"读余额"与"写流水"之间仍有极窄的并发窗口
-     * （单用户本地应用，且 UI 侧同一时刻只有一个扣减入口）。Task C（v3.3.2）已为仓库注入
-     * [transactionRunner]，但裁决范围限定三入口（批量审批/超期清理/撤回），消耗入口保持
-     * 零改动红线，记此备忘。
+     * v3.3.3 Task 4：余额读取与流水写入在同一注入事务内完成，默认拒绝余额不足。
+     * 调用方审计：商店、宠物喂养/玩耍/场景、心愿存入均有余额前置校验，均要求不得透支；
+     * 没有生产调用方需要负余额，因此无需传 `false`。确需历史式透支的调用必须显式传
+     * `requireSufficientBalance = false`，不能让默认值静默放过。
      *
      * @return true = 已写入消耗流水；false = 校验未通过（余额不足或金额非正），**未写任何记录**
      */
-    suspend fun spendPoints(points: Int, note: String, requireSufficientBalance: Boolean = false): Boolean {
-        if (requireSufficientBalance && (points <= 0 || getTotalPoints().first() < points)) return false
+    suspend fun spendPoints(
+        points: Int,
+        note: String,
+        requireSufficientBalance: Boolean = true
+    ): Boolean = transactionRunner.runInTransaction {
+        if (points <= 0) return@runInTransaction false
+        if (requireSufficientBalance && getTotalPoints().first() < points) return@runInTransaction false
         val weekStart = getWeekStartTimestamp()
         pointDao.insertPointRecord(
             PointRecordEntity(
@@ -490,7 +689,7 @@ class PointRepository(
                 weekStart = weekStart
             )
         )
-        return true
+        true
     }
 
     /**
@@ -508,15 +707,17 @@ class PointRepository(
      * @param note 只许写纯 ASCII 业务键（如 `wish_refund:12`），不得写展示文案（Ruling 25 存储边界）
      */
     suspend fun refundSpentPoints(points: Int, note: String) {
-        if (points <= 0) return
-        pointDao.insertPointRecord(
-            PointRecordEntity(
-                points = points,
-                type = PointRecordType.REWARD_EXCHANGE,
-                note = note,
-                weekStart = getWeekStartTimestamp()
+        transactionRunner.runInTransaction {
+            if (points <= 0) return@runInTransaction
+            pointDao.insertPointRecord(
+                PointRecordEntity(
+                    points = points,
+                    type = PointRecordType.REWARD_EXCHANGE,
+                    note = note,
+                    weekStart = getWeekStartTimestamp()
+                )
             )
-        )
+        }
     }
 
     /**
@@ -529,6 +730,43 @@ class PointRepository(
 
     fun getCompletedTaskIdsForDate(date: String): Flow<List<Long>> =
         pointDao.getCompletedTaskIdsForDate(date)
+
+    /**
+     * Completed task ids for each task's actual frequency period on [date].
+     * Uses one Room query for all active task ids and filters snapshots in Kotlin.
+     */
+    fun getCompletedTaskIdsForPeriod(
+        tasks: List<TaskEntity>,
+        date: LocalDate
+    ): Flow<Set<Long>> {
+        if (tasks.isEmpty()) return flowOf(emptySet())
+        val tasksById = tasks.associateBy { it.id }
+        return pointDao.getCompletionsForTasks(tasksById.keys.toList()).map { completions ->
+            completions.mapNotNullTo(mutableSetOf()) { completion ->
+                val task = tasksById[completion.taskId] ?: return@mapNotNullTo null
+                if (completionBelongsToPeriod(completion, task, date)) completion.taskId else null
+            }
+        }
+    }
+
+    private fun completionBelongsToPeriod(
+        completion: TaskCompletionEntity,
+        task: TaskEntity,
+        date: LocalDate
+    ): Boolean {
+        val periodKey = task.frequency.periodKey(date)
+        if (completion.frequencyPeriod != null) return completion.frequencyPeriod == periodKey
+        val completionDate = parseDateOrNull(completion.date) ?: return false
+        return dateInWindow(completionDate, task.frequency.periodWindow(date))
+    }
+
+    private fun dateInWindow(date: LocalDate, window: FrequencyWindow): Boolean =
+        (window.startInclusive == null || date >= window.startInclusive) &&
+            (window.endExclusive == null || date < window.endExclusive)
+
+    /** Daily-target approval rows for reset safety checks; includes TARGET_ALL bonus requests. */
+    suspend fun getDailyTargetApprovals(date: String): List<PointApprovalEntity> =
+        approvalDao.getDailyTargetApprovals(date)
 
     /**
      * D-03（指令 §4.1 P1-01）：某一天任务打卡的**真实审批态**：taskId → 该任务当日 bizKey
@@ -551,6 +789,58 @@ class PointRepository(
                 .toMap()
         }
 
+    /**
+     * Period-aware D-03 state lookup used by task cards. One approval query reads
+     * all active task ids; Kotlin filters canonical snapshots (or NULL legacy daily
+     * keys) by period. The latest row per bizKey is selected first; across keys,
+     * APPROVED dominates, then PENDING, then the latest terminal row. This matches
+     * check-in's active-award precedence instead of letting a newer legacy rejection
+     * hide an approval that still blocks another award.
+     */
+    fun getTaskApprovalStates(
+        tasks: List<TaskEntity>,
+        date: LocalDate
+    ): Flow<Map<Long, ApprovalStatus>> {
+        if (tasks.isEmpty()) return flowOf(emptyMap())
+        val tasksById = tasks.associateBy { it.id }
+        return approvalDao.getTaskApprovalsForTaskIds(tasksById.keys.toList()).map { rows ->
+            val latestByKey = rows.groupBy { it.bizKey }
+                .mapNotNull { (key, group) -> key to group.maxByOrNull { it.id }!! }
+                .toMap()
+            buildMap {
+                tasks.forEach { task ->
+                    val approval = latestByKey.values
+                        .filter { it.taskId == task.id && approvalBelongsToPeriod(it, task, date) }
+                        .minWithOrNull(
+                            compareBy<PointApprovalEntity> {
+                                when (it.status) {
+                                    ApprovalStatus.APPROVED -> 0
+                                    ApprovalStatus.PENDING -> 1
+                                    else -> 2
+                                }
+                            }.thenByDescending { it.id }
+                        )
+                    if (approval != null) put(task.id, approval.status)
+                }
+            }
+        }
+    }
+
+    private fun approvalBelongsToPeriod(
+        approval: PointApprovalEntity,
+        task: TaskEntity,
+        date: LocalDate
+    ): Boolean {
+        val periodKey = task.frequency.periodKey(date)
+        if (approval.frequencyPeriod != null) return approval.frequencyPeriod == periodKey
+        val taskKeyPrefix = "TASK:${task.id}:"
+        if (!approval.bizKey.startsWith(taskKeyPrefix)) return false
+        val suffix = approval.bizKey.removePrefix(taskKeyPrefix)
+        if (suffix == periodKey) return true
+        val approvalDate = parseDateOrNull(suffix.ifBlank { approval.date }) ?: return false
+        return dateInWindow(approvalDate, task.frequency.periodWindow(date))
+    }
+
     fun getCompletionsByDate(date: String): Flow<List<TaskCompletionEntity>> =
         pointDao.getCompletionsByDate(date)
 
@@ -561,29 +851,23 @@ class PointRepository(
      * 计算当前连续打卡天数（streak）
      * 从昨天或今天开始往回数，连续的打卡天数
      */
-    suspend fun getCurrentStreak(): Int {
-        // 查看最近60天的打卡日期
-        val since = Clock.System.now().toEpochMilliseconds() - 60L * 24 * 60 * 60 * 1000
-        val dates = pointDao.getDistinctCompletionDates(since).toSet()
+    suspend fun getCurrentStreak(): Int = observeCurrentStreak().first()
 
-        var streak = 0
-        val tz = TimeZone.currentSystemDefault()
-        var cursor = Clock.System.now().toLocalDateTime(tz).date
-        // 如果今天还没打卡，从昨天开始数；否则从今天开始
-        val today = todayString()
-        if (today !in dates) {
-            cursor = cursor.minus(1, DateTimeUnit.DAY)
-        }
-        while (true) {
-            val dateStr = cursor.toString()
-            if (dateStr in dates) {
+    /** 连续打卡流的唯一计算口径；数据库变化时成就进度随之刷新。 */
+    fun observeCurrentStreak(): Flow<Int> {
+        val since = Clock.System.now().toEpochMilliseconds() - 60L * 24 * 60 * 60 * 1000
+        return pointDao.observeDistinctCompletionDates(since).map { dates ->
+            val dateSet = dates.toSet()
+            var streak = 0
+            val tz = TimeZone.currentSystemDefault()
+            var cursor = Clock.System.now().toLocalDateTime(tz).date
+            if (todayString() !in dateSet) cursor = cursor.minus(1, DateTimeUnit.DAY)
+            while (cursor.toString() in dateSet) {
                 streak++
                 cursor = cursor.minus(1, DateTimeUnit.DAY)
-            } else {
-                break
             }
+            streak
         }
-        return streak
     }
 
     /** 获取指定时刻所在周的周一 00:00:00 时间戳 */

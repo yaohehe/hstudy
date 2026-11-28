@@ -224,10 +224,11 @@ private val SETTINGS_STATIC_DIFFERS_FIELDS = setOf(
     "backupCardTitle", "backupNote", "backupButton", "backupRunningLabel", "restoreButton",
     "backupSuccessMessage", "restoreDialogTitle", "restoreDialogNote", "restoreConfirmButton",
     "restoreSuccessMessage", "restartAppNote",
-    // 家长远程控制
+    // 手动文件同步
     "remoteControlTitle", "remoteControlNote", "howToTitle", "pushStepNote", "viewStepNote",
     "transportNote", "pushSettingsButton", "viewProgressButton", "processingLabel",
-    "exportChooserTitle", "settingsExportedMessage", "progressImportedMessage",
+    "exportChooserTitle", "settingsExportedMessage", "sharePresentedMessage",
+    "shareCompletedMessage", "shareCancelledMessage", "progressImportedMessage",
     // 孩子进度卡片
     "progressPointsLabel", "progressStreakLabel", "progressFocusLabel", "progressCheckinLabel",
     "progressMistakesLabel", "progressTodayCheckinLabel",
@@ -1526,6 +1527,10 @@ class StringsCopyTest {
             zh.sendProgressButton to en.sendProgressButton,
             zh.shareProgressChooserTitle to en.shareProgressChooserTitle,
             zh.progressExportedMessage to en.progressExportedMessage,
+            zh.sharePresentedMessage to en.sharePresentedMessage,
+            zh.shareCompletedMessage to en.shareCompletedMessage,
+            zh.shareCancelledMessage to en.shareCancelledMessage,
+            zh.shareFailedMessage("x") to en.shareFailedMessage("x"),
             zh.exportFailedMessage to en.exportFailedMessage,
             zh.syncingLabel to en.syncingLabel,
             zh.claimBonusButton to en.claimBonusButton,
@@ -1996,8 +2001,8 @@ class StringsCopyTest {
         assertEquals("📷 有 1 个证明待审核，点击前往", zh.pendingProofsButton(1))
         assertEquals("📚 还有 6 道错题未掌握", zh.unmasteredMistakesNote(6))
         assertEquals("📚 还有 1 道错题未掌握", zh.unmasteredMistakesNote(1))
-        assertEquals("设备数据已 9 天未同步", zh.syncOverdueTitle(9))
-        assertEquals("设备数据已 1 天未同步", zh.syncOverdueTitle(1))
+        assertEquals("已 9 天未进行手动同步", zh.syncOverdueTitle(9))
+        assertEquals("已 1 天未进行手动同步", zh.syncOverdueTitle(1))
         assertEquals("学习任务已配置（4个）", zh.setupTasksConfigured(4))
         assertEquals("奖励商店已配置（3个）", zh.setupRewardsConfigured(3))
         assertEquals("心愿存钱罐已配置（2个）", zh.setupWishConfigured(2))
@@ -2007,8 +2012,8 @@ class StringsCopyTest {
         assertEquals("📷 1 proof awaits review — tap to open", en.pendingProofsButton(1))
         assertEquals("📚 6 mistakes are still not mastered", en.unmasteredMistakesNote(6))
         assertEquals("📚 1 mistake is still not mastered", en.unmasteredMistakesNote(1))
-        assertEquals("Device data has not been synced for 9 days", en.syncOverdueTitle(9))
-        assertEquals("Device data has not been synced for 1 day", en.syncOverdueTitle(1))
+        assertEquals("Manual sync last performed 9 days ago", en.syncOverdueTitle(9))
+        assertEquals("Manual sync last performed 1 day ago", en.syncOverdueTitle(1))
         assertEquals("Study tasks set up (4)", en.setupTasksConfigured(4))
         assertEquals("Reward store set up (3)", en.setupRewardsConfigured(3))
         assertEquals("Wish Pool set up (2)", en.setupWishConfigured(2))
@@ -2043,7 +2048,7 @@ class StringsCopyTest {
         assertEquals("10 days", en.streakDaysValue(10))
         assertEquals("7 proofs await review — tap to open", en.pendingProofsButton(7).substringAfter("📷 "))
         assertEquals("7 mistakes are still not mastered", en.unmasteredMistakesNote(7).substringAfter("📚 "))
-        assertEquals("Device data has not been synced for 10 days", en.syncOverdueTitle(10))
+        assertEquals("Manual sync last performed 10 days ago", en.syncOverdueTitle(10))
         listOf(
             zh.streakDaysValue(1) to zh.streakDaysValue(7),
             zh.pendingProofsButton(1) to zh.pendingProofsButton(7),
@@ -2282,10 +2287,10 @@ class StringsCopyTest {
         val zh = AppStringsZh.settings
         val en = AppStringsEn.settings
 
-        assertEquals("导入失败：文件已损坏", zh.childProgressImportFailedMessage("文件已损坏"))
-        assertEquals("导入失败：null", zh.childProgressImportFailedMessage(null))
-        assertEquals("Import failed: file is broken", en.childProgressImportFailedMessage("file is broken"))
-        assertEquals("Import failed: null", en.childProgressImportFailedMessage(null))
+        assertEquals("JSON 进度导入失败：文件已损坏", zh.childProgressImportFailedMessage("文件已损坏"))
+        assertEquals("JSON 进度导入失败：null", zh.childProgressImportFailedMessage(null))
+        assertEquals("JSON progress import failed: file is broken", en.childProgressImportFailedMessage("file is broken"))
+        assertEquals("JSON progress import failed: null", en.childProgressImportFailedMessage(null))
 
         assertEquals("❌ 备份失败：disk full", zh.backupFailureMessage("disk full"))
         assertEquals("❌ 备份失败：null", zh.backupFailureMessage(null))
@@ -2530,6 +2535,10 @@ class StringsCopyTest {
             zh.pushSettingsButton to en.pushSettingsButton,
             zh.viewProgressButton to en.viewProgressButton,
             zh.settingsExportedMessage to en.settingsExportedMessage,
+            zh.sharePresentedMessage to en.sharePresentedMessage,
+            zh.shareCompletedMessage to en.shareCompletedMessage,
+            zh.shareCancelledMessage to en.shareCancelledMessage,
+            zh.shareFailedMessage("x") to en.shareFailedMessage("x"),
             zh.progressImportedMessage to en.progressImportedMessage,
             zh.progressPointsLabel to en.progressPointsLabel,
             zh.progressStreakLabel to en.progressStreakLabel,

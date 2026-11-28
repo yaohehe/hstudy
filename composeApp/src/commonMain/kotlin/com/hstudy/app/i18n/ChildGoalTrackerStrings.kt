@@ -4,10 +4,13 @@ package com.hstudy.app.i18n
  * 孩子端目标追踪页（ui/habit/ChildGoalTrackerScreen.kt）文案表（阶段 2 W5）。
  * 四条"每日目标建议"与四条鼓励语是纯渲染文案；完成率/数量均为数字格式，不本地化。
  * [tasksCompleted] 英文单复数用行内条件。
+ * v3.3.3 Task 10 新写 [completionRateSourceLabel]：每日快照与旧数据估算两种完成率口径
+ * 必须明示；迁移前页面没有来源标注，已按 Ruling 20(d) 在模板闸门登记表侧残差。
  */
 data class ChildGoalTrackerStrings(
     val title: String,
     val completionRateTitle: String,
+    val completionRateSourceLabel: (snapshot: Boolean) -> String,
     val tasksCompleted: (done: Int, total: Int) -> String,
     val streakLabel: String,
     val todayDoneLabel: String,
@@ -26,6 +29,9 @@ data class ChildGoalTrackerStrings(
 val ChildGoalTrackerStringsZh = ChildGoalTrackerStrings(
     title = "📈 目标追踪",                                                      // :49
     completionRateTitle = "今日目标完成率",                                      // :61
+    completionRateSourceLabel = { snapshot ->
+        if (snapshot) "口径：当日任务快照" else "口径：旧数据估算（当前活跃任务）"
+    },
     tasksCompleted = { done, total -> "$done / $total 任务已完成" },             // :65
     streakLabel = "连续打卡天数",                                               // :85
     todayDoneLabel = "今日完成",                                                // :86
@@ -44,6 +50,9 @@ val ChildGoalTrackerStringsZh = ChildGoalTrackerStrings(
 val ChildGoalTrackerStringsEn = ChildGoalTrackerStrings(
     title = "📈 Goal tracker",
     completionRateTitle = "Today's completion rate",
+    completionRateSourceLabel = { snapshot ->
+        if (snapshot) "Source: daily task snapshot" else "Source: legacy estimate (current active tasks)"
+    },
     tasksCompleted = { done, total -> "$done / $total ${if (total == 1) "task" else "tasks"} completed" },
     streakLabel = "Check-in streak (days)",
     todayDoneLabel = "Done today",

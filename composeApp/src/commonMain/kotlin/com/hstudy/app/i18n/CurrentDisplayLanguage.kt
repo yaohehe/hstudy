@@ -24,7 +24,8 @@ suspend fun currentDisplayLanguage(
  * 来源是 [AppGraph.startupLanguage]（bootstrap 起跟随存储持续刷新的进程内快照，终审 Ruling 46）
  * 加 [systemLanguageTag]——解析式与 suspend 版**完全相同**（`appLanguageFromStorage(…).resolveWith(…)`），
  * 只是用快照代替 `appLanguage.first()`。所以它不阻塞调用线程（主线程安全；BroadcastReceiver 的
- * onReceive 因此不必 runBlocking、也不必改成 goAsync + 协程——那会是逻辑变更）。
+ * onReceive 因此不必 runBlocking。`ScheduleAlarmReceiver` 的 goAsync 仅用于异步数据库校验，
+ * 校验通过后的语言解析仍使用此同步快照）。
  *
  * 代价（诚实说明，两处窗口都只影响瞬时文案）：
  * 1. 进程刚起、快照尚未播种时值为 null → SYSTEM → 系统语言（与 App 首帧的退化口径一致）；
