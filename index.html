@@ -392,7 +392,7 @@ tailwind.config = {
           <svg class="w-14 h-14 shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
           <div>
             <div class="font-bold text-lg leading-tight">HStudy</div>
-            <div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="ins_ver">v3.3.2 · Android & iOS 双平台同源构建</div>
+            <div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="ins_ver">v3.3.3 · Android & iOS 双平台同源构建</div>
           </div>
         </div>
         <ol class="space-y-5">
@@ -415,7 +415,7 @@ tailwind.config = {
           <svg class="w-14 h-14 shrink-0" aria-label="HStudy app icon"><use href="#hs-logo"/></svg>
           <div>
             <div class="font-bold text-lg leading-tight">HStudy</div>
-            <div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="ins_ver">v3.3.2 · Android & iOS 双平台同源构建</div>
+            <div class="text-xs text-on-surface-variant/70 mt-0.5" data-i18n="ins_ver">v3.3.3 · Android & iOS 双平台同源构建</div>
           </div>
         </div>
         <p class="text-sm text-on-surface-variant leading-relaxed mb-5" data-i18n="i0">当前 iOS 交付物为<strong class="text-on-surface">未签名的模拟器构建包</strong>（本账号无 Apple 开发者证书，TestFlight / App Store 上架为后续计划）。</p>
@@ -442,7 +442,7 @@ cd hstudy
 # Android Release 构建（本地签名需配置 RELEASE_KEYSTORE_* 环境变量）
 ./gradlew :composeApp:assembleRelease
 
-# 全量单元测试（325+ 用例，含积分不变量回归套件）
+# 全量单元测试（404+ 用例，含积分不变量回归套件）
 ./gradlew :composeApp:testDebugUnitTest
 
 # iOS 模拟器框架构建（macOS）
@@ -462,8 +462,21 @@ cd hstudy
   <ol class="space-y-5 reveal">
     <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
       <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
-        <span class="text-xl font-black text-gprimary">v3.3.2</span><span class="text-xs text-on-surface-variant/70">2026-11-23</span>
+        <span class="text-xl font-black text-gprimary">v3.3.3</span><span class="text-xs text-on-surface-variant/70">2026-11-28</span>
         <span class="text-xs px-2.5 py-1 rounded-full bg-primary-container text-on-primary-container font-medium" data-i18n="cl_latest">最新版本</span>
+      </div>
+      <h3 class="font-bold mb-2" data-i18n="cl_333_t">动态加固发布批</h3>
+      <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
+        <li data-i18n="cl_333_1">积分、审批、奖励、心愿、宠物与模板初始化落实事务和防重入，失败整体回滚；备份、恢复与家庭配置导入增加校验、回滚和空配置保护。</li>
+        <li data-i18n="cl_333_2">历史积分按账本原周期冲抵，完成率使用快照或明确标注的旧数据回退；周锚点与跨午夜刷新保持一致。</li>
+        <li data-i18n="cl_333_3">修复 Android 周报/日程重排、深链授权、返回栈、冷启动与 Activity 重建恢复。</li>
+        <li data-i18n="cl_333_4">家长密码升级为 PBKDF2 安全存储并原子迁移旧明文；分享结果区分已展示、完成、取消和失败。</li>
+        <li data-i18n="cl_333_5">积分与错题列表改为单遍统计；Pixel 5 六组性能基准全部达标，Test Lab 212/212 通过。</li>
+      </ul>
+    </li>
+    <li class="bg-surface-container-lowest rounded-3xl p-6 shadow-card border border-outline-variant/60">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <span class="text-xl font-black text-gprimary">v3.3.2</span><span class="text-xs text-on-surface-variant/70">2026-11-23</span>
       </div>
       <h3 class="font-bold mb-2" data-i18n="cl_332_t">裁决修复批</h3>
       <ul class="text-sm text-on-surface-variant leading-relaxed space-y-1.5 list-disc pl-5">
@@ -630,7 +643,7 @@ cd hstudy
       <div>
         <div class="font-semibold text-on-surface mb-3 text-sm" data-i18n="ft_h3">升级兼容说明</div>
         <p class="text-xs leading-relaxed" data-i18n="ft_migrate">
-          应用数据库基于 Room（当前 schema v13），跨版本升级由带备份校验的迁移脚本保障：账本 append-only、历史数据不丢失。v2（Android 原生版）设备可直接覆盖升级至 v3.x。
+          应用数据库基于 Room（当前 schema v14），跨版本升级由带备份校验的迁移脚本保障：账本 append-only、历史数据不丢失。v2（Android 原生版）设备可直接覆盖升级至 v3.x。
         </p>
       </div>
     </div>
@@ -660,6 +673,12 @@ const I18N = {
     gal_title:'应用一览', gal_sub:'真机截图，横向滑动浏览各主要页面。',
     gal_cap_role:'角色选择', gal_cap_parent:'家长管理台', gal_cap_child:'我的学习（孩子端）', gal_cap_mist:'错题本',
     cl_title:'版本更新', cl_sub:'每个版本都经过双平台 CI 与自动化回归，以下是近期更新。', cl_latest:'最新版本',
+    cl_333_t:'动态加固发布批',
+    cl_333_1:'积分、审批、奖励、心愿、宠物与模板初始化落实事务和防重入，失败整体回滚；备份、恢复与家庭配置导入增加校验、回滚和空配置保护。',
+    cl_333_2:'历史积分按账本原周期冲抵，完成率使用快照或明确标注的旧数据回退；周锚点与跨午夜刷新保持一致。',
+    cl_333_3:'修复 Android 周报/日程重排、深链授权、返回栈、冷启动与 Activity 重建恢复。',
+    cl_333_4:'家长密码升级为 PBKDF2 安全存储并原子迁移旧明文；分享结果区分已展示、完成、取消和失败。',
+    cl_333_5:'积分与错题列表改为单遍统计；Pixel 5 六组性能基准全部达标，Test Lab 212/212 通过。',
     cl_332_t:'裁决修复批',
     cl_332_1:'里程碑奖励说明改为业务键存储，中英文随界面语言派生，不再把中文写进数据库。',
     cl_332_2:'复习里程碑与每日幸运转盘加入 CAS 防重入，狂点、双击只入账一次。',
@@ -700,7 +719,7 @@ const I18N = {
     priv_s1:'匿名功能使用统计', priv_s1d:'仅事件名与枚举值', priv_s2:'姓名 / 头像 / 任务文本', priv_s2d:'永不采集，仅本地存储',
     priv_note:'示意界面。真实开关位于 App 的家长设置页，关闭后不再初始化分析 SDK。',
     ins_title:'快速安装与构建', ins_sub:'三分钟上手：直接安装签名 Release APK、体验 iOS 模拟器包，或从源码构建。',
-    ins_ver:'v3.3.2 · Android & iOS 双平台同源构建',
+    ins_ver:'v3.3.3 · Android & iOS 双平台同源构建',
     tab_android:'Android 安装', tab_ios:'iOS 模拟器包', tab_dev:'开发者构建',
     a1:'前往 Releases 页面下载最新的 <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-signed.apk</code>', a1l:'打开发布页',
     a2:'在系统提示允许时，为浏览器/文件管理器开启「安装未知来源应用」权限（一次性授权即可）。',
@@ -718,7 +737,7 @@ const I18N = {
     oss_c1:'Android + iOS 共享业务代码', oss_c2:'自动化单元测试', oss_c3:'Material Design 3 视觉体系', oss_c4:'本地数据 · 无服务器依赖',
     ft_slogan:'家长与孩子共享的学习伙伴。<br>Kotlin Multiplatform · 完全开源。',
     ft_h1:'项目', ft_releases:'Releases 发布页', ft_h2:'页面导航', ft_h3:'升级兼容说明',
-    ft_migrate:'应用数据库基于 Room（当前 schema v13），跨版本升级由带备份校验的迁移脚本保障：账本 append-only、历史数据不丢失。v2（Android 原生版）设备可直接覆盖升级至 v3.x。',
+    ft_migrate:'应用数据库基于 Room（当前 schema v14），跨版本升级由带备份校验的迁移脚本保障：账本 append-only、历史数据不丢失。v2（Android 原生版）设备可直接覆盖升级至 v3.x。',
     ft_rights:'保留所有权利', ft_built:'Built with'
   },
   en: {
@@ -737,6 +756,12 @@ const I18N = {
     gal_title:'App Gallery', gal_sub:'Real device screenshots — swipe sideways to browse the main screens.',
     gal_cap_role:'Role Select', gal_cap_parent:'Parent Dashboard', gal_cap_child:'My Study (Child)', gal_cap_mist:'Mistake Notebook',
     cl_title:'Changelog', cl_sub:'Every release passes dual-platform CI and automated regression suites. Recent updates:', cl_latest:'Latest',
+    cl_333_t:'Dynamic hardening release',
+    cl_333_1:'Points, approvals, rewards, wishes, pets and template setup now use transactions and re-entry guards with full rollback; backup, restore and family-config imports gain validation, rollback and empty-config protection.',
+    cl_333_2:'History reversals net against the original ledger period; completion rates use snapshots or clearly labelled legacy fallback, with one weekly anchor and consistent midnight refresh.',
+    cl_333_3:'Fixed Android weekly-report/schedule rescheduling, authorized deep links, back-stack behavior, cold starts and Activity recreation recovery.',
+    cl_333_4:'Parent passwords now use PBKDF2 secure storage with atomic legacy migration; share results distinguish presented, completed, cancelled and failed.',
+    cl_333_5:'Points and mistake lists now use single-pass summaries; all six Pixel 5 benchmark datasets pass and Test Lab is 212/212 green.',
     cl_332_t:'Adjudicated fixes',
     cl_332_1:'Milestone bonus notes are stored as business keys and rendered in the UI language — no more Chinese literals written to the database.',
     cl_332_2:'Review-streak milestones and the daily lucky draw gained CAS re-entry guards: rapid taps and double-clicks award points only once.',
@@ -777,7 +802,7 @@ const I18N = {
     priv_s1:'Anonymous usage analytics', priv_s1d:'Event names & enums only', priv_s2:'Names / avatars / task text', priv_s2d:'Never collected, local only',
     priv_note:'Illustration. The real switch lives in Parent Settings; once off, the analytics SDK is never initialized.',
     ins_title:'Install & Build', ins_sub:'Three minutes to start: sideload the signed release APK, run the iOS simulator build, or build from source.',
-    ins_ver:'v3.3.2 · one codebase for Android & iOS',
+    ins_ver:'v3.3.3 · one codebase for Android & iOS',
     tab_android:'Android Install', tab_ios:'iOS Simulator', tab_dev:'Developer Build',
     a1:'Grab the latest <code class="px-1.5 py-0.5 rounded bg-surface-container text-sm">HStudy-vX.Y.Z-signed.apk</code> from Releases', a1l:'Open Releases',
     a2:'When prompted, allow "install unknown apps" for your browser / file manager (one-time grant).',
@@ -795,7 +820,7 @@ const I18N = {
     oss_c1:'Shared Android + iOS code', oss_c2:'Automated unit tests', oss_c3:'Material Design 3 system', oss_c4:'Local data · no servers',
     ft_slogan:'A study companion for parents and kids.<br>Kotlin Multiplatform · fully open source.',
     ft_h1:'Project', ft_releases:'Releases', ft_h2:'Navigation', ft_h3:'Upgrade notes',
-    ft_migrate:'The app database uses Room (schema v13). Cross-version upgrades run through backup-verified migrations: the points ledger stays append-only and history is never lost. v2 Android devices can upgrade in place to v3.x.',
+    ft_migrate:'The app database uses Room (schema v14). Cross-version upgrades run through backup-verified migrations: the points ledger stays append-only and history is never lost. v2 Android devices can upgrade in place to v3.x.',
     ft_rights:'All rights reserved', ft_built:'Built with'
   }
 };
